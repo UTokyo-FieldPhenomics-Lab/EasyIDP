@@ -1,6 +1,7 @@
 import numpy as np
 from skimage.external import tifffile
 
+
 def point_query(geotiff_path, points):
     '''
     :param geotiff_path:
@@ -11,9 +12,10 @@ def point_query(geotiff_path, points):
     px = gis2pixel(points, head)
     with tifffile.TiffFile(geotiff_path) as tif:
         data = tif.asarray()
-        height_values = data[px[:,0], px[:,1]]
+        height_values = data[px[:, 0], px[:, 1]]
 
     return height_values
+
 
 def mean_values(geotiff_path):
     header = get_header(geotiff_path)
@@ -23,6 +25,7 @@ def mean_values(geotiff_path):
         z_mean = np.nanmean(data)
 
     return z_mean
+
 
 def get_header(geotiff_path):
     '''
@@ -88,6 +91,7 @@ def get_header(geotiff_path):
 
     return header
 
+
 def gis2pixel(points, geo_head):
     '''
     convert point cloud xyz coordinate to geotiff pixel coordinate
@@ -122,6 +126,7 @@ def gis2pixel(points, geo_head):
     pixel = np.concatenate([np_ax0[:, None], np_ax1[:, None]], axis=1)
 
     return pixel.astype(int)
+
 
 def pixel2gis(points, geo_head):
     gis_xmin = geo_head['tie_point'][0]

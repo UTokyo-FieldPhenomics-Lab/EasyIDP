@@ -1,8 +1,8 @@
 import numpy as np
-from external import shapefile
+from easyric.external import shapefile
 from easyric.io.geotiff import point_query, mean_values
 
-def read_shp2d(shp_path):
+def read_shp2d(shp_path, target_proj=None):
     shp = shapefile.Reader(shp_path)
     shp_dict = {}
 
@@ -19,7 +19,7 @@ def read_shp2d(shp_path):
 
     return shp_dict
 
-def read_shp3d(shp_path, dsm_path, get_z_by='mean'):
+def read_shp3d(shp_path, dsm_path, get_z_by='mean', target_proj=None):
     '''
     shp_path: full shp_file directory
     get_z_by:

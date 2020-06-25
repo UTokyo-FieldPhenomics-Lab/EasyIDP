@@ -1,15 +1,15 @@
 import os
 from easyric.io import pix4d
-from easyric.objects.wrapper import EasyParams
+from easyric.objects.wrapper import OffSet, ImageSet
 
-class Pix4dFiles:
+class Pix4D:
 
-    def __init__(self, project_path, raw_img_path, project_name=None):
-        """
-        The function to automatic drag necessary files from Pix4D default project folders
-        :param project_path: The folder path of pix4d project
-        :param raw_img_path: THe raw image folder produced pix4d project
-        """
+    def __init__(self, project_path, raw_img_path, project_name=None,
+                 param_folder=None, dom_path=None, dsm_path=None, ply_path=None):
+
+        ######################
+        # Project Attributes #
+        ######################
         self.project_path = self._get_full_path(project_path)
         if project_name is None:
             self.project_name = os.path.basename(self.project_path)
@@ -20,12 +20,9 @@ class Pix4dFiles:
 
         sub_folder = os.listdir(self.project_path)
 
-        if '1_initial' in sub_folder:
-            self._original_specify()
-        else:
-            print(f'Could not find "1_initial" folder in "{self.project_path}" which means not a Pix4D project folder\n'
-                  f'  Please manual given each file paths by self.manual_specify(param_folder, dom_path, etc.)')
-
+        #################
+        # Project Files #
+        #################
         self.xyz_file = None
         self.pmat_file = None
         self.cicp_file = None
@@ -33,6 +30,48 @@ class Pix4dFiles:
         self.ply_file = None
         self.dom_file = None
         self.dsm_file = None
+
+        if '1_initial' in sub_folder:
+            self._original_specify()
+        else:
+            if param_folder is None:
+                raise FileNotFoundError(f'[Wrapper][Pix4D] Current folder |{self.project_path}| is not a standard '
+                                        f'pix4d default projects, "1_initial" folder not found and `param_folder` not specified')
+            else:
+                self._manual_specify(param_folder, dom_path, dsm_path, ply_path)
+
+        ###############
+        # Init Params #
+        ###############
+        # --------------------
+        # >>> p4d.offset.x
+        # 368109.00
+        # >>> p4d.Py
+        # 3.9716578516421746
+        # >>> p4d.img[0].name
+        # ''DJI_0172.JPG''
+        # >>> p4d.img['DJI_0172.JPG']
+        # <class Image>
+        # >>> p4d.img[0].pmat
+        # pmat_ndarray
+        # --------------------
+        self.offset = None
+        self.img = None
+        # from cicp file
+        self.F = None
+        self.Px = None
+        self.Py = None
+        self.K1 = None
+        self.K2 = None
+        self.K3 = None
+        self.T1 = None
+        self.T2 = None
+
+        self.offset = OffSet(self.get_offsets())
+        vars(self).update(self.get_cicp_dict())
+        self.img = ImageSet(img_path=self.raw_img_path,
+                            pmat_dict=self.get_pmat_dict(),
+                            ccp_dict=self.get_ccp_dict())
 
     def _original_specify(self):
         sub_folder = os.listdir(self.project_path)
@@ -57,15 +96,35 @@ class Pix4dFiles:
             self.dsm_file = self._check_end(dsm_folder, '.tif')
             self.dom_file = self._check_end(dom_folder, '.tif')
 
-    def manual_specify(self, param_folder, dom_path=None, dsm_path=None, ply_path=None):
+    def _manual_specify(self, param_folder, dom_path=None, dsm_path=None, ply_path=None):
         self.xyz_file = self._get_full_path(f"{param_folder}/{self.project_name}_offset.xyz")
         self.pmat_file = self._get_full_path(f"{param_folder}/{self.project_name}_pmatrix.txt")
         self.cicp_file = self._get_full_path(f"{param_folder}/{self.project_name}_pix4d_calibrated_internal_camera_parameters.cam")
         self.ccp_file = self._get_full_path(f"{param_folder}/{self.project_name}_calibrated_camera_parameters.txt")
 
-        self.ply_file = self._get_full_path(ply_path)
-        self.dom_file = self._get_full_path(dom_path)
-        self.dsm_file = self._get_full_path(dsm_path)
+        if ply_path is None:
+            try_ply = f"{self.project_name}_group1_densified_point_cloud.ply"
+            self.ply_file = self._get_full_path(f"{self.project_path}/{try_ply}")
+            if self.ply_file is not None:
+                print(f"[Wrapper][Pix4D] No ply given, however find '{try_ply}' at current project folder")
+        else:
+            self.ply_file = self._get_full_path(ply_path)
+
+        if dom_path is None:
+            try_dom = f"{self.project_name}_transparent_mosaic_group1.tif"
+            self.dom_file = self._get_full_path(f"{self.project_path}/{try_dom}")
+            if self.dom_file is not None:
+                print(f"[Wrapper][Pix4D] No dom given, however find '{try_dom}' at current project folder")
+        else:
+            self.dom_file = self._get_full_path(dom_path)
+
+        if dsm_path is None:
+            try_dsm = f"{self.project_name}_dsm.tif"
+            self.dsm_file = self._get_full_path(f"{self.project_path}/{try_dsm}")
+            if self.dsm_file is not None:
+                print(f"[Wrapper][Pix4D] No dsm given, however find '{try_dsm}' at current project folder")
+        else:
+            self.dsm_file = self._get_full_path(dsm_path)
 
     @staticmethod
     def _check_end(folder, ext):
@@ -99,9 +158,9 @@ class Pix4dFiles:
         return pix4d.read_cicp(self.cicp_file)
 
 
-class PhotoScanFiles:
+class PhotoScan:
     pass
 
 
-class OpenSfMFiles:
+class OpenSfM:
     pass

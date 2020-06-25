@@ -58,6 +58,7 @@ def get_header(geotiff_path):
         * 339 sample_format (1H) 3
         * 33550 model_pixel_scale (3d) (0.0029700000000000004, 0.0029700000000000004, 0
         * 33922 model_tie_point (6d) (0.0, 0.0, 0.0, 368090.77975000005, 3956071.13823,
+        ******** some case ********* (0.0, 0.0, 0.0, 368090.77975000005, 3956071.13823, 0
         * 34735 geo_key_directory (32H) (1, 1, 0, 7, 1024, 0, 1, 1, 1025, 0, 1, 1, 1026
         * 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'
         * 42113 gdal_nodata (7s) b'-10000'
@@ -79,8 +80,8 @@ def get_header(geotiff_path):
                     header['scale'] = (x, y)
                 elif code == '33922':
                     # * 33922 model_tie_point (6d) (0.0, 0.0, 0.0, 368090.77975000005, 3956071.13823,
-                    x = float(line_sp[-2][:-1])
-                    y = float(line_sp[-1][:-1])
+                    x = float(line_sp[7][:-1])
+                    y = float(line_sp[8][:-1])
                     header['tie_point'] = (x, y)
                 elif code == '42113':
                     header['nodata'] = int(line_sp[-1][2:-1])

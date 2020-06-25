@@ -43,16 +43,17 @@ def external_internal_calc(param, points, image_name):
     cx = param.Px * param.img[image_name].w / param.w_mm
     cy = param.Py * param.img[image_name].h / param.h_mm
 
-    xd = f * xhd + cx
-    yd = f * yhd + cy
+    xb = f * xhd + cx
+    yb = f * yhd + cy
 
-    xa = xd
-    ya = param.img[image_name].h - yd
-    coords_a = np.hstack([xa[:, np.newaxis], ya[:, np.newaxis]])
+    #xa = xb
+    #ya = param.img[image_name].h - yb
+    #coords_a = np.hstack([xa[:, np.newaxis], ya[:, np.newaxis]])
+    coords_b = np.hstack([xb[:, np.newaxis], yb[:, np.newaxis]])
 
-    return coords_a
+    return coords_b
 
-'''
+
 def pmatrix_calc(p4d, points, image_name):
     """
     params
@@ -65,7 +66,7 @@ def pmatrix_calc(p4d, points, image_name):
 
     example
     >>> from calculation import pmatrix_calc
-    >>> coords = external_internal_calc(p4d, points=shp_mean_dict['2'], image_name=test_img)
+    >>> coords = external_internal_calc(p4d, points=shp['2'], image_name=test_img)
     >>> coords[:5,:]
     array([[205.66042808, 364.060308  ],
            [211.74289725, 366.75581059],
@@ -77,10 +78,11 @@ def pmatrix_calc(p4d, points, image_name):
     xyz = (xyz1_prime).dot(p4d.img[image_name].pmat.T)
     u = xyz[:, 0] / xyz[:, 2]
     v = xyz[:, 1] / xyz[:, 2]
-    coords_a = np.vstack([u, p4d.img[image_name].h - v]).T
+    #coords_a = np.vstack([u, p4d.img[image_name].h - v]).T
+    coords_b = np.vstack([u, v]).T
 
-    return coords_a
-'''
+    return coords_b
+
 
 ####################
 # advanced wrapper #
@@ -93,13 +95,13 @@ def in_img_boundary(reprojected_coords, img_size):
     x_max, y_max = coord_max[0], coord_max[1]
 
     if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
-        print(' X ', (x_min, x_max, y_min, y_max), (w, h))
+        print('X ', (x_min, x_max, y_min, y_max))
         return None
     else:
-        print(' O ', (x_min, x_max, y_min, y_max), (w, h))
+        print('O ', (x_min, x_max, y_min, y_max))
         return reprojected_coords
 
-def get_img_name_and_coords(p4d, points):
+def get_img_name_and_coords(param, points, method='exin'):
     """
     ::Method::
         exin: using external_internal files
@@ -107,9 +109,12 @@ def get_img_name_and_coords(p4d, points):
     """
     in_img_list = []
     coords_list = []
-    for im in p4d.img:
-        print(im.name, end='')
-        projected_coords = external_internal_calc(p4d, points, im.name)
+    for im in param.img:
+        print(f'[Calculator][Judge]{im.name}w:{im.w}h:{im.h}->', end='')
+        if method == 'exin':
+            projected_coords = external_internal_calc(param, points, im.name)
+        else:
+            projected_coords = pmatrix_calc(param, points, im.name)
         coords = in_img_boundary(projected_coords, (im.w, im.h))
         if coords is not None:
             in_img_list.append(im.name)

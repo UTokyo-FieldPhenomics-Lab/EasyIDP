@@ -3,3 +3,4 @@ __pycache__
 easyric/__pycache__/*
 example/debug/*
 easyric/tests/out/*
+docs/build/*

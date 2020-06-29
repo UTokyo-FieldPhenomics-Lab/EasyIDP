@@ -1,5 +1,7 @@
 import numpy as np
+import pyproj
 from skimage.external import tifffile
+from pyproj.exceptions import CRSError
 
 
 def point_query(geotiff_path, points):
@@ -28,20 +30,19 @@ def mean_values(geotiff_path):
 
 
 def get_header(geotiff_path):
-    '''
-    Read geotiff header
-    :param geotiff_path:
-    :return:
-    '''
-    header = {'width': None, 'length': None, 'scale': None, 'tie_point': None, 'nodata': None}
+    geotiff_string = _get_header_string(geotiff_path)
+    header = _get_header_string(geotiff_string)
 
+    return header
+
+def _get_header_string(geotiff_path):
     with tifffile.TiffFile(geotiff_path) as tif:
         # >>> print(tif.info())
         '''
         TIFF file: broccoli_tanashi_5_20191008_mavicRGB_15m_M_dsm.tif, 274 MiB, little endian
-        
+
         Series 0: 19866x13503, float32, YX, 1 pages, not mem-mappable
-        
+
         Page 0: 19866x13503, float32, 32 bit, minisblack, lzw
         * 256 image_width (1H) 13503
         * 257 image_length (1H) 19866
@@ -63,35 +64,52 @@ def get_header(geotiff_path):
         * 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'
         * 42113 gdal_nodata (7s) b'-10000'
         '''
-        for line in tif.info().split('\n'):
-            if '*' in line:
-                line_sp = line.split(' ')
-                code = line_sp[1]
-                if code == '256':
-                    # * 256 image_width (1H) 13503
-                    header['width'] = int(line_sp[-1])
-                elif code == '257':
-                    # * 257 image_length (1H) 19866
-                    header['length'] = int(line_sp[-1])
-                elif code == '33550':
-                    # * 33550 model_pixel_scale (3d) (0.0029700000000000004, 0.0029700000000000004, 0
-                    x = float(line_sp[-3][1:-1])
-                    y = float(line_sp[-2][:-1])
-                    header['scale'] = (x, y)
-                elif code == '33922':
-                    # * 33922 model_tie_point (6d) (0.0, 0.0, 0.0, 368090.77975000005, 3956071.13823,
-                    x = float(line_sp[7][:-1])
-                    y = float(line_sp[8][:-1])
-                    header['tie_point'] = (x, y)
-                elif code == '42113':
-                    header['nodata'] = int(line_sp[-1][2:-1])
-                else:
+        return tif.info()
+
+def _prase_header_string(geotiff_string):
+    header = {'width': None, 'length': None, 'scale': None, 'tie_point': None, 'nodata': None, 'proj': None}
+
+    for line in geotiff_string.split('\n'):
+        if '*' in line:
+            line_sp = line.split(' ')
+            code = line_sp[1]
+            if code == '256':
+                # * 256 image_width (1H) 13503
+                header['width'] = int(line_sp[-1])
+            elif code == '257':
+                # * 257 image_length (1H) 19866
+                header['length'] = int(line_sp[-1])
+            elif code == '33550':
+                # * 33550 model_pixel_scale (3d) (0.0029700000000000004, 0.0029700000000000004, 0
+                x = float(line_sp[-3][1:-1])
+                y = float(line_sp[-2][:-1])
+                header['scale'] = (x, y)
+            elif code == '33922':
+                # * 33922 model_tie_point (6d) (0.0, 0.0, 0.0, 368090.77975000005, 3956071.13823,
+                x = float(line_sp[7][:-1])
+                y = float(line_sp[8][:-1])
+                header['tie_point'] = (x, y)
+            elif code == '34737':
+                # * 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'
+                bstring = line.split('34737')[-1][26:].split('|')[0]
+                print(f'[io][geotiff][GeoCorrd] Comprehense [{line}] to geotiff coordinate tag [{bstring}]')
+                try:
+                    proj = pyproj.CRS.from_string(bstring)
+                    header['proj'] = proj
+                except CRSError as e:
+                    print(f'[io][geotiff][GeoCorrd] Generation failed, because [{e}], but you can manual specify it later by \n'
+                          '>>> import pyproj \n'
+                          '>>> proj = pyproj.CRS.from_epsg() # or from_string() or refer official documents:\n'
+                          'https://pyproj4.github.io/pyproj/dev/api/crs/coordinate_operation.html')
                     pass
+            elif code == '42113':
+                header['nodata'] = int(line_sp[-1][2:-1])
             else:
-                continue
+                pass
+        else:
+            continue
 
     return header
-
 
 def gis2pixel(points, geo_head):
     '''

@@ -87,7 +87,7 @@ def pmatrix_calc(p4d, points, image_name):
 ####################
 # advanced wrapper #
 ####################
-def in_img_boundary(reprojected_coords, img_size):
+def in_img_boundary(reprojected_coords, img_size, log=False):
     w, h = img_size
     coord_min = reprojected_coords.min(axis=0)
     x_min, y_min = coord_min[0], coord_min[1]
@@ -95,13 +95,13 @@ def in_img_boundary(reprojected_coords, img_size):
     x_max, y_max = coord_max[0], coord_max[1]
 
     if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
-        print('X ', (x_min, x_max, y_min, y_max))
+        if log: print('X ', (x_min, x_max, y_min, y_max))
         return None
     else:
-        print('O ', (x_min, x_max, y_min, y_max))
+        if log: print('O ', (x_min, x_max, y_min, y_max))
         return reprojected_coords
 
-def get_img_name_and_coords(param, points, method='exin'):
+def get_img_name_and_coords(param, points, method='exin', log=False):
     """
     ::Method::
         exin: using external_internal files
@@ -110,12 +110,13 @@ def get_img_name_and_coords(param, points, method='exin'):
     in_img_list = []
     coords_list = []
     for im in param.img:
-        print(f'[Calculator][Judge]{im.name}w:{im.w}h:{im.h}->', end='')
+        if log:
+            print(f'[Calculator][Judge]{im.name}w:{im.w}h:{im.h}->', end='')
         if method == 'exin':
             projected_coords = external_internal_calc(param, points, im.name)
         else:
             projected_coords = pmatrix_calc(param, points, im.name)
-        coords = in_img_boundary(projected_coords, (im.w, im.h))
+        coords = in_img_boundary(projected_coords, (im.w, im.h), log=log)
         if coords is not None:
             in_img_list.append(im.name)
             coords_list.append(coords)

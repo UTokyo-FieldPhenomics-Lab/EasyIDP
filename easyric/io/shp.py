@@ -1,6 +1,14 @@
 import numpy as np
+import pyproj
 from easyric.external import shapefile
 from easyric.io.geotiff import point_query, mean_values
+
+def read_proj(prj_path):
+    with open(prj_path, 'r') as f:
+        wkt_string = f.readline()
+    proj = pyproj.CRS.from_wkt(wkt_string)
+
+    return proj
 
 def read_shp2d(shp_path, target_proj=None):
     shp = shapefile.Reader(shp_path)

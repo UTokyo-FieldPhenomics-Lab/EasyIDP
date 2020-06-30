@@ -1,7 +1,6 @@
-import easyric
 import numpy as np
-from easyric.objects.software import Pix4D
-from easyric.calculation import external_internal_calc, get_img_name_and_coords
+from easyric.objects import Pix4D
+from calculation import get_img_name_and_coords
 
 import matplotlib.pyplot as plt
 from skimage.io import imread

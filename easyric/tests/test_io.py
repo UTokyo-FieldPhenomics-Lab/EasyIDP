@@ -1,10 +1,12 @@
 import unittest
 import numpy as np
 import pyproj
-from easyric.objects.software import Pix4D
-from easyric.io.geotiff import _prase_header_string
-from easyric.calculation import external_internal_calc, get_img_name_and_coords
+from easyric.objects import Pix4D
 from easyric.io import plot
+from easyric.io.geotiff import _prase_header_string
+from easyric.io.shp import read_proj
+from easyric.calculation import external_internal_calc, get_img_name_and_coords
+
 
 class TestGeotiff(unittest.TestCase):
 
@@ -39,6 +41,15 @@ class TestGeotiff(unittest.TestCase):
         out_dict = _prase_header_string("* 34737 geo_ascii_params (30s) b'UTM zone 54N|WGS 84|'")
         self.assertEqual(out_dict['proj'], None)
 
+class TestShp(unittest.TestCase):
+
+    def test_read_prj(self):
+        prj_path = r'file/pix4d.diy/roi.prj'
+        out_proj = read_proj(prj_path)
+
+        check_proj = pyproj.CRS.from_string('WGS84 / UTM Zone 54N')
+        self.assertEqual(out_proj.name, check_proj.name)
+        self.assertEqual(out_proj.coordinate_system, check_proj.coordinate_system)
 
 class TestPlot(unittest.TestCase):
 

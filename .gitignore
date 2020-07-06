@@ -5,3 +5,4 @@ example/debug/*
 easyric/tests/out/*
 easyric/tests/file/*
 docs/build/*
+example/lotus_shp_3d.py

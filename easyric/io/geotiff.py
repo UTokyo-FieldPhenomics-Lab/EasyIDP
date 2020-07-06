@@ -4,20 +4,45 @@ from skimage.external import tifffile
 from pyproj.exceptions import CRSError
 
 
-def point_query(geotiff_path, points):
+def point_query(geotiff_path, point):
     '''
-    :param geotiff_path:
-    :param points: gis points, nx3 ndarray, often x~10^5, y~10^6
-    :return:
+    :param geotiff_path: string, the path of geotiff(dsm only) file
+    :param point: can be following three types
+        1. one point tuple (not recommended)
+            :input:  (34.57, 45.62)
+            :return: float, value
+        2. 2d numpy array
+            :input:  np.asarray([[34.57, 45.62],[35.57, 46.62]])
+            :return: np.array, 1d
+        3. list of 2d numpy arrays
+            a = np.asarray([[34.57, 45.62],[35.57, 46.62]])
+            b = np.asarray([[36.57, 47.62],[38.57, 48.62]])
+            :input:  p_list = [a, b]
+            :return: list, contains np.1darray of each
     '''
     head = get_header(geotiff_path)
-    px = gis2pixel(points, head)
     with tifffile.TiffFile(geotiff_path) as tif:
         data = tif.asarray()
-        height_values = data[px[:, 0], px[:, 1]]
+
+        if isinstance(point, tuple):
+            point = np.asarray([[point[0], point[1]]])
+            px = gis2pixel(point, head)
+            height_values = data[px[:, 0], px[:, 1]]
+        elif isinstance(point, np.ndarray):
+            px = gis2pixel(point, head)
+            height_values = data[px[:, 0], px[:, 1]]
+        elif isinstance(point, list):
+            height_values = []
+            for p in point:
+                if not isinstance(p, np.ndarray):
+                    raise TypeError('Only numpy.ndarray in list are supported')
+                else:
+                    px = gis2pixel(p, head)
+                    height_values.append(data[px[:, 0], px[:, 1]])
+        else:
+            raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
 
     return height_values
-
 
 def mean_values(geotiff_path):
     header = get_header(geotiff_path)
@@ -31,7 +56,7 @@ def mean_values(geotiff_path):
 
 def get_header(geotiff_path):
     geotiff_string = _get_header_string(geotiff_path)
-    header = _get_header_string(geotiff_string)
+    header = _prase_header_string(geotiff_string)
 
     return header
 

@@ -111,7 +111,7 @@ class Pix4D:
             try_ply = f"{self.project_name}_group1_densified_point_cloud.ply"
             self.ply_file = self._get_full_path(f"{self.project_path}/{try_ply}")
             if self.ply_file is not None:
-                print(f"[Wrapper][Pix4D] No ply given, however find '{try_ply}' at current project folder")
+                print(f"[Init][Pix4D] No ply given, however find '{try_ply}' at current project folder")
         else:
             self.ply_file = self._get_full_path(ply_path)
 
@@ -119,7 +119,7 @@ class Pix4D:
             try_dom = f"{self.project_name}_transparent_mosaic_group1.tif"
             self.dom_file = self._get_full_path(f"{self.project_path}/{try_dom}")
             if self.dom_file is not None:
-                print(f"[Wrapper][Pix4D] No dom given, however find '{try_dom}' at current project folder")
+                print(f"[Init][Pix4D] No dom given, however find '{try_dom}' at current project folder")
         else:
             self.dom_file = self._get_full_path(dom_path)
 
@@ -127,7 +127,7 @@ class Pix4D:
             try_dsm = f"{self.project_name}_dsm.tif"
             self.dsm_file = self._get_full_path(f"{self.project_path}/{try_dsm}")
             if self.dsm_file is not None:
-                print(f"[Wrapper][Pix4D] No dsm given, however find '{try_dsm}' at current project folder")
+                print(f"[Init][Pix4D] No dsm given, however find '{try_dsm}' at current project folder")
         else:
             self.dsm_file = self._get_full_path(dsm_path)
 

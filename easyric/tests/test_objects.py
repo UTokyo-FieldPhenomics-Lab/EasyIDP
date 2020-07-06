@@ -2,8 +2,8 @@ from easyric.objects import Pix4D
 
 
 def test_pix4d_objects_init_origin():
-    test_folder0 = r'file\pix4d.origin'
-    origin = Pix4D(test_folder0, raw_img_path='file\pix4d.origin\photos')
+    test_folder0 = r'file/pix4d.origin'
+    origin = Pix4D(test_folder0, raw_img_path='file/pix4d.origin/photos')
 
     assert origin.project_name == 'pix4d.origin'
     assert origin.project_path == 'D:/OneDrive/Program/GitHub/EasyRIC/easyric/tests/file/pix4d.origin'
@@ -16,14 +16,15 @@ def test_pix4d_objects_init_origin():
 def test_pix4d_objects_init_diy(capsys):
     test_folder = r'file\pix4d.diy'
 
-    diy = Pix4D(test_folder, raw_img_path=r'../../easyric/tests/file/pix4d.diy/photos',
-                param_folder=r'file\pix4d.diy\params',
-                project_name='test', dsm_path=r'tests\file\pix4d.origin\3_dsm_ortho\1_dsm\pix4d.origin_empty.tif')
+    diy = Pix4D(test_folder, raw_img_path=r'file/pix4d.diy/photos',
+                param_folder=r'file/pix4d.diy/params',
+                project_name='hasu_tanashi_20170525_Ins1RGB_30m',
+                dsm_path=r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif')
 
     captured = capsys.readouterr()
-    assert captured.out == "[Init][Pix4D] No ply given, however find 'test_group1_densified_point_cloud.ply' at current project folder\n" \
-                           "[Init][Pix4D] No dom given, however find 'test_transparent_mosaic_group1.tif' at current project folder\n"
+    assert captured.out == "[Init][Pix4D] No ply given, however find 'hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply' at current project folder\n" \
+                           "[Init][Pix4D] No dom given, however find 'hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif' at current project folder\n"
 
-    assert diy.dsm_file == 'D:/OneDrive/Program/GitHub/EasyRIC/easyric/tests/tests/file/pix4d.origin/3_dsm_ortho/1_dsm/pix4d.origin_empty.tif'
-    assert diy.xyz_file == 'D:/OneDrive/Program/GitHub/EasyRIC/easyric/tests/file/pix4d.diy/params/test_offset.xyz'
-    assert diy.dom_file == 'D:/OneDrive/Program/GitHub/EasyRIC/easyric/tests/file/pix4d.diy/test_transparent_mosaic_group1.tif'
+    assert diy.dsm_file == 'D:/OneDrive/Program/GitHub/EasyRIC/easyric/tests/file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif'
+    assert diy.xyz_file == 'D:/OneDrive/Program/GitHub/EasyRIC/easyric/tests/file/pix4d.diy/params/hasu_tanashi_20170525_Ins1RGB_30m_offset.xyz'
+    assert diy.dom_file == 'D:/OneDrive/Program/GitHub/EasyRIC/easyric/tests/file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif'

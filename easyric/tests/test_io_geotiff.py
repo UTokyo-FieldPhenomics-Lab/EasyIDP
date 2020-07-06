@@ -1,5 +1,6 @@
 import pyproj
-from easyric.io.geotiff import _prase_header_string
+import numpy as np
+from easyric.io.geotiff import _prase_header_string, point_query, mean_values
 
 
 def test_prase_header_string_width():
@@ -42,3 +43,37 @@ def test_prase_header_string_proj_error(capsys):
     captured = capsys.readouterr()
     assert '[io][geotiff][GeoCorrd] Generation failed, because [Input is not a CRS: UTM zone 54N]' in  captured.out
     assert out_dict['proj'] == None
+
+
+def test_point_query_one_point():
+    point = (368023.004, 3955500.669)
+    out = point_query(r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif', point)
+    np.testing.assert_almost_equal(out, np.float32(97.45558), decimal=3)
+
+def test_point_query_numpy_points():
+    points = np.asarray([[368022.581, 3955501.054], [368024.032, 3955500.465]])
+    out = point_query(r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif', points)
+    expected = np.asarray([97.624344, 97.59617])
+
+    np.testing.assert_almost_equal(out, expected, decimal=3)
+
+
+def test_point_query_list_numpy_points():
+    points = np.asarray([[368022.581, 3955501.054], [368024.032, 3955500.465]])
+    point = np.asarray([[368023.004, 3955500.669]])
+    p_list = [point, points]
+
+    expected = [np.asarray([97.45558]), np.asarray([97.624344, 97.59617])]
+    out = point_query(r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif', p_list)
+
+    assert type(expected) == type(out)
+    np.testing.assert_almost_equal(expected[0], out[0], decimal=3)
+    np.testing.assert_almost_equal(expected[1], out[1], decimal=3)
+
+def test_point_query_wrong_types():
+    pass
+
+def test_mean_values(capsys):
+    mean_ht = mean_values(r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif')
+    captured = capsys.readouterr()
+    assert mean_ht == np.float32(97.562584)

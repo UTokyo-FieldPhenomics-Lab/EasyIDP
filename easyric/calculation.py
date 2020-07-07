@@ -87,6 +87,7 @@ def pmatrix_calc(p4d, points, image_name):
 ####################
 # advanced wrapper #
 ####################
+
 def in_img_boundary(reprojected_coords, img_size, log=False):
     w, h = img_size
     coord_min = reprojected_coords.min(axis=0)
@@ -101,7 +102,8 @@ def in_img_boundary(reprojected_coords, img_size, log=False):
         if log: print('O ', (x_min, x_max, y_min, y_max))
         return reprojected_coords
 
-def get_img_name_and_coords(param, points, method='exin', log=False):
+
+def get_img_name_and_coords(param, points, method='pmat', log=False):
     """
     ::Method::
         exin: using external_internal files

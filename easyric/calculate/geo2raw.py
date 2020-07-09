@@ -1,11 +1,12 @@
 import numpy as np
 import json
+from easyric.io import shp, json
 
 #################
 # basic wrapper #
 #################
 
-def external_internal_calc(param, points, image_name):
+def external_internal_calc(param, points, image_name, distort_correct=True):
     """
     params
         p4d:        the Pix4D configure class
@@ -16,7 +17,7 @@ def external_internal_calc(param, points, image_name):
         2d ndarray, 'lower-left' coordiantes
 
     example
-    >>> from calculation import external_internal_calc
+    >>> from calculate.geo2raw external_internal_calc
     >>> coords = external_internal_calc(param, points=shp_mean_dict['2'], image_name=test_img)
     >>> coords[:5,:]
     array([[205.66042808, 364.060308  ],
@@ -32,19 +33,23 @@ def external_internal_calc(param, points, image_name):
     X_prime = (points - T).dot(R)
     xh, yh = X_prime[:, 0] / X_prime[:, 2], X_prime[:, 1] / X_prime[:, 2]
 
-    r2 = xh ** 2 + yh ** 2
-    r4 = r2 ** 2
-    r6 = r2 ** 3
-    a1 = 1 + param.K1 * r2 + param.K2 * r4 + param.K3 * r6
-    xhd = a1 * xh + 2 * param.T1 * xh * yh + param.T2 * (r2 + 2 * xh ** 2)
-    yhd = a1 * yh + 2 * param.T2 * xh * yh + param.T1 * (r2 + 2 * yh ** 2)
-
     f = param.F * param.img[image_name].w / param.w_mm
     cx = param.Px * param.img[image_name].w / param.w_mm
     cy = param.Py * param.img[image_name].h / param.h_mm
 
-    xb = f * xhd + cx
-    yb = f * yhd + cy
+    if distort_correct:
+        r2 = xh ** 2 + yh ** 2
+        r4 = r2 ** 2
+        r6 = r2 ** 3
+        a1 = 1 + param.K1 * r2 + param.K2 * r4 + param.K3 * r6
+        xhd = a1 * xh + 2 * param.T1 * xh * yh + param.T2 * (r2 + 2 * xh ** 2)
+        yhd = a1 * yh + 2 * param.T2 * xh * yh + param.T1 * (r2 + 2 * yh ** 2)
+
+        xb = f * xhd + cx
+        yb = f * yhd + cy
+    else:
+        xb = f * xh + cx
+        yb = f * yh + cy
 
     #xa = xb
     #ya = param.img[image_name].h - yb
@@ -65,7 +70,7 @@ def pmatrix_calc(p4d, points, image_name):
         2d ndarray, 'lower-left' coordiantes
 
     example
-    >>> from calculation import pmatrix_calc
+    >>> from calculate.geo2raw import pmatrix_calc
     >>> coords = external_internal_calc(p4d, points=shp['2'], image_name=test_img)
     >>> coords[:5,:]
     array([[205.66042808, 364.060308  ],
@@ -125,11 +130,14 @@ def get_img_name_and_coords(param, points, method='pmat', log=False):
 
     return in_img_list, coords_list
 
-'''
-def get_shp_result(p4d, shp_path, get_z_by="mean", z_shift=0, json_save_path=None):
+
+def get_shp_result(p4d, shp_path, get_z_by="mean", shp_proj=None, geotiff_proj=None, json_path=None):
     result_dict = {}
     json_dict = {}
-    shp_dict = p4d.read_shp(shp_path, get_z_by, z_shift)
+    shp_dict = shp.read_shp3d(shp_path, dsm_path=p4d.dsm_file,
+                              get_z_by=get_z_by,
+                              shp_proj=shp_proj, geotiff_proj=geotiff_proj)
+
     for shp_key in shp_dict.keys():
         result_dict[shp_key] = {}
         json_dict[shp_key] = {}
@@ -139,14 +147,12 @@ def get_shp_result(p4d, shp_path, get_z_by="mean", z_shift=0, json_save_path=Non
             result_dict[shp_key][method] = {}
             json_dict[shp_key][method] = {}
 
-            in_img_list, coords_list = get_img_name_and_coords(p4d, points, method)
+            in_img_list, coords_list = get_img_name_and_coords(p4d, points - p4d.offset.np, method)
             for im_name, coord in zip(in_img_list, coords_list):
                 result_dict[shp_key][method][im_name] = coord
                 json_dict[shp_key][method][im_name] = [c.tolist() for c in coord]
 
-    if isinstance(json_save_path, str) and json_save_path[-5:] == '.json':
-        with open(json_save_path, 'w') as result_file:
-            json.dump(json_dict, result_file)
+    if json_path:
+        json.dict2json(json_dict, json_path)
 
     return result_dict
-'''

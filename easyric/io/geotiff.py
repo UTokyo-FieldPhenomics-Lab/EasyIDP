@@ -21,33 +21,61 @@ def point_query(geotiff_path, point):
             :input:  p_list = [a, b]
             :return: list, contains np.1darray of each
     '''
-    head = get_header(geotiff_path)
     with tifffile.TiffFile(geotiff_path) as tif:
-        data = tif.asarray()
+        head = _prase_header_string(tif.info())  # equal to get_header()
+        data = tif.asarray()   # equal to get_imarray()
 
         if isinstance(point, tuple):
             point = np.asarray([[point[0], point[1]]])
-            px = geo2pixel(point, head)
-            height_values = data[px[:, 0], px[:, 1]]
+            px = geo2pixel(point, head)  # px = (horizontal, vertical)
+            # imarray axis0 = vertical, axis1 = horizontal
+            height_values = data[px[:, 1], px[:, 0]]
         elif isinstance(point, np.ndarray):
-            px = geo2pixel(point, head)
-            height_values = data[px[:, 0], px[:, 1]]
+            px = geo2pixel(point, head)  # px = (horizontal, vertical)
+            # imarray axis0 = vertical, axis1 = horizontal
+            height_values = data[px[:, 1], px[:, 0]]
         elif isinstance(point, list):
             height_values = []
             for p in point:
                 if not isinstance(p, np.ndarray):
                     raise TypeError('Only numpy.ndarray in list are supported')
                 else:
-                    px = geo2pixel(p, head)
-                    height_values.append(data[px[:, 0], px[:, 1]])
+                    px = geo2pixel(p, head)  # px = (horizontal, vertical)
+                    # imarray axis0 = vertical, axis1 = horizontal
+                    height_values.append(data[px[:, 1], px[:, 0]])
         else:
             raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
 
     return height_values
 
-def mean_values(geotiff_path):
-    data = get_imarray(geotiff_path)
-    z_mean = np.nanmean(data)
+
+def mean_values(geotiff_path, polygon='all'):
+    with tifffile.TiffFile(geotiff_path) as tif:
+        # equal to get_header()
+        header = _prase_header_string(tif.info())
+        # equal to get_imarray()
+        data = tif.asarray().astype(float)
+        data[data == header['nodata']] = np.nan
+
+        if polygon == 'all':
+            z_mean = np.nanmean(data)
+        else:
+            if isinstance(polygon, np.ndarray):
+                roi = geo2pixel(polygon, header)   # roi = (horizontal, vertical)
+                # [TODO] only dsm supported
+                imarray, offsets = _imarray_clip(data, roi)
+                z_mean = np.nanmean(imarray)
+            elif isinstance(polygon, list):
+                z_mean = []
+                for poly in polygon:
+                    if isinstance(poly, np.ndarray):
+                        roi = geo2pixel(poly, header)
+                        imarray, offsets = _imarray_clip(data, roi)
+                        z_mean.append(np.nanmean(imarray))
+                    else:
+                        raise TypeError('Only numpy.ndarray points itmes in the list are supported')
+            else:
+                raise TypeError('Only numpy.ndarray points list are supported')
 
     return z_mean
 
@@ -60,9 +88,9 @@ def get_header(geotiff_path):
 
 
 def get_imarray(geotiff_path):
-    header = get_header(geotiff_path)
     with tifffile.TiffFile(geotiff_path) as tif:
-        data = tif.asarray()
+        header = _prase_header_string(tif.info())
+        data = tif.asarray().astype(float)
         data[data == header['nodata']] = np.nan
 
     return data
@@ -143,14 +171,14 @@ def _prase_header_string(geotiff_string):
 
     return header
 
-def geo2pixel(points, geo_head):
+def geo2pixel(points_hv, geo_head):
     '''
-    convert point cloud xyz coordinate to geotiff pixel coordinate
+    convert point cloud xyz coordinate to geotiff pixel coordinate (horizontal, vertical)
 
-    :param points: numpy nx3 array, [x, y, z] points
+    :param points_hv: numpy nx3 array, [x, y, z] points or nx2 array [x, y]
     :param geo_head: the geotiff head dictionary from io.geotiff.get_header() function
 
-    :return: The ndarray pixel position of these points
+    :return: The ndarray pixel position of these points (horizontal, vertical)
         Please note: gis coordinate, horizontal is x axis, vertical is y axis, origin at left upper
         To clip image ndarray, the first columns is vertical pixel (along height),
             then second columns is horizontal pixel number (along width),
@@ -163,8 +191,9 @@ def geo2pixel(points, geo_head):
         >>> photo_ndarray = skimage.io.imread('img_path.jpg')
         (h, w, 4) ndarray  # please note the axes differences
         >>> pixel_coord = geo2pixel(gis_coord, geo_head)
-        # then you can used the outputs directly wihtout reverse 0 and 1 axis
-        >>> region_of_interest = photo_ndarray[pixel_coord[:,0], pixel_coord[:, 1], 0:3]
+        (horizontal, vertical) ndarray
+        # then you can used the outputs with reverse 0 and 1 axis
+        >>> region_of_interest = photo_ndarray[pixel_coord[:,1], pixel_coord[:,0], 0:3]
     '''
 
     gis_xmin = geo_head['tie_point'][0]
@@ -172,31 +201,39 @@ def geo2pixel(points, geo_head):
     #gis_ymin = geo_head['tie_point'][1] - geo_head['length'] * geo_head['scale'][1]
     gis_ymax = geo_head['tie_point'][1]
 
-    gis_px = points[:, 0]
-    gis_py = points[:, 1]
+    gis_ph = points_hv[:, 0]
+    gis_pv = points_hv[:, 1]
 
     # numpy_axis1 = x
-    np_ax1 = (gis_px - gis_xmin) // geo_head['scale'][0]
+    np_ax_h = (gis_ph - gis_xmin) // geo_head['scale'][0]
     # numpy_axis0 = y
-    np_ax0 = (gis_ymax - gis_py) // geo_head['scale'][1]
+    np_ax_v = (gis_ymax - gis_pv) // geo_head['scale'][1]
 
-    pixel = np.concatenate([np_ax0[:, None], np_ax1[:, None]], axis=1)
+    pixel = np.concatenate([np_ax_h[:, None], np_ax_v[:, None]], axis=1)
 
     return pixel.astype(int)
 
 
-def pixel2geo(points, geo_head):
+def pixel2geo(points_hv, geo_head):
+    '''
+    convert  geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
+
+    :param points_hv: numpy nx2 array, [horizontal, vertical] points
+    :param geo_head: the geotiff head dictionary from io.geotiff.get_header() function
+
+    :return: The ndarray pixel position of these points (horizontal, vertical)
+    '''
     gis_xmin = geo_head['tie_point'][0]
     #gis_xmax = geo_head['tie_point'][0] + geo_head['width'] * geo_head['scale'][0]
     #gis_ymin = geo_head['tie_point'][1] - geo_head['length'] * geo_head['scale'][1]
     gis_ymax = geo_head['tie_point'][1]
 
     # remember the px is numpy axis0 (vertical, h), py is numpy axis1 (horizontal, w)
-    pix_p0 = points[:, 0] + 0.5  # get the pixel center rather than edge
-    pix_p1 = points[:, 1] + 0.5
+    pix_ph = points_hv[:, 0] + 0.5  # get the pixel center rather than edge
+    pix_pv = points_hv[:, 1] + 0.5
 
-    gis_px = gis_xmin + pix_p1 * geo_head['scale'][0]
-    gis_py = gis_ymax - pix_p0 * geo_head['scale'][1]
+    gis_px = gis_xmin + pix_ph * geo_head['scale'][0]
+    gis_py = gis_ymax - pix_pv * geo_head['scale'][1]
 
     gis_geo = np.concatenate([gis_px[:, None], gis_py[:, None]], axis=1)
 
@@ -219,14 +256,76 @@ def _is_roi_type(roi_polygon2d):
     return container
 
 
-def clip_roi(roi_polygon2d, geotiff_path, is_geo=False):
+def _imarray_clip(imarray, polygon_hv):
     """
-    :param roi_polygon2d:
-    :param geotiff_path:
+    clip a given ndarray image by given polygon pixel positions
+    :param imarray: ndarray
+    :param polygon: pixel position of boundary point, (horizontal, vertical) which reverted the imarray axis 0 to 1
+    :return:
+    """
+    imarray_out = None
+
+    # (horizontal, vertical) remember to revert in all the following codes
+    roi_offset = polygon_hv.min(axis=0)
+    roi_max = polygon_hv.max(axis=0)
+    roi_length = roi_max - roi_offset
+
+    roi_rm_offset = polygon_hv - roi_offset
+
+    dim = len(imarray.shape)
+
+    if dim == 2: # only has 2 dimensions, DSM 1 band only, other value outside polygon = np.nan
+        roi_clipped = imarray[roi_offset[1]:roi_max[1], roi_offset[0]:roi_max[0]]
+
+        mask = np.full(roi_clipped.shape, np.nan, dtype=np.float)
+        rr, cc = polygon(roi_rm_offset[:, 1], roi_rm_offset[:, 0])
+        mask[rr, cc] = 1.0
+
+        imarray_out = roi_clipped * mask
+
+    elif dim == 3: # has 3 dimensions, DOM with RGB or RGBA band, other value outside changed alpha layer to 0
+        roi_clipped = imarray[roi_offset[1]:roi_max[1], roi_offset[0]:roi_max[0], :]
+        layer_num = roi_clipped.shape[2]
+
+        if layer_num == 3:  # DOM without alpha layer
+            mask = np.zeros(roi_clipped.shape[0:2], dtype=np.uint8)
+            rr, cc = polygon(roi_rm_offset[:, 1], roi_rm_offset[:, 0])
+            mask[rr, cc] = 255
+
+            # [Todo] Debug here
+            imarray_out = np.concatenate([roi_clipped, mask[:, :, None]], axis=2)
+
+        elif layer_num == 4:  # DOM with alpha layer
+            mask = np.zeros(roi_clipped.shape[0:2], dtype=np.uint8)
+            rr, cc = polygon(roi_rm_offset[:, 1], roi_rm_offset[:, 0])
+            mask[rr, cc] = 1
+
+            original_mask = roi_clipped[:, :, 3].copy()
+            merged_mask = original_mask * mask
+            #roi_clipped[:, :, 3] = mask
+
+            imarray_out = np.dstack([roi_clipped[:,:, 0:3], merged_mask])
+        else:
+            raise TypeError(f'Unable to solve the layer number {layer_num}')
+
+    return imarray_out, roi_offset
+
+
+def clip_roi(roi_polygon_hv, geotiff_path, is_geo=False):
+    """
+    :param roi_polygon_hv: ndarray, or polygon list,
+        please do not use "for loops" outside to iterate a list of polygon, for example:
+        >>> polygon_list= [poly1, poly2, ...]
+        # the not properate usage:
+        >>> for poly in polgon_list:
+        >>> ... clip_roi(poly, dsm_path, ...)
+        # the recommended usage:
+        >>> clip_roi(polygon_list, dsm_path, ...)
+    :param geotiff_path: string of geotiff file
     :param is_geo: the unit of polygon numpy, default is pixel coordinate of DOM/DSM, change to True to use as geo coordinate
     :return:
     """
-    roi_list = _is_roi_type(roi_polygon2d)
+    roi_list = _is_roi_type(roi_polygon_hv)
 
     if is_geo:
         geo_head = get_header(geotiff_path)
@@ -239,49 +338,11 @@ def clip_roi(roi_polygon2d, geotiff_path, is_geo=False):
 
     for roi in roi_list:
         if is_geo:
-            roi = geo2pixel(roi_polygon2d, geo_head)
+            roi = geo2pixel(roi, geo_head)   # (horizontal, vertical)
 
-        roi_offset = roi.min(axis=0)
-        roi_max = roi.max(axis=0)
-        roi_length = roi_max - roi_offset
+        imarray_out, offset_out = _imarray_clip(dxm, roi)
 
-        roi_rm_offset = roi - roi_offset
+        imarrays.append(imarray_out)
+        offsets.append(offset_out)
 
-        if len(dxm.shape) == 2:  # only has 2 dimension
-            roi_clipped = dxm[roi_offset[0]:roi_max[0], roi_offset[1]:roi_max[1]]
-
-            mask = np.ones(roi_length, dtype=np.uint8)
-            rr, cc = polygon(roi_rm_offset[:, 0], roi_rm_offset[:, 1])
-            mask[rr, cc] = np.nan
-
-            offsets.append(roi_offset)
-            imarrays.append(roi_clipped * mask)
-
-        else:  # has 3 dimension
-            roi_clipped = dxm[roi_offset[0]:roi_max[0], roi_offset[1]:roi_max[1], :]
-            layer_num = roi_clipped.shape[2]
-
-            if layer_num == 3:   # DOM without alpha layer
-                mask = np.zeros(roi_length, dtype=np.uint8)
-                rr, cc = polygon(roi_rm_offset[:, 0], roi_rm_offset[:, 1])
-                mask[rr, cc] = 1
-
-                offsets.append(roi_offset)
-                # [Todo] Debug here
-                imarrays.append(np.concatenate([roi_clipped, mask[:,:,None]], axis=2))
-
-            elif layer_num == 4:   # DOM with alpha layer
-                mask = np.zeros(roi_length, dtype=np.uint8)
-                rr, cc = polygon(roi_rm_offset[:, 0], roi_rm_offset[:, 1])
-                mask[rr, cc] = 1
-
-                original_mask = roi_clipped[:, :, 3].copy()
-                merged_mask = original_mask * mask
-                roi_clipped[:, :, 3] = merged_mask
-
-                offsets.append(roi_offset)
-                imarrays.append(roi_clipped)
-            else:
-                raise TypeError(f'Unable to solve the layer number {layer_num}')
-
-    return offsets, imarrays
+    return imarrays, offsets

@@ -44,7 +44,7 @@ def draw_polygon_on_img(param, img_name, img_coord, title=None, file_name=None, 
 
 def draw_polygon_on_imgs(param, img_names, img_coords, out_folder, coord_prefix, color='red', alpha=0.5, dpi=72):
     if not os.path.exists(out_folder):
-        os.mkdir(out_folder)
+        os.makedirs(out_folder)
         print(f'[IO][Plot] making folder {os.path.abspath(out_folder)}')
 
     for img_n, img_c in zip(img_names, img_coords):

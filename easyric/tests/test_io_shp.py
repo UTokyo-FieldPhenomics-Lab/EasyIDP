@@ -23,12 +23,12 @@ def test_read_shp2d_without_target():
 
 def test_read_shp2d_with_target_without_prj_file(capsys):
     # it will raise could not fild .prj file print and ignore the target_proj
-    lonlat_shp = read_shp2d(f"file/shp_test/lon_lat.shp", target_proj=pyproj.CRS.from_epsg(32654))
+    lonlat_shp = read_shp2d(f"file/shp_test/lon_lat.shp", geotiff_proj=pyproj.CRS.from_epsg(32654))
     captured = capsys.readouterr()
     assert captured.out == "[io][shp][proj] could not find ESRI projection file file/shp_test/lon_lat.prj, could not operate auto-convention, Please convert projection system manually.\n"
 
 def test_read_shp2d_with_target_with_prj_file(capsys):
-    lonlat_shp = read_shp2d(f"file/shp_test/roi.shp", target_proj=pyproj.CRS.from_epsg(32654))
+    lonlat_shp = read_shp2d(f"file/shp_test/roi.shp", geotiff_proj=pyproj.CRS.from_epsg(32654))
     captured = capsys.readouterr()
     assert captured.out == '[io][shp][proj] find ESRI projection file file/shp_test/roi.prj, and successfully obtain projection cartesian\n'
 
@@ -48,4 +48,4 @@ def test_read_shp3d_with_given_proj():
     # it should work because given a wrong CRS string
     # [Todo] cost too much time to run
     lonlat_z = read_shp3d(r'file/pix4d.diy/plots.shp', r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif',
-                          get_z_by='local', given_proj=pyproj.CRS.from_epsg(4326))
+                          get_z_by='local', shp_proj=pyproj.CRS.from_epsg(4326))

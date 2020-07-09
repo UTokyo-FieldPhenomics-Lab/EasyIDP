@@ -1,7 +1,7 @@
 import numpy as np
 from easyric.objects import Pix4D
 from easyric.io import plot
-from easyric.calculation import external_internal_calc, get_img_name_and_coords
+from easyric.calculate.geo2raw import external_internal_calc, get_img_name_and_coords
 
 def test_plot_img(capsys):
     center_points = np.asarray([[0.91523622, -0.77530369, 0.47057343],

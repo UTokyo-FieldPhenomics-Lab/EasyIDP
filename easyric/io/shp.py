@@ -39,7 +39,7 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None):
 
         coord_np = np.asarray(shape.points)
 
-        if geotiff_proj is not None and shp_proj.name != geotiff_proj.name:
+        if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
             transformer = pyproj.Transformer.from_proj(shp_proj, geotiff_proj)
             # the pyshp package load seems get (lon, lat), however, the pyproj use (lat, lon), so need to revert
             transformed = transformer.transform(coord_np[:,1], coord_np[:,0])

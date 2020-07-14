@@ -34,7 +34,7 @@ def test_read_shp2d_with_target_with_prj_file(capsys):
 
 def test_read_shp3d_without_target_mean():
     lonlat_z = read_shp3d(r'file/pix4d.diy/plots.shp', r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif',
-                          get_z_by='mean')
+                          get_z_by='mean', shp_proj=pyproj.CRS.from_epsg(4326))
 
 def test_read_shp3d_without_target_local():
     with pytest.raises(ValueError) as execinfo:

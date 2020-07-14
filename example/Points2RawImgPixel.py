@@ -1,6 +1,6 @@
 import numpy as np
 from easyric.objects import Pix4D
-from calculate.geo2raw import get_img_name_and_coords
+from calculate.geo2raw import get_img_coords_dict
 
 import matplotlib.pyplot as plt
 from skimage.io import imread
@@ -29,7 +29,7 @@ p4d = Pix4D(project_path=project_path, raw_img_path=raw_img_folder, project_name
 
 for i, center_point in enumerate(center_point_list):
     # for those have no ground defined, pmatrix is the only way to get the correct projection coordinate
-    img_name, img_coords = get_img_name_and_coords(p4d, center_point, method='pmat')
+    img_name, img_coords = get_img_coords_dict(p4d, center_point, method='pmat')
 
     for img_n, img_c in zip(img_name, img_coords):
         print(i, img_n)

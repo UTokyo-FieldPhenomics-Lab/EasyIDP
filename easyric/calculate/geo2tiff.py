@@ -4,6 +4,7 @@ from easyric.io import shp, geotiff, json
 from easyric.external.send2trash import send2trash
 from skimage.io import imsave
 
+
 def shp_clip_geotiff(shp_path, geotiff_path, out_folder, refresh_folder=False, shp_proj=None, geotiff_proj=None):
     if geotiff_proj is None:
         header = geotiff.get_header(geotiff_path)

@@ -37,19 +37,11 @@ def external_internal_calc(param, points, image_name, distort_correct=True):
     cx = param.Px * param.img[image_name].w / param.w_mm
     cy = param.Py * param.img[image_name].h / param.h_mm
 
-    if distort_correct:
-        r2 = xh ** 2 + yh ** 2
-        r4 = r2 ** 2
-        r6 = r2 ** 3
-        a1 = 1 + param.K1 * r2 + param.K2 * r4 + param.K3 * r6
-        xhd = a1 * xh + 2 * param.T1 * xh * yh + param.T2 * (r2 + 2 * xh ** 2)
-        yhd = a1 * yh + 2 * param.T2 * xh * yh + param.T1 * (r2 + 2 * yh ** 2)
+    xb = f * xh + cx
+    yb = f * yh + cy
 
-        xb = f * xhd + cx
-        yb = f * yhd + cy
-    else:
-        xb = f * xh + cx
-        yb = f * yh + cy
+    if distort_correct:
+        xb, yb = distortion_correction(param, xb, yb, image_name)
 
     #xa = xb
     #ya = param.img[image_name].h - yb
@@ -59,11 +51,11 @@ def external_internal_calc(param, points, image_name, distort_correct=True):
     return coords_b
 
 
-def pmatrix_calc(p4d, points, image_name):
+def pmatrix_calc(param, points, image_name, distort_correct=True):
     """
     params
         p4d:        the Pix4D configure class
-        points:     the nx3 xyz numpy matrix
+        points:     the nx3 xyz numpy matrix, should be the geo_coordinate - offsets
         image_name: the string of target projection image name
 
     return
@@ -71,7 +63,7 @@ def pmatrix_calc(p4d, points, image_name):
 
     example
     >>> from calculate.geo2raw import pmatrix_calc
-    >>> coords = external_internal_calc(p4d, points=shp['2'], image_name=test_img)
+    >>> coords = external_internal_calc(param, points=shp['2'], image_name=test_img)
     >>> coords[:5,:]
     array([[205.66042808, 364.060308  ],
            [211.74289725, 366.75581059],
@@ -80,14 +72,46 @@ def pmatrix_calc(p4d, points, image_name):
            [237.64123696, 356.14638116]])
     """
     xyz1_prime = np.insert(points, 3, 1, axis=1)
-    xyz = (xyz1_prime).dot(p4d.img[image_name].pmat.T)
+    xyz = (xyz1_prime).dot(param.img[image_name].pmat.T)
     u = xyz[:, 0] / xyz[:, 2]
     v = xyz[:, 1] / xyz[:, 2]
     #coords_a = np.vstack([u, p4d.img[image_name].h - v]).T
-    coords_b = np.vstack([u, v]).T
+    if distort_correct:
+        xh, yh = distortion_correction(param, u, v, image_name)
+        coords_b = np.vstack([xh, yh]).T
+    else:
+        coords_b = np.vstack([u, v]).T
 
     return coords_b
 
+
+def distortion_correction(param, u, v, image_name):
+    """
+    Convert pix4d produced undistorted images pixel coordinate to original image pixel coordinate
+    :param param: p4d class
+    :param u: the x pixel coordinate
+    :param v: the y pixel coordinate
+    :param image_name: the image name of current image
+    :return: px, py, the pixel coordinate on the raw image
+    """
+    f = param.F * param.img[image_name].w / param.w_mm
+    cx = param.Px * param.img[image_name].w / param.w_mm
+    cy = param.Py * param.img[image_name].h / param.h_mm
+
+    xh = (u - cx) / f
+    yh = (v - cy) / f
+
+    r2 = xh ** 2 + yh ** 2
+    r4 = r2 ** 2
+    r6 = r2 ** 3
+    a1 = 1 + param.K1 * r2 + param.K2 * r4 + param.K3 * r6
+    xhd = a1 * xh + 2 * param.T1 * xh * yh + param.T2 * (r2 + 2 * xh ** 2)
+    yhd = a1 * yh + 2 * param.T2 * xh * yh + param.T1 * (r2 + 2 * yh ** 2)
+
+    xb = f * xhd + cx
+    yb = f * yhd + cy
+
+    return xb, yb
 
 ####################
 # advanced wrapper #
@@ -108,14 +132,17 @@ def in_img_boundary(reprojected_coords, img_size, log=False):
         return reprojected_coords
 
 
-def get_img_name_and_coords(param, points, method='pmat', log=False):
+def get_img_coords_dict(param, points, method='pmat', log=False):
     """
-    ::Method::
-        exin: using external_internal files
-        pmat: using pmatrix files
+    :param param: the p4d project objects
+    :param points: should be the geo coordinate - offsets
+    :param method: string
+        'exin' use external and internal parameters (seems not so accurate in some cases),
+        'pmat' use pmatrix to calculate (recommended method for common digital camera, fisheye camera not suit)
+    :param log: boolean, whether print logs in console
+    :return:
     """
-    in_img_list = []
-    coords_list = []
+    out_dict = {}
     for im in param.img:
         if log:
             print(f'[Calculator][Judge]{im.name}w:{im.w}h:{im.h}->', end='')
@@ -125,34 +152,33 @@ def get_img_name_and_coords(param, points, method='pmat', log=False):
             projected_coords = pmatrix_calc(param, points, im.name)
         coords = in_img_boundary(projected_coords, (im.w, im.h), log=log)
         if coords is not None:
-            in_img_list.append(im.name)
-            coords_list.append(coords)
+            out_dict[im.name] = coords
 
-    return in_img_list, coords_list
+    return out_dict
 
 
 def get_shp_result(p4d, shp_path, get_z_by="mean", shp_proj=None, geotiff_proj=None, json_path=None):
     result_dict = {}
-    json_dict = {}
+    #json_dict = {}
     shp_dict = shp.read_shp3d(shp_path, dsm_path=p4d.dsm_file,
                               get_z_by=get_z_by,
                               shp_proj=shp_proj, geotiff_proj=geotiff_proj)
 
     for shp_key in shp_dict.keys():
         result_dict[shp_key] = {}
-        json_dict[shp_key] = {}
+        #json_dict[shp_key] = {}
 
         points = shp_dict[shp_key]
         for method in ["exin", "pmat"]:
             result_dict[shp_key][method] = {}
-            json_dict[shp_key][method] = {}
+            #json_dict[shp_key][method] = {}
 
-            in_img_list, coords_list = get_img_name_and_coords(p4d, points - p4d.offset.np, method)
-            for im_name, coord in zip(in_img_list, coords_list):
+            img_coord_dict = get_img_coords_dict(p4d, points - p4d.offset.np, method)
+            for im_name, coord in img_coord_dict.items():
                 result_dict[shp_key][method][im_name] = coord
-                json_dict[shp_key][method][im_name] = [c.tolist() for c in coord]
+                #json_dict[shp_key][method][im_name] = [c.tolist() for c in coord]
 
     if json_path:
-        json.dict2json(json_dict, json_path)
+        json.dict2json(result_dict, json_path)
 
     return result_dict

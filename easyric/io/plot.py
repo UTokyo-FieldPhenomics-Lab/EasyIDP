@@ -24,7 +24,7 @@ def draw_polygon_on_img(param, img_name, img_coord, title=None, file_name=None, 
     plt.ylabel('y')
 
     ax[1].imshow(imread(param.img[img_name].path))
-    ax[1].plot(img_coord[:,0], img_coord[:,1])
+    ax[1].plot(img_coord[:,0], img_coord[:,1], color=color)
 
     x_min, y_min = img_coord[:,0:2].min(axis=0)
     x_max, y_max = img_coord[:,0:2].max(axis=0)
@@ -42,12 +42,12 @@ def draw_polygon_on_img(param, img_name, img_coord, title=None, file_name=None, 
     plt.close()
 
 
-def draw_polygon_on_imgs(param, img_names, img_coords, out_folder, coord_prefix, color='red', alpha=0.5, dpi=72):
+def draw_polygon_on_imgs(param, img_coord_dict, out_folder, coord_prefix, color='red', alpha=0.5, dpi=72):
     if not os.path.exists(out_folder):
         os.makedirs(out_folder)
         print(f'[IO][Plot] making folder {os.path.abspath(out_folder)}')
 
-    for img_n, img_c in zip(img_names, img_coords):
+    for img_n, img_c in img_coord_dict.items():
         title = f"Reprojection {coord_prefix} on [{img_n}]"
         file_name = f"{coord_prefix}_{img_n}.png"
         draw_polygon_on_img(param, img_n, img_c, title=title, file_name=out_folder + '/' + file_name,

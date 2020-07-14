@@ -1,7 +1,7 @@
 import numpy as np
 from easyric.objects import Pix4D
 from easyric.io import plot
-from easyric.calculate.geo2raw import external_internal_calc, get_img_name_and_coords
+from easyric.calculate.geo2raw import external_internal_calc, get_img_coords_dict
 
 def test_plot_img(capsys):
     center_points = np.asarray([[0.91523622, -0.77530369, 0.47057343],
@@ -31,7 +31,7 @@ def test_plot_img(capsys):
                     [964.0093214752706, 3013.9080158878337],
                     [1178.1021297262118, 3105.3147746182062]]
 
-    assert coords_exin.tolist() == expected_out
+    np.testing.assert_almost_equal(coords_exin, np.asarray(expected_out), decimal=3)
 
     # test popup one img
     plot.draw_polygon_on_img(p4d, img_name=test_photo, img_coord=coords_exin, show=True)
@@ -41,5 +41,13 @@ def test_plot_img(capsys):
                              file_name=f'out/test_1_{test_photo}.png')
 
     # test save imgs
-    img_names, img_coords = get_img_name_and_coords(p4d, points=center_points, method='exin')
-    plot.draw_polygon_on_imgs(p4d, img_names[0:2], img_coords[0:2], out_folder='out', coord_prefix='test_multi')
+    img_coord_dict = get_img_coords_dict(p4d, points=center_points, method='exin')
+
+    i = 0
+    test_out = {}
+    for img_n, img_c in img_coord_dict.items():
+        test_out[img_n] = img_c
+        i += 1
+        if i > 3:
+            break
+    plot.draw_polygon_on_imgs(p4d, test_out, out_folder='out', coord_prefix='test_multi')

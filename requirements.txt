@@ -1,11 +1,12 @@
 numpy==1.18.1
 scikit-image==0.16.2
+# ensure SURF feature matching algorithm patent available
+opencv-python==3.4.2.16
+opencv-contrib-python==3.4.2.16
 pyproj==2.6.1.post1
 # if run tests
-pytest==5.4.3
+# pytest==5.4.3
 
 # used external pure python packages
 ## Pyshp (shapefile==2.1.0,url=https://github.com/GeospatialPython/pyshp)
 ## send2trash (send2trash==1.6.0b1, url=https://github.com/arsenetar/send2trash)
-
-

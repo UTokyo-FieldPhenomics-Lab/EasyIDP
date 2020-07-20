@@ -72,11 +72,11 @@ class Pix4D:
         self.T1 = None
         self.T2 = None
 
-        self.offset = OffSet(self.get_offsets())
-        vars(self).update(self.get_cicp_dict())
+        self.offset = OffSet(self._get_offsets())
+        vars(self).update(self._get_cicp_dict())
         self.img = ImageSet(img_path=self.raw_img_path,
-                            pmat_dict=self.get_pmat_dict(),
-                            ccp_dict=self.get_ccp_dict())
+                            pmat_dict=self._get_pmat_dict(),
+                            ccp_dict=self._get_ccp_dict())
 
     def _original_specify(self):
         sub_folder = os.listdir(self.project_path)
@@ -150,16 +150,16 @@ class Pix4D:
         else:
             return None
 
-    def get_offsets(self):
+    def _get_offsets(self):
         return pix4d.read_xyz(self.xyz_file)
 
-    def get_pmat_dict(self):
+    def _get_pmat_dict(self):
         return pix4d.read_pmat(self.pmat_file)
 
-    def get_ccp_dict(self):
+    def _get_ccp_dict(self):
         return pix4d.read_ccp(self.ccp_file)
 
-    def get_cicp_dict(self):
+    def _get_cicp_dict(self):
         return pix4d.read_cicp(self.cicp_file)
 
 

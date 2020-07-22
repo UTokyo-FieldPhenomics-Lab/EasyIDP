@@ -63,14 +63,14 @@ def mean_values(geotiff_path, polygon='all'):
             if isinstance(polygon, np.ndarray):
                 roi = geo2pixel(polygon, header)   # roi = (horizontal, vertical)
                 # [TODO] only dsm supported
-                imarray, offsets = _imarray_clip(data, roi)
+                imarray, offsets = imarray_clip(data, roi)
                 z_mean = np.nanmean(imarray)
             elif isinstance(polygon, list):
                 z_mean = []
                 for poly in polygon:
                     if isinstance(poly, np.ndarray):
                         roi = geo2pixel(poly, header)
-                        imarray, offsets = _imarray_clip(data, roi)
+                        imarray, offsets = imarray_clip(data, roi)
                         z_mean.append(np.nanmean(imarray))
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
@@ -256,7 +256,7 @@ def _is_roi_type(roi_polygon2d):
     return container
 
 
-def _imarray_clip(imarray, polygon_hv):
+def imarray_clip(imarray, polygon_hv):
     """
     clip a given ndarray image by given polygon pixel positions
     :param imarray: ndarray
@@ -340,7 +340,7 @@ def clip_roi(roi_polygon_hv, geotiff_path, is_geo=False):
         if is_geo:
             roi = geo2pixel(roi, geo_head)   # (horizontal, vertical)
 
-        imarray_out, offset_out = _imarray_clip(dxm, roi)
+        imarray_out, offset_out = imarray_clip(dxm, roi)
 
         imarrays.append(imarray_out)
         offsets.append(offset_out)

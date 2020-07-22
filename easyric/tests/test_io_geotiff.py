@@ -182,7 +182,7 @@ def test_imarray_clip_2d_rgb_rgba():
     imarray_rgb = imread(photo_path)
     assert imarray_rgb.shape == (3456, 4608, 3)
 
-    im_out_rgb, offsets_rgb = geotiff._imarray_clip(imarray_rgb, roi)
+    im_out_rgb, offsets_rgb = geotiff.imarray_clip(imarray_rgb, roi)
 
     ax[1].imshow(im_out_rgb / 255)
     ax[1].set_title('rgb')
@@ -191,7 +191,7 @@ def test_imarray_clip_2d_rgb_rgba():
     imarray_2d = rgb2gray(imarray_rgb)
     assert imarray_2d.shape == (3456, 4608)
 
-    im_out_2d, offsets_2d = geotiff._imarray_clip(imarray_2d, roi)
+    im_out_2d, offsets_2d = geotiff.imarray_clip(imarray_2d, roi)
 
     ax[0].imshow(im_out_2d, cmap='gray')
     ax[0].set_title('gray')
@@ -200,7 +200,7 @@ def test_imarray_clip_2d_rgb_rgba():
     imarray_rgba = np.dstack((imarray_rgb, np.ones((3456, 4608)) * 255))
     assert imarray_rgba.shape == (3456, 4608, 4)
 
-    im_out_rgba, offsets = geotiff._imarray_clip(imarray_rgba, roi)
+    im_out_rgba, offsets = geotiff.imarray_clip(imarray_rgba, roi)
     ax[2].imshow(im_out_rgba/255)
     ax[2].set_title('rgba')
 

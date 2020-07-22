@@ -117,22 +117,41 @@ def distortion_correction(param, u, v, image_name):
 # advanced wrapper #
 ####################
 
-def in_img_boundary(reprojected_coords, img_size, log=False):
+def in_img_boundary(reprojected_coords, img_size, ignore=None, log=False):
     w, h = img_size
     coord_min = reprojected_coords.min(axis=0)
     x_min, y_min = coord_min[0], coord_min[1]
     coord_max= reprojected_coords.max(axis=0)
     x_max, y_max = coord_max[0], coord_max[1]
 
-    if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
-        if log: print('X ', (x_min, x_max, y_min, y_max))
-        return None
-    else:
-        if log: print('O ', (x_min, x_max, y_min, y_max))
-        return reprojected_coords
+    if ignore is None:
+        if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
+            if log: print('X ', (x_min, x_max, y_min, y_max))
+            return None
+        else:
+            if log: print('O ', (x_min, x_max, y_min, y_max))
+            return reprojected_coords
+    elif ignore=='x':
+        if y_min < 0 or y_max > h:
+            if log: print('X ', (x_min, x_max, y_min, y_max))
+            return None
+        else:
+            reprojected_coords[reprojected_coords[:, 0] < 0, 0] = 0
+            reprojected_coords[reprojected_coords[:, 0] > w, 0] = w
+            if log: print('O ', (x_min, x_max, y_min, y_max))
+            return reprojected_coords
+    elif ignore=='y':
+        if x_min < 0 or x_max > w:
+            if log: print('X ', (x_min, x_max, y_min, y_max))
+            return None
+        else:
+            reprojected_coords[reprojected_coords[:, 1] < 0, 1] = 0
+            reprojected_coords[reprojected_coords[:, 1] > h, 1] = h
+            if log: print('O ', (x_min, x_max, y_min, y_max))
+            return reprojected_coords
 
 
-def get_img_coords_dict(param, points, method='pmat', distort_correct=True, log=False):
+def get_img_coords_dict(param, points, method='pmat', distort_correct=True, ignore=None, log=False):
     """
     :param param: the p4d project objects
     :param points: should be the geo coordinate - offsets
@@ -150,7 +169,7 @@ def get_img_coords_dict(param, points, method='pmat', distort_correct=True, log=
             projected_coords = external_internal_calc(param, points, im.name, distort_correct)
         else:
             projected_coords = pmatrix_calc(param, points, im.name, distort_correct)
-        coords = in_img_boundary(projected_coords, (im.w, im.h), log=log)
+        coords = in_img_boundary(projected_coords, (im.w, im.h), ignore=ignore, log=log)
         if coords is not None:
             out_dict[im.name] = coords
 

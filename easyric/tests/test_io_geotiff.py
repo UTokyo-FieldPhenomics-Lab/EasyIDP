@@ -54,6 +54,14 @@ def test_prase_header_string_proj_error(capsys):
     assert out_dict['proj'] == None
 
 
+def test_get_imarray_without_header(capsys):
+    pass
+
+
+def test_get_imarray_with_header(capsys):
+    pass
+
+
 def test_point_query_one_point():
     point = (368023.004, 3955500.669)
     out = geotiff.point_query(r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif', point)

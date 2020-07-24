@@ -1,4 +1,5 @@
 import os
+import multiprocessing
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.io import imread
@@ -68,12 +69,15 @@ def draw_polygon_on_imgs(param, img_coord_dict, out_folder, coord_prefix, img_co
         os.makedirs(out_folder)
         print(f'[IO][Plot] making folder {os.path.abspath(out_folder)}')
 
+    i = 1
     for img_n, img_c in img_coord_dict.items():
+        print(f'[IO][Plot] Drawing {img_n}|{i} of {len(img_coord_dict.keys())}', end='\r')
         title = f"Reprojection {coord_prefix} on [{img_n}]"
         file_name = f"{coord_prefix}_{img_n}.png"
         if img_correct_dict is None:
             img_correct = None
-        else: 
+        else:
             img_correct = img_correct_dict[img_n]
         draw_polygon_on_img(param, img_n, img_c, title=title, file_name=out_folder + '/' + file_name,
                             img_correct=img_correct, color=color, alpha=alpha, dpi=dpi)
+        i += 1

@@ -57,7 +57,7 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None):
     return shp_dict
 
 
-def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=None):
+def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=None, geo_head=None):
     '''
     shp_path: full shp_file directory
     get_z_by:
@@ -68,8 +68,12 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
                 -> this will get a 3D curved mesh of ROI
     '''
     shp_dict = {}
-    if geotiff_proj is None:
+    if geo_head is None:
         tiff_header = get_header(dsm_path)
+    else:
+        tiff_header = geo_head
+
+    if geotiff_proj is None:
         shp_dict_2d = read_shp2d(shp_path, geotiff_proj=tiff_header['proj'], shp_proj=shp_proj)
     else:
         shp_dict_2d = read_shp2d(shp_path, geotiff_proj=geotiff_proj, shp_proj=shp_proj)
@@ -79,17 +83,17 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
 
     # then add z_values on it
     if get_z_by == 'local':
-        z_lists = point_query(dsm_path, coord_list)
+        z_lists = point_query(dsm_path, coord_list, geo_head=tiff_header)
         for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
             coord_np = np.concatenate([coord_np, coord_z[:, None]], axis=1)
             shp_dict[k] = coord_np
     elif get_z_by == 'mean':
-        z_lists = mean_values(dsm_path, polygon=coord_list)
+        z_lists = mean_values(dsm_path, polygon=coord_list, geo_head=tiff_header)
         for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
             coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
             shp_dict[k] = coord_np
     elif get_z_by == 'all':
-        coord_z = mean_values(dsm_path, polygon='all')
+        coord_z = mean_values(dsm_path, polygon='all', geo_head=tiff_header)
         for k, coord_np in zip(keys, coord_list):
             coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
             shp_dict[k] = coord_np

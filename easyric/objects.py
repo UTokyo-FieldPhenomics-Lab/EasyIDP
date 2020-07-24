@@ -1,7 +1,8 @@
 import os
 import numpy as np
 from copy import copy
-from easyric.io import pix4d
+from easyric.io import pix4d, geotiff, shp, plot
+from easyric.calculate import geo2raw, geo2tiff, raw2raw
 
 ####################
 # Software wrapper #
@@ -35,6 +36,8 @@ class Pix4D:
         self.ply_file = None
         self.dom_file = None
         self.dsm_file = None
+        self.dom_header = None
+        self.dsm_header = None
 
         if '1_initial' in sub_folder:
             self._original_specify()
@@ -44,6 +47,11 @@ class Pix4D:
                                         f'pix4d default projects, "1_initial" folder not found and `param_folder` not specified')
             else:
                 self._manual_specify(param_folder, dom_path, dsm_path, ply_path)
+
+        if self.dom_file is not None:
+            self.dom_header = geotiff.get_header(self.dom_file)
+        if self.dsm_file is not None:
+            self.dsm_header = geotiff.get_header(self.dsm_file)
 
         ###############
         # Init Params #
@@ -161,6 +169,42 @@ class Pix4D:
 
     def _get_cicp_dict(self):
         return pix4d.read_cicp(self.cicp_file)
+
+    #################
+    # Easy use apis #
+    #################
+
+    # ======== io.shp =========
+    def read_shp2d(self, shp_path, shp_proj=None, geotiff_proj=None):
+        if geotiff_proj is None:
+            proj = self.dsm_header['proj']
+        elif geotiff_proj == 'Null':   # the special params to do noting transfrom
+            proj = None
+        else:
+            proj = geotiff_proj
+
+        shp_dict = shp.read_shp2d(shp_path, shp_proj=shp_proj, geotiff_proj=proj)
+
+        return shp_dict
+
+    def read_shp3d(self, shp_path, get_z_by='mean', shp_proj=None, geotiff_proj=None):
+        shp_dict = shp.read_shp3d(shp_path, self.dsm_file, get_z_by, shp_proj, geotiff_proj, geo_head=self.dsm_header)
+        return shp_dict
+
+    # ======== io.geotiff =========
+
+
+    # ======== io.plot =========
+
+
+    # ======== calculate.geo2raw =========
+
+
+    # ======== calculate.geo2tiff =========
+
+
+    # ======== calculate.raw2raw =========
+
 
 
 class PhotoScan:

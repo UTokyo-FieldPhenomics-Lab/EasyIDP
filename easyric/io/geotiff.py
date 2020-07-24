@@ -5,96 +5,6 @@ from skimage.draw import polygon
 from pyproj.exceptions import CRSError
 
 
-def point_query(geotiff_path, point):
-    '''
-    :param geotiff_path: string, the path of geotiff(dsm only) file
-    :param point: can be following three types
-        1. one point tuple (not recommended)
-            :input:  (34.57, 45.62)
-            :return: float, value
-        2. 2d numpy array
-            :input:  np.asarray([[34.57, 45.62],[35.57, 46.62]])
-            :return: np.array, 1d
-        3. list of 2d numpy arrays
-            a = np.asarray([[34.57, 45.62],[35.57, 46.62]])
-            b = np.asarray([[36.57, 47.62],[38.57, 48.62]])
-            :input:  p_list = [a, b]
-            :return: list, contains np.1darray of each
-    '''
-    with tifffile.TiffFile(geotiff_path) as tif:
-        head = _prase_header_string(tif.info())  # equal to get_header()
-        data = tif.asarray()   # equal to get_imarray()
-
-        if isinstance(point, tuple):
-            point = np.asarray([[point[0], point[1]]])
-            px = geo2pixel(point, head)  # px = (horizontal, vertical)
-            # imarray axis0 = vertical, axis1 = horizontal
-            height_values = data[px[:, 1], px[:, 0]]
-        elif isinstance(point, np.ndarray):
-            px = geo2pixel(point, head)  # px = (horizontal, vertical)
-            # imarray axis0 = vertical, axis1 = horizontal
-            height_values = data[px[:, 1], px[:, 0]]
-        elif isinstance(point, list):
-            height_values = []
-            for p in point:
-                if not isinstance(p, np.ndarray):
-                    raise TypeError('Only numpy.ndarray in list are supported')
-                else:
-                    px = geo2pixel(p, head)  # px = (horizontal, vertical)
-                    # imarray axis0 = vertical, axis1 = horizontal
-                    height_values.append(data[px[:, 1], px[:, 0]])
-        else:
-            raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
-
-    return height_values
-
-
-def mean_values(geotiff_path, polygon='all'):
-    with tifffile.TiffFile(geotiff_path) as tif:
-        # equal to get_header()
-        header = _prase_header_string(tif.info())
-        # equal to get_imarray()
-        data = tif.asarray().astype(float)
-        data[data == header['nodata']] = np.nan
-
-        if polygon == 'all':
-            z_mean = np.nanmean(data)
-        else:
-            if isinstance(polygon, np.ndarray):
-                roi = geo2pixel(polygon, header)   # roi = (horizontal, vertical)
-                # [TODO] only dsm supported
-                imarray, offsets = imarray_clip(data, roi)
-                z_mean = np.nanmean(imarray)
-            elif isinstance(polygon, list):
-                z_mean = []
-                for poly in polygon:
-                    if isinstance(poly, np.ndarray):
-                        roi = geo2pixel(poly, header)
-                        imarray, offsets = imarray_clip(data, roi)
-                        z_mean.append(np.nanmean(imarray))
-                    else:
-                        raise TypeError('Only numpy.ndarray points itmes in the list are supported')
-            else:
-                raise TypeError('Only numpy.ndarray points list are supported')
-
-    return z_mean
-
-
-def get_header(geotiff_path):
-    geotiff_string = _get_header_string(geotiff_path)
-    header = _prase_header_string(geotiff_string)
-
-    return header
-
-
-def get_imarray(geotiff_path):
-    with tifffile.TiffFile(geotiff_path) as tif:
-        header = _prase_header_string(tif.info())
-        data = tif.asarray().astype(float)
-        data[data == header['nodata']] = np.nan
-
-    return data
-
 def _get_header_string(geotiff_path):
     with tifffile.TiffFile(geotiff_path) as tif:
         # >>> print(tif.info())
@@ -125,6 +35,7 @@ def _get_header_string(geotiff_path):
         * 42113 gdal_nodata (7s) b'-10000'
         '''
         return tif.info()
+
 
 def _prase_header_string(geotiff_string):
     header = {'width': None, 'length': None, 'scale': None, 'tie_point': None, 'nodata': None, 'proj': None}
@@ -170,6 +81,104 @@ def _prase_header_string(geotiff_string):
             continue
 
     return header
+
+
+def get_header(geotiff_path):
+    geotiff_string = _get_header_string(geotiff_path)
+    header = _prase_header_string(geotiff_string)
+
+    return header
+
+
+def get_imarray(geotiff_path, geo_head=None):
+    with tifffile.TiffFile(geotiff_path) as tif:
+        if geo_head is None:
+            geo_head = _prase_header_string(tif.info())
+        data = tif.asarray().astype(float)
+        data[data == geo_head['nodata']] = np.nan
+
+    return data
+
+
+def point_query(geotiff_path, point, geo_head=None):
+    '''
+    :param geotiff_path: string, the path of geotiff(dsm only) file
+    :param point: can be following three types
+        1. one point tuple (not recommended)
+            :input:  (34.57, 45.62)
+            :return: float, value
+        2. 2d numpy array
+            :input:  np.asarray([[34.57, 45.62],[35.57, 46.62]])
+            :return: np.array, 1d
+        3. list of 2d numpy arrays
+            a = np.asarray([[34.57, 45.62],[35.57, 46.62]])
+            b = np.asarray([[36.57, 47.62],[38.57, 48.62]])
+            :input:  p_list = [a, b]
+            :return: list, contains np.1darray of each
+    '''
+    with tifffile.TiffFile(geotiff_path) as tif:
+        if geo_head is None:
+            geo_head = _prase_header_string(tif.info())  # equal to get_header()
+
+        # equal to get_imarray()
+        data = tif.asarray()
+        data[data == geo_head['nodata']] = np.nan
+
+        if isinstance(point, tuple):
+            point = np.asarray([[point[0], point[1]]])
+            px = geo2pixel(point, geo_head)  # px = (horizontal, vertical)
+            # imarray axis0 = vertical, axis1 = horizontal
+            height_values = data[px[:, 1], px[:, 0]]
+        elif isinstance(point, np.ndarray):
+            px = geo2pixel(point, geo_head)  # px = (horizontal, vertical)
+            # imarray axis0 = vertical, axis1 = horizontal
+            height_values = data[px[:, 1], px[:, 0]]
+        elif isinstance(point, list):
+            height_values = []
+            for p in point:
+                if not isinstance(p, np.ndarray):
+                    raise TypeError('Only numpy.ndarray in list are supported')
+                else:
+                    px = geo2pixel(p, geo_head)  # px = (horizontal, vertical)
+                    # imarray axis0 = vertical, axis1 = horizontal
+                    height_values.append(data[px[:, 1], px[:, 0]])
+        else:
+            raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
+
+    return height_values
+
+
+def mean_values(geotiff_path, polygon='all', geo_head=None):
+    with tifffile.TiffFile(geotiff_path) as tif:
+        # equal to get_header()
+        if geo_head is None:
+            geo_head = _prase_header_string(tif.info())
+        # equal to get_imarray()
+        data = tif.asarray().astype(float)
+        data[data == geo_head['nodata']] = np.nan
+
+        if polygon == 'all':
+            z_mean = np.nanmean(data)
+        else:
+            if isinstance(polygon, np.ndarray):
+                roi = geo2pixel(polygon, geo_head)   # roi = (horizontal, vertical)
+                # [TODO] only dsm supported
+                imarray, offsets = imarray_clip(data, roi)
+                z_mean = np.nanmean(imarray)
+            elif isinstance(polygon, list):
+                z_mean = []
+                for poly in polygon:
+                    if isinstance(poly, np.ndarray):
+                        roi = geo2pixel(poly, geo_head)
+                        imarray, offsets = imarray_clip(data, roi)
+                        z_mean.append(np.nanmean(imarray))
+                    else:
+                        raise TypeError('Only numpy.ndarray points itmes in the list are supported')
+            else:
+                raise TypeError('Only numpy.ndarray points list are supported')
+
+    return z_mean
+
 
 def geo2pixel(points_hv, geo_head):
     '''
@@ -311,7 +320,7 @@ def imarray_clip(imarray, polygon_hv):
     return imarray_out, roi_offset
 
 
-def clip_roi(roi_polygon_hv, geotiff_path, is_geo=False):
+def clip_roi(roi_polygon_hv, geotiff, is_geo=False, geo_head=None):
     """
     :param roi_polygon_hv: ndarray, or polygon list,
         please do not use "for loops" outside to iterate a list of polygon, for example:
@@ -321,18 +330,22 @@ def clip_roi(roi_polygon_hv, geotiff_path, is_geo=False):
         >>> ... clip_roi(poly, dsm_path, ...)
         # the recommended usage:
         >>> clip_roi(polygon_list, dsm_path, ...)
-    :param geotiff_path: string of geotiff file
+    :param geotiff: string of geotiff file
     :param is_geo: the unit of polygon numpy, default is pixel coordinate of DOM/DSM, change to True to use as geo coordinate
     :return:
     """
     roi_list = _is_roi_type(roi_polygon_hv)
 
-    if is_geo:
-        geo_head = get_header(geotiff_path)
-    else:
-        geo_head = None
+    if geo_head is None:
+        geo_head = get_header(geotiff)
 
-    dxm = get_imarray(geotiff_path)
+    if isinstance(geotiff, str):   # give a file_path of geo_tiff
+        dxm = get_imarray(geotiff, geo_head)
+    elif isinstance(geotiff, np.ndarray):
+        dxm = geotiff
+    else:
+        raise TypeError('Invalid geotiff type, either geotiff_file_path or read ndarray by geotiff.get_imarray() function')
+
     offsets = []
     imarrays = []
 

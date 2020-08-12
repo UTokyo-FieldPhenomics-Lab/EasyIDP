@@ -92,6 +92,10 @@ def test_point_query_wrong_types():
     # [TODO]
     pass
 
+def test_point_query_input_ndarray():
+    # [Todo]
+    pass
+
 def test_mean_values(capsys):
     mean_ht = geotiff.mean_values(r'file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif')
     captured = capsys.readouterr()

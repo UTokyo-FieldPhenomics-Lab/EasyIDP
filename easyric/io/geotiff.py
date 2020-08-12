@@ -100,10 +100,12 @@ def get_imarray(geotiff_path, geo_head=None):
     return data
 
 
-def point_query(geotiff_path, point, geo_head=None):
+def point_query(geotiff, point_hv, geo_head=None):
     '''
-    :param geotiff_path: string, the path of geotiff(dsm only) file
-    :param point: can be following three types
+    :param geotiff:
+        string, the path of geotiff(dsm only) file
+        ndarray, the ndarray of readed geotiff file (avoid read every time in for loops)
+    :param point_hv: can be following three types
         1. one point tuple (not recommended)
             :input:  (34.57, 45.62)
             :return: float, value
@@ -115,40 +117,72 @@ def point_query(geotiff_path, point, geo_head=None):
             b = np.asarray([[36.57, 47.62],[38.57, 48.62]])
             :input:  p_list = [a, b]
             :return: list, contains np.1darray of each
+    :param geo_head: the geotiff head of reading geotiff, default is None
+        if geotiff is string:
+            geo_head = None -> read header from geotiff_path
+            geo_head = Given -> do nothing
+        if geotiff is ndarray:
+            geo_head = None -> point_hv is pixel_coordinate
+            geo_head = Given -> use geo2pixel to convert point_hv from geo_coordinate to pixel_coordinate
     '''
-    with tifffile.TiffFile(geotiff_path) as tif:
+    if isinstance(geotiff, str):
+        with tifffile.TiffFile(geotiff) as tif:
+            # equal to get_header()
+            if geo_head is None:
+                geo_head = _prase_header_string(tif.info())
+            # equal to get_imarray()
+            data = tif.asarray().astype(float)
+            data[data == geo_head['nodata']] = np.nan
+        is_geo = True
+    elif isinstance(geotiff, np.ndarray):
+        data = geotiff
         if geo_head is None:
-            geo_head = _prase_header_string(tif.info())  # equal to get_header()
-
-        # equal to get_imarray()
-        data = tif.asarray()
-        data[data == geo_head['nodata']] = np.nan
-
-        if isinstance(point, tuple):
-            point = np.asarray([[point[0], point[1]]])
-            px = geo2pixel(point, geo_head)  # px = (horizontal, vertical)
-            # imarray axis0 = vertical, axis1 = horizontal
-            height_values = data[px[:, 1], px[:, 0]]
-        elif isinstance(point, np.ndarray):
-            px = geo2pixel(point, geo_head)  # px = (horizontal, vertical)
-            # imarray axis0 = vertical, axis1 = horizontal
-            height_values = data[px[:, 1], px[:, 0]]
-        elif isinstance(point, list):
-            height_values = []
-            for p in point:
-                if not isinstance(p, np.ndarray):
-                    raise TypeError('Only numpy.ndarray in list are supported')
-                else:
-                    px = geo2pixel(p, geo_head)  # px = (horizontal, vertical)
-                    # imarray axis0 = vertical, axis1 = horizontal
-                    height_values.append(data[px[:, 1], px[:, 0]])
+            is_geo = False
         else:
-            raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
+            is_geo = True
+    else:
+        raise TypeError(f'The geotiff should be either "str" or "np.ndarray", not {type(geotiff)}')
+
+    if isinstance(point_hv, tuple):
+        point_hv = np.asarray([[point_hv[0], point_hv[1]]])
+        if is_geo:
+            px = geo2pixel(point_hv, geo_head)  # px = (horizontal, vertical)
+        else:
+            px = point_hv
+        # imarray axis0 = vertical, axis1 = horizontal
+        height_values = data[px[:, 1], px[:, 0]]
+    elif isinstance(point_hv, np.ndarray):
+        if is_geo:
+            px = geo2pixel(point_hv, geo_head)  # px = (horizontal, vertical)
+        else:
+            px = point_hv
+        # imarray axis0 = vertical, axis1 = horizontal
+        height_values = data[px[:, 1], px[:, 0]]
+    elif isinstance(point_hv, list):
+        height_values = []
+        for p in point_hv:
+            if not isinstance(p, np.ndarray):
+                raise TypeError('Only numpy.ndarray in list are supported')
+            else:
+                if is_geo:
+                    px = geo2pixel(p, geo_head)  # px = (horizontal, vertical)
+                else:
+                    px = p
+                # imarray axis0 = vertical, axis1 = horizontal
+                height_values.append(data[px[:, 1], px[:, 0]])
+    else:
+        raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
 
     return height_values
 
 
 def mean_values(geotiff_path, polygon='all', geo_head=None):
+    """
+    :param geotiff_path:
+    :param polygon:
+    :param geo_head:
+    :return:
+    """
     with tifffile.TiffFile(geotiff_path) as tif:
         # equal to get_header()
         if geo_head is None:

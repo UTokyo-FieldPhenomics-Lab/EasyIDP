@@ -38,8 +38,8 @@ def draw_polygon_on_img(param, img_name, img_coord, img_correct=None, title=None
 
         ax[1].plot(img_coord[:, 0], img_coord[:, 1], color=color, linestyle='-')
     else:
-        x_min, y_min = np.hstack([img_coord, img_correct])[:,0:2].min(axis=0)
-        x_max, y_max = np.hstack([img_coord, img_correct])[:,0:2].max(axis=0)
+        x_min, y_min = np.vstack([img_coord, img_correct])[:,0:2].min(axis=0)
+        x_max, y_max = np.vstack([img_coord, img_correct])[:,0:2].max(axis=0)
 
         l1, = ax[1].plot(img_coord[:, 0], img_coord[:, 1], color=color, linestyle='--')
         l2, = ax[1].plot(img_correct[:, 0], img_correct[:, 1], color=color, linestyle='-')

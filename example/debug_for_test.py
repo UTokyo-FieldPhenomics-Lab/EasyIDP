@@ -24,13 +24,27 @@
 #poly = shp.read_shp2d('../easyric/tests/file/shp_test/test.shp')
 #imarray, offset = geotiff.clip_roi(poly['0'], '../easyric/tests/file/tiff_test/2_12.tif', is_geo=True)
 #---------------------------------------------
-import pyproj
+#import pyproj
+#from easyric.calculate import geo2tiff
+#from skimage.io import imshow, show
+#
+#out_dict = geo2tiff.shp_clip_geotiff(shp_path='../easyric/tests/file/pix4d.diy/plots.shp',
+#                                     geotiff_path='../easyric/tests/file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif',
+#                                     out_folder='hasu_out', shp_proj=pyproj.CRS.from_epsg(4326))
+#
+#imshow(out_dict['N1W2.png']['imarray'])
+#show()
+#----------------------------------------------
 from easyric.calculate import geo2tiff
-from skimage.io import imshow, show
 
-out_dict = geo2tiff.shp_clip_geotiff(shp_path='../easyric/tests/file/pix4d.diy/plots.shp',
-                                     geotiff_path='../easyric/tests/file/pix4d.diy/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif',
-                                     out_folder='hasu_out', shp_proj=pyproj.CRS.from_epsg(4326))
+shp_file = r"D:\OneDrive\Documents\4_PhD\12_CAAS_Tasks\02_ZLC_error\shp\plot.shp"
+dom_path = r"D:\OneDrive\Documents\4_PhD\12_CAAS_Tasks\02_ZLC_error\0328DOM.tif"
+dsm_path = r"D:\OneDrive\Documents\4_PhD\12_CAAS_Tasks\02_ZLC_error\0328DSM.tif"
 
-imshow(out_dict['N1W2.png']['imarray'])
-show()
+dom_dict = geo2tiff.shp_clip_geotiff(shp_path=shp_file,
+                                     geotiff_path=dom_path,
+                                     out_folder=r'D:\OneDrive\Documents\4_PhD\12_CAAS_Tasks\02_ZLC_error\out')
+
+dsm_dict = geo2tiff.shp_clip_geotiff(shp_path=shp_file,
+                                     geotiff_path=dsm_path,
+                                     out_folder=r'D:\OneDrive\Documents\4_PhD\12_CAAS_Tasks\02_ZLC_error\out')

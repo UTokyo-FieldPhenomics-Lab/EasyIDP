@@ -62,7 +62,8 @@ def _prase_header_string(geotiff_string):
                 header['tie_point'] = (x, y)
             elif code == '34737':
                 # * 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'
-                bstring = line.split('34737')[-1][26:].split('|')[0]
+                # * 34737 geo_ascii_params (7s) b'WGS-84'
+                bstring = line.split('34737')[-1].split(") b'")[-1].split('|')[0]
                 print(f'[io][geotiff][GeoCorrd] Comprehense [{line}] to geotiff coordinate tag [{bstring}]')
                 try:
                     proj = pyproj.CRS.from_string(bstring)
@@ -385,9 +386,11 @@ def clip_roi(roi_polygon_hv, geotiff, is_geo=False, geo_head=None):
 
     for roi in roi_list:
         if is_geo:
-            roi = geo2pixel(roi, geo_head)   # (horizontal, vertical)
+            roi_geo = geo2pixel(roi, geo_head)   # (horizontal, vertical)
+        else:
+            roi_geo = roi
 
-        imarray_out, offset_out = imarray_clip(dxm, roi)
+        imarray_out, offset_out = imarray_clip(dxm, roi_geo)
 
         imarrays.append(imarray_out)
         offsets.append(offset_out)

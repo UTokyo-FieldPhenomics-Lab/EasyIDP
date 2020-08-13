@@ -13,11 +13,13 @@ def test_read_prj():
     assert out_proj.coordinate_system == check_proj.coordinate_system
 
 def test_read_shp2d_without_target():
+    # the degree unit (lat & lon) shp file using lon, lat order
     lonlat_shp = read_shp2d(f"file/shp_test/lon_lat.shp")
-    wanted_np = np.asarray([[134.8312376 ,  34.90284972],
-                            [134.8312399 ,  34.90285097],
-                            [134.8312371 ,  34.90285516],
-                            [134.8312349 ,  34.90285426]])
+    # flipped for pyproj which input is (lat, lon)
+    wanted_np = np.asarray([[34.90284972, 134.8312376],
+                            [34.90285097, 134.8312399],
+                            [34.90285516, 134.8312371],
+                            [34.90285426, 134.8312349]])
 
     assert (lonlat_shp['1_02'] == wanted_np).all()
 

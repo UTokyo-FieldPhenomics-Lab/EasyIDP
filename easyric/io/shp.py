@@ -39,10 +39,16 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None):
 
         coord_np = np.asarray(shape.points)
 
+        # Old version: the pyshp package load seems get (lon, lat), however, the pyproj use (lat, lon), so need to revert
+        # latest version:
+        # when shp unit is (degrees) lat, lon, the order is reversed
+        # however, if using epsg as unit (meter), the order doesn't need to be changed
+        if coord_np.max() <= 180.0:
+            coord_np = np.flip(coord_np, axis=1)
+
         if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
             transformer = pyproj.Transformer.from_proj(shp_proj, geotiff_proj)
-            # the pyshp package load seems get (lon, lat), however, the pyproj use (lat, lon), so need to revert
-            transformed = transformer.transform(coord_np[:,1], coord_np[:,0])
+            transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
             coord_np = np.asarray(transformed).T
 
             if True in np.isinf(coord_np):

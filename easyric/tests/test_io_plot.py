@@ -22,7 +22,9 @@ def test_plot_img(capsys):
     captured = capsys.readouterr()
     assert captured.out == "[Init][Pix4D] No ply given, however find 'broccoli_tanashi_5_20191008_mavicRGB_15m_M_group1_densified_point_cloud.ply' at current project folder\n" \
                            "[Init][Pix4D] No dom given, however find 'broccoli_tanashi_5_20191008_mavicRGB_15m_M_transparent_mosaic_group1.tif' at current project folder\n" \
-                           "[Init][Pix4D] No dsm given, however find 'broccoli_tanashi_5_20191008_mavicRGB_15m_M_dsm.tif' at current project folder\n"
+                           "[Init][Pix4D] No dsm given, however find 'broccoli_tanashi_5_20191008_mavicRGB_15m_M_dsm.tif' at current project folder\n" \
+                           "[io][geotiff][GeoCorrd] Comprehense [* 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'] to geotiff coordinate tag [WGS 84 / UTM zone 54N]\n" \
+                           "[io][geotiff][GeoCorrd] Comprehense [* 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'] to geotiff coordinate tag [WGS 84 / UTM zone 54N]\n"
 
     coords_exin = external_internal_calc(p4d, center_points, test_photo)
 

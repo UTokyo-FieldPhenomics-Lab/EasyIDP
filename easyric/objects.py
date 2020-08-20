@@ -98,7 +98,7 @@ class Pix4D:
         if '2_densification' in sub_folder:
             dens_folder = f"{self.project_path}/2_densification/point_cloud"
 
-            self.plyfile = self._check_end(dens_folder, '.ply')
+            self.ply_file = self._check_end(dens_folder, '.ply')
 
         self.dom_file = None
         self.dsm_file = None

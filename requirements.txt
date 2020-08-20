@@ -7,8 +7,9 @@ pyproj==2.6.1.post1
 # if run tests
 # pytest==5.4.3
 
-# used external pure python packages
+# used external pure python packages (without installation)
 ## Pyshp (shapefile==2.1.0,url=https://github.com/GeospatialPython/pyshp)
 ## send2trash (send2trash==1.6.0b1, url=https://github.com/arsenetar/send2trash)
 ## ezdxf (exdxf==0.14a3, url=https://github.com/mozman/ezdxf)
 pyparsing>=2.0.1   # ezdxf required
+## plyfile (plyfile==0.7.2, url=https://github.com/dranjan/python-plyfile)

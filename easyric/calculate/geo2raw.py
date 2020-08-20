@@ -176,7 +176,7 @@ def get_img_coords_dict(param, points, method='pmat', distort_correct=True, igno
     return out_dict
 
 
-def get_shp_result(p4d, shp_dict, distort_correct=True, json_path=None):
+def get_shp_result(p4d, shp_dict, method='pmat', distort_correct=True, json_path=None, ignore=None):
     #def get_shp_result(p4d, shp_dict, get_z_by="mean", shp_proj=None, geotiff_proj=None, json_path=None):
     result_dict = {}
     #json_dict = {}
@@ -186,17 +186,14 @@ def get_shp_result(p4d, shp_dict, distort_correct=True, json_path=None):
 
     for shp_key in shp_dict.keys():
         result_dict[shp_key] = {}
-        #json_dict[shp_key] = {}
 
         points = shp_dict[shp_key]
-        for method in ["exin", "pmat"]:
-            result_dict[shp_key][method] = {}
-            #json_dict[shp_key][method] = {}
+        #for method in ["exin", "pmat"]:
+        result_dict[shp_key][method] = {}
 
-            img_coord_dict = get_img_coords_dict(p4d, points - p4d.offset.np, method, distort_correct)
-            for im_name, coord in img_coord_dict.items():
-                result_dict[shp_key][method][im_name] = coord
-                #json_dict[shp_key][method][im_name] = [c.tolist() for c in coord]
+        img_coord_dict = get_img_coords_dict(p4d, points - p4d.offset.np, method, distort_correct, ignore=ignore)
+        for im_name, coord in img_coord_dict.items():
+            result_dict[shp_key][method][im_name] = coord
 
     if json_path:
         json.dict2json(result_dict, json_path)

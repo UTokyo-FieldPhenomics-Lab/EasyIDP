@@ -92,6 +92,17 @@ def get_header(geotiff_path):
 
 
 def get_imarray(geotiff_path, geo_head=None):
+    """
+
+    Parameters
+    ----------
+    geotiff_path
+    geo_head
+
+    Returns
+    -------
+
+    """
     with tifffile.TiffFile(geotiff_path) as tif:
         if geo_head is None:
             geo_head = _prase_header_string(tif.info())

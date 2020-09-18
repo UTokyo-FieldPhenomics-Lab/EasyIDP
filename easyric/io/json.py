@@ -16,9 +16,9 @@ class MyEncoder(json.JSONEncoder):
         else:
             return super(MyEncoder, self).default(obj)
 
-def dict2json(clip_dict, json_path):
+def dict2json(given_dict, json_path):
     if isinstance(json_path, str) and json_path[-5:] == '.json':
         with open(json_path, 'w') as result_file:
-            json.dump(clip_dict, result_file, cls=MyEncoder)
+            json.dump(given_dict, result_file, cls=MyEncoder)
 
             print(f'[io][json] Save Json file -> {os.path.abspath(json_path)}')

@@ -11,12 +11,24 @@ def read_proj(prj_path):
 
     proj = pyproj.CRS.from_wkt(wkt_string)
 
+    if proj.name == 'WGS 84':
+        proj = pyproj.CRS.from_epsg(4326)
+
     return proj
 
 
-def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None):
-    shp = shapefile.Reader(shp_path)
+def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, encoding='utf-8'):
+    shp = shapefile.Reader(shp_path, encoding=encoding)
     shp_dict = {}
+    # read shp file fields
+    shp_fields = {}
+    #for i, l in enumerate(shp.fields):
+    #    if isinstance(l, list):
+    #        shp_fields[l[0]] = i
+    fields = shp.fields[1:]
+    shp_fields = {field[0]:i for i, field in enumerate(fields)}
+
+    print(f'[io][shp][fields] Shp fields: {shp_fields}')
 
     # try to find current projection
     if shp_proj is None:
@@ -30,7 +42,15 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None):
                   f'Please convert projection system manually.')
 
     for i, shape in enumerate(shp.shapes()):
-        plot_name = shp.records()[i][-1]
+        if name_field is None:
+            field_id = -1
+        elif isinstance(name_field, int):
+            field_id = name_field
+        elif isinstance(name_field, str):
+            field_id = shp_fields[name_field]
+        else:
+            raise KeyError(f'Can not find key {name_field} in {shp_fields}')
+        plot_name = shp.records()[i][field_id]
         if isinstance(plot_name, str):
             plot_name = plot_name.replace(r'/', '_')
             plot_name = plot_name.replace(r'\\', '_')

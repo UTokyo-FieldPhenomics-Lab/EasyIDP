@@ -8,7 +8,7 @@ import pandas as pd
 import tifffile as tf
 import matplotlib.pyplot as plt
 from easyric.external import shapefile
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon
 
 class TiffSpliter:
     """
@@ -775,7 +775,7 @@ class TiffSpliter:
                         #print(f"Shifted_x={off_x}\nShifted_y={off_y}")
                         out_dict[tiff_name] = [np.concatenate([off_x[:, None], 
                                                                off_y[:, None]], axis=1)]
-                    else:   # multipolygon
+                    elif isinstance(inter_polygon, MultiPolygon):   # multipolygon
                         poly_list = []
                         for poly in inter_polygon:
                             inter_x, inter_y = poly.exterior.coords.xy
@@ -784,12 +784,14 @@ class TiffSpliter:
                             poly_list.append(np.concatenate([off_x[:, None], 
                                                              off_y[:, None]], axis=1))
                         out_dict[tiff_name] = poly_list
+                    else:  # points others etc.
+                        pass
                 else:
                     continue
                 
         return out_dict
     
-    def exam_crop_polygon_result(self, out_dict, tiff_folder, save_name=False, show=False):
+    def exam_crop_polygon_result(self, out_dict, tiff_folder, save_name=False, show=False, dpi=300, size_rate=1):
         """
         Exam the accuracy of previous out_dict = self.crop_polygon_on_grids()
         not so necessary and current only support square girds
@@ -820,7 +822,7 @@ class TiffSpliter:
         w_num = w_max - w_min + 1
         h_num = h_max - h_min + 1
 
-        fig, ax = plt.subplots(h_num, w_num, figsize=(w_num,h_num), sharex=True, sharey=True)
+        fig, ax = plt.subplots(h_num, w_num, figsize=(w_num * size_rate, h_num * size_rate), sharex=True, sharey=True, dpi=dpi)
 
         for w in range(w_min, w_max+1):
             for h in range(h_min, h_max+1):
@@ -837,8 +839,8 @@ class TiffSpliter:
                 if name in out_dict.keys():
                     ax_temp.plot(*out_dict[name][0].T, 'r')
 
-                    ax_temp.set_xlim(0, 1000)
-                    ax_temp.set_ylim(0, 1000)
+                    ax_temp.set_xlim(0, self.grid_w)
+                    ax_temp.set_ylim(0, self.grid_h)
                     ax_temp.invert_yaxis()
 
                 ax_temp.axes.xaxis.set_ticks([])

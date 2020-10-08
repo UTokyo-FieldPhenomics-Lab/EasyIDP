@@ -2,7 +2,7 @@ import os
 import pyproj
 import numpy as np
 from easyric.external import shapefile
-from easyric.io.geotiff import point_query, mean_values, get_header
+from easyric.io.geotiff import point_query, mean_values, min_values, get_header
 
 
 def read_proj(prj_path):
@@ -115,6 +115,11 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
             shp_dict[k] = coord_np
     elif get_z_by == 'mean':
         z_lists = mean_values(dsm_path, polygon=coord_list, geo_head=tiff_header)
+        for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
+            coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
+            shp_dict[k] = coord_np
+    elif get_z_by == 'min':
+        z_lists = min_values(dsm_path, polygon=coord_list, geo_head=tiff_header)
         for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
             coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
             shp_dict[k] = coord_np

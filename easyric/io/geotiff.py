@@ -226,6 +226,48 @@ def mean_values(geotiff_path, polygon='all', geo_head=None):
     return z_mean
 
 
+def percentile_min(data):
+    return np.nanmean(data[data < np.nanpercentile(data, 5)])
+
+
+def min_values(geotiff_path, polygon='all', geo_head=None):
+    """
+    :param geotiff_path:
+    :param polygon:
+    :param geo_head:
+    :return:
+    """
+    with tifffile.TiffFile(geotiff_path) as tif:
+        # equal to get_header()
+        if geo_head is None:
+            geo_head = _prase_header_string(tif.info())
+        # equal to get_imarray()
+        data = tif.asarray().astype(float)
+        data[data == geo_head['nodata']] = np.nan
+
+        if polygon == 'all':
+            z_min = percentile_min(data)
+        else:
+            if isinstance(polygon, np.ndarray):
+                roi = geo2pixel(polygon, geo_head)   # roi = (horizontal, vertical)
+                # [TODO] only dsm supported
+                imarray, offsets = imarray_clip(data, roi)
+                z_min = percentile_min(imarray)
+            elif isinstance(polygon, list):
+                z_min = []
+                for poly in polygon:
+                    if isinstance(poly, np.ndarray):
+                        roi = geo2pixel(poly, geo_head)
+                        imarray, offsets = imarray_clip(data, roi)
+                        z_min.append(percentile_min(imarray))
+                    else:
+                        raise TypeError('Only numpy.ndarray points itmes in the list are supported')
+            else:
+                raise TypeError('Only numpy.ndarray points list are supported')
+
+    return z_min
+
+
 def geo2pixel(points_hv, geo_head):
     '''
     convert point cloud xyz coordinate to geotiff pixel coordinate (horizontal, vertical)

@@ -6,6 +6,7 @@ from skimage.io import imsave
 
 
 def shp_clip_geotiff(shp_path, geotiff_path, out_folder, refresh_folder=False, shp_proj=None, geotiff_proj=None):
+    # [Todo] Export DSM still uint8 loss many accuracy
     if geotiff_proj is None:
         header = geotiff.get_header(geotiff_path)
         shp_dict = shp.read_shp2d(shp_path, shp_proj=shp_proj, geotiff_proj=header['proj'])

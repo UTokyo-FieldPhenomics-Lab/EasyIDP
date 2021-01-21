@@ -147,14 +147,22 @@ class TiffSpliter:
         
         return (w_order, h_order)
     
-    @staticmethod
-    def id2name(w_id, h_id):
+
+    def id2name(self, w_id, h_id):
+        digit_w = len(str(len(self.wgrid_st)))
+        digit_h = len(str(len(self.hgrid_st)))
+        # >>> '{0:04}'.format(1)
+        # 0001
+        # >>> f"{{0:0{3}}}"
+        # '{0:03}'
+        w_id = f"{{0:0{digit_w}}}".format(w_id)
+        h_id = f"{{0:0{digit_h}}}".format(h_id)
         return f'grid_x{w_id}_y{h_id}.tif'
     
     @staticmethod
     def name2id(tiffname):
         _, w_id, h_id, _ = re.split('grid_x|_y|.tif', tiffname)
-        return w_id, h_id
+        return int(w_id), int(h_id)
     
     def pixel2geo(self, points_hv):
         """
@@ -823,8 +831,8 @@ class TiffSpliter:
         hid_list = []
         for name in out_dict.keys():
             wid, hid = self.name2id(name)
-            wid_list.append(int(wid))
-            hid_list.append(int(hid))
+            wid_list.append(wid)
+            hid_list.append(hid)
 
         w_min, w_max = min(wid_list), max(wid_list)
         h_min, h_max = min(hid_list), max(hid_list)

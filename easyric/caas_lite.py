@@ -34,7 +34,7 @@ class TiffSpliter:
     ###############################################################
     """
     
-    def __init__(self, tif_path, grid_w, grid_h, extend=False):
+    def __init__(self, tif_path, grid_w, grid_h, extend=False, grid_buffer=0):
         """
         Parameters
         ----------
@@ -52,6 +52,7 @@ class TiffSpliter:
         """
         self.grid_h = grid_h
         self.grid_w = grid_w
+        self.grid_buffer = grid_buffer
         self.tif_path = tif_path
         self.extend = extend
         self.save_folder = '.'
@@ -113,7 +114,7 @@ class TiffSpliter:
 
         self.wgrid_len = np.ones(len(self.wgrid_st), dtype=np.uint) * self.grid_w
         self.hgrid_len = np.ones(len(self.hgrid_st), dtype=np.uint) * self.grid_h
-        
+
         # the last grid is not full grid, change the length
         if self.img_w % self.grid_w != 0:
             self.wgrid_len[-1] = self.img_w - self.wgrid_st[-1] - 1
@@ -446,26 +447,35 @@ class TiffSpliter:
         
         w_st = self.wgrid_st[w_id]
         h_st = self.hgrid_st[h_id]
-        w = self.wgrid_len[w_id]
-        h = self.hgrid_len[h_id]
+        w = self.wgrid_len[w_id] + self.grid_buffer
+        h = self.hgrid_len[h_id] + self.grid_buffer
+
+        if w_st + w > self.img_w:
+            w = self.img_w - w_st - 1
+        if h_st + h > self.img_h:
+            h = self.img_h - h_st - 1
+
         img_clip = self.get_crop(page, i0=h_st, j0=w_st, h=h, w=w)
         _, _, n = img_clip.shape
         
         if skip_empty and self.is_empty_image(img_clip):
             return False
         
-        if w < self.grid_w or h < self.grid_h:
+        if w < (self.grid_w + self.grid_buffer) or h < (self.grid_h + self.grid_buffer):
             need_extend = True
         else:
             need_extend = False
         
         if extend and need_extend:
             if self.img_band_num == 3 or self.img_band_num == 4:
-                img_new = self._make_empty_container(self.grid_h, self.grid_w, 4)
+                img_new = self._make_empty_container(self.grid_h + self.grid_buffer, 
+                                                     self.grid_w + self.grid_buffer, 
+                                                     4)
                 img_new[0:h, 0:w, 3] = 255
                 img_new[0:h, 0:w, 0:n] = img_clip
             else:
-                img_new = self._make_empty_container(self.grid_h, self.grid_w)
+                img_new = self._make_empty_container(self.grid_h + self.grid_buffer, 
+                                                     self.grid_w + self.grid_buffer)
                 img_new[0:h, 0:w,:] = img_clip
         else:
             img_new = img_clip
@@ -550,7 +560,7 @@ class TiffSpliter:
                 current = w_id * w_len + h_id + 1
                 percent = np.floor(current / total * 100)
                 if percent > pre_stage:
-                    print(f"{percent} % done", end='\r')
+                    print(f"{tiff_name} | {percent} % done", end='\r')
                     pre_stage = np.copy(percent)
 
         tif.close()

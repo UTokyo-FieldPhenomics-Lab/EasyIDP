@@ -148,7 +148,7 @@ class TiffSpliter:
         return (w_order, h_order)
     
 
-    def id2name(self, w_id, h_id):
+    def id2name(self, w_id, h_id, format='tif'):
         digit_w = len(str(len(self.wgrid_st)))
         digit_h = len(str(len(self.hgrid_st)))
         # >>> '{0:04}'.format(1)
@@ -157,11 +157,11 @@ class TiffSpliter:
         # '{0:03}'
         w_id = f"{{0:0{digit_w}}}".format(w_id)
         h_id = f"{{0:0{digit_h}}}".format(h_id)
-        return f'grid_x{w_id}_y{h_id}.tif'
+        return f'grid_x{w_id}_y{h_id}.{format}'
     
     @staticmethod
-    def name2id(tiffname):
-        _, w_id, h_id, _ = re.split('grid_x|_y|.tif', tiffname)
+    def name2id(tiffname, format='tif'):
+        _, w_id, h_id, _ = re.split('grid_x|_y|.{format}', tiffname)
         return int(w_id), int(h_id)
     
     def pixel2geo(self, points_hv):
@@ -487,45 +487,57 @@ class TiffSpliter:
                 img_new[0:h, 0:w,:] = img_clip
         else:
             img_new = img_clip
+
+        format = save_path.split('.')[-1]
             
-        # prepare geotiff tags
-        ## pixel2geo need points_hv
-        geo_corner = self.pixel2geo(np.asarray([[w_st, h_st]]))
-        geo_x = geo_corner[0, 0]
-        geo_y = geo_corner[0, 1]
+        if format == 'tif':
+            # prepare geotiff tags
+            ## pixel2geo need points_hv
+            geo_corner = self.pixel2geo(np.asarray([[w_st, h_st]]))
+            geo_x = geo_corner[0, 0]
+            geo_y = geo_corner[0, 1]
 
-        container = []
-        for k in page.tags.keys():
-            if k < 30000:
-                continue
+            container = []
+            for k in page.tags.keys():
+                if k < 30000:
+                    continue
 
-            t = page.tags[k]
-            if t.dtype[0] == '1':
-                dtype = t.dtype[-1]
-            else:
-                dtype = t.dtype
+                t = page.tags[k]
+                if t.dtype[0] == '1':
+                    dtype = t.dtype[-1]
+                else:
+                    dtype = t.dtype
 
-            if k == 33922:
-                value = (0, 0, 0, geo_x, geo_y, 0)
-            else:
-                value = t.value
+                if k == 33922:
+                    value = (0, 0, 0, geo_x, geo_y, 0)
+                else:
+                    value = t.value
 
-            container.append((t.code, dtype, t.count, value, True))
+                container.append((t.code, dtype, t.count, value, True))
 
-        # write to file
-        with tf.TiffWriter(save_path) as wtif:
-            wtif.save(data=img_new, software='sigmameow', 
-                      photometric=page.photometric, 
-                      planarconfig=page.planarconfig, 
-                      compress=page.compression, 
-                      resolution=page.tags[33550].value[0:2], extratags=container)
+            # write to file
+            with tf.TiffWriter(save_path) as wtif:
+                wtif.save(data=img_new, software='sigmameow', 
+                        photometric=page.photometric, 
+                        planarconfig=page.planarconfig, 
+                        compress=page.compression, 
+                        resolution=page.tags[33550].value[0:2], extratags=container)
+
+        elif format == "png":
+            plt.imsave(save_path, img_new)
+
+        elif format == "jpg":
+            # jpg does not support transparent layer
+            plt.imsave(save_path, img_new[:,:,0:3])
+        else:
+            raise TypeError("Only 'tif', 'png', 'jpg' are supported")
             
         if not page_given:
             tif.close()
             
         return True
     
-    def save_all_grids(self, save_folder, extend=False, skip_empty=True):
+    def save_all_grids(self, save_folder, extend=False, skip_empty=True, format='tif'):
         """
         Save all grid to geotiff tile
         
@@ -535,6 +547,8 @@ class TiffSpliter:
             the folder path that save those grid geotiff files
         ingore_empty: bool
             determine whether ignore those image with nodata (or white background)
+        format: str
+            the format of saved file, option: "geotiff", "jpg", "png"
         
         Returns
         -------
@@ -557,18 +571,18 @@ class TiffSpliter:
         pre_stage = 0   # percent
         for w_id, w_st in enumerate(self.wgrid_st):
             for h_id, h_st in enumerate(self.hgrid_st):
-                tiff_name = self.id2name(w_id=w_id, h_id=h_id)  #'grid_x{w_id}_y{h_id}.tif'
-                tiff_path = os.path.join(save_folder, tiff_name)
+                img_name = self.id2name(w_id=w_id, h_id=h_id, format=format)  # e.g.: 'grid_x{w_id}_y{h_id}.tif'
+                tiff_path = os.path.join(save_folder, img_name)
                 status = self.save_one_grid(tiff_path, page=page, w_id=w_id, h_id=h_id, extend=extend, skip_empty=skip_empty)
                 
                 if not status:
-                    ignored_grid_list.append(tiff_name)
+                    ignored_grid_list.append(img_name)
                     
                 # progress bar
                 current = w_id * w_len + h_id + 1
                 percent = np.floor(current / total * 100)
                 if percent > pre_stage:
-                    print(f"{tiff_name} | {percent} % done", end='\r')
+                    print(f"{img_name} | {percent} % done", end='\r')
                     pre_stage = np.copy(percent)
 
         tif.close()
@@ -782,7 +796,7 @@ class TiffSpliter:
                 grid_polygon = self.get_grid_polygon(h_id=h_id, w_id=w_id)
                 offset = np.asarray([self.wgrid_st[w_id], self.hgrid_st[h_id]])
                 if grid_polygon.intersects(given_polygon):
-                    tiff_name = self.id2name(w_id=w_id, h_id=h_id)   # f'grid_x{w_id}_y{h_id}.tif'
+                    img_name = self.id2name(w_id=w_id, h_id=h_id)   # f'grid_x{w_id}_y{h_id}.tif'
                     inter_polygon = grid_polygon.intersection(given_polygon)
                     # judge clippped to one polygon or more polygons
                     if isinstance(inter_polygon, Polygon):
@@ -791,7 +805,7 @@ class TiffSpliter:
                         off_x = inter_x - self.wgrid_st[w_id]
                         off_y = inter_y - self.hgrid_st[h_id]
                         #print(f"Shifted_x={off_x}\nShifted_y={off_y}")
-                        out_dict[tiff_name] = [np.concatenate([off_x[:, None], 
+                        out_dict[img_name] = [np.concatenate([off_x[:, None], 
                                                                off_y[:, None]], axis=1)]
                     elif isinstance(inter_polygon, MultiPolygon):   # multipolygon
                         poly_list = []
@@ -801,7 +815,7 @@ class TiffSpliter:
                             off_y = inter_y - self.hgrid_st[h_id]
                             poly_list.append(np.concatenate([off_x[:, None], 
                                                              off_y[:, None]], axis=1))
-                        out_dict[tiff_name] = poly_list
+                        out_dict[img_name] = poly_list
                     else:  # points others etc.
                         pass
                 else:
@@ -847,9 +861,9 @@ class TiffSpliter:
                 ax_temp = ax[h-h_min, w-w_min]
                 
                 name = self.id2name(w_id=w, h_id=h)   # f"grid_x{w}_y{h}.tif"
-                tiff_name = os.path.join(tiff_folder, name)
+                img_name = os.path.join(tiff_folder, name)
                 
-                with tf.TiffFile(tiff_name) as tif:
+                with tf.TiffFile(img_name) as tif:
                     img_nd = tif.asarray()
                     
                 ax_temp.imshow(img_nd)
@@ -1034,20 +1048,20 @@ class TiffSpliter:
         """
         total_dict = {}
         for i in range(len(grid_tagged)):
-            tiff_name = grid_tagged.loc[i]['grid_name']
+            img_name = grid_tagged.loc[i]['grid_name']
             poly = grid_tagged.loc[i]['polygon_list']
             tag = grid_tagged.loc[i]['tag']
             
-            if tiff_name not in total_dict.keys():
+            if img_name not in total_dict.keys():
                 single_dict = {"version": "4.5.6", 
                                "flags": {},
-                               "imagePath": tiff_name,
+                               "imagePath": img_name,
                                "imageHeight": 1000,
                                "imageWidth": 1000,
                                "imageData": None,
                                "shapes": []}
             else:
-                single_dict = total_dict[tiff_name]
+                single_dict = total_dict[img_name]
                 
             for item in poly:
                 single_item = {"label": tag,
@@ -1057,7 +1071,7 @@ class TiffSpliter:
                                "points": item.tolist()}
                 single_dict['shapes'].append(single_item)
                 
-            total_dict[tiff_name] = single_dict
+            total_dict[img_name] = single_dict
             
         # after iter all items
         for k, d in total_dict.items():

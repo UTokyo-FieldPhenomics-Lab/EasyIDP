@@ -24,6 +24,6 @@ EasyIDP (Easy Intermediate Data Processor), A tool to build a bridge from struct
 
 ---
 
-Called **EasyRIC** during inner developing (package `easyric`), the folder `easyidp` is currently under base reconstruction.
+Called **EasyRIC** during inner developing (package `easyric`), the folder `easyidp` is currently under heavy reconstruction, thus do not use it in productive codes. However, playing with it is totally welcome now.
 
-> 在内部测试期间的曾用名是**EasyRIC**(对应`easyric`文件夹)，最新的`easyidp`文件夹正在进行底层重构中
+> 在内部测试期间的曾用名是**EasyRIC**(对应`easyric`文件夹)，最新的`easyidp`文件夹正在进行频繁的重构中, 因此不要把它使用在生产环境里，但是很欢迎“玩”一下这个包

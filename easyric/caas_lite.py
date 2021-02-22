@@ -160,8 +160,8 @@ class TiffSpliter:
         return f'grid_x{w_id}_y{h_id}.{format}'
     
     @staticmethod
-    def name2id(tiffname, format='tif'):
-        _, w_id, h_id, _ = re.split('grid_x|_y|.{format}', tiffname)
+    def name2id(grid_name, format='tif'):
+        _, w_id, h_id, _ = re.split(f'grid_x|_y|.{format}', grid_name)
         return int(w_id), int(h_id)
     
     def pixel2geo(self, points_hv):
@@ -569,6 +569,7 @@ class TiffSpliter:
         h_len = len(self.hgrid_len)
         total = w_len * h_len
         pre_stage = 0   # percent
+        current = 0
         for w_id, w_st in enumerate(self.wgrid_st):
             for h_id, h_st in enumerate(self.hgrid_st):
                 img_name = self.id2name(w_id=w_id, h_id=h_id, format=format)  # e.g.: 'grid_x{w_id}_y{h_id}.tif'
@@ -579,7 +580,7 @@ class TiffSpliter:
                     ignored_grid_list.append(img_name)
                     
                 # progress bar
-                current = w_id * w_len + h_id + 1
+                current += 1
                 percent = np.floor(current / total * 100)
                 if percent > pre_stage:
                     print(f"{img_name} | {percent} % done", end='\r')

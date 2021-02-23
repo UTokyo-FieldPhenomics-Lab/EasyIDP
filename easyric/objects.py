@@ -10,21 +10,24 @@ from easyric.calculate import geo2raw, geo2tiff, raw2raw
 
 class Pix4D:
 
-    def __init__(self, project_path, raw_img_path, project_name=None,
+    def __init__(self, project_path, raw_img_path=None, project_name=None,
                  param_folder=None, dom_path=None, dsm_path=None, ply_path=None):
 
         ######################
         # Project Attributes #
         ######################
         self.project_path = self._get_full_path(project_path)
+        sub_folder = os.listdir(self.project_path)
+
         if project_name is None:
             self.project_name = os.path.basename(self.project_path)
         else:
             self.project_name = project_name
 
-        self.raw_img_path = os.path.normpath(raw_img_path)
-
-        sub_folder = os.listdir(self.project_path)
+        if raw_img_path is not None:
+            self.raw_img_path = os.path.normpath(raw_img_path)
+        else:
+            self.raw_img_path = None
 
         #################
         # Project Files #
@@ -93,6 +96,13 @@ class Pix4D:
         self.pmat_file = f"{self.project_path}/1_initial/params/{self.project_name}_pmatrix.txt"
         self.cicp_file = f"{self.project_path}/1_initial/params/{self.project_name}_pix4d_calibrated_internal_camera_parameters.cam"
         self.ccp_file = f"{self.project_path}/1_initial/params/{self.project_name}_calibrated_camera_parameters.txt"
+
+        if self.raw_img_path is None:
+            undistorted_path = f"{self.project_path}/1_initial/images/undistorted_images"
+            if os.path.exists(undistorted_path):
+                self.raw_img_path = undistorted_path
+            else:
+                raise FileNotFoundError("raw image file not given, and could not find undistorted images outputs in Pix4D project")
 
         self.ply_file = None
         if '2_densification' in sub_folder:
@@ -231,12 +241,18 @@ class ImageSet:
         # container for external camera parameters for all raw images
         self.names = list(ccp_dict.keys())
         self.img = []
-        for img_name in self.names:
-            temp = copy(ccp_dict[img_name])
-            temp['name'] = img_name
-            temp['pmat'] = pmat_dict[img_name]
-            temp['path'] = f"{img_path}/{img_name}"
-            self.img.append(Image(**temp))
+        
+        # in case the img_path has subfolders
+        for fpathe, dirs, fs in os.walk(img_path):
+            for f in fs:
+                full_path = os.path.join(fpathe,f)
+                if f in self.names:
+                    # f is img_name
+                    temp = copy(ccp_dict[f])
+                    temp['name'] = f
+                    temp['pmat'] = pmat_dict[f]
+                    temp['path'] = full_path
+                    self.img.append(Image(**temp))
 
     def __getitem__(self, key):
         if isinstance(key, int):  # index by photo name

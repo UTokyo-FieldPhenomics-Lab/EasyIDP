@@ -583,7 +583,9 @@ class TiffSpliter:
                 current += 1
                 percent = np.floor(current / total * 100)
                 if percent > pre_stage:
-                    print(f"{img_name} | {percent} % done", end='\r')
+                    time_used = round(time.time() - st)
+                    time_left = round(time_used / percent * (100 - percent))
+                    print(f"{img_name} | {percent} % done | {time_used} s passed, {time_left} s left", end='\r')
                     pre_stage = np.copy(percent)
 
         tif.close()

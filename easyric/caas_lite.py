@@ -585,11 +585,11 @@ class TiffSpliter:
                 if percent > pre_stage:
                     time_used = round(time.time() - st)
                     time_left = round(time_used / percent * (100 - percent))
-                    print(f"{img_name} | {percent} % done | {time_used} s passed, {time_left} s left", end='\r')
+                    print(f"{img_name} | {percent} % done | {time_used} s passed, {time_left} s left    ", end='\r')
                     pre_stage = np.copy(percent)
 
         tif.close()
-        print(f"Cost {round(time.time() - st)} s in total")
+        print(f"\nCost {round(time.time() - st)} s in total")
         
         return ignored_grid_list
     

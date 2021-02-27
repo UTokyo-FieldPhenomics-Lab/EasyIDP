@@ -1,9 +1,9 @@
 ![](https://github.com/HowcanoeWang/EasyIDP/wiki/static/easyidp_head.svg)
 
 <p align="center">
-  <img alt="GitHub code size in bytes" src="https://img.shields.io/github/languages/code-size/HowcanoeWang/EasyIDP?style=plastic">
-  <img alt="GitHub" src="https://img.shields.io/github/license/HowcanoeWang/EasyIDP?style=plastic">
-  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/HowcanoeWang/EasyIDP?style=plastic">
+  <img alt="GitHub code size in bytes" src="https://img.shields.io/github/languages/code-size/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
+  <img alt="GitHub" src="https://img.shields.io/github/license/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
+  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
 </p>
 
 

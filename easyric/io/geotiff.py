@@ -33,6 +33,20 @@ def _get_header_string(geotiff_path):
         * 34735 geo_key_directory (32H) (1, 1, 0, 7, 1024, 0, 1, 1, 1025, 0, 1, 1, 1026
         * 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'
         * 42113 gdal_nodata (7s) b'-10000'
+
+        ====================
+        but in some case, it will has some series like:
+
+        Series 1: 3107x3989, float32, YX, 1 pages, not mem-mappable
+
+        Page 1: 3107x3989, float32, 32 bit, minisblack, lzw, reduced|tiled
+        * 254 new_subfile_type (1I) 1
+        * 256 image_width (1H) 3989
+        * 257 image_length (1H) 3107
+        * 258 bits_per_sample (1H) 32
+        * 259 compression (1H) 5
+        * 262 photometric (1H) 1
+        ...
         '''
         return tif.info()
 
@@ -41,6 +55,10 @@ def _prase_header_string(geotiff_string):
     header = {'width': None, 'length': None, 'scale': None, 'tie_point': None, 'nodata': None, 'proj': None}
 
     for line in geotiff_string.split('\n'):
+        # just load page 0 contents
+        if "Series 1" in line:
+            break
+
         if '*' in line:
             line_sp = line.split(' ')
             code = line_sp[1]
@@ -63,7 +81,11 @@ def _prase_header_string(geotiff_string):
             elif code == '34737':
                 # * 34737 geo_ascii_params (30s) b'WGS 84 / UTM zone 54N|WGS 84|'
                 # * 34737 geo_ascii_params (7s) b'WGS-84'
-                bstring = line.split('34737')[-1].split(") b'")[-1].split('|')[0]
+                # * 34737 geo_ascii_params (30s) b'WGS 84|WGS 84 / UTM zone 54N|'
+                bstring = max(line.split('34737')[-1].split(") b'")[-1].split('|'), key=len)
+                #bstring = line.split('34737')[-1].split(") b'")[-1].split('|')[0]
+                # in WGS 84|WGS 84 / UTM zone 54N| -> WGS 84, will give a wrong result, so pick the longest string instead
+                # url: https://www.kite.com/python/answers/how-to-find-the-longest-string-in-a-list-in-python
                 print(f'[io][geotiff][GeoCorrd] Comprehense [{line}] to geotiff coordinate tag [{bstring}]')
                 try:
                     proj = pyproj.CRS.from_string(bstring)

@@ -245,6 +245,7 @@ class TiffSpliter:
             TIFF image file directory (IFD) from which the crop must be extracted.
         i0, j0: int
             Coordinates of the top left corner of the desired crop.
+            i0 = h_st, j0 = w_st
         h: int
             Desired crop height.
         w: int

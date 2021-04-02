@@ -1,0 +1,1 @@
+from easyidp.io.tests import test

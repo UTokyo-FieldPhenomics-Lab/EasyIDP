@@ -7,3 +7,4 @@ example/hasu_out/*
 easyric/tests/out/*
 easyric/tests/file/*
 docs/build/*
+*.DS_Store

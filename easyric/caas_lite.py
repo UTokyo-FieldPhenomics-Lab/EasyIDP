@@ -256,6 +256,15 @@ class TiffSpliter:
         out : ndarray of shape (h, w, sampleperpixel)
             Extracted crop.""
         """
+        if not isinstance(h, int) or not isinstance(h, np.int):
+            print(f"change 'h' {h} to integer ", end="")
+            h = int(h)
+            print(h)
+        if not isinstance(w, int) or not isinstance(w, np.int):
+            print(f"change 'w' {w} to integer ", end="")
+            w = int(w)
+            print(w)
+
         if page.is_tiled:
             out = self._get_tiled_crop(page, i0, j0, h, w)
         else:

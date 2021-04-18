@@ -513,7 +513,7 @@ class TiffSpliter:
                     continue
 
                 t = page.tags[k]
-                if t.dtype[0] == '1':
+                if tf.__version__ < "2020.11.26" and t.dtype[0] == '1':
                     dtype = t.dtype[-1]
                 else:
                     dtype = t.dtype

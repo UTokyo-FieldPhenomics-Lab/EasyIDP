@@ -1,5 +1,5 @@
 from easyidp import (
-    io
+    core, io
 )
 
 import os

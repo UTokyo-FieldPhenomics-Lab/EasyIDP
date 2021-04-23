@@ -1,15 +1,16 @@
-"""Lite version of Metashape python API
-
-Notes
------
-This module is a lite version of the Metashape Python API which reads
-data directly from project xml files without Metashape Pro installed.
-This module is used to getting necessary data for reverse calculation.
-"""
 import os
 
+class MetaShape:
+    """Lite version of Metashape python API
 
-class Document:
+    Notes
+    -----
+    This module is a lite version of the Metashape Python API which reads
+    data directly from project xml files without Metashape Pro installed.
+    This module is used to getting necessary data for reverse calculation.
+
+    It equals to Metashape API -> Metashape.Document
+    """
 
     def __init__(self, print_progress=False):
         self.print_progress = print_progress
@@ -39,30 +40,12 @@ class Document:
         self.path = path
         self.project_name = project_name
 
-        data_folder = os.path.join(folder_path, project_name+".files")
+        data_folder = os.path.join(folder_path, project_name + ".files")
         if not os.path.exists(data_folder):
             raise FileNotFoundError(f"Could not find Metashape project file [{data_folder}]")
 
 
-class Camera:
-
-    def __init__(self):
-        pass
-
-
-class Calibration:
-
-    def __init__(self):
-        pass
-
-
-class Chunk:
-
-    def __init__(self):
-        pass
-
-
-class Sensor:
+class Pix4D:
 
     def __init__(self):
         pass

@@ -3,7 +3,7 @@ import sys
 import subprocess
 import easyidp
 
-module_path = os.path.join(easyidp.__path__[0], "core/tests")
+module_path = os.path.join(easyidp.__path__[0], "io/tests")
 
 
 def test():

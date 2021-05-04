@@ -8,7 +8,7 @@ module_path = os.path.join(easyidp.__path__[0], "core/tests")
 
 def test():
     try:
-        subprocess.check_call(f"pytest {module_path}",
+        subprocess.check_call(f"pytest {module_path} -s",
                               shell=True,
                               stdout=sys.stdout,
                               stderr=subprocess.STDOUT)

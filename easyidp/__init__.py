@@ -9,7 +9,7 @@ import subprocess
 
 def test():
     try:
-        subprocess.check_call(f"pytest {__path__[0]}",
+        subprocess.check_call(f"pytest {__path__[0]} -s",
                               shell=True,
                               stdout=sys.stdout,
                               stderr=subprocess.STDOUT)

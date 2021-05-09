@@ -2,6 +2,9 @@ import numpy as np
 
 
 class ReconsProject:
+    """
+    Equals to each individual Pix4D project & each chunk in Metashape project
+    """
 
     def __init__(self, software="metashape"):
         """
@@ -31,10 +34,16 @@ class ReconsProject:
         # invm.mulp(local_vec) --> transform chunk local coord to world coord(if you handle vec in local coord)
         # how to calculate from xml data:
         # https://www.agisoft.com/forum/index.php?topic=6176.0
-        self.transform = None    # np.zeros((4,4))
-        self.transform_rotation = None
-        self.transform_translation = None
-        self.transform_scale = None
+        self.transform = MetashapeChunkTransform()
+
+
+class MetashapeChunkTransform:
+
+    def __init__(self):
+        self.matrix = None
+        self.rotation = None
+        self.translation = None
+        self.scale = None
 
 
 class Sensor:
@@ -115,7 +124,8 @@ class Photo:
         self.transform = None     # 4x4 matrix describing photo location in the chunk coordinate system
         self.translation = None   # np.zeros(3)
 
-        # meta info
+        # meta info, not necessary in current version
+        # todo: support reading these meta info
         self.time = ""
         self.gps = {"altitude": 0.0, "latitude": 0.0, "longitude": 0.0}
         self.xyz = {"X": 0, "Y": 0, "Z": 0}

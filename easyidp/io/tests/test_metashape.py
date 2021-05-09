@@ -88,7 +88,7 @@ def test_decode_chunk_xml():
                                 [0.06972335119280451, 0.4433439089416722, 0.7458931501276138, 1.8591092785011023],
                                 [-0.058483248465068666, 0.7489967755063389, -0.43972184234423906, -0.1835614955366731],
                                 [0.0, 0.0, 0.0, 1.0]])
-    np.testing.assert_array_almost_equal(test_proj.transform, ans_chunk_tsf, decimal=12)
+    np.testing.assert_array_almost_equal(test_proj.transform.matrix, ans_chunk_tsf, decimal=12)
 
     # test read sensor meta
     assert test_proj.sensors[0].idx == 0

@@ -1,5 +1,6 @@
 from easyidp.core.objects import (
     Calibration,
+    MetashapeChunkTransform,
     GeoTiff,
     Image,
     Photo,

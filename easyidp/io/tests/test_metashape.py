@@ -75,7 +75,7 @@ def test_decode_chunk_xml():
     test_project_folder = easyidp.test_full_path("data/metashape")
     test_project_name = "goya_test"
     xml_str = metashape._get_chunk_zip_xml(test_project_folder, test_project_name, chunk_id=0)
-    test_proj = metashape._decode_chunk_xml(xml_str)
+    test_proj, _ = metashape._decode_chunk_xml(xml_str)
 
     # test read chunk meta
     assert test_proj.label == "Chunk 1"
@@ -129,3 +129,15 @@ def test_decode_chunk_xml():
     assert test_proj.photos[254].transform is None
     assert test_proj.photos[255].rotation is None
     assert test_proj.photos[256].translation is None
+
+
+def test_open_project():
+    test_project_folder = easyidp.test_full_path("data/metashape")
+    chunks = metashape.open_project(test_project_folder)
+
+    assert chunks is None
+
+    test_project_folder = easyidp.test_full_path("data/metashape/goya_test.psx")
+    chunks = metashape.open_project(test_project_folder)
+
+    assert len(chunks) == 1

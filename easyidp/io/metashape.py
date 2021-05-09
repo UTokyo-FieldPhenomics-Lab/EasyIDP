@@ -21,6 +21,7 @@ def open_project(path: str):
                 * _decode_calibration_tag()
             * _decode_camera_tag()
             * _decode_frame_tag()
+                * _get_frame_zip_xml()
                 * _decode_frame_xml()
 
     Parameters
@@ -35,9 +36,22 @@ def open_project(path: str):
     if _check_is_software(path):
         folder_path, project_name, ext = _split_project_path(path)
         project_xml_str = _get_project_zip_xml(folder_path, project_name)
-        chunk_dict = _get_chunk_ids_from_xml()
+        chunk_dict = _get_chunk_ids_from_xml(project_xml_str)
+        chunk_list = []
         for chunk_id in chunk_dict.keys():
             chunk_xml_str = _get_chunk_zip_xml(folder_path, project_name, chunk_id=chunk_id)
+            recons_proj, frame_path_dict = _decode_chunk_xml(chunk_xml_str)
+            for frame_path in frame_path_dict.values():
+                frame_xml_str = _get_frame_zip_xml(folder_path, project_name, chunk_id=chunk_id, frame_path=frame_path)
+                camera_meta, marker_meta = _decode_frame_xml(frame_xml_str)
+                for camera_idx, camera_path in camera_meta.items():
+                    recons_proj.photos[camera_idx].path = camera_path
+
+            chunk_list.append(recons_proj)
+
+        return chunk_list
+    else:
+        return None
 
 
 def _split_project_path(path: str):
@@ -285,12 +299,15 @@ def _decode_chunk_xml(xml_str):
         camera = _decode_camera_tag(camera_tag)
         recons_proj.photos[camera.idx] = camera
 
+    frame_path_dict = {}
     for frame_tag in xml_tree.findall("./frames/frame"):
-        pass
+        frame_zip_idx = frame_tag.attrib["id"]
+        frame_zip_path = frame_tag.attrib["path"]
+        frame_path_dict[frame_zip_idx] = frame_zip_path
 
-    crs_str = xml_tree.findall("./reference")[0].text
+    recons_proj.crs_str = xml_tree.findall("./reference")[0].text
 
-    return recons_proj
+    return recons_proj, frame_path_dict
 
 
 def _decode_chunk_transform_tag(xml_obj):
@@ -302,7 +319,7 @@ def _decode_chunk_transform_tag(xml_obj):
 
         <transform>
           <rotation locked="false">-9.9452052163852955e-01 ...  -5.0513659345945017e-01</rotation>  // 9 numbers
-          <translation locked="false">7.6503412293334154e+00 1.8591092785011023e+00 -1.8356149553667311e-01</translation>
+          <translation locked="false">7.6503412293334154e+00 ... -1.8356149553667311e-01</translation>   // 3 numbers
           <scale locked="true">8.7050086657310788e-01</scale>
         </transform>
 
@@ -441,6 +458,7 @@ def _decode_calibration_tag(xml_obj):
 
     return calibration
 
+
 def _decode_camera_tag(xml_obj):
     """
     Parameters
@@ -560,4 +578,14 @@ def _decode_frame_xml(xml_str):
     -------
 
     """
-    pass
+    camera_meta = {}
+    marker_meta = {}
+
+    xml_tree = ElementTree.fromstring(xml_str)
+
+    for camera_tag in xml_tree.findall("./cameras/camera"):
+        camera_idx = int(camera_tag.attrib["camera_id"])
+        camera_path = camera_tag[0].attrib["path"]
+        camera_meta[camera_idx] = camera_path
+
+    return camera_meta, marker_meta

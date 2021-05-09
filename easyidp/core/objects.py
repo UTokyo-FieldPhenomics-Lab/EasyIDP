@@ -36,6 +36,8 @@ class ReconsProject:
         # https://www.agisoft.com/forum/index.php?topic=6176.0
         self.transform = MetashapeChunkTransform()
 
+        self.crs_str = ""
+
 
 class MetashapeChunkTransform:
 

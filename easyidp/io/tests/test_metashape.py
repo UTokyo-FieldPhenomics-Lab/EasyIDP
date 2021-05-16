@@ -1,7 +1,8 @@
 import os
+import pyproj
+import numpy as np
 import easyidp
 from easyidp.io import metashape
-import numpy as np
 
 
 def test_split_project_path():
@@ -129,6 +130,21 @@ def test_decode_chunk_xml():
     assert test_proj.photos[254].transform is None
     assert test_proj.photos[255].rotation is None
     assert test_proj.photos[256].translation is None
+
+
+def test_decode_crs():
+    test_local_crs = easyidp.test_full_path("data/metashape/goya_test.psx")
+    test_wgs84_crs = easyidp.test_full_path("data/metashape/wheat_tanashi.psx")
+
+    chunk_local = metashape.open_project(test_local_crs)
+    chunk_wgs84 = metashape.open_project(test_wgs84_crs)
+
+    assert chunk_local[0].crs == pyproj.CRS.from_dict({"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'})
+
+    epsg_4326 = pyproj.CRS.from_epsg(4326)
+    assert chunk_wgs84[0].crs.name == epsg_4326.name
+    assert chunk_wgs84[0].crs.datum == epsg_4326.datum
+    assert chunk_wgs84[0].crs.ellipsoid == epsg_4326.ellipsoid
 
 
 def test_open_project():

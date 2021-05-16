@@ -1,9 +1,23 @@
+import pandas as pd
+import pyproj
 import numpy as np
-from easyidp.core.math import apply_transform
+from easyidp.core.math import apply_transform_matrix, apply_transform_crs
+
 
 class ReconsProject:
     """
     Equals to each individual Pix4D project & each chunk in Metashape project
+
+    Coordinate systems used:
+    internal   coordinate (local)
+        the coordinate used in current chunk, often the center of model as initial point
+    geocentric coordinate (world)
+        use the earth's core as initial point, also called world coordinate
+    geographic coordinate (crs):
+        coordinate reference system (CRS) to locate geographical entities. Common used:
+        WGS84 (EPSG: 4326)  | xyz = longitude, latitude, altitude
+        WGS84/ UTM Zone xxx | e.g. UTM Zone 54N -> Tokyo area.
+        ...
     """
 
     def __init__(self, software="metashape"):
@@ -36,74 +50,61 @@ class ReconsProject:
         # https://www.agisoft.com/forum/index.php?topic=6176.0
         self.transform = MetashapeChunkTransform()
 
-        self.crs_str = ""
+        self.world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
+        self.crs = None
 
+    def local2world(self, points_df):
+        return apply_transform_matrix(self.transform.matrix, points_df)
 
-    def world2local(self, points_np):
-        return apply_transform(self.transform.matrix, points_np)
-
-
-    def local2world(self, points_np):
+    def world2local(self, points_df):
         if self.transform.matrix_inv is None:
             self.transform.matrix_inv = np.linalg.inv(self.transform.matrix)
 
-        return apply_transform(self.transform.matrix_inv, points_np)
+        return apply_transform_matrix(self.transform.matrix_inv, points_df)
 
+    def world2crs(self, points_df):
+        return apply_transform_crs(self.world_crs, self.crs, points_df)
 
-    def project_world_points_on_raw(self, points, photo_id, distortion_correct=False):
+    def crs2world(self, points_df):
+        return apply_transform_crs(self.crs, self.world_crs, points_df)
+
+    def project_local_points_on_raw(self, points_df, photo_id, distortion_correct=False):
         if self.software == "metashape":
-            return self._metashape_project_world_points_on_raw(points, photo_id, distortion_correct)
+            return self._metashape_project_local_points_on_raw(points_df, photo_id, distortion_correct)
         elif self.software == "pix4d":
-            return self._pix4d_project_world_points_on_raw(points, photo_id, distortion_correct)
+            return self._pix4d_project_local_points_on_raw(points_df, photo_id, distortion_correct)
         else:
             raise KeyError("Current version only support [metashape] & [pix4d]")
 
-
-    def _metashape_project_world_points_on_raw(self, points, photo_id, distortion_correct=False):
-        dim = len(points.shape)
+    def _metashape_project_local_points_on_raw(self, points_df, photo_id, distortion_correct=False):
         camera_i = self.photos[photo_id]
-        T = camera_i.get_camera_center()
-        R = camera_i.transform[0:3, 0:3]
-        XYZ = (points - T).dot(R)
+        t = camera_i.get_camera_center()
+        r = camera_i.transform[0:3, 0:3]
+        xyz = (points_df.values - t).dot(r)
 
-        if dim == 1:
-            X, Y, Z = XYZ
-        elif dim == 2:
-            X = XYZ[:, 0]
-            Y = XYZ[:, 1]
-            Z = XYZ[:, 2]
-        else:
-            raise ValueError("only 1x3 single point or nx3 multiple points are accepted")
+        x = xyz[:, 0] / xyz[:, 2]
+        y = xyz[:, 1] / xyz[:, 2]
 
-        x = X / Z
-        y = Y / Z
-
-        w  = self.sensors[camera_i.sensor_idx].width
-        h  = self.sensors[camera_i.sensor_idx].height
-        f  = self.sensors[camera_i.sensor_idx].calibration.f
+        w = self.sensors[camera_i.sensor_idx].width
+        h = self.sensors[camera_i.sensor_idx].height
+        f = self.sensors[camera_i.sensor_idx].calibration.f
         cx = self.sensors[camera_i.sensor_idx].calibration.cx
         cy = self.sensors[camera_i.sensor_idx].calibration.cy
 
         # without distortion
         if not distortion_correct:
-            K = np.asarray([[f, 0, w / 2 + cx, 0],
+            k = np.asarray([[f, 0, w / 2 + cx, 0],
                             [0, f, h / 2 + cy, 0],
-                            [0, 0, 1         , 0]])
+                            [0, 0, 1, 0]])
 
-            if dim == 1:
-                Pch = np.asarray([x, y, 1, 1])
-                Ppix = Pch.dot(K.T)
-                return Ppix[0:2]
-            elif dim == 2:
-                # make [x, y, 1, 1] for multiple points
-                Pch = np.vstack([x, y, np.ones(len(x)), np.ones(len(x))]).T
-                Ppix = Pch.dot(K.T)
-                return Ppix[:, 0:2]
-            else:
-                raise ValueError("only 1x3 single point or nx3 multiple points are accepted")
+            # make [x, y, 1, 1] for multiple points
+            pch = np.vstack([x, y, np.ones(len(x)), np.ones(len(x))]).T
+            ppix = pch.dot(k.T)
+
+            return pd.DataFrame(ppix[:, 0:2], columns=['x', 'y'])
         else:
             # with distortion
-            r2 = x**2 + y**2
+            r2 = x ** 2 + y ** 2
             r4 = r2 ** 2
             r6 = r2 ** 3
             r8 = r2 ** 4
@@ -126,14 +127,9 @@ class ReconsProject:
             u = w * 0.5 + cx + x_prime * f + x_prime * b1 + y_prime * b2
             v = h * 0.5 + cy + y_prime * f
 
-            if dim == 1:
-                return np.asarray([u, v])
-            elif dim == 2:
-                return np.vstack([u, v]).T
-            else:
-                return None
+            return pd.DataFrame(np.vstack([u, v]).T, columns=['x', 'y'])
 
-    def _pix4d_project_world_points_on_raw(self, poitns, photo_id, distortion_correct=False):
+    def _pix4d_project_local_points_on_raw(self, points_pd, photo_id, distortion_correct=False):
         pass
 
 
@@ -145,6 +141,7 @@ class MetashapeChunkTransform:
         self.translation = None
         self.scale = None
         self.matrix_inv = None
+
 
 class Sensor:
 
@@ -182,8 +179,8 @@ class Calibration:
         # metashape: In the older versions Cx and Cy were given in pixels from the top-left corner of the image,
         #            in the latest release version they are measured as offset from the image center,
         #            https://www.agisoft.com/forum/index.php?topic=5827.0
-        self.cx = 0.0         # pix4d -> px
-        self.cx_unit = "px"   # pix4d -> mm
+        self.cx = 0.0  # pix4d -> px
+        self.cx_unit = "px"  # pix4d -> mm
         self.cy = 0.0
         self.cy_unit = "px"
 
@@ -200,10 +197,10 @@ class Calibration:
 
         # pix4d -> Tangential Lens Distortion Coeffs
         # metashape -> tangential distortion coefficient
-        self.t1 = 0.0    # metashape -> p1
-        self.t2 = 0.0    # metashape -> p2
-        self.t3 = 0.0    # metashape -> p3
-        self.t4 = 0.0    # metashape -> p4
+        self.t1 = 0.0  # metashape -> p1
+        self.t2 = 0.0  # metashape -> p2
+        self.t3 = 0.0  # metashape -> p3
+        self.t4 = 0.0  # metashape -> p4
 
     def calibrate(self):
         pass
@@ -219,10 +216,10 @@ class Photo:
         self.enabled = False
 
         # reconstruction info
-        self.location = None      # np.zeros(3)
-        self.rotation = None      # np.zeros(3)
-        self.transform = None     # 4x4 matrix describing photo location in the chunk coordinate system
-        self.translation = None   # np.zeros(3)
+        self.location = None  # np.zeros(3)
+        self.rotation = None  # np.zeros(3)
+        self.transform = None  # 4x4 matrix describing photo location in the chunk coordinate system
+        self.translation = None  # np.zeros(3)
 
         # meta info, not necessary in current version
         # todo: support reading these meta info
@@ -287,3 +284,21 @@ class ROI:
 
     def __init__(self):
         pass
+
+
+def Points(point_value, columns=('x', 'y', 'z'), dtype='default'):
+    if dtype == 'default':
+        value_np = np.asarray(point_value)
+    else:
+        value_np = np.asarray(point_value, dtype=dtype)
+
+    dim = len(value_np.shape)
+
+    if dim == 1:
+        c = len(value_np)
+        return pd.DataFrame([value_np], columns=columns[0:c])
+    elif dim == 2:
+        _, c = value_np.shape
+        return pd.DataFrame(value_np, columns=columns[0:c])
+    else:
+        raise ValueError(f"only 1x3 single point or nx3 multiple points are accepted, not {value_np.shape}")

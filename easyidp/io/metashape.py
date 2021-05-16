@@ -1,4 +1,5 @@
 import os
+import pyproj
 import zipfile
 import numpy as np
 from xml.etree import ElementTree
@@ -305,13 +306,16 @@ def _decode_chunk_xml(xml_str):
         frame_zip_path = frame_tag.attrib["path"]
         frame_path_dict[frame_zip_idx] = frame_zip_path
 
-    recons_proj.crs_str = xml_tree.findall("./reference")[0].text
+    recons_proj.crs = _decode_chunk_reference_tag(xml_tree.findall("./reference"))
 
     return recons_proj, frame_path_dict
 
 
 def _decode_chunk_transform_tag(xml_obj):
     """
+    Topic: Camera coordinates to world coordinates using 4x4 matrix
+    https://www.agisoft.com/forum/index.php?topic=6176.15
+
     Parameters
     ----------
     xml_obj: xml.etree.ElementTree() object
@@ -343,6 +347,43 @@ def _decode_chunk_transform_tag(xml_obj):
     transform.matrix[3, :] = np.asarray([0, 0, 0, 1])
 
     return transform
+
+
+def _decode_chunk_reference_tag(xml_obj):
+    """
+    change CRS string to pyproj.CRS object
+    Parameters
+    ----------
+    xml_obj: xml.etree.ElementTree() object
+        if no GPS info provided, the reference tag will look like this:
+        <reference>LOCAL_CS["Local Coordinates (m)",LOCAL_DATUM["Local Datum",0],
+        UNIT["metre",1,AUTHORITY["EPSG","9001"]]]</reference>
+
+        if given longitude and latitude, often is "WGS84":
+          <reference>GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.
+          257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM
+          ["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG",
+          "9102"]],AUTHORITY["EPSG","4326"]]</reference>
+
+    Returns
+    -------
+
+    """
+    crs_str = xml_obj[0].text
+    local_crs = 'LOCAL_CS["Local Coordinates (m)",LOCAL_DATUM["Local Datum",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
+
+    if crs_str == local_crs:
+        crs_obj = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
+    else:
+        crs_obj = pyproj.CRS.from_string(crs_str)
+
+    # sometimes, the Photoscan given CRS string can not transform correctly
+    # this is the solution for "WGS 84" CRS shown in the previous example
+    crs_wgs84 = pyproj.CRS.from_epsg(4326)
+    if crs_obj.datum == crs_wgs84.datum:
+        return crs_wgs84
+    else:
+        return crs_obj
 
 
 def _decode_sensor_tag(xml_obj):

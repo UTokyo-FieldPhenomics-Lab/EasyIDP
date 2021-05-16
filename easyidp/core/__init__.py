@@ -7,7 +7,8 @@ from easyidp.core.objects import (
     ReconsProject,
     ROI,
     Sensor,
-    ShapeFile
+    ShapeFile,
+    Points
 )
 
 from easyidp.core.tests import test

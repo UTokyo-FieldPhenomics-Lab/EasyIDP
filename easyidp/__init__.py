@@ -6,6 +6,8 @@ import os
 import sys
 import subprocess
 
+sys.path.insert(0, os.path.join(__path__[0], "external"))
+
 
 def test():
     try:

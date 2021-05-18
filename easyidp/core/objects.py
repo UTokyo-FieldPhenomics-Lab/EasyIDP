@@ -299,9 +299,9 @@ class PointCloud:
             self.read_pcd(pcd_path)
 
     def read_pcd(self, pcd_path):
-        if pcd_path[:-4] == ".ply":
+        if pcd_path[-4:] == ".ply":
             points, colors = read_ply(pcd_path)
-        elif pcd_path[:-4] == ".laz":
+        elif pcd_path[-4:] == ".laz":
             points, colors = read_laz(pcd_path)
         else:
             raise IOError("Only support point cloud file ['*.ply', '*.laz']")
@@ -319,8 +319,13 @@ class PointCloud:
             return np.asarray(self.o3d_obj.points) + self.offset
 
 
-    def get_colors(self):
-        return np.asarray(self.o3d_obj.colors)
+    def get_colors(self, max_value=1):
+        color_np = np.asarray(self.o3d_obj.colors)
+        if max_value == 1:
+            return color_np
+        elif max_value == 255:
+            color_np *= 255
+            return color_np.astype(np.uint8)
 
 
 def Points(point_value, columns=('x', 'y', 'z'), dtype='default'):

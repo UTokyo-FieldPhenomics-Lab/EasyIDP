@@ -1,7 +1,9 @@
 import pandas as pd
 import pyproj
 import numpy as np
+import open3d as o3d
 from easyidp.core.math import apply_transform_matrix, apply_transform_crs
+from easyidp.io.pcd import read_ply, read_laz
 
 
 class ReconsProject:
@@ -284,6 +286,41 @@ class ROI:
 
     def __init__(self):
         pass
+
+
+class PointCloud:
+
+    def __init__(self, pcd_path=""):
+        self.file_path = pcd_path
+        self.o3d_obj = o3d.geometry.PointCloud()
+        self.offset = np.zeros(3)
+
+        if pcd_path:
+            self.read_pcd(pcd_path)
+
+    def read_pcd(self, pcd_path):
+        if pcd_path[:-4] == ".ply":
+            points, colors = read_ply(pcd_path)
+        elif pcd_path[:-4] == ".laz":
+            points, colors = read_laz(pcd_path)
+        else:
+            raise IOError("Only support point cloud file ['*.ply', '*.laz']")
+
+        self.offset = np.floor(points.min(axis=0) / 100) * 100
+
+        self.o3d_obj.colors = o3d.utility.Vector3dVector(colors)
+        self.o3d_obj.points = o3d.utility.Vector3dVector(points - self.offset)
+
+
+    def get_points(self, offset=False):
+        if offset:
+            return np.asarray(self.o3d_obj.points)
+        else:
+            return np.asarray(self.o3d_obj.points) + self.offset
+
+
+    def get_colors(self):
+        return np.asarray(self.o3d_obj.colors)
 
 
 def Points(point_value, columns=('x', 'y', 'z'), dtype='default'):

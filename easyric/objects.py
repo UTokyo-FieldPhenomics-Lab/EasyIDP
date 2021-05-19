@@ -239,20 +239,22 @@ class ImageSet:
 
     def __init__(self, img_path, pmat_dict, ccp_dict):
         # container for external camera parameters for all raw images
-        self.names = list(ccp_dict.keys())
+        pix4d_used = list(ccp_dict.keys())
+        self.names = []
         self.img = []
         
         # in case the img_path has subfolders
         for fpathe, dirs, fs in os.walk(img_path):
             for f in fs:
                 full_path = os.path.join(fpathe,f)
-                if f in self.names:
+                if f in pix4d_used:
                     # f is img_name
                     temp = copy(ccp_dict[f])
                     temp['name'] = f
                     temp['pmat'] = pmat_dict[f]
                     temp['path'] = full_path
                     self.img.append(Image(**temp))
+                    self.names.append(f)
 
     def __getitem__(self, key):
         if isinstance(key, int):  # index by photo name

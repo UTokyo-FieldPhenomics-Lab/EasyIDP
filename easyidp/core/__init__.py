@@ -1,5 +1,5 @@
 from easyidp.core.tests import test
 
-from easyidp.core import (
-    pcd_operation, math, objects
-)
+import easyidp.core.objects
+import easyidp.core.pcd_operation
+import easyidp.core.math

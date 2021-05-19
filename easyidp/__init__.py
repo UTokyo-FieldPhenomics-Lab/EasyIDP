@@ -1,25 +1,9 @@
-from easyidp import (
-    core, io
-)
-
-from easyidp.core.objects import (
-    Calibration,
-    MetashapeChunkTransform,
-    GeoTiff,
-    Image,
-    Photo,
-    ReconsProject,
-    ROI,
-    Sensor,
-    ShapeFile,
-    PointCloud,
-    Points
-)
-
 import os
 import sys
 import subprocess
 
+import easyidp.io
+import easyidp.core
 
 def test():
     try:

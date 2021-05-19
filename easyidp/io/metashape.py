@@ -3,7 +3,7 @@ import pyproj
 import zipfile
 import numpy as np
 from xml.etree import ElementTree
-from easyidp.core import ReconsProject, MetashapeChunkTransform, Sensor, Calibration, Photo
+from easyidp.core.objects import ReconsProject, MetashapeChunkTransform, Sensor, Calibration, Photo
 
 
 def open_project(path: str):

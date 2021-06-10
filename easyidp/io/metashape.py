@@ -294,11 +294,11 @@ def _decode_chunk_xml(xml_str):
     for sensor_tag in xml_tree.findall("./sensors/sensor"):
         sensor = _decode_sensor_tag(sensor_tag)
         sensor.calibration.software = recons_proj.software
-        recons_proj.sensors[sensor.idx] = sensor
+        recons_proj.sensors[sensor.id] = sensor
 
     for camera_tag in xml_tree.findall("./cameras/camera"):
         camera = _decode_camera_tag(camera_tag)
-        recons_proj.photos[camera.idx] = camera
+        recons_proj.photos[camera.id] = camera
 
     frame_path_dict = {}
     for frame_tag in xml_tree.findall("./frames/frame"):
@@ -420,7 +420,7 @@ def _decode_sensor_tag(xml_obj):
     """
     sensor = Sensor()
 
-    sensor.idx = int(xml_obj.attrib["id"])
+    sensor.id = int(xml_obj.attrib["id"])
     sensor.label = xml_obj.attrib["label"]
     sensor.type = xml_obj.attrib["type"]
 
@@ -531,7 +531,7 @@ def _decode_camera_tag(xml_obj):
     camera: easyidp.Photo object
     """
     camera = Photo()
-    camera.idx = int(xml_obj.attrib["id"])
+    camera.id = int(xml_obj.attrib["id"])
     camera.sensor_idx = int(xml_obj.attrib["sensor_id"])
     camera.label = xml_obj.attrib["label"]
     camera.orientation = int(xml_obj.findall("./orientation")[0].text)

@@ -92,7 +92,7 @@ def test_decode_chunk_xml():
     np.testing.assert_array_almost_equal(test_proj.transform.matrix, ans_chunk_tsf, decimal=12)
 
     # test read sensor meta
-    assert test_proj.sensors[0].idx == 0
+    assert test_proj.sensors[0].id == 0
     assert test_proj.sensors[0].label == "FC7203 (4.49mm)"
     assert test_proj.sensors[0].type == "frame"
     assert test_proj.sensors[0].width == 4000
@@ -102,7 +102,7 @@ def test_decode_chunk_xml():
     # test read camera meta
     # use id=0 "DJI_0284.JPG" for testing
     # todo: make sensors or photos as set, can use both int index and label to find.
-    assert test_proj.photos[0].idx == 0
+    assert test_proj.photos[0].id == 0
     assert test_proj.photos[0].label == "DJI_0284.JPG"
     assert test_proj.photos[0].sensor_idx == 0
     assert test_proj.photos[0].orientation == 1
@@ -139,7 +139,7 @@ def test_decode_crs():
     chunk_local = metashape.open_project(test_local_crs)
     chunk_wgs84 = metashape.open_project(test_wgs84_crs)
 
-    assert chunk_local[0].crs == pyproj.CRS.from_dict({"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'})
+    assert chunk_local[0].world_crs == pyproj.CRS.from_dict({"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'})
 
     epsg_4326 = pyproj.CRS.from_epsg(4326)
     assert chunk_wgs84[0].crs.name == epsg_4326.name

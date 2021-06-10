@@ -1,7 +1,7 @@
 import pyproj
 import numpy as np
 import pandas as pd
-from easyidp.core import Points
+from easyidp.core.objects import Points
 from easyidp.core.math import apply_transform_matrix, apply_transform_crs
 
 

@@ -40,8 +40,8 @@ class ReconsProject:
         self.label = ""
         self.enabled = True
 
-        self.sensors = {}
-        self.photos = {}
+        self.sensors = Container()
+        self.photos = Container()
 
         # metashape chunk.transform.matrix
         # from kunihiro kodama's Metashape API usage <kkodama@kazusa.or.jp>
@@ -148,7 +148,7 @@ class MetashapeChunkTransform:
 class Sensor:
 
     def __init__(self):
-        self.idx = 0
+        self.id = 0
         self.label = ""
         # Sensor type in [frame, fisheye, spherical, rpc]
         self.type = "frame"
@@ -211,7 +211,7 @@ class Calibration:
 class Photo:
 
     def __init__(self):
-        self.idx = 0
+        self.id = 0
         self.path = ""
         self.label = ""
         self.sensor_idx = 0
@@ -245,6 +245,40 @@ class Photo:
         pass
 
 
+class Container(dict):
+    # a dict-like class, to contain items like {"id": item.label}
+    # but enable using both [item.id] and [item.label] to fetch items
+    # https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
+
+    def __init__(self):
+        super().__init__()
+        self.id_item = {}
+        self.item_label = {}
+
+    def __setitem__(self, key, item):
+        self.id_item[key] = item
+        self.item_label[item.label] = key
+
+    def __getitem__(self, key):
+        if isinstance(key, int):  # index by photo order
+            return self.id_item[key]
+        elif isinstance(key, str):  # index by photo name
+            return self.id_item[self.item_label[key]]
+        # elif isinstance(key, slice):
+        #     return list(self.id_item.values())[key]
+        else:
+            raise KeyError(f"Key should be 'int', 'str', 'slice', not {key}")
+
+    def __repr__(self):
+        return repr(self.id_item)
+
+    def __len__(self):
+        return len(self.id_item)
+
+    def __delitem__(self, key):
+        del self.item_label[self.id_item[key]]
+        del self.id_item[key]
+"""
 class Image:
     # number of wxhxn matrix to describe image data (ndarray)
     # can be used in Camera & GeoTiff
@@ -268,6 +302,7 @@ class Image:
     def clip_by_mask(self, mask):
         # return <class Image>, offsets
         pass
+"""
 
 
 class GeoTiff:

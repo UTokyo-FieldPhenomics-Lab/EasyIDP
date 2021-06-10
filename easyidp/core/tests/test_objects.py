@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from easyidp.core import Points
+from easyidp.core.objects import Points, Container, Photo
 
 def test_def_points():
     p1 = Points([1,2,3])
@@ -17,3 +17,20 @@ def test_def_points():
 
     p5 = Points([1,2], columns=['lon', 'lat', 'alt'])
     assert list(p5.columns.values) == ['lon', 'lat']
+
+
+def test_container():
+    p1 = Photo()
+    p2 = Photo()
+    p1.id = 1
+    p1.label = "aaa.jpg"
+    p2.id = 2
+    p2.label = "bbb.jpg"
+
+    a = Container()
+    a[p1.id] = p1
+    a[p2.id] = p2
+
+    assert len(a) == 2
+    assert a[1] == p1
+    assert a["bbb.jpg"] == p2

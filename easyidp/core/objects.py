@@ -80,6 +80,7 @@ class ReconsProject:
 
     def _metashape_project_local_points_on_raw(self, points_df, photo_id, distortion_correct=False):
         camera_i = self.photos[photo_id]
+        sensor_i = self.sensors[camera_i.sensor_id]
         t = camera_i.get_camera_center()
         r = camera_i.transform[0:3, 0:3]
         xyz = (points_df.values - t).dot(r)
@@ -87,11 +88,11 @@ class ReconsProject:
         x = xyz[:, 0] / xyz[:, 2]
         y = xyz[:, 1] / xyz[:, 2]
 
-        w = self.sensors[camera_i.sensor_idx].width
-        h = self.sensors[camera_i.sensor_idx].height
-        f = self.sensors[camera_i.sensor_idx].calibration.f
-        cx = self.sensors[camera_i.sensor_idx].calibration.cx
-        cy = self.sensors[camera_i.sensor_idx].calibration.cy
+        w = sensor_i.width
+        h = sensor_i.height
+        f = sensor_i.calibration.f
+        cx = sensor_i.calibration.cx
+        cy = sensor_i.calibration.cy
 
         # without distortion
         if not distortion_correct:
@@ -111,15 +112,15 @@ class ReconsProject:
             r6 = r2 ** 3
             r8 = r2 ** 4
 
-            k1 = self.sensors[camera_i.sensor_idx].calibration.k1
-            k2 = self.sensors[camera_i.sensor_idx].calibration.k2
-            k3 = self.sensors[camera_i.sensor_idx].calibration.k3
-            k4 = self.sensors[camera_i.sensor_idx].calibration.k4
+            k1 = sensor_i.calibration.k1
+            k2 = sensor_i.calibration.k2
+            k3 = sensor_i.calibration.k3
+            k4 = sensor_i.calibration.k4
 
-            p1 = self.sensors[camera_i.sensor_idx].calibration.t1
-            p2 = self.sensors[camera_i.sensor_idx].calibration.t2
-            b1 = self.sensors[camera_i.sensor_idx].calibration.b1
-            b2 = self.sensors[camera_i.sensor_idx].calibration.b2
+            p1 = sensor_i.calibration.t1
+            p2 = sensor_i.calibration.t2
+            b1 = sensor_i.calibration.b1
+            b2 = sensor_i.calibration.b2
 
             eq_part1 = (1 + k1 * r2 + k2 * r4 + k3 * r6 + k4 * r8)
 
@@ -214,7 +215,7 @@ class Photo:
         self.id = 0
         self.path = ""
         self.label = ""
-        self.sensor_idx = 0
+        self.sensor_id = 0
         self.enabled = False
 
         # reconstruction info

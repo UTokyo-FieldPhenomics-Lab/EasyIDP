@@ -104,7 +104,7 @@ def test_decode_chunk_xml():
     # todo: make sensors or photos as set, can use both int index and label to find.
     assert test_proj.photos[0].id == 0
     assert test_proj.photos[0].label == "DJI_0284.JPG"
-    assert test_proj.photos[0].sensor_idx == 0
+    assert test_proj.photos[0].sensor_id == 0
     assert test_proj.photos[0].orientation == 1
 
     # following ans_* got from Metashape.pro API, is what expected answer

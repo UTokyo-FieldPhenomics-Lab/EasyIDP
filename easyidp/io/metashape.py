@@ -532,7 +532,7 @@ def _decode_camera_tag(xml_obj):
     """
     camera = Photo()
     camera.id = int(xml_obj.attrib["id"])
-    camera.sensor_idx = int(xml_obj.attrib["sensor_id"])
+    camera.sensor_id = int(xml_obj.attrib["sensor_id"])
     camera.label = xml_obj.attrib["label"]
     camera.orientation = int(xml_obj.findall("./orientation")[0].text)
 

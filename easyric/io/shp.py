@@ -83,7 +83,7 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, enco
     return shp_dict
 
 
-def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=None, geo_head=None):
+def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=None, geo_head=None, name_field=None, encoding='utf-8'):
     '''
     shp_path: full shp_file directory
     get_z_by:
@@ -100,9 +100,9 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
         tiff_header = geo_head
 
     if geotiff_proj is None:
-        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=tiff_header['proj'], shp_proj=shp_proj)
+        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=tiff_header['proj'], shp_proj=shp_proj, name_field=name_field, encoding=encoding)
     else:
-        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=geotiff_proj, shp_proj=shp_proj)
+        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=geotiff_proj, shp_proj=shp_proj, name_field=name_field, encoding=encoding)
 
     keys = list(shp_dict_2d.keys())
     coord_list = [shp_dict_2d[k] for k in keys]

@@ -4,6 +4,9 @@ from skimage.external import tifffile
 from skimage.draw import polygon
 from pyproj.exceptions import CRSError
 
+from easyric import caas_lite
+import tifffile as tf
+
 
 def _get_header_string(geotiff_path):
     with tifffile.TiffFile(geotiff_path) as tif:
@@ -159,23 +162,27 @@ def point_query(geotiff, point_hv, geo_head=None):
             geo_head = None -> point_hv is pixel_coordinate
             geo_head = Given -> use geo2pixel to convert point_hv from geo_coordinate to pixel_coordinate
     '''
-    if isinstance(geotiff, str):
-        with tifffile.TiffFile(geotiff) as tif:
-            # equal to get_header()
-            if geo_head is None:
-                geo_head = _prase_header_string(tif.info())
-            # equal to get_imarray()
-            data = tif.asarray().astype(float)
-            data[data == geo_head['nodata']] = np.nan
-        is_geo = True
-    elif isinstance(geotiff, np.ndarray):
-        data = geotiff
-        if geo_head is None:
-            is_geo = False
-        else:
-            is_geo = True
-    else:
-        raise TypeError(f'The geotiff should be either "str" or "np.ndarray", not {type(geotiff)}')
+    if not isinstance(geotiff, str):
+    #    with tifffile.TiffFile(geotiff) as tif:
+    #        # equal to get_header()
+    #        if geo_head is None:
+    #            geo_head = _prase_header_string(tif.info())
+    #        # equal to get_imarray()
+    #        data = tif.asarray().astype(float)
+    #        data[data == geo_head['nodata']] = np.nan
+    #    is_geo = True
+    #elif isinstance(geotiff, np.ndarray):
+    #    data = geotiff
+    #    if geo_head is None:
+    #        is_geo = False
+    #    else:
+    #        is_geo = True
+    #else:
+        raise TypeError(f'The geotiff should be path "str", not {type(geotiff)}')
+
+    # !!! a temporary modify for large DOM !!!
+    ts = caas_lite.TiffSpliter(geotiff, 2000, 2000)
+    tif = tf.TiffFile(ts.tif_path)
 
     if isinstance(point_hv, tuple):
         point_hv = np.asarray([[point_hv[0], point_hv[1]]])
@@ -184,14 +191,18 @@ def point_query(geotiff, point_hv, geo_head=None):
         else:
             px = point_hv
         # imarray axis0 = vertical, axis1 = horizontal
-        height_values = data[px[:, 1], px[:, 0]]
+        #height_values = data[px[:, 1], px[:, 0]]
+        cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
+        height_values = cropped[0]
     elif isinstance(point_hv, np.ndarray):
         if is_geo:
             px = geo2pixel(point_hv, geo_head)  # px = (horizontal, vertical)
         else:
             px = point_hv
         # imarray axis0 = vertical, axis1 = horizontal
-        height_values = data[px[:, 1], px[:, 0]]
+        #height_values = data[px[:, 1], px[:, 0]]
+        cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
+        height_values = cropped[0]
     elif isinstance(point_hv, list):
         height_values = []
         for p in point_hv:
@@ -203,7 +214,9 @@ def point_query(geotiff, point_hv, geo_head=None):
                 else:
                     px = p
                 # imarray axis0 = vertical, axis1 = horizontal
-                height_values.append(data[px[:, 1], px[:, 0]])
+                #height_values.append(data[px[:, 1], px[:, 0]])
+                cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
+                height_values.append(cropped[0])
     else:
         raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
 
@@ -222,23 +235,31 @@ def mean_values(geotiff_path, polygon='all', geo_head=None):
         if geo_head is None:
             geo_head = _prase_header_string(tif.info())
         # equal to get_imarray()
-        data = tif.asarray().astype(float)
-        data[data == geo_head['nodata']] = np.nan
+        #data = tif.asarray().astype(float)
+        #data[data == geo_head['nodata']] = np.nan
+            
+        # !!! a temporary modify for large DOM !!!
+        ts = caas_lite.TiffSpliter(geotiff_path, 2000, 2000)
+        tif = tf.TiffFile(ts.tif_path)
 
         if polygon == 'all':
+            data = tif.asarray().astype(float)
+            data[data == geo_head['nodata']] = np.nan
             z_mean = np.nanmean(data)
         else:
             if isinstance(polygon, np.ndarray):
                 roi = geo2pixel(polygon, geo_head)   # roi = (horizontal, vertical)
                 # [TODO] only dsm supported
-                imarray, offsets = imarray_clip(data, roi)
+                #imarray, offsets = imarray_clip(data, roi)
+                imarray, _, _ = crop_by_coord(geotiff_path, roi, buffer=0, ts=ts, tif=tif)
                 z_mean = np.nanmean(imarray)
             elif isinstance(polygon, list):
                 z_mean = []
                 for poly in polygon:
                     if isinstance(poly, np.ndarray):
                         roi = geo2pixel(poly, geo_head)
-                        imarray, offsets = imarray_clip(data, roi)
+                        #imarray, offsets = imarray_clip(data, roi)
+                        imarray, _, _ = crop_by_coord(geotiff_path, roi, buffer=0, ts=ts, tif=tif)
                         z_mean.append(np.nanmean(imarray))
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
@@ -248,8 +269,8 @@ def mean_values(geotiff_path, polygon='all', geo_head=None):
     return z_mean
 
 
-def percentile_min(data):
-    return np.nanmean(data[data < np.nanpercentile(data, 5)])
+def percentile_values(data, percentile=5):
+    return np.nanmean(data[data < np.nanpercentile(data, percentile)])
 
 
 def min_values(geotiff_path, polygon='all', geo_head=None):
@@ -264,24 +285,32 @@ def min_values(geotiff_path, polygon='all', geo_head=None):
         if geo_head is None:
             geo_head = _prase_header_string(tif.info())
         # equal to get_imarray()
-        data = tif.asarray().astype(float)
-        data[data == geo_head['nodata']] = np.nan
+        #data = tif.asarray().astype(float)
+        #data[data == geo_head['nodata']] = np.nan
+
+        # !!! a temporary modify for large DOM !!!
+        ts = caas_lite.TiffSpliter(geotiff_path, 2000, 2000)
+        tif = tf.TiffFile(ts.tif_path)
 
         if polygon == 'all':
-            z_min = percentile_min(data)
+            data = tif.asarray().astype(float)
+            data[data == geo_head['nodata']] = np.nan
+            z_min = percentile_values(data)
         else:
             if isinstance(polygon, np.ndarray):
                 roi = geo2pixel(polygon, geo_head)   # roi = (horizontal, vertical)
                 # [TODO] only dsm supported
-                imarray, offsets = imarray_clip(data, roi)
-                z_min = percentile_min(imarray)
+                #imarray, offsets = imarray_clip(data, roi)
+                imarray, _, _ = crop_by_coord(geotiff_path, roi, buffer=0, ts=ts, tif=tif)
+                z_min = percentile_values(imarray)
             elif isinstance(polygon, list):
                 z_min = []
                 for poly in polygon:
                     if isinstance(poly, np.ndarray):
                         roi = geo2pixel(poly, geo_head)
-                        imarray, offsets = imarray_clip(data, roi)
-                        z_min.append(percentile_min(imarray))
+                        #imarray, offsets = imarray_clip(data, roi)
+                        imarray, _, _ = crop_by_coord(geotiff_path, roi, buffer=0, ts=ts, tif=tif)
+                        z_min.append(percentile_values(imarray))
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
             else:
@@ -449,25 +478,52 @@ def clip_roi(roi_polygon_hv, geotiff, is_geo=False, geo_head=None):
     if geo_head is None:
         geo_head = get_header(geotiff)
 
-    if isinstance(geotiff, str):   # give a file_path of geo_tiff
-        dxm = get_imarray(geotiff, geo_head)
-    elif isinstance(geotiff, np.ndarray):
-        dxm = geotiff
-    else:
+    if not isinstance(geotiff, str):   # give a file_path of geo_tiff
+    #    dxm = get_imarray(geotiff, geo_head)
+    #elif isinstance(geotiff, np.ndarray):
+    #    dxm = geotiff
+    #else:
         raise TypeError('Invalid geotiff type, either geotiff_file_path or read ndarray by geotiff.get_imarray() function')
 
     offsets = []
     imarrays = []
 
+    # !!! a temporary modify for large DOM !!!
+    ts = caas_lite.TiffSpliter(geotiff, 2000, 2000)
+    tif = tf.TiffFile(ts.tif_path)
+
     for roi in roi_list:
         if is_geo:
-            roi_geo = geo2pixel(roi, geo_head)   # (horizontal, vertical)
+            roi_pix = geo2pixel(roi, geo_head)   # (horizontal, vertical)
         else:
-            roi_geo = roi
+            roi_pix = roi
 
-        imarray_out, offset_out = imarray_clip(dxm, roi_geo)
+        #imarray_out, offset_out = imarray_clip(dxm, roi_geo)
+        imarray_out, coord_np_off, offset_out = crop_by_coord(geotiff, roi_pix, buffer=0, ts=ts, tif=tif)
 
         imarrays.append(imarray_out)
         offsets.append(offset_out)
 
     return imarrays, offsets
+
+
+def crop_by_coord(dom, coord_np, buffer=20, ts=None, tif=None):
+    xmin, ymin = coord_np.min(axis=0)
+    xmax, ymax = coord_np.max(axis=0)
+    
+    j0 = xmin-buffer
+    i0 = ymin-buffer
+    w = xmax-xmin+buffer*2
+    h = ymax-ymin+buffer*2
+    
+    if ts is None:
+        ts = caas_lite.TiffSpliter(dom, 2000, 2000)
+        tif = tf.TiffFile(ts.tif_path)
+    
+    cropped = ts.get_crop(tif.pages[0], i0, j0, h, w)
+    
+    offset = np.asarray([j0, i0])
+    
+    coord_np_off = coord_np - offset
+    
+    return cropped, coord_np_off, offset 

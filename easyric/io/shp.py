@@ -41,6 +41,7 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, enco
             print(f'[io][shp][proj] could not find ESRI projection file {prj_path}, could not operate auto-convention, '
                   f'Please convert projection system manually.')
 
+    total_num = len(shp.shapes())
     for i, shape in enumerate(shp.shapes()):
         if name_field is None:
             field_id = -1
@@ -79,6 +80,8 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, enco
                                  f'read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))')
 
         shp_dict[plot_name] = coord_np
+
+        print(f"[io][shp][name] Plot {plot_name} loaded | {i}/{total_num}", end="\r")
 
     return shp_dict
 

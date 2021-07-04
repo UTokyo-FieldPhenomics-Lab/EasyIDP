@@ -273,7 +273,7 @@ def mean_values(geotiff_path, polygon='all', geo_head=None):
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
 
-                    print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="/r")
+                    print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="\r")
             else:
                 raise TypeError('Only numpy.ndarray points list are supported')
 
@@ -326,7 +326,7 @@ def min_values(geotiff_path, polygon='all', geo_head=None):
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
 
-                print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="/r")
+                print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="\r")
             else:
                 raise TypeError('Only numpy.ndarray points list are supported')
 

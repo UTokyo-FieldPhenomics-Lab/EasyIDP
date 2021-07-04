@@ -137,7 +137,7 @@ def get_imarray(geotiff_path, geo_head=None):
     return data
 
 
-def point_query(geotiff, point_hv, geo_head=None):
+def point_query(geotiff, point_hv, geo_head=None, mode="full"):
     '''
     :param geotiff:
         string, the path of geotiff(dsm only) file
@@ -161,28 +161,30 @@ def point_query(geotiff, point_hv, geo_head=None):
         if geotiff is ndarray:
             geo_head = None -> point_hv is pixel_coordinate
             geo_head = Given -> use geo2pixel to convert point_hv from geo_coordinate to pixel_coordinate
+    :param mode: full -> load full dsm into memeory (suite query large amount of points)
+                 part -> partly load dsm into memeory (suit query a few points)
     '''
+    is_geo = True
     if not isinstance(geotiff, str):
-    #    with tifffile.TiffFile(geotiff) as tif:
-    #        # equal to get_header()
-    #        if geo_head is None:
-    #            geo_head = _prase_header_string(tif.info())
-    #        # equal to get_imarray()
-    #        data = tif.asarray().astype(float)
-    #        data[data == geo_head['nodata']] = np.nan
-    #    is_geo = True
-    #elif isinstance(geotiff, np.ndarray):
-    #    data = geotiff
-    #    if geo_head is None:
-    #        is_geo = False
-    #    else:
-    #        is_geo = True
-    #else:
-        raise TypeError(f'The geotiff should be path "str", not {type(geotiff)}')
-
-    # !!! a temporary modify for large DOM !!!
-    ts = caas_lite.TiffSpliter(geotiff, 2000, 2000)
-    tif = tf.TiffFile(ts.tif_path)
+        if mode == "full":
+            with tifffile.TiffFile(geotiff) as tif:
+                # equal to get_header()
+                if geo_head is None:
+                    geo_head = _prase_header_string(tif.info())
+                # equal to get_imarray()
+                data = tif.asarray().astype(float)
+                data[data == geo_head['nodata']] = np.nan
+        else:
+            ts = caas_lite.TiffSpliter(geotiff, 2000, 2000)
+            tif = tf.TiffFile(ts.tif_path)
+    elif isinstance(geotiff, np.ndarray):
+        data = geotiff
+        if geo_head is None:
+            is_geo = False
+        else:
+            is_geo = True
+    else:
+        raise TypeError(f'The geotiff should be either "str" or "np.ndarray", not {type(geotiff)}')
 
     if isinstance(point_hv, tuple):
         point_hv = np.asarray([[point_hv[0], point_hv[1]]])
@@ -191,18 +193,22 @@ def point_query(geotiff, point_hv, geo_head=None):
         else:
             px = point_hv
         # imarray axis0 = vertical, axis1 = horizontal
-        #height_values = data[px[:, 1], px[:, 0]]
-        cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
-        height_values = cropped[0]
+        if mode == "full":
+            height_values = data[px[:, 1], px[:, 0]]
+        else:
+            cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
+            height_values = cropped[0]
     elif isinstance(point_hv, np.ndarray):
         if is_geo:
             px = geo2pixel(point_hv, geo_head)  # px = (horizontal, vertical)
         else:
             px = point_hv
         # imarray axis0 = vertical, axis1 = horizontal
-        #height_values = data[px[:, 1], px[:, 0]]
-        cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
-        height_values = cropped[0]
+        if mode == "full":
+            height_values = data[px[:, 1], px[:, 0]]
+        else:
+            cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
+            height_values = cropped[0]
     elif isinstance(point_hv, list):
         height_values = []
         for p in point_hv:
@@ -214,9 +220,11 @@ def point_query(geotiff, point_hv, geo_head=None):
                 else:
                     px = p
                 # imarray axis0 = vertical, axis1 = horizontal
-                #height_values.append(data[px[:, 1], px[:, 0]])
-                cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
-                height_values.append(cropped[0])
+                if mode == "full":
+                    height_values.append(data[px[:, 1], px[:, 0]])
+                else:
+                    cropped = ts.get_crop(tif.pages[0], px[:, 1], px[:, 0], h=1, w=1)
+                    height_values.append(cropped[0])
     else:
         raise TypeError('Only one point tuple, numpy.ndarray, and list contains numpy.ndarray are supported')
 
@@ -499,7 +507,9 @@ def clip_roi(roi_polygon_hv, geotiff, is_geo=False, geo_head=None):
             roi_pix = roi
 
         #imarray_out, offset_out = imarray_clip(dxm, roi_geo)
-        imarray_out, coord_np_off, offset_out = crop_by_coord(geotiff, roi_pix, buffer=0, ts=ts, tif=tif)
+        imarray_tmp, coord_np_off, offset_out = crop_by_coord(geotiff, roi_pix, buffer=0, ts=ts, tif=tif)
+
+        imarray_out, _ = imarray_clip(imarray_tmp, coord_np_off)
 
         imarrays.append(imarray_out)
         offsets.append(offset_out)
@@ -507,7 +517,33 @@ def clip_roi(roi_polygon_hv, geotiff, is_geo=False, geo_head=None):
     return imarrays, offsets
 
 
-def crop_by_coord(dom, coord_np, buffer=20, ts=None, tif=None):
+def crop_by_coord(dom, coord_np, buffer=0, ts=None, tif=None):
+    """[summary]
+
+    Parameters
+    ----------
+    dom : str
+        The path to dom file
+    coord_np : np.ndarray
+        the coordinate of ROI, unit is image pixel, NOT geo position
+    buffer : int, optional
+        The boundary of ROI, by default 0
+    ts : caas_lite.TiffSpliter class, optional
+        by giving this, it will not generate the following variable for each iteration
+        e.g. ts = caas_lite.TiffSpliter(geotiff, 2000, 2000)
+    tif : tifffile.TiffFile, optional
+        by giving this, it will not generate the following variable for each iteration
+        tif = tf.TiffFile(ts.tif_path)
+
+    Returns
+    -------
+    cropped: np.ndarray
+        The cropped image data
+    coord_np_off: np.ndarray
+        The ROI coordinate in the cropped image data
+    offset: np.ndarray
+        The offset of cropped image data (up-left corner) in original DOM image
+    """
     xmin, ymin = coord_np.min(axis=0)
     xmax, ymax = coord_np.max(axis=0)
     
@@ -527,3 +563,57 @@ def crop_by_coord(dom, coord_np, buffer=20, ts=None, tif=None):
     coord_np_off = coord_np - offset
     
     return cropped, coord_np_off, offset 
+
+def save_geotiff(imarray, offset, save_path, ts, tif):
+    """
+
+    Parameters
+    ----------
+    imarray : [type]
+        [description]
+    offset : [type]
+        [description]
+    save_path : [type]
+        [description]
+    ts:
+        ts = caas_lite.TiffSpliter(dom_path, 2000, 2000)
+    tif : 
+        tif = tf.TiffFile(ts.tif_path)
+    """
+    geo_corner = ts.pixel2geo(np.asarray([offset]))
+    geo_x = geo_corner[0, 0]
+    geo_y = geo_corner[0, 1] 
+
+    page = tif.pages[0]
+
+    container = []
+    for k in page.tags.keys():
+        if k < 30000:
+            continue
+
+        t = page.tags[k]
+        if tf.__version__ < "2020.11.26" and t.dtype[0] == '1':
+            dtype = t.dtype[-1]
+        else:
+            dtype = t.dtype
+
+        if k == 33922:
+            value = (0, 0, 0, geo_x, geo_y, 0)
+        else:
+            value = t.value
+
+        container.append((t.code, dtype, t.count, value, True))
+
+    form = save_path.split('.')[-1]
+
+    if form == 'tif':
+        # write to file
+        with tf.TiffWriter(save_path) as wtif:
+            wtif.save(data=imarray, software='easyidp', 
+                    photometric=page.photometric, 
+                    planarconfig=page.planarconfig, 
+                    compress=page.compression, 
+                    resolution=page.tags[33550].value[0:2], 
+                    extratags=container)
+    else:
+        raise TypeError("only *.tif file name is supported")

@@ -81,7 +81,7 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, enco
 
         shp_dict[plot_name] = coord_np
 
-        print(f"[io][shp][name] Plot {plot_name} loaded | {i}/{total_num}", end="\r")
+        print(f"[io][shp][name] Plot {plot_name} loaded | {i+1}/{total_num}        ", end="\r")
 
     return shp_dict
 

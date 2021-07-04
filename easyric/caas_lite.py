@@ -260,7 +260,7 @@ class TiffSpliter:
             out = self._get_tiled_crop(page, i0, j0, h, w)
         else:
             out = self._get_untiled_crop(page, i0, j0, h, w)
-            
+  
         return out
 
     @staticmethod
@@ -493,9 +493,9 @@ class TiffSpliter:
         else:
             img_new = img_clip
 
-        format = save_path.split('.')[-1]
+        form = save_path.split('.')[-1]
             
-        if format == 'tif':
+        if form == 'tif':
             # prepare geotiff tags
             ## pixel2geo need points_hv
             geo_corner = self.pixel2geo(np.asarray([[w_st, h_st]]))
@@ -522,16 +522,16 @@ class TiffSpliter:
 
             # write to file
             with tf.TiffWriter(save_path) as wtif:
-                wtif.save(data=img_new, software='sigmameow', 
-                        photometric=page.photometric, 
-                        planarconfig=page.planarconfig, 
-                        compress=page.compression, 
-                        resolution=page.tags[33550].value[0:2], extratags=container)
+                wtif.save(data=img_new, software='easyidp-caas_lite', 
+                          photometric=page.photometric, 
+                          planarconfig=page.planarconfig, 
+                          compress=page.compression, 
+                          resolution=page.tags[33550].value[0:2], extratags=container)
 
-        elif format == "png":
+        elif form == "png":
             plt.imsave(save_path, img_new)
 
-        elif format == "jpg":
+        elif form == "jpg":
             # jpg does not support transparent layer
             plt.imsave(save_path, img_new[:,:,0:3])
         else:

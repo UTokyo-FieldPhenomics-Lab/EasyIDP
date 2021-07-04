@@ -127,6 +127,11 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
         for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
             coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
             shp_dict[k] = coord_np
+    elif get_z_by == 'max':
+        z_lists = min_values(dsm_path, polygon=coord_list, geo_head=tiff_header, pctl=95)
+        for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
+            coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
+            shp_dict[k] = coord_np
     elif get_z_by == 'all':
         coord_z = mean_values(dsm_path, polygon='all', geo_head=tiff_header)
         for k, coord_np in zip(keys, coord_list):

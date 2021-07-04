@@ -281,10 +281,15 @@ def mean_values(geotiff_path, polygon='all', geo_head=None):
 
 
 def percentile_values(data, percentile=5):
-    return np.nanmean(data[data < np.nanpercentile(data, percentile)])
+    if percentile < 50:
+        v = np.nanmean(data[data < np.nanpercentile(data, percentile)])
+    else:
+        v = np.nanmean(data[data > np.nanpercentile(data, percentile)])
+
+    return v
 
 
-def min_values(geotiff_path, polygon='all', geo_head=None):
+def min_values(geotiff_path, polygon='all', geo_head=None, pctl=5):
     """
     :param geotiff_path:
     :param polygon:
@@ -306,14 +311,14 @@ def min_values(geotiff_path, polygon='all', geo_head=None):
         if polygon == 'all':
             data = tif.asarray().astype(float)
             data[data == geo_head['nodata']] = np.nan
-            z_min = percentile_values(data)
+            z_min = percentile_values(data, pctl)
         else:
             if isinstance(polygon, np.ndarray):
                 roi = geo2pixel(polygon, geo_head)   # roi = (horizontal, vertical)
                 # [TODO] only dsm supported
                 #imarray, offsets = imarray_clip(data, roi)
                 imarray, _, _ = crop_by_coord(geotiff_path, roi, buffer=0, ts=ts, tif=tif)
-                z_min = percentile_values(imarray)
+                z_min = percentile_values(imarray, pctl)
             elif isinstance(polygon, list):
                 z_min = []
                 total_num = len(polygon)
@@ -322,11 +327,11 @@ def min_values(geotiff_path, polygon='all', geo_head=None):
                         roi = geo2pixel(poly, geo_head)
                         #imarray, offsets = imarray_clip(data, roi)
                         imarray, _, _ = crop_by_coord(geotiff_path, roi, buffer=0, ts=ts, tif=tif)
-                        z_min.append(percentile_values(imarray))
+                        z_min.append(percentile_values(imarray, pctl))
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
 
-                print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="\r")
+                    print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="\r")
             else:
                 raise TypeError('Only numpy.ndarray points list are supported')
 

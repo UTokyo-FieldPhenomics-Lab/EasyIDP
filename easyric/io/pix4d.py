@@ -1,5 +1,5 @@
 import numpy as np
-
+import pandas as pd
 
 def read_xyz(xyz_path):
     '''
@@ -103,3 +103,6 @@ def read_ccp(ccp_path):
                 img_configs[file_name]['cam_rot'] = cam_rot
 
     return img_configs
+
+def read_cam_pos(cam_pos_path):
+    return pd.read_csv(cam_pos_path, index_col=0, header=None, names=["name", "x", "y", "z"])

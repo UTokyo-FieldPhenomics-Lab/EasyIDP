@@ -110,6 +110,7 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
     keys = list(shp_dict_2d.keys())
     coord_list = [shp_dict_2d[k] for k in keys]
 
+    print(f"[io][shp][name] Loading Z values from DSM, this may take a while")
     # then add z_values on it
     if get_z_by == 'local':
         z_lists = point_query(dsm_path, coord_list, geo_head=tiff_header)

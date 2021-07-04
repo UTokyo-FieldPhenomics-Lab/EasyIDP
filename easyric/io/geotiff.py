@@ -263,7 +263,8 @@ def mean_values(geotiff_path, polygon='all', geo_head=None):
                 z_mean = np.nanmean(imarray)
             elif isinstance(polygon, list):
                 z_mean = []
-                for poly in polygon:
+                total_num = len(polygon)
+                for i, poly in enumerate(polygon):
                     if isinstance(poly, np.ndarray):
                         roi = geo2pixel(poly, geo_head)
                         #imarray, offsets = imarray_clip(data, roi)
@@ -271,6 +272,8 @@ def mean_values(geotiff_path, polygon='all', geo_head=None):
                         z_mean.append(np.nanmean(imarray))
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
+
+                    print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="/r")
             else:
                 raise TypeError('Only numpy.ndarray points list are supported')
 
@@ -313,7 +316,8 @@ def min_values(geotiff_path, polygon='all', geo_head=None):
                 z_min = percentile_values(imarray)
             elif isinstance(polygon, list):
                 z_min = []
-                for poly in polygon:
+                total_num = len(polygon)
+                for i, poly in enumerate(polygon):
                     if isinstance(poly, np.ndarray):
                         roi = geo2pixel(poly, geo_head)
                         #imarray, offsets = imarray_clip(data, roi)
@@ -321,6 +325,8 @@ def min_values(geotiff_path, polygon='all', geo_head=None):
                         z_min.append(percentile_values(imarray))
                     else:
                         raise TypeError('Only numpy.ndarray points itmes in the list are supported')
+
+                print(f"[io][geotiff][mean] Reading DSM clippers | {i+1}/{total_num}", end="/r")
             else:
                 raise TypeError('Only numpy.ndarray points list are supported')
 

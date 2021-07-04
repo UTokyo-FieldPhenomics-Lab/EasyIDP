@@ -36,6 +36,7 @@ class Pix4D:
         self.pmat_file = None
         self.cicp_file = None
         self.ccp_file = None
+        self.campos_file = None
         self.ply_file = None
         self.dom_file = None
         self.dsm_file = None
@@ -84,10 +85,12 @@ class Pix4D:
         self.T2 = None
 
         self.offset = OffSet(self._get_offsets())
+        self.img_pos = self._get_campos_df()
         vars(self).update(self._get_cicp_dict())
         self.img = ImageSet(img_path=self.raw_img_path,
                             pmat_dict=self._get_pmat_dict(),
-                            ccp_dict=self._get_ccp_dict())
+                            ccp_dict=self._get_ccp_dict(),
+                            img_pos=self.img_pos)
 
     def _original_specify(self):
         sub_folder = os.listdir(self.project_path)
@@ -96,6 +99,7 @@ class Pix4D:
         self.pmat_file = f"{self.project_path}/1_initial/params/{self.project_name}_pmatrix.txt"
         self.cicp_file = f"{self.project_path}/1_initial/params/{self.project_name}_pix4d_calibrated_internal_camera_parameters.cam"
         self.ccp_file = f"{self.project_path}/1_initial/params/{self.project_name}_calibrated_camera_parameters.txt"
+        self.campos_file = f"{self.project_path}/1_initial/params/{self.project_name}_calibrated_images_position.txt"
 
         if self.raw_img_path is None:
             undistorted_path = f"{self.project_path}/1_initial/images/undistorted_images"
@@ -124,6 +128,7 @@ class Pix4D:
         self.pmat_file = self._get_full_path(f"{param_folder}/{self.project_name}_pmatrix.txt")
         self.cicp_file = self._get_full_path(f"{param_folder}/{self.project_name}_pix4d_calibrated_internal_camera_parameters.cam")
         self.ccp_file = self._get_full_path(f"{param_folder}/{self.project_name}_calibrated_camera_parameters.txt")
+        self.campos_file = self._get_full_path(f"{param_folder}/{self.project_name}_calibrated_images_position.txt")
 
         if ply_path is None:
             try_ply = f"{self.project_name}_group1_densified_point_cloud.ply"
@@ -179,6 +184,9 @@ class Pix4D:
 
     def _get_cicp_dict(self):
         return pix4d.read_cicp(self.cicp_file)
+
+    def _get_campos_df(self):
+        return pix4d.read_cam_pos(self.campos_file)
 
     #################
     # Easy use apis #
@@ -237,7 +245,7 @@ class OffSet:
 
 class ImageSet:
 
-    def __init__(self, img_path, pmat_dict, ccp_dict):
+    def __init__(self, img_path, pmat_dict, ccp_dict, img_pos):
         # container for external camera parameters for all raw images
         pix4d_used = list(ccp_dict.keys())
         self.names = []
@@ -253,6 +261,7 @@ class ImageSet:
                     temp['name'] = f
                     temp['pmat'] = pmat_dict[f]
                     temp['path'] = full_path
+                    temp["cam_pos"] = img_pos.loc[f, :].values
                     self.img.append(Image(**temp))
                     self.names.append(f)
 

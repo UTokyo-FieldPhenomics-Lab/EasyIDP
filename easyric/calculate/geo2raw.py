@@ -1,6 +1,6 @@
 import numpy as np
 import json
-from easyric.io import shp, json
+from easyric.io import shp, json, geotiff
 
 #################
 # basic wrapper #
@@ -174,6 +174,39 @@ def get_img_coords_dict(param, points, method='pmat', distort_correct=True, igno
             out_dict[im.name] = coords
 
     return out_dict
+
+
+def filter_cloest_img(p4d, img_dict, num=3):
+    dist_pix = []
+    dist_geo = []
+    dist_name = []
+    
+    img_dict_sort = {}
+    for img_name, img_coord in img_dict.items():
+        xmin, ymin = img_coord.min(axis=0)
+        xmax, ymax = img_coord.max(axis=0)
+        xctr = (xmax-xmin) / 2
+        yctr = (ymax-ymin) / 2
+
+        xctr_geo, yctr_geo = geotiff.pixel2geo(np.asarray([[xctr, yctr]]), p4d.dom_header)[0,:]
+
+        img_xgeo, img_ygeo, _ = p4d.img[img_name].cam_pos
+
+        w, h = p4d.img[img_name].w, p4d.img[img_name].h
+
+        x1, y1 = 0.5 * w, 0.5 * h
+
+        dist_pix.append(np.sqrt((x1 - xctr) ** 2 + (y1 - yctr) ** 2) / np.sqrt((w) ** 2 + (h) ** 2) * 100)
+        dist_geo.append(np.sqrt((img_xgeo-xctr_geo) ** 2 + (img_ygeo - yctr_geo) ** 2))
+        dist_name.append(img_name)
+
+    dist_pix_idx = (np.asarray(dist_pix)).argsort()[:num]
+    dist_geo_idx = (np.asarray(dist_geo)).argsort()[:num]
+    
+    img_dict_sort = {dist_name[idx]:img_dict[dist_name[idx]] for idx in dist_geo_idx}
+    
+    return img_dict_sort
+
 
 
 def get_shp_result(p4d, shp_dict, method='pmat', distort_correct=True, json_path=None, ignore=None):

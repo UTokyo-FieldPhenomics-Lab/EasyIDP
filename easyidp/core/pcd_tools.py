@@ -62,6 +62,10 @@ def _build_xy_crop_boundary(polygon, z_range=(-100, 100)):
     z_min = z_range[0]
     z_max = z_range[1]
 
+    dim =  polygon.shape[1]
+    if dim != 3:
+        raise RuntimeError(f"The given polygon should be [nx3] dimention, not [nx{dim}]")
+
     o3d_boundary = o3d.visualization.SelectionPolygonVolume()
     o3d_boundary.orthogonal_axis = "Z"
     o3d_boundary.bounding_polygon = o3d.utility.Vector3dVector(polygon)

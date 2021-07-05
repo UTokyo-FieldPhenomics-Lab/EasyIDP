@@ -4,6 +4,7 @@ import numpy as np
 import open3d as o3d
 from easyidp.core.math import apply_transform_matrix, apply_transform_crs
 from easyidp.io.pcd import read_ply, read_laz
+from easyidp.core.pcd_tools import crop_pcd_xy
 
 
 class ReconsProject:
@@ -326,10 +327,10 @@ class ROI:
 
 class PointCloud:
 
-    def __init__(self, pcd_path=""):
+    def __init__(self, pcd_path="", origin_offset=np.zeros(3)):
         self.file_path = pcd_path
         self.o3d_obj = o3d.geometry.PointCloud()
-        self.offset = np.zeros(3)
+        self.offset = origin_offset
 
         if pcd_path:
             self.read_pcd(pcd_path)
@@ -337,15 +338,19 @@ class PointCloud:
     def read_pcd(self, pcd_path):
         if pcd_path[-4:] == ".ply":
             points, colors = read_ply(pcd_path)
-        elif pcd_path[-4:] == ".laz":
+        elif pcd_path[-4:] == ".laz" or pcd_path[-4:] == ".las":
             points, colors = read_laz(pcd_path)
         else:
-            raise IOError("Only support point cloud file ['*.ply', '*.laz']")
+            raise IOError("Only support point cloud file ['*.ply', '*.laz', '*.las']")
 
-        self.offset = np.floor(points.min(axis=0) / 100) * 100
+        if abs(np.max(points)) > 65536:   # need offseting
+            if not np.any(self.offset):    # not given any offset (0,0,0) -> calculate offset
+                self.offset = np.floor(points.min(axis=0) / 100) * 100
+            self.o3d_obj.points = o3d.utility.Vector3dVector(points - self.offset)
+        else:
+            self.o3d_obj.points = o3d.utility.Vector3dVector(points)
 
         self.o3d_obj.colors = o3d.utility.Vector3dVector(colors)
-        self.o3d_obj.points = o3d.utility.Vector3dVector(points - self.offset)
 
 
     def get_points(self, offset=False):
@@ -362,6 +367,24 @@ class PointCloud:
         elif max_value == 255:
             color_np *= 255
             return color_np.astype(np.uint8)
+
+
+    def crop_pcd_xy(self, roi, z_range=None, save_as=""):
+        roi_dim = roi.shape[1]
+        if roi_dim == 2:
+            roi = np.insert(roi, 2, 0, axis=1)
+        elif roi_dim == 3:
+            pass
+        else:
+            raise RuntimeError("roi should be either [nx2] or [nx3] dimention")
+
+        cropped = crop_pcd_xy(self.o3d_obj, roi-self.offset, z_range)
+        cropped.points = o3d.utility.Vector3dVector(np.asarray(cropped.points) + self.offset)
+
+        if save_as:
+            o3d.io.write_point_cloud(save_as, cropped)
+            
+        return cropped
 
 
 def Points(point_value, columns=('x', 'y', 'z'), dtype='default'):

@@ -28,12 +28,12 @@ Called **EasyRIC** during inner developing (package `easyric`), the folder `easy
 
 > 在内部测试期间的曾用名是**EasyRIC**(对应`easyric`文件夹)，最新的`easyidp`文件夹正在进行频繁的重构中, 因此不要把它使用在生产环境里，但是很欢迎“玩”一下这个包
 
-Please cite this paper if this project helps you
+Please cite this paper if this project helps you：
 
-> 如果您的研究受益于该项目，请引用我们的论文(尚在准备中)
+> 如果您的研究受益于该项目，请引用我们的论文：
 
 ```latex
-@Article{rs13132622,
+@Article{wang_easyidp_2021,
 AUTHOR = {Wang, Haozhou and Duan, Yulin and Shi, Yun and Kato, Yoichiro and Ninomiya, Seish and Guo, Wei},
 TITLE = {EasyIDP: A Python Package for Intermediate Data Processing in UAV-Based Plant Phenotyping},
 JOURNAL = {Remote Sensing},

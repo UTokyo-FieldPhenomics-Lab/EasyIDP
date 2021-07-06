@@ -566,8 +566,43 @@ def crop_by_coord(dom, coord_np, buffer=0, ts=None, tif=None):
     if ts is None:
         ts = caas_lite.TiffSpliter(dom, 2000, 2000)
         tif = tf.TiffFile(ts.tif_path)
+
+    # deal with out of bound cases
+    page = tif.pages[0]
+    im_width = page.imagewidth
+    im_height = page.imagelength
     
-    cropped = ts.get_crop(tif.pages[0], i0, j0, h, w)
+    i1, j1 = i0 + h, j0 + w
+    if (i0 < 0) or (j0 < 0) or (i1 >= im_height) or (j1 >= im_width):
+        i_st = max(i0, 0)
+        j_st = max(j0, 0)
+        i_ed = min(i1, im_height)
+        j_ed = min(j1, im_width)
+
+        if (i_st >= im_height) or (j_st >= im_width) or (i_ed < 0) or (j_ed < 0):
+            # out of geotiff boundary, return an empty part
+            print(f"[warning] The crop (i0={i0}, j0={j0}, w={w}, h={h}) is out of geotiff boundary (0, 0, {im_height}, {im_width}), cropped an empty image")
+            cropped = ts._make_empty_container(h, w, layer_num=ts.img_band_num)
+        else:
+            # some part is in the geotiff
+            h_new = i_ed-i_st
+            w_new = j_ed-j_st
+            img_clip = ts.get_crop(page, i_st, j_st, h_new, w_new)
+
+            if i0 < 0:
+                ioff = - i0
+            else:
+                ioff = 0
+
+            if j0 < 0:
+                joff = - j0
+            else:
+                joff = 0
+
+            cropped = ts._make_empty_container(h, w, layer_num=ts.img_band_num)
+            cropped[ioff:h_new+ioff, joff:w_new+joff,:] = img_clip
+    else:
+        cropped = ts.get_crop(page, i0, j0, h, w)
     
     offset = np.asarray([j0, i0])
     

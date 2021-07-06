@@ -17,7 +17,24 @@ def read_proj(prj_path):
     return proj
 
 
-def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, encoding='utf-8'):
+def _convert_shp_title(shp_fields, name_field):
+    if name_field is None:
+        field_id = None
+    elif isinstance(name_field, int):
+        field_id = name_field
+    elif isinstance(name_field, str):
+        field_id = shp_fields[name_field]
+    else:
+        raise KeyError(f'Can not find key {name_field} in {shp_fields}')
+    
+    return field_id
+
+
+def _find_key(mydict, value):
+    return list(mydict.keys())[value]
+
+
+def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, title_include=False, encoding='utf-8'):
     shp = shapefile.Reader(shp_path, encoding=encoding)
     shp_dict = {}
     # read shp file fields
@@ -42,21 +59,36 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, enco
                   f'Please convert projection system manually.')
 
     total_num = len(shp.shapes())
+
+    if isinstance(name_field, list):
+        field_id = [_convert_shp_title(shp_fields, nf) for nf in name_field]
+    else:
+        field_id = _convert_shp_title(shp_fields, name_field)
+
     for i, shape in enumerate(shp.shapes()):
-        if name_field is None:
-            field_id = -1
-        elif isinstance(name_field, int):
-            field_id = name_field
-        elif isinstance(name_field, str):
-            field_id = shp_fields[name_field]
+        if isinstance(field_id, list):
+            plot_name = ""
+            for j, fid in enumerate(field_id):
+                if title_include:
+                    plot_name += f"{_find_key(shp_fields, fid)}_{shp.records()[i][fid]}"
+                else:
+                    plot_name += f"{shp.records()[i][fid]}"
+
+                if j < len(field_id)-1:
+                    plot_name += "_"
+        elif field_id is None:
+            if title_include:
+                plot_name = f"line_{i}"
+            else:
+                plot_name = f"{i}"
         else:
-            raise KeyError(f'Can not find key {name_field} in {shp_fields}')
-        plot_name = shp.records()[i][field_id]
-        if isinstance(plot_name, str):
-            plot_name = plot_name.replace(r'/', '_')
-            plot_name = plot_name.replace(r'\\', '_')
-        else:
-            plot_name = str(plot_name)
+            if title_include:
+                plot_name = f"{_find_key(shp_fields, field_id)}_{shp.records()[i][field_id]}"
+            else:
+                plot_name = f"{shp.records()[i][field_id]}"
+
+        plot_name = plot_name.replace(r'/', '_')
+        plot_name = plot_name.replace(r'\\', '_')
 
         coord_np = np.asarray(shape.points)
 
@@ -86,7 +118,7 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, enco
     return shp_dict
 
 
-def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=None, geo_head=None, name_field=None, encoding='utf-8'):
+def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=None, geo_head=None, name_field=None, title_include=False, encoding='utf-8'):
     '''
     shp_path: full shp_file directory
     get_z_by:
@@ -103,9 +135,11 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
         tiff_header = geo_head
 
     if geotiff_proj is None:
-        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=tiff_header['proj'], shp_proj=shp_proj, name_field=name_field, encoding=encoding)
+        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=tiff_header['proj'], shp_proj=shp_proj, 
+                                 name_field=name_field, title_include=title_include, encoding=encoding)
     else:
-        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=geotiff_proj, shp_proj=shp_proj, name_field=name_field, encoding=encoding)
+        shp_dict_2d = read_shp2d(shp_path, geotiff_proj=geotiff_proj, shp_proj=shp_proj, 
+                                 name_field=name_field, title_include=title_include, encoding=encoding)
 
     keys = list(shp_dict_2d.keys())
     coord_list = [shp_dict_2d[k] for k in keys]

@@ -35,6 +35,8 @@ def _find_key(mydict, value):
 
 
 def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, title_include=False, encoding='utf-8'):
+    # [Todo] write a test from name_field=None to list ["plot", "weed"] and [0,1]
+    # [Todo] given a warning when the column has the same value (will cause overwride of dictionary key)
     shp = shapefile.Reader(shp_path, encoding=encoding)
     shp_dict = {}
     # read shp file fields

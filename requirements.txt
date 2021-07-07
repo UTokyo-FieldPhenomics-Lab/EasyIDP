@@ -1,23 +1,43 @@
+##################
+# Basic packages #
+##################
 numpy>=1.18.1
 pandas>=1.1.2
 matplotlib >= 3.2.2
-scikit-image==0.16.2  # skimage.external been removed
-# ensure SURF feature matching algorithm patent available
-opencv-python>=3.4.2.16
-opencv-contrib-python>=3.4.2.16
+scikit-image==0.16.2  # skimage.external been removed in advanced version
+
+# transform between CRS projections
 pyproj>=2.6.1.post1
+
+# read geotiff file
 tifffile>=2020.09.03
+
+# polygon analysis
 shapely >= 1.7.0
+
+# point cloud analysis
+open3d == 0.13.0
+
+# read laz/las file:
+lazrs==0.1.1
+pylas==0.4.3
+
+# read dxf file:
+ezdxf==0.16.4
+
+# read ply file:
+plyfile==0.7.2
+
+# read shp file:
+pyshp==2.1.3
+
+#####################
+# Optional packages #
+#####################
 # if run tests
-# pytest==5.4.3
+#pytest==5.4.3
 
-# if need to read laz/las file:
-# lazrs==0.1.1
-# pylas==0.4.3
-
-# used external pure python packages (without installation)
-## Pyshp (shapefile==2.1.0,url=https://github.com/GeospatialPython/pyshp)
-## send2trash (send2trash==1.6.0b1, url=https://github.com/arsenetar/send2trash)
-## ezdxf (exdxf==0.14a3, url=https://github.com/mozman/ezdxf)
-pyparsing>=2.0.1   # ezdxf required
-## plyfile (plyfile==0.7.2, url=https://github.com/dranjan/python-plyfile)
+# key points matching (not implemented yet)
+# ensure SURF feature matching algorithm patent available
+#opencv-python>=3.4.2.16
+#opencv-contrib-python>=3.4.2.16

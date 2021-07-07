@@ -1,6 +1,6 @@
 import pylas
 import numpy as np
-from easyidp.external.plyfile import PlyData
+from plyfile import PlyData
 
 def read_ply(ply_path):
     cloud_data = PlyData.read(ply_path).elements[0].data

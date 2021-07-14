@@ -1,6 +1,7 @@
 import os
 import pyproj
 import numpy as np
+from shapely.geometry import Polygon, Point
 from easyric.external import shapefile
 from easyric.io.geotiff import point_query, mean_values, min_values, get_header
 
@@ -120,16 +121,69 @@ def read_shp2d(shp_path, shp_proj=None, geotiff_proj=None, name_field=None, titl
     return shp_dict
 
 
-def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=None, geo_head=None, name_field=None, title_include=False, encoding='utf-8'):
-    '''
-    shp_path: full shp_file directory
-    get_z_by:
-        "all": using the mean value of whole DSM as the same z-value for all boundary points
-                -> this will get a 2D plane of ROI
-        "mean": using the mean value of boundary points closed part.
-        "local" using the z value of where boundary points located, each point will get different z-values
+def read_shp3d(shp_path, dsm_path, get_z_by='mean', get_z_buffer=0, shp_proj=None, geotiff_proj=None, geo_head=None, name_field=None, title_include=False, encoding='utf-8'):
+    """[summary]
+
+    Parameters
+    ----------
+    shp_path : str
+        full shp_file directory
+    dsm_path : str
+        full dsm_file directory where want to extract height from
+    get_z_by : str, optional
+        ["local", "mean", "min", "max", "all"], by default 'mean'
+        - "local" using the z value of where boundary points located, each point will get different z-values
                 -> this will get a 3D curved mesh of ROI
-    '''
+        - "mean": using the mean value of boundary points closed part.
+        - "min": 5th percentile mean height (the mean value of all pixels < 5th percentile)
+        - "max": 95th percentile mean height (the mean value of all pixels > 95th percentile)
+        - "all": using the mean value of whole DSM as the same z-value for all boundary points
+                -> this will get a 2D plane of ROI
+    get_z_buffer : int, optional
+        the buffer of ROI, by default 0
+        it is suitable when the given ROI is points rather than polygons. Given this paramter will generate a round buffer
+            polygon first, then extract the z-value by this region, but the return will only be a single point
+        The unit of buffer follows the ROI coordinates, either pixel or meter.
+    shp_proj : str or pyproj.CRS object, optional
+        The projection coordinate of given shp file, by default None, it will automatic find the proj file
+    geotiff_proj : pyproj.CRS object, optional
+        The projection coordinate of given dsm file, by default None, it will automatic find it in geohead
+    geo_head : dict, optional
+        returned dict of geotiff.get_header() , by default None
+        specify this to save the dsm file reading time cost
+    name_field : int | str | list, optional
+        The column name of shp file to use as index of ROI, by default None
+        e.g. shp file with following title:
+             | id | plot | species |
+             |----|------|---------|
+             | 01 | aaa  |   xxx   |
+             | 02 | bbb  |   yyy   |
+
+        - "int": the colume number used as title, start from 0
+            e.g. name_field = 0 
+                -> {"01": [...], "02": [...], ...}
+        - "str": the colume title used as title
+            e.g. name_field = "plot" 
+                -> {"aaa": [...], "bbb": [...]}
+        - "list": combine multipule title together
+            e.g.: name_field = ["plot", "species"]
+                -> {"aaa_xxx": [...], "bbb_yyy":[...], ...}
+    title_include : bool, optional
+        where add column title into index, by default False
+        e.g.: name_field = ["plot", "species"]
+            title_include = False
+                -> {"aaa_xxx": [...], "bbb_yyy":[...], ...}
+            title_include = True
+                -> {"plot_aaa_species_xxx": [...], "plot_bbb_species_yyy":[...], ...}
+    encoding : str, optional
+        by default 'utf-8'
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    
     shp_dict = {}
     if geo_head is None:
         tiff_header = get_header(dsm_path)
@@ -146,6 +200,16 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
     keys = list(shp_dict_2d.keys())
     coord_list = [shp_dict_2d[k] for k in keys]
 
+    if get_z_buffer != 0:
+        coord_list_buffer = []
+        for k in keys:
+            seed = shp_dict_2d[k]
+            if seed.shape[0] == 1:   # single point
+                buffered = Point(seed[0,:]).buffer(get_z_buffer)
+            else:   # polygon
+                buffered = Polygon(seed).buffer(get_z_buffer)
+            coord_list_buffer.append(np.asarray(buffered.exterior.coords))
+
     print(f"[io][shp][name] Loading Z values from DSM, this may take a while")
     # then add z_values on it
     if get_z_by == 'local':
@@ -154,17 +218,28 @@ def read_shp3d(shp_path, dsm_path, get_z_by='mean', shp_proj=None, geotiff_proj=
             coord_np = np.concatenate([coord_np, coord_z[:, None]], axis=1)
             shp_dict[k] = coord_np
     elif get_z_by == 'mean':
-        z_lists = mean_values(dsm_path, polygon=coord_list, geo_head=tiff_header)
+        if get_z_buffer == 0:
+            z_lists = mean_values(dsm_path, polygon=coord_list, geo_head=tiff_header)
+        else:
+            z_lists = mean_values(dsm_path, polygon=coord_list_buffer, geo_head=tiff_header)
+
         for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
             coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
             shp_dict[k] = coord_np
     elif get_z_by == 'min':
-        z_lists = min_values(dsm_path, polygon=coord_list, geo_head=tiff_header)
+        if get_z_buffer == 0:
+            z_lists = min_values(dsm_path, polygon=coord_list, geo_head=tiff_header)
+        else:
+            z_lists = min_values(dsm_path, polygon=coord_list_buffer, geo_head=tiff_header)
+
         for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
             coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
             shp_dict[k] = coord_np
     elif get_z_by == 'max':
-        z_lists = min_values(dsm_path, polygon=coord_list, geo_head=tiff_header, pctl=95)
+        if get_z_buffer == 0:
+            z_lists = min_values(dsm_path, polygon=coord_list, geo_head=tiff_header, pctl=95)
+        else:
+            z_lists = min_values(dsm_path, polygon=coord_list_buffer, geo_head=tiff_header, pctl=95)
         for k, coord_np, coord_z in zip(keys, coord_list, z_lists):
             coord_np = np.insert(coord_np, obj=2, values=coord_z, axis=1)
             shp_dict[k] = coord_np

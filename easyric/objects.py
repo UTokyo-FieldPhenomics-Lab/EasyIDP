@@ -205,8 +205,8 @@ class Pix4D:
 
         return shp_dict
 
-    def read_shp3d(self, shp_path, get_z_by='mean', shp_proj=None, geotiff_proj=None):
-        shp_dict = shp.read_shp3d(shp_path, self.dsm_file, get_z_by, shp_proj, geotiff_proj, geo_head=self.dsm_header)
+    def read_shp3d(self, shp_path, get_z_by='mean', get_z_buffer=0, shp_proj=None, geotiff_proj=None):
+        shp_dict = shp.read_shp3d(shp_path, self.dsm_file, get_z_by, get_z_buffer, shp_proj, geotiff_proj, geo_head=self.dsm_header)
         return shp_dict
 
     # ======== io.geotiff =========

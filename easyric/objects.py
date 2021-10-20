@@ -87,10 +87,13 @@ class Pix4D:
         self.offset = OffSet(self._get_offsets())
         self.img_pos = self._get_campos_df()
         vars(self).update(self._get_cicp_dict())
-        self.img = ImageSet(img_path=self.raw_img_path,
-                            pmat_dict=self._get_pmat_dict(),
-                            ccp_dict=self._get_ccp_dict(),
-                            img_pos=self.img_pos)
+        if self.raw_img_path is not None:
+            self.img = ImageSet(img_path=self.raw_img_path,
+                                pmat_dict=self._get_pmat_dict(),
+                                ccp_dict=self._get_ccp_dict(),
+                                img_pos=self.img_pos)
+        else:
+            self.img = None
 
     def _original_specify(self):
         sub_folder = os.listdir(self.project_path)
@@ -106,7 +109,8 @@ class Pix4D:
             if os.path.exists(undistorted_path):
                 self.raw_img_path = undistorted_path
             else:
-                raise FileNotFoundError("raw image file not given, and could not find undistorted images outputs in Pix4D project")
+                self.raw_img_path = None
+                print("[Warning] raw image file not given, and could not find undistorted images outputs in Pix4D project\nThe backward projection is disabled")
 
         self.ply_file = None
         if '2_densification' in sub_folder:

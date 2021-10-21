@@ -88,10 +88,14 @@ def test_world2crs_and_on_raw_images():
     idp_crs = chunk.world2crs(idp_world)
     np.testing.assert_array_almost_equal(idp_crs.values, geodetic.values)
 
-    camera_id = 56   # camera_label = 'DJI_0057'
+    camera_id = 56
+    camera_label = "DJI_0057"
     camera_pix_ans = Points([2391.7104647010146, 1481.8987733175165])
 
     idp_cam_pix = chunk.project_local_points_on_raw(local, camera_id, distortion_correct=True)
     np.testing.assert_array_almost_equal(camera_pix_ans.values, idp_cam_pix.values)
+
+    idp_cam_pix_l = chunk.project_local_points_on_raw(local, camera_label, distortion_correct=True)
+    np.testing.assert_array_almost_equal(camera_pix_ans.values, idp_cam_pix_l.values)
 
 

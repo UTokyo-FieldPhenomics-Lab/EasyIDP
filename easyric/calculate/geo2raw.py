@@ -176,17 +176,30 @@ def get_img_coords_dict(param, points, method='pmat', distort_correct=True, igno
     return out_dict
 
 
-def filter_cloest_img(p4d, img_dict, plot_geo, num=3):
-    dist_pix = []
+def filter_closest_img(p4d, img_dict, plot_geo, dist_thresh=None, num=None):
+    """[summary]
+
+    Parameters
+    ----------
+    img_dict : dict
+        The outputs dict of geo2raw.get_img_coords_dict()
+    plot_geo : nx3 ndarray
+        The plot boundary polygon vertex coordinates
+    num : None or int
+        Keep the closest {x} images
+    dist_thresh : None or float
+        If given, filter the images smaller than this distance first
+
+    Returns
+    -------
+    dict
+        the same structure as output of geo2raw.get_img_coords_dict()
+    """
     dist_geo = []
     dist_name = []
     
     img_dict_sort = {}
     for img_name, img_coord in img_dict.items():
-        #xmin_pix, ymin_pix = img_coord.min(axis=0)
-        #xmax_pix, ymax_pix = img_coord.max(axis=0)
-        #xctr_pix = (xmax_pix + xmin_pix) / 2
-        #yctr_pix = (ymax_pix + ymin_pix) / 2
 
         xmin_geo, ymin_geo = plot_geo[:,0:2].min(axis=0)
         xmax_geo, ymax_geo = plot_geo[:,0:2].max(axis=0)
@@ -195,17 +208,23 @@ def filter_cloest_img(p4d, img_dict, plot_geo, num=3):
 
         ximg_geo, yimg_geo, _ = p4d.img[img_name].cam_pos
 
-        w, h = p4d.img[img_name].w, p4d.img[img_name].h
+        image_plot_dist = np.sqrt((ximg_geo-xctr_geo) ** 2 + (yimg_geo - yctr_geo) ** 2)
 
-        x1, y1 = 0.5 * w, 0.5 * h
+        if dist_thresh is not None and image_plot_dist > dist_thresh:
+            # skip those image-plot geo distance greater than threshold
+            continue
+        else:
+            # if not given dist_thresh, record all
+            dist_geo.append(image_plot_dist)
+            dist_name.append(img_name)
 
-        #dist_pix.append(np.sqrt((x1 - xctr_pix) ** 2 + (y1 - yctr_pix) ** 2) / np.sqrt((w) ** 2 + (h) ** 2) * 100)
-        dist_geo.append(np.sqrt((ximg_geo-xctr_geo) ** 2 + (yimg_geo - yctr_geo) ** 2))
-        dist_name.append(img_name)
+    if num is None:
+        # not specify num, use all
+        num = len(dist_name)
+    else:
+        num = min(len(dist_name, num))
 
-    #dist_pix_idx = (np.asarray(dist_pix)).argsort()[:num]
-    dist_geo_idx = (np.asarray(dist_geo)).argsort()[:num]
-    
+    dist_geo_idx = np.asarray(dist_geo).argsort()[:num]
     img_dict_sort = {dist_name[idx]:img_dict[dist_name[idx]] for idx in dist_geo_idx}
     
     return img_dict_sort

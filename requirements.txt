@@ -4,7 +4,7 @@
 numpy>=1.18.1
 pandas>=1.1.2
 matplotlib >= 3.2.2
-scikit-image==0.16.2  # skimage.external been removed in advanced version
+scikit-image>=0.16.2  # skimage.external been removed in advanced version
 
 # transform between CRS projections
 pyproj>=2.6.1.post1
@@ -16,11 +16,11 @@ tifffile>=2020.09.03
 shapely >= 1.7.0
 
 # point cloud analysis
-open3d == 0.13.0
+open3d >= 0.13.0
 
 # read laz/las file:
-lazrs==0.1.1
-pylas==0.4.3
+lazrs>=0.1.1
+pylas>=0.4.3
 
 # read dxf file:
 ezdxf==0.16.4

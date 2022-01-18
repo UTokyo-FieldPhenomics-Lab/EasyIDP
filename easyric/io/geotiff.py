@@ -25,8 +25,17 @@ def get_header(tif_path):
         # tif.pages[0].geotiff_tags >>> 'ModelTiepoint': [0.0, 0.0, 0.0, 419509.89816000004, 3987344.8286, 0.0]
         header["tie_point"] = tif.pages[0].geotiff_tags["ModelTiepoint"][3:5]
         
-        # tif.pages[0].geotiff_tags >>> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        proj_str = tif.pages[0].geotiff_tags["GTCitationGeoKey"]
+        # pix4d:
+        #    tif.pages[0].geotiff_tags >>> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
+        if "GTCitationGeoKey" in tif.pages[0].geotiff_tags.keys():
+            proj_str = tif.pages[0].geotiff_tags["GTCitationGeoKey"]
+        # metashape:
+        #     tif.pages[0].geotiff_tags >>> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
+        elif "PCSCitationGeoKey" in tif.pages[0].geotiff_tags.keys():
+            proj_str = tif.pages[0].geotiff_tags["PCSCitationGeoKey"]
+        else:
+            raise KeyError("Can not find key 'GTCitationGeoKey' or 'PCSCitationGeoKey' in Geotiff tages")
+        
         try:
             proj = pyproj.CRS.from_string(proj_str)
             header['proj'] = proj

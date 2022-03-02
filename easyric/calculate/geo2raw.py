@@ -222,7 +222,7 @@ def filter_closest_img(p4d, img_dict, plot_geo, dist_thresh=None, num=None):
         # not specify num, use all
         num = len(dist_name)
     else:
-        num = min(len(dist_name, num))
+        num = min(len(dist_name), num)
 
     dist_geo_idx = np.asarray(dist_geo).argsort()[:num]
     img_dict_sort = {dist_name[idx]:img_dict[dist_name[idx]] for idx in dist_geo_idx}

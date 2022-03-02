@@ -369,8 +369,9 @@ def imarray_clip(imarray, polygon_hv):
     #        [  0,  12],
     #        [187,   0],
     #        [216, 456]])
-    roi_rm_offset[roi_rm_offset[:,0] == roi_max[0], 0] -= 1
-    roi_rm_offset[roi_rm_offset[:,1] == roi_max[1], 1] -= 1
+    if skimage.__version__ >= "0.18.3":
+        roi_rm_offset[roi_rm_offset[:,0] == roi_length[0], 0] -= 1
+        roi_rm_offset[roi_rm_offset[:,1] == roi_length[1], 1] -= 1
 
     dim = len(imarray.shape)
 

@@ -9,3 +9,4 @@ easyric/tests/file/*
 docs/build/*
 *.DS_Store
 easyidp/data/*
+.debug/*

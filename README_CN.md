@@ -146,7 +146,7 @@ array([[ 779,  902],
 <details close>
 <summary>小技巧</summary>
   
-如果用的是Pix4D的话，只要你没有移动原始的项目文件，包可以自动找到输出的正摄地图等路径：
+如果用的是Pix4D的话，只要你没有移动原始的项目文件，包可以自动找到输出的正射地图等路径：
 ```python
 >>> proj[0].kind
 "pix4D"
@@ -166,7 +166,7 @@ array([[ 779,  902],
 
 ## <div align="center">文档</div>
 
-完整的文档请查阅：[Github Wiki](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/wiki)。如果遇到文婷，请先查阅是否已经在[Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions)被解决了。
+完整的文档请查阅：[Github Wiki](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/wiki)。如果遇到问题，请先查阅是否已经在[Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions)被解决了。
 
 
 ## <div align="center">参考论文</div>

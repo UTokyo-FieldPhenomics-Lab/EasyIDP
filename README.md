@@ -1,4 +1,9 @@
-![](https://github.com/HowcanoeWang/EasyIDP/wiki/static/easyidp_head.svg)
+<div align="center">
+
+<p>
+   <!-- <a align="left" href="https://ultralytics.com/yolov5" target="_blank"> -->
+   <img width="850" src="https://github.com/HowcanoeWang/EasyIDP/wiki/static/easyidp_head.svg"></a>
+</p>
 
 <p align="center">
   <img alt="GitHub code size in bytes" src="https://img.shields.io/github/languages/code-size/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
@@ -6,31 +11,169 @@
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
 </p>
 
+<a href="README_CN.md">中文</a>
 
-EasyIDP (Easy Intermediate Data Processor), A tool to build a bridge from dealing with structure from motion (SfM) outputs, including point cloud data(PCD), orthomosaic (digital ortho maps, DOM), digital surface model(DSM), properly. Currently, Pix4D projects are fully supported, Agisoft has been supported in the testing version. The detailed documentation and GUI support is one the way.
+</div>
 
-> EasyIDP(中间数据处理助手)是一个用来方便的预处理`运动恢复结构`(SfM)三维重建软件的各类输出文件的工具，如点云、`正射影像`(DOM)、`数字高程模型`(DSM)等。目前完全支持Pix4D项目，Agisoft已在测试版中测试完成，详细的API说明文档和操作界面支持正在开发中。
+EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions: 
 
-* Documentation(文档)：    
-  https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/wiki
-* Source code(源代码)：    
-  https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP
-* Bug reports(缺陷汇报)：    
-  https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/issues
-* Please check forum before report bugs: 
-  > 在提问之前，请先在论坛里寻找是否有解决方式     
+1. Clip ROI on GeoTiff Maps (DOM & DSM) and Point Cloud.
+2. Backward Projection ROI to original images.
+
+
+## <div align="center">Quick Start Examples (Processing)</div>
+
+<details open>
+<summary>Setup Environment</summary>
+
+Clone repo and install [requirements.txt](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/blob/master/requirements.txt) in a
+[**Python>=3.8.0**](https://www.python.org/) environment.
+
+```bash
+git clone https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP.git  # clone
+cd EasyIDP
+pip install -r requirements.txt  # install required environment
+```
+
+</details>
+
+<details open>
+<summary>Load packages</summary>
+
+The package can be used directly by source code rather than installation, so please type the following code to import the package:
+
+```python
+import sys
+sys.path.insert(0, f'C:/path/to/source/code/EasyIDP')
   
-  https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions
+import easyidp as idp
+```
+</details>
 
----
+Before doing the following example, please understand the basic pipeline for image 3D reconstruction by Pix4D or Metashape. And know how to export the DOM, DSM (\*.tiff), and Point cloud (\*.ply). Also require some basic knowledge about GIS shapefile format (\*.shp).
 
-Called **EasyRIC** during inner developing (package `easyric`), the folder `easyidp` is currently under heavy reconstruction, thus do not use it in productive codes. However, playing with it is totally welcome now.
+> Please note, if you see this sentence, it means the following examples are not suppported yet.
 
-> 在内部测试期间的曾用名是**EasyRIC**(对应`easyric`文件夹)，最新的`easyidp`文件夹正在进行频繁的重构中, 因此不要把它使用在生产环境里，但是很欢迎“玩”一下这个包
+<details close>
+<summary>1. Read ROI</summary>
+
+```python
+roi = idp.ROI("xxxx.shp")  # lon and lat 2D info
+  
+# get z values from DSM
+roi.get_z_from_dsm("xxxx_dsm.tiff")  # add height 3D info
+```
+
+The 2D roi can be used to clip the DOM, DSM, and point cloud (`2.Clip by ROI`). While the 3D roi can be used for Backward projection (`4. Backward projection`)
+  
+Or you can create a grid ROI automatically:
+  
+```python
+roi = idp.ROI(grid_h=300, grid_w=300, tif_path="xxxx.tif")
+```
+</details>
+
+<details close>
+<summary>2. Clip by ROI</summary>
+  
+```python
+# read dom and dsm
+dom = idp.GeoTiff("xxx_dom.tif")
+dsm = idp.GeoTiff("xxx_dsm.tif")
+  
+# read point cloud
+ply = idp.PointCloud("xxx_pcd.ply")
+  
+# clip
+dom_parts = roi.clip(dom)
+dsm_parts = roi.clip(dsm)
+pcd_parts = roi.clip(ply)
+```
+  
+</details>
+
+<details close>
+<summary>3. Read Reconstruction projects</summary>
+  
+```python
+proj = idp.Recons()
+proj.add_pix4d(["aaa.p4d", "bbb.p4d", ...])   # support using list to give time-series data
+proj.add_metashape(["aaa.psx", "bbb.psx"])
+```
+  
+Please note, it is recommended to use Chunks in one Metashape project to manage time-series data, like the following images:
+  
+<div align="center"><img width="350" src="images/metashape_multi_chunks.png"></a></div>
+
+But several Metashape projects with only one Chunk are also acceptable. The EasyIDP package will automatically split the projects by chunks as the given order.
+
+<div align="center"><img width="550" src="images/metashape_single_chunk.png"></a></div>
+
+Then you can specify each chunk by:
+
+```python
+chunk1 = proj[0]
+# or
+chunk1 = proj["chunk_or_project_name"]
+```
+
+</details>
+
+<details close>
+<summary>4. Backward Projection</summary>
+  
+```python
+>>> img_dict = roi.back_to_raw(chunk1)
+```
+  
+Then check the results:
+```python
+# find the raw image name list
+>>> img_dict.keys()   
+dict_keys(['DJI_0177.JPG', 'DJI_0178.JPG', 'DJI_0179.JPG', 'DJI_0180.JPG', ... ]
+
+# the roi pixel coordinate on that image
+>>> img_dict['DJI_0177.JPG'] 
+array([[ 779,  902],
+       [1043,  846],
+       [1099, 1110],
+       [ 834, 1166],
+       [ 779,  902]])
+```
+ 
+</details>
+
+
+<details close>
+<summary>Package Tricks</summary>
+  
+if is a Pix4D project, and you did not move the output from pix4d default folder, the package will automatically get product path:
+```python
+>>> proj[0].kind
+"pix4D"
+>>> proj[0].dom_path
+"E:\...\pix4d_project_folder\3_dsm_ortho\2_mosaic\project_name_transparent_mosaic_group1.tif"
+```
+
+But for Metashape project, it export product very free. Hence you need manually specify the dom path:
+```python
+>>> proj[0].kind
+"metashape"
+>>> proj[0].dom_path = r"E:\where\you\export\metashape\results\dom.tif"
+```
+
+</details>
+
+
+
+## <div align="center">Documentation</div>
+
+Please check [Github Wiki](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/wiki) for full documentations. And also the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) to find out if someone has already solved your problem.
+
+
+## <div align="center">References</div>
 
 Please cite this paper if this project helps you：
-
-> 如果您的研究受益于该项目，请引用我们的论文：
 
 ```latex
 @Article{wang_easyidp_2021,

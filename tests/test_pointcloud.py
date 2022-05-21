@@ -139,3 +139,27 @@ def test_def_write_ply():
 
     assert os.path.exists(out_path_bin)
     assert os.path.exists(out_path_asc)
+
+
+def test_def_write_las():
+    out_path_las = os.path.join(out_path, "test_def_write_las.las")
+    out_path_laz = os.path.join(out_path, "test_def_write_las.laz")
+
+    if os.path.exists(out_path_las):
+        os.remove(out_path_las)
+    if os.path.exists(out_path_laz):
+        os.remove(out_path_laz)
+
+    idp.pointcloud.write_laz(write_points, write_colors, out_path_laz)
+    idp.pointcloud.write_las(write_points, write_colors, out_path_las)
+
+    assert os.path.exists(out_path_las)
+    assert os.path.exists(out_path_laz)
+
+
+###########################
+# test class point clouds #
+###########################
+
+def test_class_pointcloud_init():
+    pcd = idp.pointcloud()

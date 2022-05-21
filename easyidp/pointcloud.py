@@ -1,3 +1,5 @@
+import os
+import warnings
 from datetime import datetime
 
 import numpy as np
@@ -10,13 +12,36 @@ import easyidp as idp
 
 class PointCloud(object):
 
-    def __init__(self, pcd_path="", origin_offset=np.zeros(3)) -> None:
+    def __init__(self, pcd_path="", origin_offset=np.array([0.,0.,0.])) -> None:
 
         self.file_path = pcd_path
+        self.file_ext = ".ply"
 
-        self.points = np.empty((0,3))
-        self.colors = np.empty((0,3), dtype=np.uint8)
+        self.points = None
+        self.colors = None
+        self.normals = None
         self.offset = origin_offset
+
+        if len(pcd_path) > 0 and os.path.exists(pcd_path):
+            self.read_point_cloud(pcd_path)
+
+    def has_colors(self):
+        if self.colors is None:
+            return False
+        else:
+            return True
+
+    def has_points(self):
+        if self.points is None:
+            return False
+        else:
+            return True
+
+    def has_normals(self):
+        if self.normals is None:
+            return False
+        else:
+            return True
 
     def read_point_cloud(self, pcd_path):
         if pcd_path[-4:] == ".ply":
@@ -24,7 +49,9 @@ class PointCloud(object):
         elif pcd_path[-4:] == ".laz" or pcd_path[-4:] == ".las":
             points, colors = read_laz(pcd_path)
         else:
-            raise IOError("Only support point cloud file ['*.ply', '*.laz', '*.las']")
+            raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
+
+        self.file_ext = os.path.splitext(pcd_path)[-1]
 
         if abs(np.max(points)) > 65536:   # need offseting
             if not np.any(self.offset):    # not given any offset (0,0,0) -> calculate offset
@@ -35,8 +62,26 @@ class PointCloud(object):
 
         self.colors = colors
 
-    def write_point_cloud(self,):
-        pass
+    def write_point_cloud(self, pcd_path):
+        # if ply -> self.points + self.offsets
+        # if las -> self.points & offset = self.offsets
+        split_ext = os.path.splitext(pcd_path)
+
+        if len(split_ext) > 1:  # means has "*.ext" as suffix
+            file_name = split_ext[0]
+            file_ext = split_ext[-1]
+            if file_ext not in ['.ply', '.las', '.laz']:
+                raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
+        else:
+            warnings.warn(f"It seems file name [{pcd_path}] has no file suffix, using default suffix [{self.file_ext}] instead")
+            file_name = pcd_path
+            file_ext = self.file_ext
+
+        if file_ext == ".ply":
+            write_ply(self.points + self.offset, self.colors, file_name+file_ext)
+        else:
+            write_laz(self.points, self.colors, file_name+file_ext, self.offset)
+
 
     def crop_point_cloud(self, poly_boundary, save_as=""):
         # need write 1. crop by roi 2. save to ply & las files
@@ -113,5 +158,15 @@ def write_ply(points, colors, ply_path, binary=True):
     else:
         PlyData([el], text=True).write(ply_path)
 
-def write_laz(points, colors, laz_path):
-    pass
+def write_laz(points, colors, laz_path, offset=np.array([0., 0., 0.])):
+    las = laspy.create()
+    las.xyz = points
+    las.points['red'] = colors[:,0]
+    las.points['green'] = colors[:,1]
+    las.points['blue'] = colors[:,2]
+    las.header.offsets = offset
+
+    las.write(laz_path)
+
+def write_las(points, colors, las_path, offset=np.array([0., 0., 0.])):
+    write_laz(points, colors, las_path, offset)

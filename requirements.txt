@@ -20,14 +20,17 @@ shapely >= 1.7.0
 
 # read laz/las file:
 lazrs>=0.1.1
-#pylas>=0.4.3
 laspy>=2.1.2
 
-# read dxf file:
-ezdxf==0.16.4
+# read pcd file:
+# pypcd >= 0.1.1
+# python-lzf >= 0.2.4  # Windows install: https://www.lfd.uci.edu/~gohlke/pythonlibs/#python-lzf
 
 # read ply file:
 plyfile==0.7.2
+
+# read dxf file:
+ezdxf==0.16.4
 
 # read shp file:
 pyshp==2.1.3

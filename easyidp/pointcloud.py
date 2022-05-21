@@ -1,10 +1,12 @@
+from datetime import datetime
+
 import numpy as np
+import numpy.lib.recfunctions as rfn
 
 import laspy
-from plyfile import PlyData
+from plyfile import PlyData, PlyElement
 
-points_dtype = np.dtype([('x', 'float64'), ('y', 'float64'), ('z', 'float64')])
-colors_dtype = np.dtype([('r', 'uint8'), ('g', 'uint8'), ('b', 'uint8')])
+import easyidp as idp
 
 class PointCloud(object):
 
@@ -12,11 +14,11 @@ class PointCloud(object):
 
         self.file_path = pcd_path
 
-        self.points = np.empty((0,3), dtype=points_dtype)
-        self.colors = np.empty((0,3), dtype=colors_dtype)
+        self.points = np.empty((0,3))
+        self.colors = np.empty((0,3), dtype=np.uint8)
         self.offset = origin_offset
 
-    def read_pcd(self, pcd_path):
+    def read_point_cloud(self, pcd_path):
         if pcd_path[-4:] == ".ply":
             points, colors = read_ply(pcd_path)
         elif pcd_path[-4:] == ".laz" or pcd_path[-4:] == ".las":
@@ -33,7 +35,10 @@ class PointCloud(object):
 
         self.colors = colors
 
-    def crop_pcd_xy(self, poly_boundary, save_as=""):
+    def write_point_cloud(self,):
+        pass
+
+    def crop_point_cloud(self, poly_boundary, save_as=""):
         # need write 1. crop by roi 2. save to ply & las files
         pass
 
@@ -53,8 +58,7 @@ def read_ply(ply_path):
         print(f"Can not find color info in {ply_names}")
         colors = None
 
-    points.dtype = points_dtype
-    colors.dtype = colors_dtype
+    colors.dtype = np.uint8
 
     return points, colors
 
@@ -66,7 +70,48 @@ def read_laz(laz_path):
     colors = np.vstack([las.points['red'], las.points['green'], las.points['blue']]).T / 256
     points = np.vstack([las.x, las.y, las.z]).T
 
-    points.dtype = points_dtype
-    colors.dtype = colors_dtype
+    colors.dtype = np.uint8
 
     return points, colors
+
+def write_ply(points, colors, ply_path, binary=True):
+    """
+    need to convert to structured arrays then save
+       https://github.com/dranjan/python-plyfile#creating-a-ply-file
+       the point cloud structure looks like this:
+       >>> cloud_data.elements
+       (PlyElement('vertex', 
+           (PlyProperty('x', 'float'), 
+            PlyProperty('y', 'float'), 
+            PlyProperty('z', 'float'), 
+            PlyProperty('red', 'uchar'), 
+            PlyProperty('green', 'uchar'), 
+            PlyProperty('blue', 'uchar')), count=42454, comments=[]),)
+    
+    and numpy way to convert ndarray to strucutred array:
+       https://stackoverflow.com/questions/3622850/converting-a-2d-numpy-array-to-a-structured-array
+    
+    and method to merge to structured arrays
+       https://stackoverflow.com/questions/5355744/numpy-joining-structured-arrays
+    """
+
+    # convert to strucutrre array
+    struct_points = np.core.records.fromarrays(points.T, names="x, y, z")
+    struct_colors = np.core.records.fromarrays(colors.T, names="red, green, blue")
+
+    # merge 
+    struct_merge = rfn.merge_arrays([struct_points, struct_colors], flatten=True, usemask=False)
+
+    # convert to PlyFile data type
+    el = PlyElement.describe(struct_merge, 'vertex', 
+                             comments=[f'Created by EasyIDP v{idp.__version__}', 
+                                       f'Created {datetime.now().strftime("%Y/%m/%d %H:%M:%S")}'])  
+
+    # save to file
+    if binary:
+        PlyData([el]).write(ply_path)
+    else:
+        PlyData([el], text=True).write(ply_path)
+
+def write_laz(points, colors, laz_path):
+    pass

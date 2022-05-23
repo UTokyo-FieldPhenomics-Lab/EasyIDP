@@ -187,3 +187,16 @@ ISSN = {2072-4292},
 DOI = {10.3390/rs13132622}
 }
 ```
+
+我们也感谢下面所有开源工程对本项目的贡献：
+
+* numpy: [https://numpy.org/](https://numpy.org/)
+* matplotlib:[https://matplotlib.org/](https://matplotlib.org/)
+* scikit-image: [https://scikit-image.org/](https://scikit-image.org/)
+* pyproj: [https://github.com/pyproj4/pyproj](https://github.com/pyproj4/pyproj)
+* tifffile: [https://github.com/cgohlke/tifffile](https://github.com/cgohlke/tifffile)
+* shapely: [https://github.com/shapely/shapely](https://github.com/shapely/shapely)
+* laspy/lasrs/lasio: [https://github.com/laspy/laspy](https://github.com/laspy/laspy)
+* plyfile: [https://github.com/dranjan/python-plyfile](https://github.com/dranjan/python-plyfile)
+* ezdxf: [https://github.com/mozman/ezdxf](https://github.com/mozman/ezdxf)
+* pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)

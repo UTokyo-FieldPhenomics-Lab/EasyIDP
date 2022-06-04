@@ -13,7 +13,7 @@ data_path =  "./tests/data/pcd_test"
 def test_def_read_ply_binary():
     ply_binary_path = os.path.join(data_path, "hasu_tanashi_binary.ply")
 
-    points, colors = idp.pointcloud.read_ply(ply_binary_path)
+    points, colors, normals = idp.pointcloud.read_ply(ply_binary_path)
 
     # comare results
     np.testing.assert_array_almost_equal(
@@ -36,7 +36,7 @@ def test_def_read_ply_binary():
 def test_def_read_ply_ascii():
     ply_ascii_path = os.path.join(data_path, "hasu_tanashi_ascii.ply")
 
-    points, colors = idp.pointcloud.read_ply(ply_ascii_path)
+    points, colors, normals = idp.pointcloud.read_ply(ply_ascii_path)
 
     # compare results
     np.testing.assert_array_almost_equal(
@@ -56,10 +56,10 @@ def test_def_read_ply_ascii():
         np.array([115,  97,  78], dtype=np.uint8)
     )
 
-def test_def_read_laz_las():
+def test_def_read_las():
     las_path = os.path.join(data_path, "hasu_tanashi.las")
 
-    points, colors = idp.pointcloud.read_laz(las_path)
+    points, colors, normals = idp.pointcloud.read_las(las_path)
 
     # compare results
     assert points.max() == 0.8320407999999999
@@ -68,10 +68,10 @@ def test_def_read_laz_las():
     assert colors.max() == 224
     assert colors.min() == 0
 
-def test_def_read_laz_laz():
+def test_def_read_laz():
     laz_path = os.path.join(data_path, "hasu_tanashi.laz")
 
-    points, colors = idp.pointcloud.read_laz(laz_path)
+    points, colors, normals = idp.pointcloud.read_laz(laz_path)
 
     # compare results
     assert points.max() == 0.8320407999999999
@@ -80,10 +80,10 @@ def test_def_read_laz_laz():
     assert colors.max() == 224
     assert colors.min() == 0
 
-def test_def_read_laz_las13ver():
+def test_def_read_las_13ver():
     las_path = os.path.join(data_path, "hasu_tanashi_1.3.las")
 
-    points, colors = idp.pointcloud.read_laz(las_path)
+    points, colors, normals = idp.pointcloud.read_las(las_path)
 
     # compare results
     assert points.max() == 0.8320407
@@ -92,10 +92,10 @@ def test_def_read_laz_las13ver():
     assert colors.max() == 224
     assert colors.min() == 0
 
-def test_def_read_laz_laz13ver():
+def test_def_read_laz_13ver():
     laz_path = os.path.join(data_path, "hasu_tanashi_1.3.laz")
 
-    points, colors = idp.pointcloud.read_laz(laz_path)
+    points, colors, normals = idp.pointcloud.read_laz(laz_path)
 
     # compare results
     assert points.max() == 0.8320407
@@ -104,6 +104,24 @@ def test_def_read_laz_laz13ver():
     assert colors.max() == 224
     assert colors.min() == 0
 
+def test_read_ply_with_normals():
+    ply_path = os.path.join(data_path, "maize3na_20210614_15m_utm.ply")
+
+    points, colors, normals = idp.pointcloud.read_ply(ply_path)
+
+    assert normals.shape == (49658, 3)
+
+def test_read_las_with_normals():
+    las_path = os.path.join(data_path, "maize3na_20210614_15m_utm.las")
+    points, colors, normals = idp.pointcloud.read_las(las_path)
+
+    assert normals.shape == (49658, 3)
+
+def test_read_laz_with_normals():
+    laz_path = os.path.join(data_path, "maize3na_20210614_15m_utm.laz")
+    points, colors, normals = idp.pointcloud.read_laz(laz_path)
+
+    assert normals.shape == (49658, 3)
 
 ###########################
 # test write point clouds #
@@ -111,50 +129,146 @@ def test_def_read_laz_laz13ver():
 
 out_path = "./tests/out/pcd_test"
 
-write_points = np.asarray([[-18.9083118, -15.7775583,  -0.77878  ],
-                           [-18.9082794, -15.7772741,  -0.7802601],
-                           [-18.907196 , -15.7748289,  -0.8017483],
-                           [-15.7892904, -17.9612598,  -0.8468666],
-                           [-15.7885809, -17.9391041,  -0.839632 ],
-                           [-15.7862186, -17.9365788,  -0.8327141]])
+write_points = np.asarray([[-1.9083118, -1.7775583,  -0.77878  ],
+                           [-1.9082794, -1.7772741,  -0.7802601],
+                           [-1.907196 , -1.7748289,  -0.8017483],
+                           [-1.7892904, -1.9612598,  -0.8468666],
+                           [-1.7885809, -1.9391041,  -0.839632 ],
+                           [-1.7862186, -1.9365788,  -0.8327141]], dtype=np.float64)
 write_colors = np.asarray([[  0,   0,   0],
                            [  0,   0,   0],
                            [  0,   0,   0],
                            [192,  64, 128],
                            [ 92,  88,  83],
-                           [ 64,  64,  64]])
-
+                           [ 64,  64,  64]], dtype=np.uint8)
+write_normals = np.asarray([[-0.03287353,  0.36604664,  0.9300157 ],
+                            [ 0.08860216,  0.07439037,  0.9932853 ],
+                            [-0.01135951,  0.2693031 ,  0.9629885 ],
+                            [ 0.4548034 , -0.15576138,  0.876865  ],
+                            [ 0.4550802 , -0.29450312,  0.8403392 ],
+                            [ 0.32758632,  0.27255052,  0.9046565 ]], dtype=np.float64)
 
 def test_def_write_ply():
+    # without normals
     out_path_bin = os.path.join(out_path, "test_def_write_ply_bin.ply")
     out_path_asc = os.path.join(out_path, "test_def_write_ply_asc.ply")
+    # with normals
+    out_npath_bin = os.path.join(out_path, "test_def_write_nply_bin.ply")
+    out_npath_asc = os.path.join(out_path, "test_def_write_nply_asc.ply")
 
+    # without normals
     if os.path.exists(out_path_bin):
         os.remove(out_path_bin)
     if os.path.exists(out_path_asc):
         os.remove(out_path_asc)
-
+    # with normals
+    if os.path.exists(out_npath_bin):
+        os.remove(out_npath_bin)
+    if os.path.exists(out_npath_asc):
+        os.remove(out_npath_asc)
+    
+    # without normals
     idp.pointcloud.write_ply(write_points, write_colors, out_path_bin, binary=True)
     idp.pointcloud.write_ply(write_points, write_colors, out_path_asc, binary=False)
+    # with normals
+    idp.pointcloud.write_ply(write_points, write_colors, out_npath_bin, normals=write_normals, binary=True)
+    idp.pointcloud.write_ply(write_points, write_colors, out_npath_asc, normals=write_normals, binary=False)
 
+    # test if file created
     assert os.path.exists(out_path_bin)
     assert os.path.exists(out_path_asc)
 
+    assert os.path.exists(out_npath_bin)
+    assert os.path.exists(out_npath_asc)
+
+    # test value if same
+    p, c, n = idp.pointcloud.read_ply(out_path_bin)
+    np.testing.assert_almost_equal(p, write_points)
+    np.testing.assert_almost_equal(c, write_colors)
+    assert n is None
+
+    p, c, n = idp.pointcloud.read_ply(out_path_asc)
+    np.testing.assert_almost_equal(p, write_points)
+    np.testing.assert_almost_equal(c, write_colors)
+    assert n is None
+
+    p, c, n = idp.pointcloud.read_ply(out_npath_bin)
+    np.testing.assert_almost_equal(p, write_points)
+    np.testing.assert_almost_equal(c, write_colors)
+    np.testing.assert_almost_equal(n, write_normals)
+
+    p, c, n = idp.pointcloud.read_ply(out_npath_asc)
+    np.testing.assert_almost_equal(p, write_points)
+    np.testing.assert_almost_equal(c, write_colors)
+    np.testing.assert_almost_equal(n, write_normals)
+
 
 def test_def_write_las():
+    # without normals
     out_path_las = os.path.join(out_path, "test_def_write_las.las")
-    out_path_laz = os.path.join(out_path, "test_def_write_las.laz")
-
+    # with normals
+    out_npath_las = os.path.join(out_path, "test_def_write_nlas.las")
+    
+    # without normals
     if os.path.exists(out_path_las):
         os.remove(out_path_las)
+    # with normals
+    if os.path.exists(out_npath_las):
+        os.remove(out_npath_las)
+
+    # without normals
+    idp.pointcloud.write_las(write_points, write_colors, out_path_las)
+    # with normals
+    idp.pointcloud.write_las(write_points, write_colors, out_npath_las, normals=write_normals)
+
+    # test if file created
+    assert os.path.exists(out_path_las)
+    assert os.path.exists(out_npath_las)
+
+    p, c, n = idp.pointcloud.read_las(out_path_las)
+    # where will be a precision loss, wait for the feedback of https://github.com/laspy/laspy/issues/222
+    np.testing.assert_almost_equal(p, write_points, decimal=2)
+    np.testing.assert_almost_equal(c, write_colors)
+    assert n is None
+
+    p, c, n = idp.pointcloud.read_las(out_npath_las)
+    np.testing.assert_almost_equal(p, write_points, decimal=2)
+    np.testing.assert_almost_equal(c, write_colors)
+    np.testing.assert_almost_equal(n, write_normals)
+
+
+def test_def_write_laz():
+    # without normals
+    out_path_laz = os.path.join(out_path, "test_def_write_laz.laz")
+    # with normals
+    out_npath_laz = os.path.join(out_path, "test_def_write_nlaz.laz")
+
+    # without normals
     if os.path.exists(out_path_laz):
         os.remove(out_path_laz)
+    # with normals
+    if os.path.exists(out_npath_laz):
+        os.remove(out_npath_laz)
 
+    # without normals
     idp.pointcloud.write_laz(write_points, write_colors, out_path_laz)
-    idp.pointcloud.write_las(write_points, write_colors, out_path_las)
+    # with normals
+    idp.pointcloud.write_laz(write_points, write_colors, out_npath_laz, normals=write_normals)
 
-    assert os.path.exists(out_path_las)
+    # test if file created
     assert os.path.exists(out_path_laz)
+    assert os.path.exists(out_npath_laz)
+
+    p, c, n = idp.pointcloud.read_laz(out_path_laz)
+    # where will be a precision loss, wait for the feedback of https://github.com/laspy/laspy/issues/222
+    np.testing.assert_almost_equal(p, write_points, decimal=2)
+    np.testing.assert_almost_equal(c, write_colors)
+    assert n is None
+
+    p, c, n = idp.pointcloud.read_laz(out_npath_laz)
+    np.testing.assert_almost_equal(p, write_points, decimal=2)
+    np.testing.assert_almost_equal(c, write_colors)
+    np.testing.assert_almost_equal(n, write_normals)
 
 
 ###########################
@@ -162,4 +276,17 @@ def test_def_write_las():
 ###########################
 
 def test_class_pointcloud_init():
-    pcd = idp.pointcloud()
+    # test the empty project
+    pcd = idp.PointCloud()
+
+    assert pcd.points is None
+    assert pcd.colors is None
+    assert pcd.normals is None
+    np.testing.assert_array_almost_equal(
+        pcd.offset, np.array([0., 0., 0.,])
+    )
+
+    assert pcd.has_points() == False
+    assert pcd.has_colors() == False
+    assert pcd.has_normals() == False
+

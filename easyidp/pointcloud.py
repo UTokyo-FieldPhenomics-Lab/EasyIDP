@@ -105,21 +105,48 @@ def read_ply(ply_path):
 
     colors.dtype = np.uint8
 
-    return points, colors
+    # read normals
+    if 'nx' in ply_names:
+        normals = np.vstack((cloud_data['nx'], cloud_data['ny'], cloud_data['nz'])).T
+    else:
+        normals = None
 
+    return points, colors, normals
+
+
+def read_las(las_path):
+    return read_laz(las_path)
 
 def read_laz(laz_path):
     las = laspy.read(laz_path)
 
-    # ranges 0-65536
-    colors = np.vstack([las.points['red'], las.points['green'], las.points['blue']]).T / 256
     points = np.vstack([las.x, las.y, las.z]).T
 
-    colors.dtype = np.uint8
+    # ranges 0-65536
+    colors = np.vstack([las.points['red'], las.points['green'], las.points['blue']]).T / 256
+    colors = colors.astype(np.uint8)
 
-    return points, colors
+    # read normals
+    """
+    in cloudcompare, it locates "extended fields" -> normal x
+    >>> las.point_format
+    <PointFormat(2, 3 bytes of extra dims)>
+    >>> las.point.array
+    array([( 930206, 650950, 79707, 5654, 73, 0, 0, 0, 1, 7196,  5397, 4369, -4,  46, 118),
+           ...,
+           (1167278, 741188, 79668, 5397, 73, 0, 0, 0, 1, 6425,  5140, 4626, 41,  34, 114)],
+          dtype=[('X', '<i4'), ('Y', '<i4'), ('Z', '<i4'), ('intensity', '<u2'), ('bit_fields', 'u1'), ('raw_classification', 'u1'), ('scan_angle_rank', 'i1'), ('user_data', 'u1'), ('point_source_id', '<u2'), ('red', '<u2'), ('green', '<u2'), ('blue', '<u2'), ('normal x', 'i1'), ('normal y', 'i1'), ('normal z', 'i1')])
+    the normal type is int8 ('normal x', 'i1'), ('normal y', 'i1'), ('normal z', 'i1')
+    but las.point['normal x'] -> get float value
+    """
+    if "normal x" in las.points.array.dtype.names:
+        normals = np.vstack([las.points['normal x'], las.points['normal y'], las.points['normal z']]).T
+    else:
+        normals = None
 
-def write_ply(points, colors, ply_path, binary=True):
+    return points, colors, normals
+
+def write_ply(points, colors, ply_path, normals=None, binary=True):
     """
     need to convert to structured arrays then save
        https://github.com/dranjan/python-plyfile#creating-a-ply-file
@@ -142,10 +169,17 @@ def write_ply(points, colors, ply_path, binary=True):
 
     # convert to strucutrre array
     struct_points = np.core.records.fromarrays(points.T, names="x, y, z")
-    struct_colors = np.core.records.fromarrays(colors.T, names="red, green, blue")
+    struct_colors = np.core.records.fromarrays(colors.T, dtype=np.dtype([('red', np.uint8), ('green', np.uint8), ('blue', np.uint8)]))
+
+    # add normals
+    if normals is not None:
+        struct_normals = np.core.records.fromarrays(normals.T, names="nx, ny, nz")
+        merged_list = [struct_points, struct_colors, struct_normals]
+    else:
+        merged_list = [struct_points, struct_colors]
 
     # merge 
-    struct_merge = rfn.merge_arrays([struct_points, struct_colors], flatten=True, usemask=False)
+    struct_merge = rfn.merge_arrays(merged_list, flatten=True, usemask=False)
 
     # convert to PlyFile data type
     el = PlyElement.describe(struct_merge, 'vertex', 
@@ -158,15 +192,38 @@ def write_ply(points, colors, ply_path, binary=True):
     else:
         PlyData([el], text=True).write(ply_path)
 
-def write_laz(points, colors, laz_path, offset=np.array([0., 0., 0.])):
-    las = laspy.create()
-    las.xyz = points
-    las.points['red'] = colors[:,0]
-    las.points['green'] = colors[:,1]
-    las.points['blue'] = colors[:,2]
-    las.header.offsets = offset
+def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0.])):
+    # create header
+    header = laspy.LasHeader(point_format=2, version="1.2") 
+    if normals is not None:
+        header.add_extra_dim(laspy.ExtraBytesParams(name="normal x", type=np.float64))
+        header.add_extra_dim(laspy.ExtraBytesParams(name="normal y", type=np.float64))
+        header.add_extra_dim(laspy.ExtraBytesParams(name="normal z", type=np.float64))
+    header.offsets = offset
+    header.generating_software = f'EasyIDP v{idp.__version__} on {datetime.now().strftime("%Y/%m/%d %H:%M:%S")}'
+
+    # create las file
+    las = laspy.LasData(header)
+
+    # add values
+    las.points['x'] = points[:, 0]   # here has the convert to int32 precision loss
+    las.points['y'] = points[:, 1]
+    las.points['z'] = points[:, 2]
+    #print(points[:, 0], las.x)
+
+    las.points['red'] = colors[:,0] * 256  # convert to uint16
+    las.points['green'] = colors[:,1] * 256 
+    las.points['blue'] = colors[:,2] * 256
+
+
+    if normals is not None:
+        las.points['normal x'] = normals[:, 0]
+        las.points['normal y'] = normals[:, 1]
+        las.points['normal z'] = normals[:, 2]
+
+    print(las.points.array)
 
     las.write(laz_path)
 
-def write_las(points, colors, las_path, offset=np.array([0., 0., 0.])):
-    write_laz(points, colors, las_path, offset)
+def write_las(points, colors, las_path, normals=None, offset=np.array([0., 0., 0.])):
+    write_laz(points, colors, las_path, normals, offset)

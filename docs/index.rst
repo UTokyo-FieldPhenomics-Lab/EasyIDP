@@ -15,15 +15,18 @@ Welcome to EasyIDP's documentation!
 
 .. image:: https://img.shields.io/github/languages/code-size/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub code size in bytes
-   :target: http://sphinx-intl.rtfd.io/
+   :target: https://img.shields.io/
 
 .. image:: https://img.shields.io/github/license/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub
-   :target: http://pypi.org/p/sphinx-intl
+   :target: https://img.shields.io/
 
 .. image:: https://img.shields.io/github/languages/top/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub top language
 
+.. tip::
+   This is multi-language document, you can change document languages at the bottom left corner.
+   
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

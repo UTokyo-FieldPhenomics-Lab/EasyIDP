@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-05 13:18+0900\n"
+"POT-Creation-Date: 2022-06-05 13:44+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.10.1\n"
 
-#: ../../index.rst:27
+#: ../../index.rst:30
 msgid "Contents:"
 msgstr "目录："
 
@@ -54,19 +54,26 @@ msgstr ""
 msgid "GitHub top language"
 msgstr ""
 
-#: ../../index.rst:33
+#: ../../index.rst:28
+#, fuzzy
+msgid ""
+"This is multi-language document, you can change document languages at the"
+" bottom left corner."
+msgstr "这是一个多语言文档，你可以通过左下角来切换文档语言"
+
+#: ../../index.rst:36
 msgid "Indices and tables"
 msgstr "索引与表格"
 
-#: ../../index.rst:35
+#: ../../index.rst:38
 msgid ":ref:`genindex`"
 msgstr ""
 
-#: ../../index.rst:36
+#: ../../index.rst:39
 msgid ":ref:`modindex`"
 msgstr ""
 
-#: ../../index.rst:37
+#: ../../index.rst:40
 msgid ":ref:`search`"
 msgstr ""
 

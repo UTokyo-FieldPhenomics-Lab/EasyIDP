@@ -4,3 +4,4 @@ tests/data/*
 tests/out/*
 .debug/*
 .archive/*
+docs/_build/*

@@ -3,5 +3,8 @@
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestEnabled": true,
-    "python.unitTest.pyTestArgs": ["-s"]
+    "python.unitTest.pyTestArgs": [
+        "-s"
+    ],
+    "esbonio.sphinx.confDir": ""
 }

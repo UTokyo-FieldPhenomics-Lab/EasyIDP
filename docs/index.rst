@@ -28,9 +28,6 @@ Welcome to EasyIDP's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-License
-=======
-Licensed under the MIT license.
 
 Indices and tables
 ==================

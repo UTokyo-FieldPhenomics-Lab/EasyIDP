@@ -5,3 +5,4 @@ tests/out/*
 .debug/*
 .archive/*
 docs/_build/*
+*.mo

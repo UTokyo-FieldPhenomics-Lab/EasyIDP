@@ -21,6 +21,11 @@ EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region
 2. Backward Projection ROI to original images.
 
 
+## <div align="center">Documentation</div>
+
+Please check [Official Documents](https://easyidp.readthedocs.io/en/latest/) for full documentations. And please also use the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) when you meet any problems.
+
+
 ## <div align="center">Quick Start Examples (Processing)</div>
 
 <details open>
@@ -105,11 +110,11 @@ proj.add_metashape(["aaa.psx", "bbb.psx"])
   
 Please note, it is recommended to use Chunks in one Metashape project to manage time-series data, like the following images:
   
-<div align="center"><img width="350" src="images/metashape_multi_chunks.png"></a></div>
+<div align="center"><img width="350" src="docs/_static/images/metashape_multi_chunks.png"></a></div>
 
 But several Metashape projects with only one Chunk are also acceptable. The EasyIDP package will automatically split the projects by chunks as the given order.
 
-<div align="center"><img width="550" src="images/metashape_single_chunk.png"></a></div>
+<div align="center"><img width="550" src="docs/_static/images/metashape_single_chunk.png"></a></div>
 
 Then you can specify each chunk by:
 
@@ -165,12 +170,6 @@ But for Metashape project, it export product very free. Hence you need manually 
 ```
 
 </details>
-
-
-
-## <div align="center">Documentation</div>
-
-Please check [Github Wiki](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/wiki) for full documentations. And also the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) to find out if someone has already solved your problem.
 
 
 ## <div align="center">References</div>

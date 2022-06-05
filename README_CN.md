@@ -19,6 +19,10 @@ EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)�
 1. 在正射地图(DOM)、高程图(DSM)和点云上把ROI切出来
 2. 把ROI反投影回原始图片上
 
+## <div align="center">文档</div>
+
+完整的文档请查阅[官方文档](https://easyidp.readthedocs.io/zh-CN/latest/)。如果遇到问题，请移步[Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions)。
+
 
 ## <div align="center">快速上手 (填坑中)</div>
 
@@ -104,11 +108,11 @@ proj.add_metashape(["aaa.psx", "bbb.psx"])
 
 请注意，对于Metashape的时间序列项目，推荐在一个项目中建立多个Chunk来记录不同的时间，如下图所示：
   
-<div align="center"><img width="350" src="images/metashape_multi_chunks.png"></a></div>
+<div align="center"><img width="350" src="docs/_static/images/metashape_multi_chunks.png"></a></div>
 
 但是每个时间序列单独一个只有一个chunk的Metashape文件，也是可接受的。EasyIDP包会自动的按照给定的顺序分离出里面的每一个Chunk。
 
-<div align="center"><img width="550" src="images/metashape_single_chunk.png"></a></div>
+<div align="center"><img width="550" src="docs/_static/images/metashape_single_chunk.png"></a></div>
 
 然后你可以按照下面两种方法获取每一个Chunk：
 
@@ -165,10 +169,6 @@ array([[ 779,  902],
 
 </details>
 
-
-## <div align="center">文档</div>
-
-完整的文档请查阅：[Github Wiki](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/wiki)。如果遇到问题，请先查阅是否已经在[Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions)被解决了。
 
 
 ## <div align="center">参考论文</div>

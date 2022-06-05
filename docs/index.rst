@@ -6,7 +6,7 @@
 Welcome to EasyIDP's documentation!
 ===================================
 
-``EasyIDP`` (Easy Intermediate Data Processor) is a handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions:
+:code:`EasyIDP` (Easy Intermediate Data Processor) is a handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions:
 
 - Clip ROI on GeoTiff Maps (DOM & DSM) and Point Cloud.
 - Backward Projection ROI to original images.

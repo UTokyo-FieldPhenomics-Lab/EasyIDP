@@ -21,7 +21,7 @@ EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)�
 
 ## <div align="center">文档</div>
 
-完整的文档请查阅[官方文档](https://easyidp.readthedocs.io/zh-CN/latest/)。如果遇到问题，请移步[Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions)。
+完整的文档请查阅[官方文档](https://easyidp.readthedocs.io/zh_CN/latest/)。如果遇到问题，请移步[Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions)。
 
 
 ## <div align="center">快速上手 (填坑中)</div>

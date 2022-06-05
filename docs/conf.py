@@ -43,8 +43,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # -- bilingual translation ----
 locale_dirs = ['locale/']  
-
-language = 'en'
+# language for local preview
+language = 'zh_CN'
 
 # -- Options for HTML output -------------------------------------------------
 

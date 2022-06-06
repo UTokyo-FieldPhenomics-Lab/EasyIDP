@@ -93,7 +93,7 @@ class PointCloud(object):
         if file_ext == ".ply":
             write_ply(self.points + self.offset, self.colors, ply_path=file_name+file_ext, normals=self.normals)
         else:
-            write_laz(self.points, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self.offset)
+            write_laz(self.points + self.offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self.offset)
 
 
     def crop_point_cloud(self, poly_boundary, save_as=""):
@@ -205,7 +205,7 @@ def write_ply(points, colors, ply_path, normals=None, binary=True):
     else:
         PlyData([el], text=True).write(ply_path)
 
-def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0.])):
+def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
     # create header
     header = laspy.LasHeader(point_format=2, version="1.2") 
     if normals is not None:
@@ -213,6 +213,7 @@ def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0
         header.add_extra_dim(laspy.ExtraBytesParams(name="normal y", type=np.float64))
         header.add_extra_dim(laspy.ExtraBytesParams(name="normal z", type=np.float64))
     header.offsets = offset
+    header.scales = np.array([float(f"1e-{decimal}")]*3)
     header.generating_software = f'EasyIDP v{idp.__version__} on {datetime.now().strftime("%Y/%m/%d %H:%M:%S")}'
 
     # create las file
@@ -222,7 +223,6 @@ def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0
     las.points['x'] = points[:, 0]   # here has the convert to int32 precision loss
     las.points['y'] = points[:, 1]
     las.points['z'] = points[:, 2]
-    #print(points[:, 0], las.x)
 
     las.points['red'] = colors[:,0] * 256  # convert to uint16
     las.points['green'] = colors[:,1] * 256 
@@ -234,9 +234,7 @@ def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0
         las.points['normal y'] = normals[:, 1]
         las.points['normal z'] = normals[:, 2]
 
-    print(las.points.array)
-
     las.write(laz_path)
 
-def write_las(points, colors, las_path, normals=None, offset=np.array([0., 0., 0.])):
-    write_laz(points, colors, las_path, normals, offset)
+def write_las(points, colors, las_path, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
+    write_laz(points, colors, las_path, normals, offset, decimal)

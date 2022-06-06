@@ -67,8 +67,8 @@ def test_def_read_las():
     assert points.max() == 0.8320407999999999
     assert points.min() == -18.9083118
 
-    assert colors.max() == 224
-    assert colors.min() == 0
+    assert colors.max() == 250
+    assert colors.min() == 15
 
 def test_def_read_laz():
     laz_path = os.path.join(data_path, "hasu_tanashi.laz")
@@ -79,8 +79,8 @@ def test_def_read_laz():
     assert points.max() == 0.8320407999999999
     assert points.min() == -18.9083118
 
-    assert colors.max() == 224
-    assert colors.min() == 0
+    assert colors.max() == 250
+    assert colors.min() == 15
 
 def test_def_read_las_13ver():
     las_path = os.path.join(data_path, "hasu_tanashi_1.3.las")
@@ -91,8 +91,8 @@ def test_def_read_las_13ver():
     assert points.max() == 0.8320407
     assert points.min() == -18.9083118
 
-    assert colors.max() == 224
-    assert colors.min() == 0
+    assert colors.max() == 250
+    assert colors.min() == 15
 
 def test_def_read_laz_13ver():
     laz_path = os.path.join(data_path, "hasu_tanashi_1.3.laz")
@@ -103,8 +103,8 @@ def test_def_read_laz_13ver():
     assert points.max() == 0.8320407
     assert points.min() == -18.9083118
 
-    assert colors.max() == 224
-    assert colors.min() == 0
+    assert colors.max() == 250
+    assert colors.min() == 15
 
 def test_read_ply_with_normals():
     ply_path = os.path.join(data_path, "maize3na_20210614_15m_utm.ply")
@@ -263,12 +263,12 @@ def test_def_write_laz():
 
     p, c, n = idp.pointcloud.read_laz(out_path_laz)
     # where will be a precision loss, wait for the feedback of https://github.com/laspy/laspy/issues/222
-    np.testing.assert_almost_equal(p, write_points, decimal=2)
+    np.testing.assert_almost_equal(p, write_points, decimal=5)
     np.testing.assert_almost_equal(c, write_colors)
     assert n is None
 
     p, c, n = idp.pointcloud.read_laz(out_npath_laz)
-    np.testing.assert_almost_equal(p, write_points, decimal=2)
+    np.testing.assert_almost_equal(p, write_points, decimal=5)
     np.testing.assert_almost_equal(c, write_colors)
     np.testing.assert_almost_equal(n, write_normals)
 

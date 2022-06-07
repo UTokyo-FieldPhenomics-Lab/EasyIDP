@@ -6,3 +6,4 @@ tests/out/*
 .archive/*
 docs/_build/*
 *.mo
+.vscode/*

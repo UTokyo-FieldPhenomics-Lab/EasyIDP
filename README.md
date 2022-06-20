@@ -171,6 +171,27 @@ But for Metashape project, it export product very free. Hence you need manually 
 
 </details>
 
+<details close>
+<summary>Run tests</summary>
+  
+The data for pytest is not uploaded to github, please download from [this OneDrive link](https://1drv.ms/u/s!ApziPc6_-bo1krV88PtZJ7FKf-55hA?e=gqhXwv) (0.3GB), and put the them into `tests/data` path. The final structure should like this:
+
+```plaintxt
+tests/
+|-- data/
+|   |-- metashape/...
+|   |-- pcd_test/...
+|   |-- pix4d/...
+|   |-- shp_test/...
+|   |-- tiff_test/...
+|-- out/...
+```
+
+
+</details>
+
+
+
 
 ## <div align="center">References</div>
 
@@ -203,3 +224,5 @@ We also thanks the benefits from the following open source projects:
 * plyfile: [https://github.com/dranjan/python-plyfile](https://github.com/dranjan/python-plyfile)
 * ezdxf: [https://github.com/mozman/ezdxf](https://github.com/mozman/ezdxf)
 * pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
+* tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
+* tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)

@@ -202,3 +202,5 @@ DOI = {10.3390/rs13132622}
 * plyfile: [https://github.com/dranjan/python-plyfile](https://github.com/dranjan/python-plyfile)
 * ezdxf: [https://github.com/mozman/ezdxf](https://github.com/mozman/ezdxf)
 * pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
+* tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
+* tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)

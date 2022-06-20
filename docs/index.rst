@@ -25,6 +25,8 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
    :alt: GitHub top language
 
 .. tip::
+   Target Translation
+   
    This is a multi-language document, you can change document languages at the bottom left corner.
 
 .. toctree::

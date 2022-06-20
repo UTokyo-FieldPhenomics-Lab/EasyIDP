@@ -17,7 +17,7 @@ class PointCloud(object):
         self.file_path = pcd_path
         self.file_ext = ".ply"
 
-        self.points = None
+        self._points = None   # internal points with offsets to save memory
         self.colors = None
         self.normals = None
 
@@ -34,6 +34,10 @@ class PointCloud(object):
         if len(pcd_path) > 0 and os.path.exists(pcd_path):
             self.read_point_cloud(pcd_path)
 
+    @property
+    def points(self):
+        return self._points + self.offset
+
     def has_colors(self):
         if self.colors is None:
             return False
@@ -41,7 +45,7 @@ class PointCloud(object):
             return True
 
     def has_points(self):
-        if self.points is None:
+        if self._points is None:
             return False
         else:
             return True
@@ -51,9 +55,6 @@ class PointCloud(object):
             return False
         else:
             return True
-
-    def get_raw_points(self):
-        return self.points + self.offset
 
     def read_point_cloud(self, pcd_path):
         if pcd_path[-4:] == ".ply":
@@ -68,9 +69,9 @@ class PointCloud(object):
         if abs(np.max(points)) > 65536:   # need offseting
             if not np.any(self.offset):    # not given any offset (0,0,0) -> calculate offset
                 self.offset = np.floor(points.min(axis=0) / 100) * 100
-            self.points = points - self.offset
+            self._points = points - self.offset
         else:
-            self.points = points
+            self._points = points
 
         self.colors = colors
         self.normals = normals
@@ -91,13 +92,14 @@ class PointCloud(object):
             file_ext = self.file_ext
 
         if file_ext == ".ply":
-            write_ply(self.points + self.offset, self.colors, ply_path=file_name+file_ext, normals=self.normals)
+            write_ply(self._points + self.offset, self.colors, ply_path=file_name+file_ext, normals=self.normals)
         else:
-            write_laz(self.points + self.offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self.offset)
+            write_laz(self._points + self.offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self.offset)
 
 
     def crop_point_cloud(self, poly_boundary, save_as=""):
         # need write 1. crop by roi 2. save to ply & las files
+        # poly_boundary = 1. PixROI, 2. 2D ndarray
         pass
 
 

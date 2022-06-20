@@ -1,4 +1,3 @@
-from asyncore import write
 import os
 import re
 import sys
@@ -281,7 +280,7 @@ def test_class_pointcloud_init():
     # test the empty project
     pcd = idp.PointCloud()
 
-    assert pcd.points is None
+    assert pcd._points is None
     assert pcd.colors is None
     assert pcd.normals is None
     np.testing.assert_array_almost_equal(
@@ -296,13 +295,13 @@ def test_class_pointcloud_def_read_point_cloud_no_offset():
     # read pcd without offset
     pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
 
-    assert pcd.points is not None
+    assert pcd._points is not None
     np.testing.assert_array_almost_equal(
-        pcd.points[ 0, :], 
+        pcd._points[ 0, :], 
         np.array([-18.908312, -15.777558,  -0.77878 ], dtype=np.float32)
     )
     np.testing.assert_array_almost_equal(
-        pcd.points[-1, :],
+        pcd._points[-1, :],
         np.array([-15.786219 , -17.936579 ,  -0.8327141], dtype=np.float32)
     )
 
@@ -332,7 +331,7 @@ def test_class_pointcloud_def_read_point_cloud_offsets():
     pcd = idp.PointCloud(os.path.join(data_path, "maize3na_20210614_15m_utm.las"))
 
     np.testing.assert_almost_equal(pcd.offset, np.array([ 367900., 3955800., 0.]))
-    np.testing.assert_almost_equal(pcd.points[0,:], np.array([ 93.0206,  65.095 ,  57.9707]))
+    np.testing.assert_almost_equal(pcd._points[0,:], np.array([ 93.0206,  65.095 ,  57.9707]))
 
     # specify origin offset
     ## input as list

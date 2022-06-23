@@ -20,6 +20,7 @@ EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region
 1. Clip ROI on GeoTiff Maps (DOM & DSM) and Point Cloud.
 2. Backward Projection ROI to original images.
 
+This project tried to use packges based on pure-python, instead of installing some heavy packages (Open3D, OpenCV) and hard to install packages (GDAL dependices) for one or two individual functions. This may cause efficiency loss and differences in coding habit.
 
 ## <div align="center">Documentation</div>
 

@@ -19,6 +19,8 @@ EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)�
 1. 在正射地图(DOM)、高程图(DSM)和点云上把ROI切出来
 2. 把ROI反投影回原始图片上
 
+本项目尽量使用纯python实现的第三方库，避免因为个别功能而去使用可能安装失败的GDAL库依赖包(GeoPandas, GDAL)和过于繁重的大型库(如Open3D, OpenCV)，因此效率和代码习惯上会有一些损失。
+
 ## <div align="center">文档</div>
 
 完整的文档请查阅[官方文档](https://easyidp.readthedocs.io/zh_CN/latest/)。如果遇到问题，请移步[Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions)。
@@ -169,6 +171,24 @@ array([[ 779,  902],
 
 </details>
 
+<details close>
+<summary>跑测试</summary>
+  
+测试用的数据没有传到github上面，请从[这个OneDrive链接](https://1drv.ms/u/s!ApziPc6_-bo1krV88PtZJ7FKf-55hA?e=gqhXwv) (0.3GB)下载, 并且将他们放置在`tests/data`路径中. 最终的文件夹结构应该如下:
+
+```plaintxt
+tests/
+|-- data/
+|   |-- metashape/...
+|   |-- pcd_test/...
+|   |-- pix4d/...
+|   |-- shp_test/...
+|   |-- tiff_test/...
+|-- out/...
+```
+
+
+</details>
 
 
 ## <div align="center">参考论文</div>

@@ -18,6 +18,7 @@ roi_shp_preview = '|   [0] id |\n|----------|\n|        0 |\n|        1 |\n|    
 
 plots_shp_preview5 = '| [0] plot_id   |\n|---------------|\n| N1W1          |\n| N1W2          |\n| N1W3          |\n| N1W4          |\n| N1W5          |\n| ...           |\n| S4E3          |\n| S4E4          |\n| S4E5          |\n| S4E6          |\n| S4E7          |'
 
+
 plots_shp_preview3 = '| [0] plot_id   |\n|---------------|\n| N1W1          |\n| N1W2          |\n| N1W3          |\n| ...           |\n| S4E5          |\n| S4E6          |\n| S4E7          |'
 
 def test_show_shp_fields_complex(capfd):
@@ -25,7 +26,9 @@ def test_show_shp_fields_complex(capfd):
 
     idp.shp.show_shp_fields(test_shp, encoding="GBK") 
     out, err = capfd.readouterr()
-    assert out ==  complex_shp_review_num5 + '\n'
+
+    # mac & windows give different space number
+    assert out.replace(' ', '') ==  complex_shp_review_num5.replace(' ', '') + '\n'
 
 def test_show_shp_fields_roi(capfd):
     test_shp = os.path.join(data_path, "roi.shp")
@@ -77,7 +80,8 @@ def test_read_shp_without_target():
     wanted_np = np.asarray([[34.90284972, 134.8312376],
                             [34.90285097, 134.8312399],
                             [34.90285516, 134.8312371],
-                            [34.90285426, 134.8312349]])
+                            [34.90285426, 134.8312349],
+                            [34.90284972, 134.8312376]])
 
     np.testing.assert_almost_equal(lonlat_shp['0'], wanted_np)
 
@@ -132,8 +136,6 @@ def test_read_shp_key_names_merge():
     int_name_field_list_title_true = idp.shp.read_shp(shp_path, name_field=[2, 1], include_title=True, encoding='gbk')
     assert "CROPTYPE_小麦_MASSIFID_2301041120000000000" in int_name_field_list_title_true.keys()
 
-
-
 def test_read_shp_duplicate_key_name_error():
     shp_path = os.path.join(data_path, "complex_shp_review.shp")
     with pytest.raises(KeyError, match=re.escape("Meet with duplicated key")):
@@ -157,3 +159,30 @@ def test_read_shp_non_exist_key_name_error():
     # list key out of field
     with pytest.raises(IndexError, match=re.escape("Int key [6] is outside the number of fields")):
         lonlat_shp = idp.shp.read_shp(shp_path, name_field=[1,6], encoding='gbk')
+
+def test_convert_shp():
+    lonlat_path = os.path.join(data_path, "lon_lat.shp")
+    utm_path = os.path.join(data_path, "lon_lat_utm53n.shp")
+
+    lonlat_shp, lonlat_proj = idp.shp.read_shp(lonlat_path, shp_proj=pyproj.CRS.from_epsg(4326), return_proj=True)
+
+    utm_shp, utm_proj = idp.shp.read_shp(utm_path, return_proj=True)
+
+    utm_cvt_shp = idp.shp.convert_proj(lonlat_shp, lonlat_proj, utm_proj)
+
+    a = utm_cvt_shp['0']
+    b = utm_shp['0']
+
+    #  A         B
+    #   o-------o
+    #   |       |
+    #   |       |
+    #   |       |
+    #   |       |
+    #   o-------o
+    #  C         D
+
+    # lon_lat order: [A, B, C, D, A]
+    # lonlat_utm order: [A, D. C. B, A]
+
+    np.testing.assert_almost_equal(a, np.flip(b, axis=0), decimal=6)

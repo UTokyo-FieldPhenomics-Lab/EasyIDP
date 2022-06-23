@@ -7,3 +7,4 @@ tests/out/*
 docs/_build/*
 *.mo
 .vscode/*
+*.DS_Store

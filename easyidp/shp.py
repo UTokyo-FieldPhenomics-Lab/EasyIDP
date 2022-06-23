@@ -70,20 +70,20 @@ def show_shp_fields(shp_path, encoding="utf-8", show_num=5):
     print(table_str)
 
 
-def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, encoding='utf-8'):
+def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, encoding='utf-8', return_proj=False):
     """
-    read shp file to python numpy object, and also provide the geo coordinate transfrom based on pyproj package
+    read shp file to python numpy object
     
     Parameters
     ----------
     shp_path : str
         the file path of *.shp
-    name_field : 
-        str or int, the id or name of shp file fields as output dictionary keys
+    name_field : str or int or list[ str|int ], 
+        the id or name of shp file fields as output dictionary keys
     shp_proj : str | pyproj object
         default None, 
             -> will read automatically from prj file with the same name of shp filename, 
-        or 
+        or give manually
             -> read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)  # default WGS 84 with longitude and latitude
             -> read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)
     encoding : str
@@ -95,7 +95,9 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
                 {'id1': np.array([[x1,y1],[x2,y2],...]),
                 'id2': np.array([[x1,y1],[x2,y2],...]),...}
     """
-    # check projection coordinate first
+    #####################################
+    # check projection coordinate first #
+    #####################################
     if shp_proj is None:
         prj_path = shp_path[:-4] + '.prj'
         if os.path.exists(prj_path):
@@ -119,16 +121,20 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     # read shp file fields (headers)
     shp_fields = _get_field_key(shp)
 
-    # read shp coordinates
+    ########################
+    # read shp coordinates #
+    ########################
     shp_dict = {}
 
+    ### do not put it into the following loop, save calculation time.
     if isinstance(name_field, list):
-        field_id = [_convert_shp_title(shp_fields, nf) for nf in name_field]
+        field_id = [_find_name_related_int_id(shp_fields, nf) for nf in name_field]
     else:
-        field_id = _convert_shp_title(shp_fields, name_field)
+        field_id = _find_name_related_int_id(shp_fields, name_field)
 
     pbar = tqdm(shp.shapes(), desc=f"[shp] read shp [{os.path.basename(shp_path)}]")
     for i, shape in enumerate(pbar):
+        # convert dict_key name string by given name_field
         if isinstance(field_id, list):
             plot_name = ""
             for j, fid in enumerate(field_id):
@@ -154,8 +160,21 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         plot_name = plot_name.replace(r'/', '_')
         plot_name = plot_name.replace(r'\\', '_')
 
+        ##################################
+        # get the shape coordinate value #
+        ##################################
         coord_np = np.asarray(shape.points)
+        # check if the last point == first point
+        if (coord_np[0, :] != coord_np[-1, :]).all():
+            # otherwise duplicate first point to last point to fit the polygon definition
+            coord_np = np.append(coord_np, coord_np[0,:][None,:], axis = 0)
 
+        # if unit is degrees, exchange x and y
+        x_unit = shp_proj.coordinate_system.axis_list[0].unit_name
+        y_unit = shp_proj.coordinate_system.axis_list[1].unit_name
+        if x_unit == "degree" and y_unit == "degree": 
+            coord_np = np.flip(coord_np, axis=1)
+        # ----------- Notes --------------
         # when shp unit is (degrees) latitiude and longitude
         #     the default order is (lon, lat) --> (y, x)
         # in easyidp, numpy, and pyproj coordiate system, needs (lat, lon), so need to revert
@@ -169,53 +188,69 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         #     x v                
         #
         # however, if unit is meter (e.g. UTM Zone), the order doesn't need to be changed
+        # ---------------------------------
 
-        # if unit is degrees
-        x_unit = shp_proj.coordinate_system.axis_list[0].unit_name
-        y_unit = shp_proj.coordinate_system.axis_list[1].unit_name
-        if x_unit == "degree" and y_unit == "degree": 
-            coord_np = np.flip(coord_np, axis=1)
-
+        # check if has duplicated key, otherwise will cause override
         if plot_name in shp_dict.keys():
             raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {shp_fields} or simple leave it blank `name_field=None`")
 
         shp_dict[plot_name] = coord_np
 
-    return shp_dict
+    if return_proj:
+        return shp_dict, shp_proj
+    else:
+        return shp_dict
 
 
 def convert_proj(shp_dict, shp_proj, target_proj):
-    """_summary_
+    """ 
+    Provide the geo coordinate transfrom based on pyproj package
 
     Parameters
     ----------
-    shp_dict : _type_
-        _description_
-    shp_proj : _type_
-        _description_
-    target_proj : _type_
-        _description_
-
-    Reference code:
-    if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
-        transformer = pyproj.Transformer.from_proj(shp_proj, geotiff_proj)
+    shp_dict : dict
+        the output of read_shp() function
+    shp_proj : pyproj object
+        the hidden output of read_shp(..., return_proj=True)
+    target_proj : str | pyproj object
+        e.g. 
+        [1] pyproj.CRS.from_epsg(4326)  # default WGS 84 longitude latitude
+        [2] r'path/to/{shp_name}.prj',
+    """
+    transformer = pyproj.Transformer.from_proj(shp_proj, target_proj)
+    trans_dict = {}
+    for k, coord_np in shp_dict.items():
         transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
         coord_np = np.asarray(transformed).T
 
+        # judge if has inf value, means convert fail
         if True in np.isinf(coord_np):
-            raise ValueError(f'Fail to convert points from "{shp_proj.name}"(shp projection) to '
-                                f'"{geotiff_proj.name}"(dsm projection), '
-                                f'this may caused by the uncertainty of .prj file strings, please check the coordinate '
-                                f'manually via QGIS Layer Infomation, get the EPGS code, and specify the function argument'
-                                f'read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))')
+            raise ValueError(f'Fail to convert points from "{shp_proj.name}" to '
+                             f'"{target_proj.name}"(dsm projection), '
+                             f'this may caused by the uncertainty of .prj file strings, '
+                             f'please check the coordinate manually via QGIS Layer Infomation, '
+                             f'get the EPGS code, and specify the function argument'
+                             f'read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))')
+        trans_dict[k] = coord_np
 
-
-
-    """
-    pass
+    return trans_dict
 
 
 def _get_field_key(shp):
+    """
+    Convert shapefile header {"Column": int_id}
+
+    Parameters
+    ----------
+    shp : shapefile.Reader object
+        shp = shapefile.Reader(shp_path, encoding=encoding)
+
+    Returns
+    -------
+    shp_fields : dict
+        Format: {"Column": int_id}
+        Exmaple: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+    """
     shp_fields = {}
     f_count = 0
     for l in shp.fields:
@@ -234,7 +269,31 @@ def _get_field_key(shp):
     return shp_fields
     
     
-def _convert_shp_title(shp_fields, name_field):
+def _find_name_related_int_id(shp_fields, name_field):
+    """
+    Inner function to get the number of given `name_field`.
+
+    Parameters
+    ----------
+    shp_fields : dict
+        the output of _get_field_key()
+        Format: {"Column": int_id}
+        Exmaple: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+    name_field : str or int or list[ str|int ], 
+        the id or name of shp file fields as output dictionary keys
+
+    Returns
+    -------
+    field_id : int or list[ int ]
+        e.g. 
+        >>> a = {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+        >>> b = "ID"
+        >>> _find_name_related_int_id(a, b)
+        0
+        >>> c = ["ID", "CROPTYPE"]
+        >>> _find_name_related_int_id(a, b)
+        [0, 2]
+    """
     if name_field is None:
         field_id = None
     elif isinstance(name_field, int):
@@ -252,4 +311,11 @@ def _convert_shp_title(shp_fields, name_field):
 
 
 def _find_key(mydict, value):
+    """
+    a simple function to using dict value to find key
+    e.g. 
+    >>> mydict = {"a": 233, "b": 456}
+    >>> _find_key(mydict, 233)
+    "a"
+    """
     return list(mydict.keys())[value]

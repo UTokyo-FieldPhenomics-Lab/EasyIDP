@@ -5,11 +5,18 @@ import easyidp as idp
 import numpy as np
 import pytest
 
+####################
+# global variables #
+####################
+data_path =  "./tests/data/pcd_test"
+
+out_path = "./tests/out/pcd_test"
+if not os.path.exists(out_path):
+    os.makedirs(out_path)
+
 ##########################
 # test read point clouds #
 ##########################
-
-data_path =  "./tests/data/pcd_test"
 
 def test_def_read_ply_binary():
     ply_binary_path = os.path.join(data_path, "hasu_tanashi_binary.ply")
@@ -127,8 +134,6 @@ def test_read_laz_with_normals():
 ###########################
 # test write point clouds #
 ###########################
-
-out_path = "./tests/out/pcd_test"
 
 write_points = np.asarray([[-1.9083118, -1.7775583,  -0.77878  ],
                            [-1.9082794, -1.7772741,  -0.7802601],

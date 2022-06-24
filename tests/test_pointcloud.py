@@ -277,31 +277,101 @@ def test_def_write_laz():
 ###########################
 
 def test_class_pointcloud_init():
-    # test the empty project
+    # test the empty object
     pcd = idp.PointCloud()
 
-    assert pcd._points is None
+    assert pcd.points is None
     assert pcd.colors is None
     assert pcd.normals is None
     np.testing.assert_array_almost_equal(
-        pcd.offset, np.array([0., 0., 0.,])
+        pcd._offset, np.array([0., 0., 0.,])
     )
 
     assert pcd.has_points() == False
     assert pcd.has_colors() == False
     assert pcd.has_normals() == False
 
+    assert pcd.shape == (3, 0)
+
+def test_class_pointcloud_points_set_value():
+    pts1 = np.asarray([[1,2,3], [4,5,6]])
+    pts2 = np.asarray([[1,2,3], [4,5,6], [7,8,9]])
+
+    # for empty object
+    pcd = idp.PointCloud()
+
+    # should able set any points for emtpy pcd
+    ## check input type, only ndarray accepable
+    with pytest.raises(TypeError, match=re.escape("Only numpy ndarray object are acceptable for setting values")):
+        pcd.points = [[1,2,3], [4,5,6]]
+
+    # set ndarray
+    pcd.points = pts1
+    assert pcd.shape == (2, 3)
+
+    ## change shape directly is not acceptable
+    with pytest.raises(IndexError, match=re.escape("The given shape [(3, 3)] does not match current point cloud shape [(2, 3)]")):
+        pcd.points = pts2
+
+    ## should change shape first, then change points
+    pcd.shape = pts2.shape
+    pcd.points = pts2
+    
+    np.testing.assert_almost_equal(pcd.points, pts2)
+
+def test_class_pointcloud_offset_wrong_type():
+    ## input wrong offset
+    with pytest.raises(ValueError, match=re.escape("Please give correct 3D coordinate [x, y, z], only 2 was given")):
+        pcd = idp.PointCloud(offset=[367900, 3955800])
+    with pytest.raises(ValueError, match=re.escape("Please give correct 3D coordinate [x, y, z], only 2 was given")):
+        pcd = idp.PointCloud(offset=np.array([367900, 3955800]))
+
+    with pytest.raises(ValueError, match=re.escape("Only [x, y, z] list or np.array([x, y, z]) are acceptable")):
+        pcd = idp.PointCloud(offset={"x": 367900, 'y': 3955800, 'z': 0})
+
+def test_class_pointcloud_offset_set_value():
+    # check the points value no change after chaning offsets
+    pts1 = np.asarray([[1,2,3], [4,5,6]])
+
+    # check default offset 000
+    pcd = idp.PointCloud()
+
+    pcd.points = pts1
+
+    np.testing.assert_almost_equal(pcd.points, pts1)
+    np.testing.assert_almost_equal(pcd._points, pts1)
+
+    ## change offset value
+    pcd.offset = np.array([1,1,1])
+    
+    np.testing.assert_almost_equal(pcd.points, pts1)
+    np.testing.assert_almost_equal(pcd._points, np.array([[0,1,2],[3,4,5]]))
+
+    # check create with offset
+    pcd = idp.PointCloud(offset=[10,10,10])
+
+    pcd.points = pts1
+
+    np.testing.assert_almost_equal(pcd.points, pts1)
+    np.testing.assert_almost_equal(pcd._points, np.array([[-9, -8, -7],[-6, -5, -4]]))
+
+    # then change offset
+    pcd.offset = [0, 0, 0]
+
+    np.testing.assert_almost_equal(pcd.points, pts1)
+    np.testing.assert_almost_equal(pcd._points, pts1)
+
 def test_class_pointcloud_def_read_point_cloud_no_offset():
     # read pcd without offset
     pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
 
-    assert pcd._points is not None
+    assert pcd.points is not None
     np.testing.assert_array_almost_equal(
-        pcd._points[ 0, :], 
+        pcd.points[ 0, :], 
         np.array([-18.908312, -15.777558,  -0.77878 ], dtype=np.float32)
     )
     np.testing.assert_array_almost_equal(
-        pcd._points[-1, :],
+        pcd.points[-1, :],
         np.array([-15.786219 , -17.936579 ,  -0.8327141], dtype=np.float32)
     )
 
@@ -318,46 +388,35 @@ def test_class_pointcloud_def_read_point_cloud_no_offset():
     assert pcd.normals is None
 
     np.testing.assert_array_almost_equal(
-        pcd.offset, np.array([0., 0., 0.,])
+        pcd._offset, np.array([0., 0., 0.,])
     )
 
     assert pcd.has_points()
     assert pcd.has_colors()
     assert pcd.has_normals() == False
 
-
-def test_class_pointcloud_def_read_point_cloud_offsets():
+def test_class_pointcloud_def_read_point_cloud_with_offsets():
     # read pcd with large offset (e.g. xyz in UTM Geo coordinates)
     pcd = idp.PointCloud(os.path.join(data_path, "maize3na_20210614_15m_utm.las"))
 
-    np.testing.assert_almost_equal(pcd.offset, np.array([ 367900., 3955800., 0.]))
+    np.testing.assert_almost_equal(pcd._offset, np.array([ 367900., 3955800., 0.]))
     np.testing.assert_almost_equal(pcd._points[0,:], np.array([ 93.0206,  65.095 ,  57.9707]))
 
     # specify origin offset
     ## input as list
     pcd = idp.PointCloud(offset=[367900, 3955800, 0])
-    np.testing.assert_almost_equal(pcd.offset, np.array([ 367900., 3955800., 0.]))
+    np.testing.assert_almost_equal(pcd._offset, np.array([ 367900., 3955800., 0.]))
     ## input as tuple
     pcd = idp.PointCloud(offset=(367900, 3955800, 0))
-    np.testing.assert_almost_equal(pcd.offset, np.array([ 367900., 3955800., 0.]))
+    np.testing.assert_almost_equal(pcd._offset, np.array([ 367900., 3955800., 0.]))
     ## input as int array
     pcd = idp.PointCloud(offset=np.array([367900, 3955800, 0]))
-    np.testing.assert_almost_equal(pcd.offset, np.array([ 367900., 3955800., 0.]))
-
-    ## input wrong offset
-    with pytest.raises(ValueError, match=re.escape("Please give correct 3D coordinate [x, y, z], only 2 was given")):
-        pcd = idp.PointCloud(offset=[367900, 3955800])
-    with pytest.raises(ValueError, match=re.escape("Please give correct 3D coordinate [x, y, z], only 2 was given")):
-        pcd = idp.PointCloud(offset=np.array([367900, 3955800]))
-
-    with pytest.raises(ValueError, match=re.escape("Only [x, y, z] list or np.array([x, y, z]) are acceptable")):
-        pcd = idp.PointCloud(offset={"x": 367900, 'y': 3955800, 'z': 0})
+    np.testing.assert_almost_equal(pcd._offset, np.array([ 367900., 3955800., 0.]))
 
 
 def test_class_pointcloud_def_write_point_cloud():
     pcd = idp.PointCloud(os.path.join(data_path, "maize3na_20210614_15m_utm.las"))
     
-
     # test default ext same as input
     expected_file = os.path.join(out_path, "test_class_write_pcd.las")
     if os.path.exists(expected_file):
@@ -380,3 +439,21 @@ def test_class_pointcloud_def_write_point_cloud():
     with pytest.raises(IOError, match=re.escape("Only support point cloud file format")):
         error_file = os.path.join(out_path, "test_class_write_pcd.pcd")
         pcd.write_point_cloud(error_file)
+
+def test_class_pointcloud_clear():
+    pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
+
+    pcd.clear()
+
+    assert pcd.points is None
+    assert pcd.colors is None
+    assert pcd.normals is None
+    np.testing.assert_array_almost_equal(
+        pcd._offset, np.array([0., 0., 0.,])
+    )
+
+    assert pcd.has_points() == False
+    assert pcd.has_colors() == False
+    assert pcd.has_normals() == False
+
+    assert pcd.shape == (3, 0)

@@ -20,23 +20,52 @@ class PointCloud(object):
         self._points = None   # internal points with offsets to save memory
         self.colors = None
         self.normals = None
+        self.shape = (3,0)
 
-        if len(offset) == 3:
-            if isinstance(offset, (list, tuple)):
-                self.offset = np.asarray(offset, dtype=np.float64)
-            elif isinstance(offset, np.ndarray):
-                self.offset = offset.astype(np.float64)
-            else:
-                raise ValueError(f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(offset)} type")
-        else:
-            raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(offset)} was given")
+        self.offset = offset
 
         if len(pcd_path) > 0 and os.path.exists(pcd_path):
             self.read_point_cloud(pcd_path)
 
     @property
     def points(self):
-        return self._points + self.offset
+        if self._points is None:
+            return None
+        else:
+            return self._points + self._offset
+
+    @points.setter
+    def points(self, p):
+        if not isinstance(p, np.ndarray):
+            raise TypeError(f"Only numpy ndarray object are acceptable for setting values")
+        elif self.shape != p.shape and self.shape != (3,0):
+            raise IndexError(f"The given shape [{p.shape}] does not match current point cloud shape [{self.shape}]")
+        else:
+            self._points = p - self._offset
+            self.shape = p.shape
+
+    @property
+    def offset(self):
+        return self._offset
+
+    @offset.setter
+    def offset(self, o):
+        if len(o) == 3:
+            if isinstance(o, (list, tuple)):
+                o = np.asarray(o, dtype=np.float64)
+            elif isinstance(o, np.ndarray):
+                o = o.astype(np.float64)
+            else:
+                raise ValueError(f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(o)} type")
+        else:
+            raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(o)} was given")
+        
+        if self._points is not None:
+            self._points = self._points + self._offset - o
+            self._offset = o
+            warnings.warn("This will not change the value of point xyz values, if you want to move/drag points, please operate `points = new_xyz` where `new_xyz = points + offset` directly (not support `points += xxx` yet)")
+        else:
+            self._offset = o
 
     def has_colors(self):
         if self.colors is None:
@@ -56,6 +85,14 @@ class PointCloud(object):
         else:
             return True
 
+    def clear(self):
+        self._points = None   # internal points with offsets to save memory
+        self.colors = None
+        self.normals = None
+        self.shape = (3,0)
+
+        self.offset = np.array([0.,0.,0.])
+
     def read_point_cloud(self, pcd_path):
         if pcd_path[-4:] == ".ply":
             points, colors, normals = read_ply(pcd_path)
@@ -67,14 +104,15 @@ class PointCloud(object):
         self.file_ext = os.path.splitext(pcd_path)[-1]
 
         if abs(np.max(points)) > 65536:   # need offseting
-            if not np.any(self.offset):    # not given any offset (0,0,0) -> calculate offset
-                self.offset = np.floor(points.min(axis=0) / 100) * 100
-            self._points = points - self.offset
+            if not np.any(self._offset):    # not given any offset (0,0,0) -> calculate offset
+                self._offset = np.floor(points.min(axis=0) / 100) * 100
+            self._points = points - self._offset
         else:
             self._points = points
 
         self.colors = colors
         self.normals = normals
+        self.shape = points.shape
 
     def write_point_cloud(self, pcd_path):
         # if ply -> self.points + self.offsets
@@ -92,9 +130,9 @@ class PointCloud(object):
             file_ext = self.file_ext
 
         if file_ext == ".ply":
-            write_ply(self._points + self.offset, self.colors, ply_path=file_name+file_ext, normals=self.normals)
+            write_ply(self._points + self._offset, self.colors, ply_path=file_name+file_ext, normals=self.normals)
         else:
-            write_laz(self._points + self.offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self.offset)
+            write_laz(self._points + self._offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self._offset)
 
 
     def crop_point_cloud(self, poly_boundary, save_as=""):

@@ -3,6 +3,7 @@
 ##################
 numpy>=1.18.1
 matplotlib >= 3.2.2
+scikit-image ~= 0.18.3  # skimage.external been removed in advanced version
 
 # replace pandas to show table in command 
 tabulate >= 0.8.9

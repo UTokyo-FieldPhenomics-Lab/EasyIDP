@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def poly2mask(image_shape, poly_coord, plot=False):
+def _my_poly2mask(image_shape, poly_coord, plot=False):
     """convert vector polygon to raster masks
     
     Notes

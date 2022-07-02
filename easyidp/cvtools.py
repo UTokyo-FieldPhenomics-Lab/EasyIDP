@@ -116,10 +116,7 @@ def _pillow_poly2mask(h, w, poly_coord):
     mask = Image.new('1', (w, h), color=0)
     draw = ImageDraw.Draw(mask)
 
-    if np.issubdtype(poly_coord.dtype, np.integer):
-        xy_pil = [tuple(i+0.5) for i in poly_coord]
-    elif np.issubdtype(poly_coord.dtype, np.floating):
-        xy_pil = [tuple(i) for i in poly_coord]
+    xy_pil = [tuple(i) for i in poly_coord]
     
     draw.polygon(xy_pil, fill=1, outline=1)
 

@@ -1,0 +1,42 @@
+##################
+# Basic packages #
+##################
+numpy>=1.18.1
+matplotlib >= 3.2.2
+scikit-image ~= 0.18.3  # skimage.external been removed in advanced version
+
+# replace pandas to show table in command 
+tabulate >= 0.8.9
+#pandas>=1.1.2
+
+# progressbar
+tqdm >= 4.64.0
+
+# transform between CRS projections
+pyproj>=2.6.1.post1
+
+# read geotiff file
+tifffile>=2020.09.03
+
+# polygon analysis
+shapely ~= 1.8.0
+
+# point cloud analysis
+#open3d >= 0.13.0
+
+# read laz/las file:
+lazrs>=0.1.1
+laspy>=2.1.2
+
+# read pcd file:
+# pypcd >= 0.1.1
+# python-lzf >= 0.2.4  # Windows install: https://www.lfd.uci.edu/~gohlke/pythonlibs/#python-lzf
+
+# read ply file:
+plyfile==0.7.2
+
+# read dxf file:
+ezdxf==0.16.4
+
+# read shp file:
+pyshp==2.1.3

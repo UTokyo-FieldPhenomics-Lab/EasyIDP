@@ -1,0 +1,4 @@
+
+packaging>=20.0
+wheel
+numpy>=1.19

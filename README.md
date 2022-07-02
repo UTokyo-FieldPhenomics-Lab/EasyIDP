@@ -29,32 +29,17 @@ Please check [Official Documents](https://easyidp.readthedocs.io/en/latest/) for
 
 ## <div align="center">Quick Start Examples (Processing)</div>
 
-<details open>
-<summary>Setup Environment</summary>
-
-Clone repo and install [requirements.txt](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/blob/master/requirements.txt) in a
-[**Python>=3.8.0**](https://www.python.org/) environment.
+You can install the packages by PyPi:
 
 ```bash
-git clone https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP.git  # clone
-cd EasyIDP
-pip install -r requirements.txt  # install required environment
+pip install easyidp
 ```
 
-</details>
-
-<details open>
-<summary>Load packages</summary>
-
-The package can be used directly by source code rather than installation, so please type the following code to import the package:
+And import the packages in your python code:
 
 ```python
-import sys
-sys.path.insert(0, f'C:/path/to/source/code/EasyIDP')
-  
 import easyidp as idp
 ```
-</details>
 
 ---
 
@@ -73,56 +58,56 @@ roi.get_z_from_dsm("xxxx_dsm.tiff")  # add height 3D info
 ```
 
 The 2D roi can be used to clip the DOM, DSM, and point cloud (`2.Clip by ROI`). While the 3D roi can be used for Backward projection (`4. Backward projection`)
-  
-Or you can create a grid ROI automatically:
-  
-```python
-roi = idp.ROI(grid_h=300, grid_w=300, tif_path="xxxx.tif")
-```
 </details>
 
 <details close>
 <summary>2. Clip by ROI</summary>
-  
+
+Read the DOM and DSM Geotiff Maps
 ```python
-# read dom and dsm
 dom = idp.GeoTiff("xxx_dom.tif")
 dsm = idp.GeoTiff("xxx_dsm.tif")
+```
   
-# read point cloud
+Read point cloud data
+```python
 ply = idp.PointCloud("xxx_pcd.ply")
+```
   
-# clip
+Clip the region of interest from ROI:
+```python
 dom_parts = roi.clip(dom)
 dsm_parts = roi.clip(dsm)
 pcd_parts = roi.clip(ply)
 ```
+
+If you want to save these clips to given folder:
+```python
+dom_parts = roi.clip(dom, save_folder="./clip_dom")
+dsm_parts = roi.clip(dsm, save_folder="./clip_dsm")
+pcd_parts = roi.clip(ply, save_folder="./clip_pcd")
+```
+
   
 </details>
 
 <details close>
 <summary>3. Read Reconstruction projects</summary>
+
+Add the reconstruction projects to processing pools (different flight time for the same field):
   
 ```python
-proj = idp.Recons()
-proj.add_pix4d(["aaa.p4d", "bbb.p4d", ...])   # support using list to give time-series data
-proj.add_metashape(["aaa.psx", "bbb.psx"])
+proj = idp.ProjectPool()
+proj.add_pix4d(["date1.p4d", "date2.p4d", ...])
+proj.add_metashape(["date1.psx", "date2.psx", ...])
 ```
-  
-Please note, it is recommended to use Chunks in one Metashape project to manage time-series data, like the following images:
-  
-<div align="center"><img width="350" src="docs/_static/images/metashape_multi_chunks.png"></a></div>
-
-But several Metashape projects with only one Chunk are also acceptable. The EasyIDP package will automatically split the projects by chunks as the given order.
-
-<div align="center"><img width="550" src="docs/_static/images/metashape_single_chunk.png"></a></div>
 
 Then you can specify each chunk by:
 
 ```python
-chunk1 = proj[0]
+p1 = proj[0]
 # or
-chunk1 = proj["chunk_or_project_name"]
+p1 = proj["chunk_or_project_name"]
 ```
 
 </details>
@@ -131,7 +116,7 @@ chunk1 = proj["chunk_or_project_name"]
 <summary>4. Backward Projection</summary>
   
 ```python
->>> img_dict = roi.back_to_raw(chunk1)
+>>> img_dict = roi.back2raw(chunk1)
 ```
   
 Then check the results:
@@ -150,49 +135,6 @@ array([[ 779,  902],
 ```
  
 </details>
-
-
-<details close>
-<summary>Package Tricks</summary>
-  
-if is a Pix4D project, and you did not move the output from pix4d default folder, the package will automatically get product path:
-```python
->>> proj[0].kind
-"pix4D"
->>> proj[0].dom_path
-"E:\...\pix4d_project_folder\3_dsm_ortho\2_mosaic\project_name_transparent_mosaic_group1.tif"
-```
-
-But for Metashape project, it export product very free. Hence you need manually specify the dom path:
-```python
->>> proj[0].kind
-"metashape"
->>> proj[0].dom_path = r"E:\where\you\export\metashape\results\dom.tif"
-```
-
-</details>
-
-<details close>
-<summary>Run tests</summary>
-  
-The data for pytest is not uploaded to github, please download from [this OneDrive link](https://1drv.ms/u/s!ApziPc6_-bo1krV88PtZJ7FKf-55hA?e=gqhXwv) (0.3GB), and put the them into `tests/data` path. The final structure should like this:
-
-```plaintxt
-tests/
-|-- data/
-|   |-- metashape/...
-|   |-- pcd_test/...
-|   |-- pix4d/...
-|   |-- shp_test/...
-|   |-- tiff_test/...
-|-- out/...
-```
-
-
-</details>
-
-
-
 
 ## <div align="center">References</div>
 
@@ -227,3 +169,11 @@ We also thanks the benefits from the following open source projects:
 * pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
 * tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
 * tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)
+
+This project was partially funded by:
+
+* the JST AIP Acceleration Research “Studies of CPS platform to raise big-data-driven AI agriculture”; 
+* the SICORP Program JPMJSC16H2; 
+* CREST Programs JPMJCR16O2 and JPMJCR16O1; 
+* the International Science & Technology Innovation Program of Chinese Academy of Agricultural Sciences (CAASTIP); 
+* the National Natural Science Foundation of China U19A2061.

@@ -28,31 +28,17 @@ EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)�
 
 ## <div align="center">快速上手 (填坑中)</div>
 
-<details open>
-<summary>配置环境</summary>
-
-在[**Python>=3.8.0**](https://www.python.org/)环境里，克隆并下载[requirements.txt](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/blob/master/requirements.txt)
+可以通过PyPi来安装：
 
 ```bash
-git clone https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP.git  # 克隆
-cd EasyIDP
-pip install -r requirements.txt  # 安装需要的依赖包
+pip install easyidp
 ```
 
-</details>
-
-<details open>
-<summary>加载包</summary>
-
-这个包可以直接作为源码使用，而不需要安装在python环境里。所以如果需要使用的时候，使用下面的代码来实现导入：
+然后在你的python环境中导入包：
 
 ```python
-import sys
-sys.path.insert(0, f'C:/之前/下载/的/包/路径/EasyIDP')
-  
 import easyidp as idp
 ```
-</details>
 
 ---
 
@@ -83,18 +69,29 @@ roi = idp.ROI(grid_h=300, grid_w=300, tif_path="xxxx.tif")
 <details close>
 <summary>2. 切ROI</summary>
   
+读取正射地图和高程图文件
 ```python
-# 读取正射地图和高程图文件
 dom = idp.GeoTiff("xxx_dom.tif")
 dsm = idp.GeoTiff("xxx_dsm.tif")
+```
   
-# 读取点云文件
+读取点云文件
+```python
 ply = idp.PointCloud("xxx_pcd.ply")
+```
   
-# 切ROI
+把感兴趣区域(ROI)切出来：
+```python
 dom_parts = roi.clip(dom)
 dsm_parts = roi.clip(dsm)
 pcd_parts = roi.clip(ply)
+```
+
+如果你想在切的时候，顺便保存切块的结果：
+```python
+dom_parts = roi.clip(dom, save_folder="./clip_dom")
+dsm_parts = roi.clip(dsm, save_folder="./clip_dsm")
+pcd_parts = roi.clip(ply, save_folder="./clip_pcd")
 ```
   
 </details>
@@ -102,26 +99,22 @@ pcd_parts = roi.clip(ply)
 <details close>
 <summary>3. 读取重建项目</summary>
   
+把(同一块地的不同拍摄时间的时间序列)重建项目添加到处理池中：
+  
 ```python
-proj = idp.Recons()
-proj.add_pix4d(["aaa.p4d", "bbb.p4d", ...])  # 支持使用列表来输入时间序列项目
-proj.add_metashape(["aaa.psx", "bbb.psx"])
+proj = idp.ProjectPool()
+# Pix4D项目
+proj.add_pix4d(["date1.p4d", "date2.p4d", ...])
+# Metashape项目
+proj.add_metashape(["date1.psx", "date2.psx", ...])
 ```
 
-请注意，对于Metashape的时间序列项目，推荐在一个项目中建立多个Chunk来记录不同的时间，如下图所示：
-  
-<div align="center"><img width="350" src="docs/_static/images/metashape_multi_chunks.png"></a></div>
-
-但是每个时间序列单独一个只有一个chunk的Metashape文件，也是可接受的。EasyIDP包会自动的按照给定的顺序分离出里面的每一个Chunk。
-
-<div align="center"><img width="550" src="docs/_static/images/metashape_single_chunk.png"></a></div>
-
-然后你可以按照下面两种方法获取每一个Chunk：
+然后你可以按照下面两种方法获取每一个时间点：
 
 ```python
-chunk1 = proj[0]
+p1 = proj[0]
 # or
-chunk1 = proj["chunk_or_project_name"]
+p1 = proj["chunk_or_project_name"]
 ```
 
 </details>
@@ -130,7 +123,7 @@ chunk1 = proj["chunk_or_project_name"]
 <summary>4. 反投影</summary>
   
 ```python
->>> img_dict = roi.back_to_raw(chunk1)
+>>> img_dict = roi.back2raw(chunk1)
 ```
   
 然后检查运算结果：
@@ -151,47 +144,7 @@ array([[ 779,  902],
 </details>
 
 
-<details close>
-<summary>小技巧</summary>
-  
-如果用的是Pix4D的话，只要你没有移动原始的项目文件，包可以自动找到输出的正射地图等路径：
-```python
->>> proj[0].kind
-"pix4D"
->>> proj[0].dom_path
-"E:\...\pix4d_project_folder\3_dsm_ortho\2_mosaic\project_name_transparent_mosaic_group1.tif"
-```
-
-但是Metashape项目，导出的路径非常自由，需要手动指定路径
-```python
->>> proj[0].kind
-"metashape"
->>> proj[0].dom_path = r"E:\where\you\export\metashape\results\dom.tif"
-```
-
-</details>
-
-<details close>
-<summary>跑测试</summary>
-  
-测试用的数据没有传到github上面，请从[这个OneDrive链接](https://1drv.ms/u/s!ApziPc6_-bo1krV88PtZJ7FKf-55hA?e=gqhXwv) (0.3GB)下载, 并且将他们放置在`tests/data`路径中. 最终的文件夹结构应该如下:
-
-```plaintxt
-tests/
-|-- data/
-|   |-- metashape/...
-|   |-- pcd_test/...
-|   |-- pix4d/...
-|   |-- shp_test/...
-|   |-- tiff_test/...
-|-- out/...
-```
-
-
-</details>
-
-
-## <div align="center">参考论文</div>
+## <div align="center">相关参考</div>
 
 如果您的研究受益于该项目，请引用我们的论文：
 
@@ -224,3 +177,11 @@ DOI = {10.3390/rs13132622}
 * pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
 * tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
 * tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)
+
+该项目的部分资金来自于：
+
+* the JST AIP Acceleration Research “Studies of CPS platform to raise big-data-driven AI agriculture”; 
+* the SICORP Program JPMJSC16H2; 
+* CREST Programs JPMJCR16O2 and JPMJCR16O1; 
+* the International Science & Technology Innovation Program of Chinese Academy of Agricultural Sciences (CAASTIP); 
+* 国家自然科学基金U19A2061.

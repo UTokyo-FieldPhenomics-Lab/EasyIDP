@@ -8,3 +8,7 @@ docs/_build/*
 *.mo
 .vscode/*
 *.DS_Store
+build/*
+dist/*
+d
+easyidp.egg-info/*

@@ -24,7 +24,7 @@ INSTALL_REQUIRES = parse_requirements_file('requirements/default.txt')
 # for the platforms we wish to support.
 extras_require = {
     dep: parse_requirements_file('requirements/' + dep + '.txt')
-    for dep in ['docs', 'test', 'docs']
+    for dep in ['docs', 'test', 'build']
 }
 
 setup(

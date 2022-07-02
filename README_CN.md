@@ -167,7 +167,7 @@ DOI = {10.3390/rs13132622}
 
 * numpy: [https://numpy.org/](https://numpy.org/)
 * matplotlib:[https://matplotlib.org/](https://matplotlib.org/)
-* scikit-image: [https://scikit-image.org/](https://scikit-image.org/)
+* pillow: [https://github.com/python-pillow/Pillow](https://github.com/python-pillow/Pillow)
 * pyproj: [https://github.com/pyproj4/pyproj](https://github.com/pyproj4/pyproj)
 * tifffile: [https://github.com/cgohlke/tifffile](https://github.com/cgohlke/tifffile)
 * shapely: [https://github.com/shapely/shapely](https://github.com/shapely/shapely)

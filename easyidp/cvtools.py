@@ -1,4 +1,5 @@
 import numpy as np
+from PIL import Image, ImageDraw
 from shapely.geometry import MultiPoint, Polygon
 
 from easyidp.visualize import _view_poly2mask
@@ -8,8 +9,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def _my_poly2mask(image_shape, poly_coord, plot=False):
-    """convert vector polygon to raster masks
+def poly2mask(image_shape, poly_coord, engine="pillow"):
+    """convert vector polygon to raster masks, aim to avoid using skimage package
     
     Notes
     -----
@@ -29,8 +30,10 @@ def _my_poly2mask(image_shape, poly_coord, plot=False):
             Will + 0.5 to coords (pixel center) as judge point
         if dtype is float -> view coords as real coord
             (0,0) will be the left upper corner of pixel square
-    plot : bool, optional
-        whether show generated results, by default False
+    engine : str, default "pillow"
+        "pillow" or "shapely"
+        pillow has slight different than skimage.polygon2mask
+        shapely has almost the same result with skiamge.polygon2mask, but effiency is very slow, not recommended
 
     Returns
     -------
@@ -39,7 +42,13 @@ def _my_poly2mask(image_shape, poly_coord, plot=False):
     """
 
     # check the type of input
-    if not isinstance(poly_coord, np.ndarray):
+    # is ndarray -> is int or float ndarray
+    if not isinstance(poly_coord, np.ndarray) or \
+        not (
+            np.issubdtype(poly_coord.dtype, np.integer) \
+                or \
+            np.issubdtype(poly_coord.dtype, np.floating)
+            ):
         raise TypeError(f"The `poly_coord` only accept numpy ndarray integer and float types")
 
     if len(poly_coord.shape)!=2 or poly_coord.shape[1] != 2:
@@ -51,9 +60,22 @@ def _my_poly2mask(image_shape, poly_coord, plot=False):
     xmin, ymin = poly_coord.min(axis=0)
     xmax, ymax = poly_coord.max(axis=0)
 
+    if max(xmax-xmin, ymax-ymin) > 100:
+        raise warnings.warn("Shaply Engine can not handle size over 100 efficiently, convert using pillow engine")
+        engine = "pillow"
+
     if xmin < 0 or ymin < 0 or xmax >= w or ymax >= h:
         raise ValueError(f"The polygon coords ({xmin}, {ymin}, {xmax}, {ymax}) is out of mask boundary [0, 0, {w}, {h}]")
 
+    if engine == "shapely":
+        mask = _shapely_poly2mask(h, w, poly_coord)
+    else:   # using pillow
+        mask = _pillow_poly2mask(h, w, poly_coord)
+
+    return mask
+
+
+def _shapely_poly2mask(h, w, poly_coord):
     mask = np.zeros((h, w), dtype=bool)
 
     # use the pixel center as judgement points
@@ -75,8 +97,6 @@ def _my_poly2mask(image_shape, poly_coord, plot=False):
         poly = Polygon(poly_coord + 0.5)
     elif np.issubdtype(poly_coord.dtype, np.floating):
         poly = Polygon(poly_coord)
-    else:
-        raise TypeError(f"The `poly_coord` only accept numpy ndarray integer and float types")
 
     points_in = points.intersection(poly)
 
@@ -90,7 +110,19 @@ def _my_poly2mask(image_shape, poly_coord, plot=False):
     # it is reversed with numpy index order -> [vertical, horizontal]
     mask[idx[:,1], idx[:,0]] = True
 
-    if plot:
-        _view_poly2mask(np.array(poly.exterior.coords), mask, pts, np.array(points_in))
+    return mask
+
+def _pillow_poly2mask(h, w, poly_coord):
+    mask = Image.new('1', (w, h), color=0)
+    draw = ImageDraw.Draw(mask)
+
+    if np.issubdtype(poly_coord.dtype, np.integer):
+        xy_pil = [tuple(i+0.5) for i in poly_coord]
+    elif np.issubdtype(poly_coord.dtype, np.floating):
+        xy_pil = [tuple(i) for i in poly_coord]
+    
+    draw.polygon(xy_pil, fill=1, outline=1)
+
+    mask = np.array(mask, dtype=bool)
 
     return mask

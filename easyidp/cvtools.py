@@ -32,8 +32,8 @@ def poly2mask(image_shape, poly_coord, engine="pillow"):
             (0,0) will be the left upper corner of pixel square
     engine : str, default "pillow"
         "pillow" or "shapely"
-        pillow has slight different than skimage.polygon2mask
-        shapely has almost the same result with skiamge.polygon2mask, but effiency is very slow, not recommended
+        pillow is slight different than skimage.polygon2mask
+        shapely is almost the same with skiamge.polygon2mask, but effiency is very slow, not recommended
 
     Returns
     -------

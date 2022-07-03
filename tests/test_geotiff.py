@@ -5,6 +5,7 @@ import re
 import tifffile as tf
 import numpy as np
 import easyidp as idp
+import warnings
 
 
 data_path =  "./tests/data/tiff_test"
@@ -115,7 +116,7 @@ def test_geo2pixel2geo():
 
 def test_tifffile_crop():
     maize_part_np = idp.geotiff.get_imarray(maize_part_dom)
-
+    # untiled tiff but 2 row as a patch
     with tf.TiffFile(maize_part_dom) as tif:
         page = tif.pages[0]
 
@@ -163,3 +164,119 @@ def test_tifffile_crop():
         maize_tf_clip_odd2 = idp.geotiff.tifffile_crop(page, top, left, height, width)
         np.testing.assert_equal(maize_np_clip_odd2, maize_tf_clip_odd2)
 
+
+    lotus_part_np = idp.geotiff.get_imarray(lotus_part_dom)
+    with tf.TiffFile(lotus_part_dom) as tif:
+        page = tif.pages[0]
+
+        top = 30
+        left = 40
+        height = 100
+        width = 150
+
+        lotus_np_clip = lotus_part_np[top:top+height, left:left+width]
+        lotus_tf_clip = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        np.testing.assert_equal(lotus_np_clip, lotus_tf_clip)
+
+
+    # read dsm
+    lotus_part_np = idp.geotiff.get_imarray(lotus_part_dsm)
+    with tf.TiffFile(lotus_part_dsm) as tif:
+        page = tif.pages[0]
+
+        top = 30
+        left = 40
+        height = 100
+        width = 150
+
+        lotus_np_clip = lotus_part_np[top:top+height, left:left+width]
+        lotus_tf_clip = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        np.testing.assert_equal(lotus_np_clip, lotus_tf_clip)
+
+
+def test_point_query():
+    # query one point
+    point1 = (368023.004, 3955500.669)
+    # query one point list
+    point2 = [368023.004, 3955500.669]
+    # query several points
+    point3 = [
+        [368022.581, 3955501.054], 
+        [368024.032, 3955500.465]]
+    # query several points by numpy
+    point4 = np.array(point3)
+
+    header = idp.geotiff.get_header(lotus_full_dsm)
+    with tf.TiffFile(lotus_full_dsm) as tif:
+        page = tif.pages[0]
+
+        # point 1
+        out1 = idp.geotiff.point_query(page, point1, header)
+        expect = np.asarray([97.45558])
+        np.testing.assert_almost_equal(out1, expect, decimal=3)
+
+        # point 2
+        out2 = idp.geotiff.point_query(page, point2, header)
+        np.testing.assert_almost_equal(out2, expect, decimal=3)
+
+        # point 3
+        out3 = idp.geotiff.point_query(page, point3, header)
+        expects = np.array([97.624344, 97.59617])
+        np.testing.assert_almost_equal(out3, expects, decimal=3)
+
+        # point 4
+        out4 = idp.geotiff.point_query(page, point4, header)
+        np.testing.assert_almost_equal(out4, expects, decimal=3)
+
+
+def test_point_query_raise_error():
+    with tf.TiffFile(lotus_full_dsm) as tif:
+        page = tif.pages[0]
+
+        # raise type error
+        set1 = {1,2}
+        set2 = {1,2,3}
+
+        with pytest.raises(TypeError, match=re.escape("Only tuple, list, ndarray are supported")):
+            idp.geotiff.point_query(page, set1)
+
+        with pytest.raises(TypeError, match=re.escape("Only tuple, list, ndarray are supported")):
+            idp.geotiff.point_query(page, set2)
+
+        # raise index error
+        tuple1 = (1,2,3)
+        tuple2 = ((1,2,3), (1,2,3))
+
+        with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+            idp.geotiff.point_query(page, tuple1)
+
+        with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+            idp.geotiff.point_query(page, tuple2)
+
+        list1 = [1,2,3]
+        list2 = [[1,2,3],[1,2,3]]
+
+        with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+            idp.geotiff.point_query(page, list1)
+
+        with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+            idp.geotiff.point_query(page, list2)
+
+        ndarray1 = np.array(list1)
+        ndarray2 = np.array(list2)
+
+        with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+            idp.geotiff.point_query(page, ndarray1)
+
+        with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+            idp.geotiff.point_query(page, ndarray2)
+
+
+def test_point_query_raise_warn():
+    # warn without given header
+    point = (3023.004, 3500.669)
+    with tf.TiffFile(lotus_full_dsm) as tif:
+        page = tif.pages[0]
+
+        with pytest.warns(UserWarning, match=re.escape("The given pixel coordinates is not integer")):
+            out = idp.geotiff.point_query(page, point)

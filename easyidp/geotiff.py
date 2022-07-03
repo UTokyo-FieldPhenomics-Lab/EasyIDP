@@ -2,6 +2,7 @@ import os
 import pyproj
 import numpy as np
 import tifffile as tf
+import warnings
 
 from pyproj.exceptions import CRSError
 
@@ -29,18 +30,22 @@ def get_header(tif_path):
             header["dim"] = tif.pages[0].shape[2] 
         header["nodata"] = tif.pages[0].nodata
         
-        # tif.pages[0].geotiff_tags >>> 'ModelPixelScale': [0.0034900000000000005, 0.0034900000000000005, 0.0]
+        # tif.pages[0].geotiff_tags
+        # -> 'ModelPixelScale': [0.0034900000000000005, 0.0034900000000000005, 0.0]
         header["scale"] = tif.pages[0].geotiff_tags["ModelPixelScale"][0:2]
         
-        # tif.pages[0].geotiff_tags >>> 'ModelTiepoint': [0.0, 0.0, 0.0, 419509.89816000004, 3987344.8286, 0.0]
+        # tif.pages[0].geotiff_tags
+        # -> 'ModelTiepoint': [0.0, 0.0, 0.0, 419509.89816000004, 3987344.8286, 0.0]
         header["tie_point"] = tif.pages[0].geotiff_tags["ModelTiepoint"][3:5]
         
         # pix4d:
-        #    tif.pages[0].geotiff_tags >>> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
+        #    tif.pages[0].geotiff_tags
+        #    -> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
         if "GTCitationGeoKey" in tif.pages[0].geotiff_tags.keys():
             proj_str = tif.pages[0].geotiff_tags["GTCitationGeoKey"]
         # metashape:
-        #     tif.pages[0].geotiff_tags >>> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
+        #     tif.pages[0].geotiff_tags
+        #     -> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
         elif "PCSCitationGeoKey" in tif.pages[0].geotiff_tags.keys():
             proj_str = tif.pages[0].geotiff_tags["PCSCitationGeoKey"]
         else:
@@ -64,12 +69,13 @@ def get_imarray(tif_path):
 
     Parameters
     ----------
-    geotiff_path
-    geo_head
+    geotiff_path : str
+        the path to geotiff file
 
     Returns
     -------
-
+    data: ndarray
+        the obtained image data
     """
     with tf.TiffFile(tif_path) as tif:
         data = tif.pages[0].asarray()
@@ -77,14 +83,14 @@ def get_imarray(tif_path):
     return data
 
 
-def geo2pixel(points_hv, geo_head, return_index=False):
+def geo2pixel(points_hv, header, return_index=False):
     """convert point cloud xyz coordinate to geotiff pixel coordinate (horizontal, vertical)
 
     Parameters
     ----------
     points_hv : numpy nx3 array
         [horizontal, vertical] points
-    geo_head : dict
+    header : dict
         the geotiff head dictionary from get_header()
 
     Returns
@@ -108,26 +114,23 @@ def geo2pixel(points_hv, geo_head, return_index=False):
     # then you can used the outputs with reverse 0 and 1 axis
     >>> region_of_interest = photo_ndarray[pixel_coord[:,1], pixel_coord[:,0], 0:3]
     """
-    gis_xmin = geo_head['tie_point'][0]
-    gis_ymax = geo_head['tie_point'][1]
+    gis_xmin = header['tie_point'][0]
+    gis_ymax = header['tie_point'][1]
 
     gis_ph = points_hv[:, 0]
     gis_pv = points_hv[:, 1]
 
-    
-    # get the pixel index (int)
-    if return_index:
-        # numpy_axis1 = x
-        np_ax_h = (gis_ph - gis_xmin) // geo_head['scale'][0]
-        # numpy_axis0 = y
-        np_ax_v = (gis_ymax - gis_pv) // geo_head['scale'][1]
 
     # get float coordinate on pixels
-    else:
-        # numpy_axis1 = x
-        np_ax_h = (gis_ph - gis_xmin) / geo_head['scale'][0]
-        # numpy_axis0 = y
-        np_ax_v = (gis_ymax - gis_pv) / geo_head['scale'][1]
+    # - numpy_axis1 = x
+    np_ax_h = (gis_ph - gis_xmin) / header['scale'][0]
+    # - numpy_axis0 = y
+    np_ax_v = (gis_ymax - gis_pv) / header['scale'][1]
+
+    # get the pixel index (int)
+    if return_index:  
+        np_ax_h = np.floor(np_ax_h).astype(int)
+        np_ax_v = np.floor(np_ax_v).astype(int)
 
     pixel = np.vstack([np_ax_h, np_ax_v]).T
 
@@ -238,13 +241,15 @@ def _get_tiled_crop(page, i0, j0, h, w):
 
     im_width = page.imagewidth
     im_height = page.imagelength
+    im_pyramid = page.imagedepth
+    im_dimen = page.samplesperpixel
 
     if h < 1 or w < 1:
         raise ValueError("h and w must be strictly positive.")
         
     i1, j1 = i0 + h, j0 + w
     if i0 < 0 or j0 < 0 or i1 >= im_height or j1 >= im_width:
-        raise ValueError(f"Requested crop area is out of image bounds.{i0}_{i1}_{im_height}, {j0}_{j1}_{im_width}")
+        raise ValueError(f"Requested crop area [({i0}, {i1}), ({j0}, {j1})] is out of image bounds ({im_height}, {im_width})")
 
     tile_width, tile_height = page.tilewidth, page.tilelength
 
@@ -254,10 +259,10 @@ def _get_tiled_crop(page, i0, j0, h, w):
     tile_per_line = int(np.ceil(im_width / tile_width))
 
     # older version: (img_depth, h, w, dim)
-    out = np.empty((page.imagedepth,
+    out = np.empty((im_pyramid,
                     (tile_i1 - tile_i0) * tile_height,
                     (tile_j1 - tile_j0) * tile_width,
-                    page.samplesperpixel), dtype=page.dtype)
+                    im_dimen), dtype=page.dtype)
 
     fh = page.parent.filehandle
 
@@ -294,13 +299,15 @@ def _get_untiled_crop(page, i0, j0, h, w):
 
     im_width = page.imagewidth
     im_height = page.imagelength
+    im_pyramid = page.imagedepth
+    im_dimen = page.samplesperpixel
 
     if h < 1 or w < 1:
         raise ValueError("h and w must be strictly positive.")
 
     i1, j1 = i0 + h, j0 + w
     if i0 < 0 or j0 < 0 or i1 >= im_height or j1 >= im_width:
-        raise ValueError(f"Requested crop area is out of image bounds.{i0}_{i1}_{im_height}, {j0}_{j1}_{im_width}")
+        raise ValueError(f"Requested crop area [({i0}, {i1}), ({j0}, {j1})] is out of image bounds ({im_height}, {im_width})")
     
     fh = page.parent.filehandle
 
@@ -318,7 +325,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
     if row_step % 1 == 0.0:
         row_step = int(row_step)
     else:
-        raise InterruptedError(f"img.ht={page.imagelength} with offset number {len(page.dataoffsets)}, {row_step} row per read, not a integer")
+        raise InterruptedError(f"img.ht={im_height} with offset number {len(page.dataoffsets)}, {row_step} row per read, not a integer")
 
     # commonly, it read 1 row once,
     # no need to do extra things
@@ -343,9 +350,9 @@ def _get_untiled_crop(page, i0, j0, h, w):
         # Then decide the start line and end line
         # >>> idx % 2
         # array([0, 1, 0, 1, 0], dtype=int32)
-        ## get start id
+        # # get start id
         st_line_id = read_row_id[0] % row_step
-        ## get reversed id
+        # # get reversed id
         # line id
         #  3  |  |  |  |...
         #  -------------------  last read
@@ -357,7 +364,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
         ed_line_id = read_row_id[-1] % row_step - (row_step-1)
 
     # clip them vertically first, then clip
-    temp_out = np.empty((page.imagedepth, 0, w, page.samplesperpixel), dtype=page.dtype)
+    temp_out = np.empty((im_pyramid, 0, w, im_dimen), dtype=page.dtype)
     for index in read_tile_idx:
         offset = page.dataoffsets[index]
         bytecount = page.databytecounts[index]
@@ -374,10 +381,106 @@ def _get_untiled_crop(page, i0, j0, h, w):
 
         temp_out = np.concatenate([temp_out, tile[:, :,j0:j1,:]], axis=1)
 
+    # return clipped result
     if row_step == 1:
-        return temp_out[0,:,:,:]
+        if im_dimen == 1:
+            # is dsm -> shape (w, h)
+            return temp_out[0,:,:,0]
+        else:  
+            # is dom -> shape (w, h, d)         
+            return temp_out[0,:,:,0:im_dimen] 
     else:
         if ed_line_id == 0:
-            return temp_out[0, st_line_id:, :, :]
+            if im_dimen == 1:  
+                # is dsm -> shape (w, h)
+                return temp_out[0, st_line_id:, :, 0]
+            else:
+                # is dom -> shape (w, h, d)
+                return temp_out[0, st_line_id:, :, 0:im_dimen]
         else:
-            return temp_out[0, st_line_id:ed_line_id, :, :]
+            if im_dimen == 1:
+                # is dsm -> shape (w, h)
+                return temp_out[0, st_line_id:ed_line_id, :, 0]
+            else:
+                # is dom -> shape (w, h, d)
+                return temp_out[0, st_line_id:ed_line_id, :, 0:im_dimen]
+
+
+def point_query(page, points_hv, header=None):
+    """get the pixel value of given point(s)
+
+    Parameters
+    ----------
+    page : TiffPage
+        TIFF image file directory (IFD) from which the crop must be extracted.
+    points_hv : tuple | list | nx2 ndarray
+        1. one point tuple
+            e.g. (34.57, 45.62)
+        2. one point list
+            e.g. [34.57, 45.62]
+        3. points lists
+            e.g. [[34.57, 45.62],[35.57, 46.62]]
+        4. 2d numpy array
+            e.g. np.array([[34.57, 45.62],[35.57, 46.62]])
+    header : dict, optional
+        the geotiff head dictionary from get_header()
+        if specified, will view the `points_hv` as geo position
+            e.g. [longtitude, latitude]
+        if not specified, will view as pixel index
+            e.g. [1038, 567] -> pixel id
+
+    Returns
+    -------
+    values: ndarray
+        the obtained pixel value (RGB or height) 
+    """
+
+    if isinstance(points_hv, (tuple, list, np.ndarray)):
+        temp = np.array(points_hv)
+
+        dim = len(temp.shape)
+        if dim == 1 and temp.shape[0] == 2:
+            # fit the one point
+            points_hv = np.array([temp])
+        elif dim == 2 and temp.shape[1] == 2:
+            # fit the points
+            points_hv = temp
+        else:
+            raise IndexError("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")
+    else:
+        raise TypeError(f"Only tuple, list, ndarray are supported, not {type(points_hv)}")
+
+    # convert to pixel index
+    if header is None:   # means point hv is pixel id
+        # check if is integer
+        if np.issubdtype(points_hv.dtype, np.integer):
+            px = points_hv
+        # if float, converted to int by floor()
+        else:
+            px = np.floor(points_hv).astype(int)
+            warnings.warn("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
+    else:
+        px = geo2pixel(points_hv, header, return_index=True)
+
+    # get values
+    # - prepare container
+    values_list = []
+    for p in px:
+        '''
+        if dom:
+            cropped.shape = (1, 1, 4)
+            cropped -> array([[[0, 0, 0, rgba]]], dtype=uint8)
+            wanted = cropped[0,0,:]
+        if dsm:
+            cropped.shape = (1, 1, 1)
+            cropped -> array([[-10000.]], dtype=float32)
+            wanted = cropped[0,0]
+        '''
+        cropped = tifffile_crop(page, top=p[1], left=p[0], h=1, w=1)
+
+        if page.samplesperpixel == 1:
+            values_list.append(cropped[0,0])
+        else:
+            values_list.append(cropped[0,0,:])
+
+    return np.array(values_list)

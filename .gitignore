@@ -12,3 +12,4 @@ build/*
 dist/*
 d
 easyidp.egg-info/*
+_*

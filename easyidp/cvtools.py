@@ -6,7 +6,7 @@ from easyidp.visualize import _view_poly2mask
 
 # ignore the warning of shapely convert coordiante
 import warnings
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", message="The array interface is deprecated and will no longer work in Shapely 2.0")
 
 
 def poly2mask(image_shape, poly_coord, engine="pillow"):
@@ -61,7 +61,7 @@ def poly2mask(image_shape, poly_coord, engine="pillow"):
     xmax, ymax = poly_coord.max(axis=0)
 
     if max(xmax-xmin, ymax-ymin) > 100:
-        raise warnings.warn("Shaply Engine can not handle size over 100 efficiently, convert using pillow engine")
+        warnings.warn("Shaply Engine can not handle size over 100 efficiently, convert using pillow engine")
         engine = "pillow"
 
     if xmin < 0 or ymin < 0 or xmax >= w or ymax >= h:

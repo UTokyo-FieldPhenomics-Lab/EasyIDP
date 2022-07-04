@@ -1,6 +1,7 @@
 import os
 import warnings
 from datetime import datetime
+from tabulate import tabulate
 
 import numpy as np
 import numpy.lib.recfunctions as rfn
@@ -20,12 +21,65 @@ class PointCloud(object):
         self._points = None   # internal points with offsets to save memory
         self.colors = None
         self.normals = None
-        self.shape = (3,0)
+        self.shape = (0,3)
 
         self.offset = offset
+        self._btf_print = '<Empty easyidp.PointCloud object>'
 
-        if len(pcd_path) > 0 and os.path.exists(pcd_path):
-            self.read_point_cloud(pcd_path)
+        if len(pcd_path) > 0:
+            if os.path.exists(pcd_path):
+                self.read_point_cloud(pcd_path)
+            else:
+                warnings.warn(f"Can not find file [{pcd_path}], skip loading")
+
+    def __str__(self) -> str:
+        return self._btf_print
+
+    def __repr__(self) -> str:
+        return self._btf_print
+
+    def _update_btf_print(self):
+        """Print Point Cloud in "DataFrame" beautiful way
+        >>> print(pcd)
+             x    y    z  r       g       b           nx      ny      nz
+        0    1    2    3  nodata  nodata  nodata  nodata  nodata  nodata
+        1    4    5    6  nodata  nodata  nodata  nodata  nodata  nodata
+        2    7    8    9  nodata  nodata  nodata  nodata  nodata  nodata
+        """
+        head = ['','x','y','z','r','g','b','nx','ny','nz']
+        data = []
+        col_align = ["right"] + ["decimal"]*3 + ['left']*3 + ["decimal"]*3 
+
+        if self.shape[0] > 6:
+            show_idx = [0, 1, 2, -3, -2, -1]
+        else:
+            show_idx = list(range(self.shape[0]))
+
+        for i in show_idx:
+            if self.has_points():
+                xyz = np.around(self.points[i,:], decimals=3).tolist()
+            else:
+                xyz = ['nodata'] * 3
+
+            if self.has_colors():
+                rgb = self.colors[i,:].tolist()
+            else:
+                rgb = ['nodata'] * 3
+
+            if self.has_normals():
+                nxyz = self.normals[i,:].tolist()
+            else:
+                nxyz = ['nodata'] * 3
+            
+            if i >= 0:
+                data.append([i] + xyz + rgb + nxyz)
+            if i < 0:
+                data.append([self.shape[0] + i] + xyz + rgb + nxyz)
+
+        if self.shape[0] > 6:
+            data.insert(3, ['...'] * 10)
+            
+        self._btf_print = tabulate(data, headers=head, tablefmt='plain', colalign=col_align)
 
     @property
     def points(self):
@@ -38,11 +92,12 @@ class PointCloud(object):
     def points(self, p):
         if not isinstance(p, np.ndarray):
             raise TypeError(f"Only numpy ndarray object are acceptable for setting values")
-        elif self.shape != p.shape and self.shape != (3,0):
+        elif self.shape != p.shape and self.shape != (0,3):
             raise IndexError(f"The given shape [{p.shape}] does not match current point cloud shape [{self.shape}]")
         else:
             self._points = p - self._offset
             self.shape = p.shape
+            self._update_btf_print()
 
     @property
     def offset(self):
@@ -89,7 +144,7 @@ class PointCloud(object):
         self._points = None   # internal points with offsets to save memory
         self.colors = None
         self.normals = None
-        self.shape = (3,0)
+        self.shape = (0,3)
 
         self.offset = np.array([0.,0.,0.])
 
@@ -114,6 +169,8 @@ class PointCloud(object):
         self.normals = normals
         self.shape = points.shape
 
+        self._update_btf_print()
+
     def write_point_cloud(self, pcd_path):
         # if ply -> self.points + self.offsets
         # if las -> self.points & offset = self.offsets
@@ -135,7 +192,7 @@ class PointCloud(object):
             write_laz(self._points + self._offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self._offset)
 
 
-    def crop_point_cloud(self, poly_boundary, save_as=""):
+    def crop_point_cloud(self, poly_boundary, save_as=None):
         # need write 1. crop by roi 2. save to ply & las files
         # poly_boundary = 1. PixROI, 2. 2D ndarray
         pass

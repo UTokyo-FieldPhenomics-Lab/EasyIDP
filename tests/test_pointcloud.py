@@ -296,7 +296,26 @@ def test_class_pointcloud_init():
     assert pcd.has_colors() == False
     assert pcd.has_normals() == False
 
-    assert pcd.shape == (3, 0)
+    assert pcd.shape == (0, 3)
+
+def test_class_pointcloud_init_wrong_path():
+    with pytest.warns(UserWarning, match=re.escape("Can not find file")):
+        pcd = idp.PointCloud("a/wrong/path.ply")
+
+def test_class_pointcloud_print():
+    # short table
+    expected_str_s = '      x    y    z  r       g       b           nx      ny      nz\n 0    1    2    3  nodata  nodata  nodata  nodata  nodata  nodata\n 1    4    5    6  nodata  nodata  nodata  nodata  nodata  nodata\n 2    7    8    9  nodata  nodata  nodata  nodata  nodata  nodata'
+    pcd = idp.PointCloud()
+    pcd.points = np.asarray([[1,2,3], [4,5,6], [7,8,9]])
+
+    assert pcd._btf_print.replace(' ', '') ==  expected_str_s.replace(' ', '')
+
+    # long table
+    expected_str_l = '             x        y        z  r    g    b        nx      ny      nz\n    0  -18.908  -15.778   -0.779  123  103  79   nodata  nodata  nodata\n    1  -18.908  -15.777   -0.78   124  104  81   nodata  nodata  nodata\n    2  -18.907  -15.775   -0.802  123  103  80   nodata  nodata  nodata\n  ...  ...      ...      ...      ...  ...  ...     ...     ...     ...\n42451  -15.789  -17.961   -0.847  116  98   80   nodata  nodata  nodata\n42452  -15.789  -17.939   -0.84   113  95   76   nodata  nodata  nodata\n42453  -15.786  -17.937   -0.833  115  97   78   nodata  nodata  nodata'
+
+    pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
+
+    assert pcd._btf_print.replace(' ', '') ==  expected_str_l.replace(' ', '')
 
 def test_class_pointcloud_points_set_value():
     pts1 = np.asarray([[1,2,3], [4,5,6]])
@@ -461,4 +480,4 @@ def test_class_pointcloud_clear():
     assert pcd.has_colors() == False
     assert pcd.has_normals() == False
 
-    assert pcd.shape == (3, 0)
+    assert pcd.shape == (0, 3)

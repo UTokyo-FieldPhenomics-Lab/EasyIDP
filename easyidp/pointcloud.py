@@ -9,6 +9,8 @@ import numpy.lib.recfunctions as rfn
 import laspy
 from plyfile import PlyData, PlyElement
 
+from matplotlib.patches import Polygon
+
 import easyidp as idp
 
 class PointCloud(object):
@@ -191,11 +193,71 @@ class PointCloud(object):
         else:
             write_laz(self._points + self._offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self._offset)
 
+    def crop_point_cloud(self, polygon_xy):
+        """clip the point cloud along z axis
 
-    def crop_point_cloud(self, poly_boundary, save_as=None):
-        # need write 1. crop by roi 2. save to ply & las files
-        # poly_boundary = 1. PixROI, 2. 2D ndarray
-        pass
+        Parameters
+        ----------
+        polygon_xy : nx2 ndarray
+            the polygon xy coords
+
+        Returns
+        -------
+        PointCloud object
+            The cropped point cloud
+        """
+
+        # judge whether proper data type
+        if not isinstance(polygon_xy, np.ndarray):
+            raise TypeError(f"Only numpy ndarray are supported as `polygon_xy` inputs, not {type(polygon_xy)}")
+
+        # judge whether proper shape is (N, 2)
+        if len(polygon_xy.shape) != 2 or polygon_xy.shape[1] != 2:
+            raise IndexError(f"Please only spcify shape like (N, 2), not {polygon_xy.shape}")
+
+        
+        # calculate the bbox of polygon
+        xmin, ymin = polygon_xy.min(axis=0)
+        xmax, ymax = polygon_xy.max(axis=0)
+
+        # get the xy value if point cloud
+        x = self.points[:, 0]
+        y = self.points[:, 1]
+
+        # get the row (points id) that in bbox
+        inbbox_bool = (x >= xmin) * (x <= xmax) * (y >= ymin) * (y <= ymax)
+        # -> array([False, False, False, ..., False, False, False])
+        inbbox_idx =  np.where(inbbox_bool)[0]
+        # -> array([ 3394,  3395,  3396, ..., 41371, 41372, 41373], dtype=int64)
+
+        # filter out in bbox points
+        inbbox_pts = self.points[inbbox_idx, 0:2]
+
+        # judge by matplotlib.polygon
+        plt_poly = Polygon(polygon_xy)
+        in_poly_idx = plt_poly.contains_points(inbbox_pts)
+        # -> array([ True, False, False, ..., False, False, False])
+
+        # pick selected row:
+        pick_idx = inbbox_idx[in_poly_idx]
+        # -> array([ 3394,  3503,  3614, ..., 41265, 41285, 41369], dtype=int64)
+
+        # check whether have data
+        if len(pick_idx) > 0:
+            # create new Point Cloud object
+            clip_pcd = PointCloud()
+            clip_pcd.points = self.points[pick_idx, :]
+            clip_pcd._offset = self._offset
+            if self.has_colors():
+                clip_pcd.colors = self.colors[pick_idx, :]
+            if self.has_normals():
+                clip_pcd.normals = self.normals[pick_idx, :]
+
+            return clip_pcd
+        # get empty crop
+        else:
+            warnings.warn("Cropped 0 point in given polygon. Please check whether the coords is correct.")
+            return None
 
 
 def read_ply(ply_path):

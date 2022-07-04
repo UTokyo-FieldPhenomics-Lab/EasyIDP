@@ -481,3 +481,37 @@ def test_class_pointcloud_clear():
     assert pcd.has_normals() == False
 
     assert pcd.shape == (0, 3)
+
+def test_class_point_cloud_crop():
+    pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
+
+    polygon = np.array([
+        [-18.42576599, -16.10819054],
+        [-18.00066757, -18.05295944],
+        [-16.05021095, -17.63488388],
+        [-16.46848488, -15.66774559],
+        [-18.42576599, -16.10819054]])
+
+    cropped = pcd.crop_point_cloud(polygon)
+
+    # check if the type is point cloud
+    assert isinstance(cropped, idp.PointCloud)
+    # check the point number
+    assert cropped.shape[0] == 22422
+
+    # check raise error
+    p1 = [[1,2,3], [4,5,6]]
+    p2 = np.array(p1)
+    with pytest.raises(TypeError, match=re.escape(
+        "Only numpy ndarray are supported as `polygon_xy` inputs, not <class 'list'>")):
+        cropped = pcd.crop_point_cloud(p1)
+
+    with pytest.raises(IndexError, match=re.escape(
+        "Please only spcify shape like (N, 2), not (2, 3)")):
+        cropped = pcd.crop_point_cloud(p2)
+
+    # check raise warns
+    with pytest.warns(UserWarning, match=re.escape(
+        "Cropped 0 point in given polygon. Please check whether the coords is correct.")):
+        cropped = pcd.crop_point_cloud(polygon + 10)
+        assert cropped is None

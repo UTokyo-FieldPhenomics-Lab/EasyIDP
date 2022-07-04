@@ -5,6 +5,7 @@ import tifffile as tf
 import warnings
 
 from pyproj.exceptions import CRSError
+from .cvtools import poly2mask
 
 
 def get_header(tif_path):
@@ -484,3 +485,97 @@ def point_query(page, points_hv, header=None):
             values_list.append(cropped[0,0,:])
 
     return np.array(values_list)
+
+def imarray_crop(imarray, polygon_hv, empty_value=0):
+    """crop a given ndarray image by given polygon pixel positions
+
+    Parameters
+    ----------
+    imarray : ndarray
+        the image data, shape = (height,width)
+    polygon_hv : ndarray
+        pixel position of boundary point, (horizontal, vertical) which reverted the imarray axis 0 to 1
+    empty_value: int | float
+        for 
+
+    returns
+    -------
+    imarray_out : ndarray
+    roi_offset : ndarray
+    """
+    # (horizontal, vertical) remember to revert in all the following codes
+    roi_offset = polygon_hv.min(axis=0)
+    roi_max = polygon_hv.max(axis=0)
+    roi_length = roi_max - roi_offset
+
+    roi_rm_offset = polygon_hv - roi_offset
+    # the polygon will generate index outside the image
+    # this will cause out of index error in the `poly2mask`
+    # so need to find out the point locates on the maximum edge and minus 1 
+    # >>> a = np.array([217, 468])  # roi_max
+    # >>> b  # polygon
+    # array([[217, 456],
+    #        [ 30, 468],
+    #        [  0,  12],
+    #        [187,   0],
+    #        [217, 456]])
+    # >>> b[:,0] == a[0]
+    # array([ True, False, False, False,  True])
+    # >>> b[b[:,0] == a[0], 0] -= 1
+    # >>> b
+    # array([[216, 456],
+    #        [ 30, 468],
+    #        [  0,  12],
+    #        [187,   0],
+    #        [216, 456]])
+    roi_rm_offset[roi_rm_offset[:,0] == roi_length[0], 0] -= 1
+    roi_rm_offset[roi_rm_offset[:,1] == roi_length[1], 1] -= 1
+    
+    dim = len(imarray.shape)
+    if dim == 2: 
+        # only has 2 dimensions
+        # e.g. DSM 1 band only, other value outside polygon = empty value
+        
+        # here need to reverse 
+        # imarray.shape -> (h, w), but poly2mask need <- (w, h)
+        roi_clipped = imarray[roi_offset[1]:roi_max[1], 
+                              roi_offset[0]:roi_max[0]]
+        rh = roi_clipped.shape[0]
+        rw = roi_clipped.shape[1]
+        mask = poly2mask((rw, rh), roi_rm_offset)
+
+        roi_clipped[~mask] = empty_value
+        imarray_out = roi_clipped
+
+    elif dim == 3: 
+        # has 3 dimensions
+        # e.g. DOM with RGB or RGBA band, other value outside changed alpha layer to 0
+        roi_clipped = imarray[roi_offset[1]:roi_max[1], roi_offset[0]:roi_max[0], :]
+
+        rh = roi_clipped.shape[0]
+        rw = roi_clipped.shape[1]
+        layer_num = roi_clipped.shape[2]
+
+        # here need to reverse 
+        # imarray.shape -> (h, w), but poly2mask need <- (w, h)
+        mask = poly2mask((rw, rh), roi_rm_offset)
+
+        if layer_num == 3:  
+            # DOM without alpha layer
+            # but output add mask as alpha layer directly
+            mask = mask.astype(np.uint8) * 255
+
+            imarray_out = np.concatenate([roi_clipped, mask[:, :, None]], axis=2).astype(np.uint8)
+
+        elif layer_num == 4:  
+            # DOM with alpha layer
+            mask = mask.astype(int)
+
+            original_mask = roi_clipped[:, :, 3].copy()
+            merged_mask = original_mask * mask
+
+            imarray_out = np.dstack([roi_clipped[:,:, 0:3], merged_mask]).astype(np.uint8)
+        else:
+            raise TypeError(f'Unable to solve the layer number {layer_num}')
+
+    return imarray_out, roi_offset

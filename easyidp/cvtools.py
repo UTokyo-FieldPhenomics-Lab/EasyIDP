@@ -123,3 +123,9 @@ def _pillow_poly2mask(h, w, poly_coord):
     mask = np.array(mask, dtype=bool)
 
     return mask
+
+
+def rgb2gray(rgb):
+    # https://stackoverflow.com/questions/12201577/how-can-i-convert-an-rgb-image-into-grayscale-in-python
+    # how matplotlib did the transform
+    return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])

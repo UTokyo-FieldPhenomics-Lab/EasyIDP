@@ -126,12 +126,12 @@ def test_tifffile_crop():
         height = 100
         width = 150
 
-        maize_np_clip = maize_part_np[top:top+height, left:left+width]
-        maize_tf_clip = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        maize_np_crop = maize_part_np[top:top+height, left:left+width]
+        maize_tf_crop = idp.geotiff.tifffile_crop(page, top, left, height, width)
 
         # vscode debug command to visualize compare two results
-        # fig, ax = plt.subplots(1,2); ax[0].imshow(maize_np_clip); ax[1].imshow(maize_tf_clip); ax[0].axis("equal"); ax[1].axis("equal");plt.show()
-        np.testing.assert_equal(maize_np_clip, maize_tf_clip)
+        # fig, ax = plt.subplots(1,2); ax[0].imshow(maize_np_crop); ax[1].imshow(maize_tf_crop); ax[0].axis("equal"); ax[1].axis("equal");plt.show()
+        np.testing.assert_equal(maize_np_crop, maize_tf_crop)
 
 
         # even start + odd line number
@@ -140,9 +140,9 @@ def test_tifffile_crop():
         height = 151
         width = 153
 
-        maize_np_clip_odd = maize_part_np[top:top+height, left:left+width]
-        maize_tf_clip_odd = idp.geotiff.tifffile_crop(page, top, left, height, width)
-        np.testing.assert_equal(maize_np_clip_odd, maize_tf_clip_odd)
+        maize_np_crop_odd = maize_part_np[top:top+height, left:left+width]
+        maize_tf_crop_odd = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        np.testing.assert_equal(maize_np_crop_odd, maize_tf_crop_odd)
 
         # odd start + even line number:
         top = 91
@@ -150,9 +150,9 @@ def test_tifffile_crop():
         height = 230
         width = 153
 
-        maize_np_clip_odd2 = maize_part_np[top:top+height, left:left+width]
-        maize_tf_clip_odd2 = idp.geotiff.tifffile_crop(page, top, left, height, width)
-        np.testing.assert_equal(maize_np_clip_odd2, maize_tf_clip_odd2)
+        maize_np_crop_odd2 = maize_part_np[top:top+height, left:left+width]
+        maize_tf_crop_odd2 = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        np.testing.assert_equal(maize_np_crop_odd2, maize_tf_crop_odd2)
 
         # odd start + odd line number
         top = 61
@@ -160,9 +160,9 @@ def test_tifffile_crop():
         height = 237
         width = 150
 
-        maize_np_clip_odd2 = maize_part_np[top:top+height, left:left+width]
-        maize_tf_clip_odd2 = idp.geotiff.tifffile_crop(page, top, left, height, width)
-        np.testing.assert_equal(maize_np_clip_odd2, maize_tf_clip_odd2)
+        maize_np_crop_odd2 = maize_part_np[top:top+height, left:left+width]
+        maize_tf_crop_odd2 = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        np.testing.assert_equal(maize_np_crop_odd2, maize_tf_crop_odd2)
 
 
     lotus_part_np = idp.geotiff.get_imarray(lotus_part_dom)
@@ -174,9 +174,9 @@ def test_tifffile_crop():
         height = 100
         width = 150
 
-        lotus_np_clip = lotus_part_np[top:top+height, left:left+width]
-        lotus_tf_clip = idp.geotiff.tifffile_crop(page, top, left, height, width)
-        np.testing.assert_equal(lotus_np_clip, lotus_tf_clip)
+        lotus_np_crop = lotus_part_np[top:top+height, left:left+width]
+        lotus_tf_crop = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        np.testing.assert_equal(lotus_np_crop, lotus_tf_crop)
 
 
     # read dsm
@@ -189,9 +189,9 @@ def test_tifffile_crop():
         height = 100
         width = 150
 
-        lotus_np_clip = lotus_part_np[top:top+height, left:left+width]
-        lotus_tf_clip = idp.geotiff.tifffile_crop(page, top, left, height, width)
-        np.testing.assert_equal(lotus_np_clip, lotus_tf_clip)
+        lotus_np_crop = lotus_part_np[top:top+height, left:left+width]
+        lotus_tf_crop = idp.geotiff.tifffile_crop(page, top, left, height, width)
+        np.testing.assert_equal(lotus_np_crop, lotus_tf_crop)
 
 
 def test_point_query():

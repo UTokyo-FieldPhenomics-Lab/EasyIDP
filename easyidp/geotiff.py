@@ -97,7 +97,7 @@ def geo2pixel(points_hv, header, return_index=False):
     -------
     The ndarray pixel position of these points (horizontal, vertical)
         Please note: gis coordinate, horizontal is x axis, vertical is y axis, origin at left upper
-        To clip image ndarray, the first columns is vertical pixel (along height),
+        To crop image ndarray, the first columns is vertical pixel (along height),
             then second columns is horizontal pixel number (along width),
             the third columns is 3 or 4 bands (RGB, alpha),
             the x and y is reversed compared with gis coordinates.
@@ -363,7 +363,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
         #     as the `ed_line_id`
         ed_line_id = read_row_id[-1] % row_step - (row_step-1)
 
-    # clip them vertically first, then clip
+    # crop them vertically first, then crop
     temp_out = np.empty((im_pyramid, 0, w, im_dimen), dtype=page.dtype)
     for index in read_tile_idx:
         offset = page.dataoffsets[index]
@@ -381,7 +381,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
 
         temp_out = np.concatenate([temp_out, tile[:, :,j0:j1,:]], axis=1)
 
-    # return clipped result
+    # return cropped result
     if row_step == 1:
         if im_dimen == 1:
             # is dsm -> shape (w, h)

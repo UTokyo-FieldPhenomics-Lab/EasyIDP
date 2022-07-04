@@ -82,16 +82,16 @@ ply = idp.PointCloud("xxx_pcd.ply")
   
 把感兴趣区域(ROI)切出来：
 ```python
-dom_parts = roi.clip(dom)
-dsm_parts = roi.clip(dsm)
-pcd_parts = roi.clip(ply)
+dom_parts = roi.crop(dom)
+dsm_parts = roi.crop(dsm)
+pcd_parts = roi.crop(ply)
 ```
 
 如果你想在切的时候，顺便保存切块的结果：
 ```python
-dom_parts = roi.clip(dom, save_folder="./clip_dom")
-dsm_parts = roi.clip(dsm, save_folder="./clip_dsm")
-pcd_parts = roi.clip(ply, save_folder="./clip_pcd")
+dom_parts = roi.crop(dom, save_folder="./crop_dom")
+dsm_parts = roi.crop(dsm, save_folder="./crop_dsm")
+pcd_parts = roi.crop(ply, save_folder="./crop_pcd")
 ```
   
 </details>

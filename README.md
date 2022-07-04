@@ -17,7 +17,7 @@
 
 EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions: 
 
-1. Clip ROI on GeoTiff Maps (DOM & DSM) and Point Cloud.
+1. crop ROI on GeoTiff Maps (DOM & DSM) and Point Cloud.
 2. Backward Projection ROI to original images.
 
 This project tried to use packges based on pure-python, instead of installing some heavy packages (Open3D, OpenCV) and hard to install packages (GDAL dependices) for one or two individual functions. This may cause efficiency loss and differences in coding habit.
@@ -57,11 +57,11 @@ roi = idp.ROI("xxxx.shp")  # lon and lat 2D info
 roi.get_z_from_dsm("xxxx_dsm.tiff")  # add height 3D info
 ```
 
-The 2D roi can be used to clip the DOM, DSM, and point cloud (`2.Clip by ROI`). While the 3D roi can be used for Backward projection (`4. Backward projection`)
+The 2D roi can be used to crop the DOM, DSM, and point cloud (`2.crop by ROI`). While the 3D roi can be used for Backward projection (`4. Backward projection`)
 </details>
 
 <details close>
-<summary>2. Clip by ROI</summary>
+<summary>2. crop by ROI</summary>
 
 Read the DOM and DSM Geotiff Maps
 ```python
@@ -74,18 +74,18 @@ Read point cloud data
 ply = idp.PointCloud("xxx_pcd.ply")
 ```
   
-Clip the region of interest from ROI:
+crop the region of interest from ROI:
 ```python
-dom_parts = roi.clip(dom)
-dsm_parts = roi.clip(dsm)
-pcd_parts = roi.clip(ply)
+dom_parts = roi.crop(dom)
+dsm_parts = roi.crop(dsm)
+pcd_parts = roi.crop(ply)
 ```
 
-If you want to save these clips to given folder:
+If you want to save these crops to given folder:
 ```python
-dom_parts = roi.clip(dom, save_folder="./clip_dom")
-dsm_parts = roi.clip(dsm, save_folder="./clip_dsm")
-pcd_parts = roi.clip(ply, save_folder="./clip_pcd")
+dom_parts = roi.crop(dom, save_folder="./crop_dom")
+dsm_parts = roi.crop(dsm, save_folder="./crop_dsm")
+pcd_parts = roi.crop(ply, save_folder="./crop_pcd")
 ```
 
   

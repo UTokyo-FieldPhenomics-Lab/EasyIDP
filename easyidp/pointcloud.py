@@ -194,7 +194,7 @@ class PointCloud(object):
             write_laz(self._points + self._offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self._offset)
 
     def crop_point_cloud(self, polygon_xy):
-        """clip the point cloud along z axis
+        """crop the point cloud along z axis
 
         Parameters
         ----------
@@ -245,15 +245,15 @@ class PointCloud(object):
         # check whether have data
         if len(pick_idx) > 0:
             # create new Point Cloud object
-            clip_pcd = PointCloud()
-            clip_pcd.points = self.points[pick_idx, :]
-            clip_pcd._offset = self._offset
+            crop_pcd = PointCloud()
+            crop_pcd.points = self.points[pick_idx, :]
+            crop_pcd._offset = self._offset
             if self.has_colors():
-                clip_pcd.colors = self.colors[pick_idx, :]
+                crop_pcd.colors = self.colors[pick_idx, :]
             if self.has_normals():
-                clip_pcd.normals = self.normals[pick_idx, :]
+                crop_pcd.normals = self.normals[pick_idx, :]
 
-            return clip_pcd
+            return crop_pcd
         # get empty crop
         else:
             warnings.warn("Cropped 0 point in given polygon. Please check whether the coords is correct.")

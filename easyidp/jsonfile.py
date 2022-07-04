@@ -33,7 +33,7 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
     
     Parameters
     ----------
-    clip_dict : dict
+    data_dict : dict
         the dict object want to save as json file
     json_path : str
         the path including json file name to save the json file
@@ -69,7 +69,7 @@ def save_json(data_dict, json_path, indent=0, encoding='utf-8'):
 # just copied from previous `caas_lite.py`, haven't modified yet
 def _to_labelme_json(grid_tagged, json_folder, minimize=True):
     """
-    Save the tagged shp polygon clip result to json file, for deeplearing use
+    Save the tagged shp polygon crop result to json file, for deeplearing use
         The single json file has the following structure:
             {
                 "version": "4.5.6",  # the Labelme.exe version, optional

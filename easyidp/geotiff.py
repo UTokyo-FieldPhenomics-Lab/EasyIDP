@@ -22,14 +22,20 @@ def get_header(tif_path):
         the container of acquired meta info
     """
     with tf.TiffFile(tif_path) as tif:
-        header = {'width': None, 'height': None, 'dim':1, 
-                'scale': None, 'tie_point': None, 'nodata': None, 'proj': None}
+        header = {}
+        # keys: 'width', 'height', 'dim', 'scale', 'tie_point',
+        #       'nodata', 'proj', 'dtype', 'band_num'
 
         header["height"] = tif.pages[0].shape[0]
         header["width"] = tif.pages[0].shape[1]
         if len(tif.pages[0].shape) > 2:
-            header["dim"] = tif.pages[0].shape[2] 
+            # header["dim"] = tif.pages[0].shape[2] 
+            # `band_num` used in other functions in the old version
+            header["dim"] = tif.pages[0].samplesperpixel
+        else:
+            header["dim"] = 1
         header["nodata"] = tif.pages[0].nodata
+        header["dtype"] = tif.pages[0].dtype
         
         # tif.pages[0].geotiff_tags
         # -> 'ModelPixelScale': [0.0034900000000000005, 0.0034900000000000005, 0.0]
@@ -138,7 +144,7 @@ def geo2pixel(points_hv, header, return_index=False):
     return pixel
 
 
-def pixel2geo(points_hv, geo_head):
+def pixel2geo(points_hv, header):
     """convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
 
     Parameters
@@ -152,8 +158,8 @@ def pixel2geo(points_hv, geo_head):
     -------
     The ndarray pixel position of these points (horizontal, vertical)
     """
-    gis_xmin = geo_head['tie_point'][0]
-    gis_ymax = geo_head['tie_point'][1]
+    gis_xmin = header['tie_point'][0]
+    gis_ymax = header['tie_point'][1]
 
     # the px is numpy axis0 (vertical, h)
     # py is numpy axis1 (horizontal, w)
@@ -172,8 +178,8 @@ def pixel2geo(points_hv, geo_head):
     else:
         raise TypeError(f"The `points_hv` only accept numpy ndarray integer and float types")
 
-    gis_px = gis_xmin + pix_ph * geo_head['scale'][0]
-    gis_py = gis_ymax - pix_pv * geo_head['scale'][1]
+    gis_px = gis_xmin + pix_ph * header['scale'][0]
+    gis_py = gis_ymax - pix_pv * header['scale'][1]
 
     gis_geo = np.vstack([gis_px, gis_py]).T
 
@@ -243,7 +249,7 @@ def _get_tiled_crop(page, i0, j0, h, w):
     im_width = page.imagewidth
     im_height = page.imagelength
     im_pyramid = page.imagedepth
-    im_dimen = page.samplesperpixel
+    im_dim = page.samplesperpixel
 
     if h < 1 or w < 1:
         raise ValueError("h and w must be strictly positive.")
@@ -263,7 +269,7 @@ def _get_tiled_crop(page, i0, j0, h, w):
     out = np.empty((im_pyramid,
                     (tile_i1 - tile_i0) * tile_height,
                     (tile_j1 - tile_j0) * tile_width,
-                    im_dimen), dtype=page.dtype)
+                    im_dim), dtype=page.dtype)
 
     fh = page.parent.filehandle
 
@@ -301,7 +307,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
     im_width = page.imagewidth
     im_height = page.imagelength
     im_pyramid = page.imagedepth
-    im_dimen = page.samplesperpixel
+    im_dim = page.samplesperpixel
 
     if h < 1 or w < 1:
         raise ValueError("h and w must be strictly positive.")
@@ -365,7 +371,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
         ed_line_id = read_row_id[-1] % row_step - (row_step-1)
 
     # crop them vertically first, then crop
-    temp_out = np.empty((im_pyramid, 0, w, im_dimen), dtype=page.dtype)
+    temp_out = np.empty((im_pyramid, 0, w, im_dim), dtype=page.dtype)
     for index in read_tile_idx:
         offset = page.dataoffsets[index]
         bytecount = page.databytecounts[index]
@@ -384,27 +390,27 @@ def _get_untiled_crop(page, i0, j0, h, w):
 
     # return cropped result
     if row_step == 1:
-        if im_dimen == 1:
+        if im_dim == 1:
             # is dsm -> shape (w, h)
             return temp_out[0,:,:,0]
         else:  
             # is dom -> shape (w, h, d)         
-            return temp_out[0,:,:,0:im_dimen] 
+            return temp_out[0,:,:,0:im_dim] 
     else:
         if ed_line_id == 0:
-            if im_dimen == 1:  
+            if im_dim == 1:  
                 # is dsm -> shape (w, h)
                 return temp_out[0, st_line_id:, :, 0]
             else:
                 # is dom -> shape (w, h, d)
-                return temp_out[0, st_line_id:, :, 0:im_dimen]
+                return temp_out[0, st_line_id:, :, 0:im_dim]
         else:
-            if im_dimen == 1:
+            if im_dim == 1:
                 # is dsm -> shape (w, h)
                 return temp_out[0, st_line_id:ed_line_id, :, 0]
             else:
                 # is dom -> shape (w, h, d)
-                return temp_out[0, st_line_id:ed_line_id, :, 0:im_dimen]
+                return temp_out[0, st_line_id:ed_line_id, :, 0:im_dim]
 
 
 def point_query(page, points_hv, header=None):
@@ -579,3 +585,81 @@ def imarray_crop(imarray, polygon_hv, empty_value=0):
             raise TypeError(f'Unable to solve the layer number {layer_num}')
 
     return imarray_out, roi_offset
+
+def _make_empty_imarray(header, h, w, layer_num=None):
+    """
+    Produce a empty image, suit the requirement for nodata
+    """
+    # possible dsm with only one band
+    if header["dim"] == 1:
+        
+        # old version: np.ones((self.img_depth, h, w, 1))
+        empty_template = np.ones((h, w)) * header["nodata"]
+        
+    # possible RGB band
+    elif header["dim"] == 3 and header["dtype"] == np.uint8:
+        if layer_num == 4:
+            # old version: np.ones((self.img_depth, h, w, 1))
+            empty_template = np.ones((h, w, 4)).astype(np.uint8) * 255
+            empty_template[:,:,3] = empty_template[:,:,3] * 0
+        else:
+            # old version: np.ones((self.img_depth, h, w, 1))
+            empty_template = np.ones((h, w, 3)).astype(np.uint8) * 255
+        
+    # possible RGBA band, empty defined by alpha = 0
+    elif header["dim"] == 4 and header["dtype"] == np.uint8:
+        # old version: np.ones((h, w, 1))
+        empty_template = np.ones((h, w, 4)).astype(np.uint8) * 255
+        empty_template[:,:,3] = empty_template[:,:,3] * 0
+    else:
+        raise ValueError(f"Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [{header['dim']}], dtype=np.uint8; get [{header['dtype']}])")
+        
+    return empty_template
+
+def _is_empty_imarray(header, imarray):
+    """
+    Judge if current img_array is empty grids
+        e.g. dsm=-10000, # (page.nodata)
+             rgb=[255,255,255], [0,0,0] # pure white and black
+             or RGBA with full empty alpha layer  # alpha all=0
+    
+    Parameters
+    ----------
+    img_array: np.ndarray
+        the outputs of self.get_crop()
+    
+    Returns
+    -------
+    bool: True is empty image.
+    
+    """
+    is_empty = False
+    if len(imarray.shape) == 2:
+        imarray_dim = 1
+    elif len(imarray.shape) == 3:
+        _, _, imarray_dim = imarray.shape
+
+    if imarray_dim != header["dim"]:
+        raise IndexError(f"The imarray dimention [{imarray_dim}] does not match with header dimention [{header['dim']}]")
+    
+    if header["dim"] == 1:
+        if np.all(imarray==header["nodata"]):
+            is_empty = True
+    elif header["dim"] == 3:
+        # for the case that use (255, 255, 255) white as background
+        if np.all(imarray==255):
+            is_empty = True
+        # in case some use (0, 0, 0) black as background
+        if np.all(imarray==0):
+            is_empty = True
+        # in case some header specify nodata rather than 255 and 0
+        if np.all(imarray==header["nodata"]):
+            is_empty = True
+    # for those RGBA with alpha layers, assume alpha=0 as empty
+    elif header["dim"] == 4:
+        if np.all(imarray[:,:,3]==0):
+            is_empty = True
+    else:
+        raise ValueError(f"Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [{header['dim']}], dtype=np.uint8; get [{header['dtype']}])")
+
+    return is_empty

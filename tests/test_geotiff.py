@@ -331,3 +331,54 @@ def test_imarray_clip_2d_rgb_rgba():
 
     assert im_out_2d[20,20] == 144.8887
     np.testing.assert_equal(im_out_rgb[20,20,:], np.array([163, 138, 133, 255], dtype=np.uint8))
+
+# ==================================================================
+
+# from lotus_full_dsm
+lotus_header_dsm = {'height': 5752, 'width': 5490, 'dim': 1, 
+                    'nodata': -10000.0, 'dtype': np.float32, 
+                    'scale': [0.00738, 0.00738], 
+                    'tie_point': [368014.54157, 3955518.2747700005],
+                    'proj': pyproj.CRS.from_epsg(32654)}
+
+# from lotus_full_dom
+lotus_header_dom = {'height': 5752, 'width': 5490, 'dim': 4, 
+                    'nodata': 0, 'dtype': np.uint8, 
+                    'scale': [0.00738, 0.00738], 
+                    'tie_point': [368014.54157, 3955518.2747700005],
+                    'proj':pyproj.CRS.from_epsg(32654)}
+
+def test_make_is_empty_imarray():
+    out1 = idp.geotiff._make_empty_imarray(lotus_header_dsm, 20, 30)
+    np.testing.assert_equal(out1, np.ones((20, 30))*-10000.0)
+
+    assert idp.geotiff._is_empty_imarray(lotus_header_dsm, out1)
+
+    rgba = np.ones((20, 30, 4), dtype=np.uint8)*255
+    rgba[:,:,3] = rgba[:,:,3] * 0
+    lotus_header_dom["dim"] = 3
+    out2 = idp.geotiff._make_empty_imarray(lotus_header_dom, 20, 30, layer_num=4)
+    np.testing.assert_equal(out2, rgba)
+
+    lotus_header_dom["dim"] = 4
+    assert idp.geotiff._is_empty_imarray(lotus_header_dom, out2)
+
+def test_make_empty_imarray_error():
+    wrong_header1 = {"dim":5, "dtype": np.float32}
+    wrong_header2 = {"dim":3, "dtype": np.float32}
+
+    with pytest.raises(ValueError, match=re.escape("Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [5], dtype=np.uint8; get [<class 'numpy.float32'>])")):
+        idp.geotiff._make_empty_imarray(wrong_header1, 20, 30)
+
+    with pytest.raises(ValueError, match=re.escape("Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [3], dtype=np.uint8; get [<class 'numpy.float32'>])")):
+        idp.geotiff._make_empty_imarray(wrong_header2, 20, 30)
+
+
+def test_is_empty_imarray_error():
+    wrong_header1 = {"dim":5, "dtype": np.float32}
+    with pytest.raises(ValueError, match=re.escape("Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [5], dtype=np.uint8; get [<class 'numpy.float32'>])")):
+        idp.geotiff._is_empty_imarray(wrong_header1, np.zeros((4,4,5)))
+
+    wrong_header2 = {"dim":3, "dtype": np.float32}
+    with pytest.raises(IndexError, match=re.escape("The imarray dimention [4] does not match with header dimention [3]")):
+        idp.geotiff._is_empty_imarray(wrong_header2, np.zeros((4,4,4)))

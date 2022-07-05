@@ -382,3 +382,51 @@ def test_is_empty_imarray_error():
     wrong_header2 = {"dim":3, "dtype": np.float32}
     with pytest.raises(IndexError, match=re.escape("The imarray dimention [4] does not match with header dimention [3]")):
         idp.geotiff._is_empty_imarray(wrong_header2, np.zeros((4,4,4)))
+
+
+# ==============
+# GeoTiff Class
+# ==============
+
+def test_check_hasfile_decorator():
+    obj = idp.GeoTiff()
+
+    with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
+        obj._save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+
+    obj2 = idp.GeoTiff(lotus_full_dom)
+    obj2.file_path = f"not/exists/path"
+    with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
+        obj2._save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+
+    obj3 = idp.GeoTiff(lotus_full_dom)
+    obj3.header = None
+    with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
+        obj3._save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+
+def test_class_init_with_path():
+    obj = idp.GeoTiff(lotus_full_dom)
+
+    # convert rel path to abs path, ideally it should longer
+    assert len(obj.file_path) >= len(lotus_full_dom)
+    assert obj.header is not None
+
+
+def test_class_read_geotiff():
+    obj = idp.GeoTiff()
+    obj.read_geotiff(lotus_full_dom)
+
+    assert len(obj.file_path) >= len(lotus_full_dom)
+    assert obj.header is not None
+
+
+def test_class_save_geotiff():
+    pass
+
+
+def test_crop_one_polygon():
+    pass
+
+
+def test_crop():
+    pass

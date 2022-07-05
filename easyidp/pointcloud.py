@@ -17,7 +17,7 @@ class PointCloud(object):
 
     def __init__(self, pcd_path="", offset=np.array([0.,0.,0.])) -> None:
 
-        self.file_path = pcd_path
+        self.file_path = os.path.abspath(pcd_path)
         self.file_ext = ".ply"
 
         self._points = None   # internal points with offsets to save memory
@@ -29,10 +29,7 @@ class PointCloud(object):
         self._btf_print = '<Empty easyidp.PointCloud object>'
 
         if len(pcd_path) > 0:
-            if os.path.exists(pcd_path):
-                self.read_point_cloud(pcd_path)
-            else:
-                warnings.warn(f"Can not find file [{pcd_path}], skip loading")
+            self.read_point_cloud(pcd_path)
 
     def __str__(self) -> str:
         return self._btf_print
@@ -151,6 +148,10 @@ class PointCloud(object):
         self.offset = np.array([0.,0.,0.])
 
     def read_point_cloud(self, pcd_path):
+        if not os.path.exists(pcd_path):
+            warnings.warn(f"Can not find file [{pcd_path}], skip loading")
+            return
+
         if pcd_path[-4:] == ".ply":
             points, colors, normals = read_ply(pcd_path)
         elif pcd_path[-4:] == ".laz" or pcd_path[-4:] == ".las":
@@ -159,6 +160,7 @@ class PointCloud(object):
             raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
 
         self.file_ext = os.path.splitext(pcd_path)[-1]
+        self.file_path = os.path.abspath(pcd_path)
 
         if abs(np.max(points)) > 65536:   # need offseting
             if not np.any(self._offset):    # not given any offset (0,0,0) -> calculate offset

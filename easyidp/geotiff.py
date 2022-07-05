@@ -6,6 +6,116 @@ import warnings
 
 from pyproj.exceptions import CRSError
 from .cvtools import poly2mask
+from . import __version__
+
+
+class GeoTiff(object):
+
+    def __init__(self, tif_path="") -> None:
+        self.file_path = os.path.abspath(tif_path)
+        self.header = None
+
+        if len(tif_path) > 0:
+            self.read_geotiff(tif_path)
+            
+    def read_geotiff(self, tif_path):
+        """Open and get the meta information (header) from geotiff
+
+        Parameters
+        ----------
+        tif_path : str
+            the path to geotiff file
+        """
+        if os.path.exists(tif_path):
+            self.file_path = os.path.abspath(tif_path)
+            self.header = get_header(tif_path)
+        else:
+            warnings.warn(f"Can not find file [{tif_path}], skip loading")
+
+    def not_empty(func):
+        # the decorator to check before doing functions
+        def wrapper(self, *args, **kwargs):
+            if self.header is None or not os.path.exists(self.file_path):
+                raise FileNotFoundError("Could not operate if not specify correct geotiff file")
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    @not_empty
+    def crop(self, roi, save_folder=None):  # clip_roi
+        # roi: ROI class, with several roi lists
+        pass
+
+    @not_empty
+    def _crop_one_polygon(self, polygon_hv, save_path=None):
+        # roi = single polygon
+
+        # if save_path is not None and is file path:
+        #     _save_geotiff()
+        pass
+
+    @not_empty
+    def save_geotiff(self, imarray, pix_offset_hv, save_path):
+        geo_corner = pixel2geo(np.asarray([pix_offset_hv]), self.header)
+        geo_h = geo_corner[0, 0]
+        geo_v = geo_corner[0, 1]
+
+        model_tie_point = (0, 0, 0, geo_h, geo_v, 0)
+
+        extratags = []
+        for k, t in self.header["tags"].items():
+            '''
+            TiffTag 256 ImageWidth @10 SHORT @18 = 5490
+            TiffTag 257 ImageLength @22 SHORT @30 = 5752
+            TiffTag 258 BitsPerSample @34 SHORT[4] @230 = (8, 8, 8, 8)
+            TiffTag 259 Compression @46 SHORT @54 = LZW
+            TiffTag 262 PhotometricInterpretation @58 SHORT @66 = RGB
+            TiffTag 273 StripOffsets @70 LONG[5752] @23246 = (46439, 46678, 46934, 47207, 4
+            TiffTag 277 SamplesPerPixel @82 SHORT @90 = 4
+            TiffTag 278 RowsPerStrip @94 SHORT @102 = 1
+            TiffTag 279 StripByteCounts @106 LONG[5752] @238 = (239, 256, 273, 278, 296, 30
+            TiffTag 284 PlanarConfiguration @118 SHORT @126 = CONTIG
+            TiffTag 305 Software @130 ASCII[12] @46262 = pix4dmapper
+            TiffTag 317 Predictor @142 SHORT @150 = HORIZONTAL
+            TiffTag 338 ExtraSamples @154 SHORT @162 = (<EXTRASAMPLE.UNASSALPHA: 2>,)
+            TiffTag 339 SampleFormat @166 SHORT[4] @46254 = ('UINT', 'UINT', 'UINT', 'UINT'
+            TiffTag 33550 ModelPixelScaleTag @178 DOUBLE[3] @46274 = (0.00738, 0.00738, 0.0
+            TiffTag 33922 ModelTiepointTag @190 DOUBLE[6] @46298 = (0.0, 0.0, 0.0, 368014.5
+            TiffTag 34735 GeoKeyDirectoryTag @202 SHORT[32] @46346 = (1, 1, 0, 7, 1024, 0,
+            TiffTag 34737 GeoAsciiParamsTag @214 ASCII[29] @46410 = WGS84 / UTM zone 54N|WG
+            '''
+            if k < 30000:
+                # this will be automatically added by wtif.save(data=imarray)
+                # the key of this step is extract "hidden" tags
+                continue
+
+            if tf.__version__ < "2020.11.26" and t.dtype[0] == '1':
+                dtype = t.dtype[-1]
+            else:
+                dtype = t.dtype
+
+            # <tifffile.TiffTag 33922 ModelTiepointTag @190>
+            if k == 33922:
+                # replace the value for this tag
+                value = (0, 0, 0, geo_h, geo_v, 0)
+            else:
+                # other just using parent value.
+                value = t.value
+
+            extratags.append((t.code, dtype, t.count, value, True))
+
+        if os.path.splitext(save_path) == ".tif":
+            # write geotiff
+            with tf.TiffWriter(save_path) as wtif:
+                wtif.save(data=imarray, 
+                          software=f"EasyIDP {__version__}", 
+                          photometric=self.header["photometric"], 
+                          planarconfig=self.header["planarconfig"], 
+                          compress=self.header["compression"], 
+                          resolution=self.header["scale"], 
+                          extratags=extratags)
+        else:
+            raise TypeError("only *.tif file name is supported")
 
 
 def get_header(tif_path):
@@ -24,37 +134,46 @@ def get_header(tif_path):
     with tf.TiffFile(tif_path) as tif:
         header = {}
         # keys: 'width', 'height', 'dim', 'scale', 'tie_point',
-        #       'nodata', 'proj', 'dtype', 'band_num'
+        #       'nodata', 'proj', 'dtype', 'band_num', 
+        # for export:
+        #       'tags', 'photometric', 'planarconfig', 'compression'
+        page = tif.pages[0]
 
-        header["height"] = tif.pages[0].shape[0]
-        header["width"] = tif.pages[0].shape[1]
-        if len(tif.pages[0].shape) > 2:
-            # header["dim"] = tif.pages[0].shape[2] 
+        header["height"] = page.shape[0]
+        header["width"] = page.shape[1]
+        if len(page.shape) > 2:
+            # header["dim"] = page.shape[2] 
             # `band_num` used in other functions in the old version
-            header["dim"] = tif.pages[0].samplesperpixel
+            header["dim"] = page.samplesperpixel
         else:
             header["dim"] = 1
-        header["nodata"] = tif.pages[0].nodata
-        header["dtype"] = tif.pages[0].dtype
+        header["nodata"] = page.nodata
+        header["dtype"] = page.dtype
+
+        # for save geotiff
+        header["tags"] = page.tags
+        header["photometric"] = page.photometric
+        header["planarconfig"] = page.planarconfig
+        header["compress"] = page.compression
         
-        # tif.pages[0].geotiff_tags
+        # page.geotiff_tags
         # -> 'ModelPixelScale': [0.0034900000000000005, 0.0034900000000000005, 0.0]
-        header["scale"] = tif.pages[0].geotiff_tags["ModelPixelScale"][0:2]
+        header["scale"] = page.geotiff_tags["ModelPixelScale"][0:2]
         
-        # tif.pages[0].geotiff_tags
+        # page.geotiff_tags
         # -> 'ModelTiepoint': [0.0, 0.0, 0.0, 419509.89816000004, 3987344.8286, 0.0]
-        header["tie_point"] = tif.pages[0].geotiff_tags["ModelTiepoint"][3:5]
+        header["tie_point"] = page.geotiff_tags["ModelTiepoint"][3:5]
         
         # pix4d:
-        #    tif.pages[0].geotiff_tags
+        #    page.geotiff_tags
         #    -> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        if "GTCitationGeoKey" in tif.pages[0].geotiff_tags.keys():
-            proj_str = tif.pages[0].geotiff_tags["GTCitationGeoKey"]
+        if "GTCitationGeoKey" in page.geotiff_tags.keys():
+            proj_str = page.geotiff_tags["GTCitationGeoKey"]
         # metashape:
-        #     tif.pages[0].geotiff_tags
+        #     page.geotiff_tags
         #     -> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        elif "PCSCitationGeoKey" in tif.pages[0].geotiff_tags.keys():
-            proj_str = tif.pages[0].geotiff_tags["PCSCitationGeoKey"]
+        elif "PCSCitationGeoKey" in page.geotiff_tags.keys():
+            proj_str = page.geotiff_tags["PCSCitationGeoKey"]
         else:
             raise KeyError("Can not find key 'GTCitationGeoKey' or 'PCSCitationGeoKey' in Geotiff tages")
         
@@ -76,7 +195,7 @@ def get_imarray(tif_path):
 
     Parameters
     ----------
-    geotiff_path : str
+    tif_path : str
         the path to geotiff file
 
     Returns

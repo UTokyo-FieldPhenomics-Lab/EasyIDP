@@ -319,7 +319,7 @@ def test_imarray_clip_2d_rgb_rgba():
     ax[2].imshow(im_out_rgba)
     ax[2].set_title('rgba')
 
-    plt.savefig(r"./tests/out/geotiff_test/imarray_clip_test.png")
+    plt.savefig(r"./tests/out/tiff_test/imarray_clip_test.png")
 
     # then check the results
     expected_offsets = np.array([2227, 1223])
@@ -392,17 +392,17 @@ def test_check_hasfile_decorator():
     obj = idp.GeoTiff()
 
     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
-        obj._save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+        obj.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
     obj2 = idp.GeoTiff(lotus_full_dom)
     obj2.file_path = f"not/exists/path"
     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
-        obj2._save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+        obj2.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
     obj3 = idp.GeoTiff(lotus_full_dom)
     obj3.header = None
     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
-        obj3._save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+        obj3.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
 def test_class_init_with_path():
     obj = idp.GeoTiff(lotus_full_dom)
@@ -419,13 +419,21 @@ def test_class_read_geotiff():
     assert len(obj.file_path) >= len(lotus_full_dom)
     assert obj.header is not None
 
+def test_crop_polygon_save_geotiff():
+    obj = idp.GeoTiff(lotus_full_dom)
 
-def test_class_save_geotiff():
-    pass
+    plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
+    plot_t = idp.shp.convert_proj(plot, proj, obj.header["proj"])
 
+    polygon_hv = plot_t["N1W1"]
 
-def test_crop_one_polygon():
-    pass
+    save_tiff = r"./tests/out/tiff_test/crop_polygon.tif"
+    if os.path.exists(save_tiff):
+        os.remove(save_tiff)
+    imarray = obj.crop_polygon(polygon_hv, is_geo=True, save_path=save_tiff)
+
+    assert os.path.exists(save_tiff)
+    assert imarray.shape == (320, 319, 4)
 
 
 def test_crop():

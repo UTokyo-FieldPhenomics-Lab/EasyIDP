@@ -6,7 +6,7 @@ import warnings
 
 from pyproj.exceptions import CRSError
 from .cvtools import poly2mask
-from . import __version__
+import easyidp as idp
 
 
 class GeoTiff(object):
@@ -37,7 +37,7 @@ class GeoTiff(object):
         def wrapper(self, *args, **kwargs):
             if self.header is None or not os.path.exists(self.file_path):
                 raise FileNotFoundError("Could not operate if not specify correct geotiff file")
-            return func(*args, **kwargs)
+            return func(self, *args, **kwargs)
 
         return wrapper
 
@@ -47,12 +47,51 @@ class GeoTiff(object):
         pass
 
     @not_empty
-    def _crop_one_polygon(self, polygon_hv, save_path=None):
+    def crop_polygon(self, polygon_hv, is_geo=True, save_path=None):
         # roi = single polygon
 
         # if save_path is not None and is file path:
         #     _save_geotiff()
-        pass
+
+        # check input polygon_hv type -> pixel index
+        if is_geo:
+            poly_pix = geo2pixel(polygon_hv, self.header, return_index=True)
+        else:
+            if np.issubdtype(polygon_hv.dtype, np.floating):
+                poly_pix = np.floor(polygon_hv).astype(int)
+                warnings.warn("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
+            elif np.issubdtype(polygon_hv.dtype, np.integer):
+                poly_pix = polygon_hv
+            else:
+                raise TypeError("Only ndarray int and float dtype are acceptable for `polygon_hv`")
+
+        # calculate the bbox of given region
+        roi_offset = poly_pix.min(axis=0)
+        roi_max = poly_pix.max(axis=0)
+        roi_length = roi_max - roi_offset
+
+        top = roi_offset[1]
+        left = roi_offset[0]
+        h = roi_length[1]
+        w = roi_length[0]
+
+        # crop by bbox from whole geotiff by tiffile_crop first (no need to load full image to memory)
+        # (page, top, left, h, w):
+        with tf.TiffFile(self.file_path) as tif:
+            page = tif.pages[0]
+            imarray_bbox = tifffile_crop(page, top, left, h, w)
+
+        # then crop the polygon from the imarray_bbox
+        poly_pix_off = poly_pix - roi_offset
+        imarray_out, _ = imarray_crop(imarray_bbox, poly_pix_off, 
+                                      empty_value=self.header['nodata'])
+
+        # check if need save geotiff
+        if save_path is not None and os.path.splitext(save_path)[-1] == ".tif":
+            self.save_geotiff(imarray_out, roi_offset, save_path)
+
+        return imarray_out
+
 
     @not_empty
     def save_geotiff(self, imarray, pix_offset_hv, save_path):
@@ -104,16 +143,16 @@ class GeoTiff(object):
 
             extratags.append((t.code, dtype, t.count, value, True))
 
-        if os.path.splitext(save_path) == ".tif":
+        if os.path.splitext(save_path)[-1] == ".tif":
             # write geotiff
             with tf.TiffWriter(save_path) as wtif:
-                wtif.save(data=imarray, 
-                          software=f"EasyIDP {__version__}", 
-                          photometric=self.header["photometric"], 
-                          planarconfig=self.header["planarconfig"], 
-                          compress=self.header["compression"], 
-                          resolution=self.header["scale"], 
-                          extratags=extratags)
+                wtif.write(data=imarray, 
+                           software=f"EasyIDP {idp.__version__}", 
+                           photometric=self.header["photometric"], 
+                           planarconfig=self.header["planarconfig"], 
+                           #compression=self.header["compress"], 
+                           resolution=self.header["scale"], 
+                           extratags=extratags)
         else:
             raise TypeError("only *.tif file name is supported")
 
@@ -218,6 +257,9 @@ def geo2pixel(points_hv, header, return_index=False):
         [horizontal, vertical] points
     header : dict
         the geotiff head dictionary from get_header()
+    return_index : bool, default false
+        if false: will get float coordinates -> (23.5, 27.8)
+        if true: will get int pixel index -> (23, 27)
 
     Returns
     -------
@@ -245,7 +287,6 @@ def geo2pixel(points_hv, header, return_index=False):
 
     gis_ph = points_hv[:, 0]
     gis_pv = points_hv[:, 1]
-
 
     # get float coordinate on pixels
     # - numpy_axis1 = x
@@ -286,8 +327,9 @@ def pixel2geo(points_hv, header):
         # all integer possible means the pixel index 
         #    rather than specific coordinates
         # +0.5 to get the pixel center rather than edge
-        pix_ph = points_hv[:, 0] + 0.5  
-        pix_pv = points_hv[:, 1] + 0.5
+        # but in QGIS, this will cause 0.5 pixel shift
+        pix_ph = points_hv[:, 0]  # + 0.5
+        pix_pv = points_hv[:, 1]  # + 0.5
     elif np.issubdtype(points_hv.dtype, np.floating):
         # all floats possible means it is the pixel coordinates
         #    rather than pixel index

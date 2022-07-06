@@ -3,6 +3,7 @@ d
 *.mo
 *.DS_Store
 .archive/*
+.idea/*
 .pytest_cache/*
 .vscode/*
 _*

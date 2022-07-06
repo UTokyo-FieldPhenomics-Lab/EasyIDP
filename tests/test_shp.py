@@ -71,7 +71,7 @@ def test_read_shp_without_target():
     shp_path = os.path.join(data_path, "lon_lat.shp")
 
     # will raise error if shp_proj not given
-    with pytest.raises(ValueError, match=re.escape("Unable to find the proj coordinate info, please either specify")):
+    with pytest.raises(ValueError, match=re.escape("Unable to find the proj coordinate info [./tests/data/shp_test/lon_lat.prj], please either specify")):
         lonlat_shp = idp.shp.read_shp(shp_path)
 
     # continue if shp_proj is given

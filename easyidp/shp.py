@@ -101,9 +101,9 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     if shp_proj is None:
         prj_path = shp_path[:-4] + '.prj'
         if os.path.exists(prj_path):
-            shp_proj = read_proj(shp_path[:-4] + '.prj')
+            shp_proj = read_proj(prj_path)
         else:
-            raise ValueError(f"Unable to find the proj coordinate info, please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`")
+            raise ValueError(f"Unable to find the proj coordinate info [{prj_path}], please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`")
     # or give a prj file path
     elif isinstance(shp_proj, str) and shp_proj[-4:]=='.prj' and os.path.exists(shp_proj):
         shp_proj = read_proj(shp_proj)

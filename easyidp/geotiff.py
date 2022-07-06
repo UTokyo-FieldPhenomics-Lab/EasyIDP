@@ -44,16 +44,28 @@ class GeoTiff(object):
     @not_empty
     def crop(self, roi, save_folder=None):  # clip_roi
         # roi: ROI class, with several roi lists
-        pass
+        raise NotImplementedError("This function will be provided in the future.")
 
     @not_empty
     def crop_polygon(self, polygon_hv, is_geo=True, save_path=None):
-        # roi = single polygon
+        """crop given polygon from geotiff
 
-        # if save_path is not None and is file path:
-        #     _save_geotiff()
+        Parameters
+        ----------
+        points_hv : numpy nx2 array
+            [horizontal, vertical] points
+        is_geo : bool, optional
+            whether the given polygon is pixel or geo coords
+                True -> geo coordaintes [default]
+                False -> pixel index on imarray
+        save_path : str, optional
+            if given, will save the cropped as *.tif file to path
 
-        # check input polygon_hv type -> pixel index
+        Returns
+        -------
+        imarray_out
+            The cropped numpy pixels imarray
+        """
         if is_geo:
             poly_pix = geo2pixel(polygon_hv, self.header, return_index=True)
         else:
@@ -70,6 +82,10 @@ class GeoTiff(object):
         roi_max = poly_pix.max(axis=0)
         roi_length = roi_max - roi_offset
 
+        # again, input = horizontal, vertical 
+        # horizontal[0]-> left distance, width
+        # vertical[1] -> top distance, height
+        # need to reverse here
         top = roi_offset[1]
         left = roi_offset[0]
         h = roi_length[1]
@@ -91,7 +107,6 @@ class GeoTiff(object):
             self.save_geotiff(imarray_out, roi_offset, save_path)
 
         return imarray_out
-
 
     @not_empty
     def save_geotiff(self, imarray, pix_offset_hv, save_path):
@@ -155,6 +170,10 @@ class GeoTiff(object):
                            extratags=extratags)
         else:
             raise TypeError("only *.tif file name is supported")
+
+    @not_empty
+    def math_polygon(polygon_hv, is_geo=True, stats=""):
+        pass
 
 
 def get_header(tif_path):
@@ -253,7 +272,7 @@ def geo2pixel(points_hv, header, return_index=False):
 
     Parameters
     ----------
-    points_hv : numpy nx3 array
+    points_hv : numpy nx2 array
         [horizontal, vertical] points
     header : dict
         the geotiff head dictionary from get_header()

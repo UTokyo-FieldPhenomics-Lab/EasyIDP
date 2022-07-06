@@ -7,6 +7,7 @@ import numpy as np
 import easyidp as idp
 import warnings
 import matplotlib.pyplot as plt
+import random
 
 
 data_path =  "./tests/data/tiff_test"
@@ -425,7 +426,10 @@ def test_crop_polygon_save_geotiff():
     plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
     plot_t = idp.shp.convert_proj(plot, proj, obj.header["proj"])
 
-    polygon_hv = plot_t["N1W1"]
+    # test case 1
+    #  polygon_hv = plot_t["N1W1"]
+    # then do random choose
+    plot_id, polygon_hv = random.choice(list(plot_t.items()))
 
     save_tiff = r"./tests/out/tiff_test/crop_polygon.tif"
     if os.path.exists(save_tiff):
@@ -433,8 +437,45 @@ def test_crop_polygon_save_geotiff():
     imarray = obj.crop_polygon(polygon_hv, is_geo=True, save_path=save_tiff)
 
     assert os.path.exists(save_tiff)
-    assert imarray.shape == (320, 319, 4)
+    #assert imarray.shape == (320, 319, 4)  # N1W1
+    assert len(imarray.shape) == 3  # like (m, n, d)
+    assert imarray.shape[2] == 4  # d = 4
+    # around 300 pixels for all squared lotus boundary
+    assert 270 < imarray.shape[0] and imarray.shape[0] < 350
+    assert 270 < imarray.shape[1] and imarray.shape[1] < 350
 
+    out = idp.GeoTiff(save_tiff)
+    '''
+    N1W1 case
+    ---------------------
+    result ->
+        [368017.75187, 3955511.4999300004]
+    polygon_hv (input) ->
+        min -> [368017.7565143, 3955509.13563382]
+        max -> [368020.11263046, 3955511.49811902]
+      x ~= min, y ~= max
+    offset_in_func (same as result)
+        roi_offset(pixel) -> [435, 918]
+        roi_offset(pixel2geo) -> [ 368017.75187, 3955511.49993]
+    ----------------------
+    reason
+    A         B  -> pixel edge
+    |---o-----|--
+    |   |     |--
+    |   polygon points (polygon_hv)
+    crop -> use pixel edge as offset
+
+    A = result
+    B = result + scale
+    A <= polygon_hv.minmax <= B
+    '''
+    xmin, _ = polygon_hv.min(axis=0)
+    _, ymax = polygon_hv.max(axis=0)
+
+    assert xmin >= out.header["tie_point"][0]
+    assert xmin <= out.header["tie_point"][0] + out.header["scale"][0]
+    assert ymax <= out.header["tie_point"][1]
+    assert ymax >= out.header["tie_point"][1] - out.header["scale"][1]
 
 def test_crop():
     pass

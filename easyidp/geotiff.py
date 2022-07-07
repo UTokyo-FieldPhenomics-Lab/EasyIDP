@@ -5,7 +5,7 @@ import tifffile as tf
 import warnings
 
 from pyproj.exceptions import CRSError
-from .cvtools import poly2mask
+from .cvtools import poly2mask, imarray_crop
 import easyidp as idp
 
 
@@ -42,6 +42,41 @@ class GeoTiff(object):
         return wrapper
 
     @not_empty
+    def point_query(self, points_hv, is_geo=None):
+        """get the pixel value of given point(s)
+
+        Parameters
+        ----------
+        points_hv : tuple | list | nx2 ndarray
+            1. one point tuple
+                e.g. (34.57, 45.62)
+            2. one point list
+                e.g. [34.57, 45.62]
+            3. points lists
+                e.g. [[34.57, 45.62],[35.57, 46.62]]
+            4. 2d numpy array
+                e.g. np.array([[34.57, 45.62],[35.57, 46.62]])
+        is_geo : bool, optional
+            whether the given polygon is pixel or geo coords
+                True -> geo coordaintes [default]
+                    e.g. [longtitude, latitude]
+                False -> pixel index on imarray
+                    e.g. [1038, 567] -> pixel id
+
+        Returns
+        -------
+        values: ndarray
+            the obtained pixel value (RGB or height) 
+        """
+        with tf.TiffFile(self.file_path) as tif:
+            page = tif.pages[0]
+            if is_geo:
+                return point_query(page, points_hv, self.header)
+            else:
+                return point_query(page, points_hv)
+
+
+    @not_empty
     def crop(self, roi, save_folder=None):  # clip_roi
         # roi: ROI class, with several roi lists
         raise NotImplementedError("This function will be provided in the future.")
@@ -52,12 +87,14 @@ class GeoTiff(object):
 
         Parameters
         ----------
-        points_hv : numpy nx2 array
+        polygon_hv : numpy nx2 array
             [horizontal, vertical] points
         is_geo : bool, optional
             whether the given polygon is pixel or geo coords
                 True -> geo coordaintes [default]
+                    e.g. [longtitude, latitude]
                 False -> pixel index on imarray
+                    e.g. [1038, 567] -> pixel id
         save_path : str, optional
             if given, will save the cropped as *.tif file to path
 
@@ -67,29 +104,29 @@ class GeoTiff(object):
             The cropped numpy pixels imarray
         """
         if is_geo:
-            poly_pix = geo2pixel(polygon_hv, self.header, return_index=True)
+            poly_px = geo2pixel(polygon_hv, self.header, return_index=True)
         else:
             if np.issubdtype(polygon_hv.dtype, np.floating):
-                poly_pix = np.floor(polygon_hv).astype(int)
+                poly_px = np.floor(polygon_hv).astype(int)
                 warnings.warn("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
             elif np.issubdtype(polygon_hv.dtype, np.integer):
-                poly_pix = polygon_hv
+                poly_px = polygon_hv
             else:
                 raise TypeError("Only ndarray int and float dtype are acceptable for `polygon_hv`")
 
         # calculate the bbox of given region
-        roi_offset = poly_pix.min(axis=0)
-        roi_max = poly_pix.max(axis=0)
-        roi_length = roi_max - roi_offset
+        bbox_left_top = poly_px.min(axis=0)
+        bbox_right_bottom = poly_px.max(axis=0)
+        bbox_size = bbox_right_bottom - bbox_left_top
 
-        # again, input = horizontal, vertical 
+        # input order = horizontal, vertical 
         # horizontal[0]-> left distance, width
         # vertical[1] -> top distance, height
         # need to reverse here
-        top = roi_offset[1]
-        left = roi_offset[0]
-        h = roi_length[1]
-        w = roi_length[0]
+        top = bbox_left_top[1]
+        left = bbox_left_top[0]
+        h = bbox_size[1]
+        w = bbox_size[0]
 
         # crop by bbox from whole geotiff by tiffile_crop first (no need to load full image to memory)
         # (page, top, left, h, w):
@@ -98,19 +135,31 @@ class GeoTiff(object):
             imarray_bbox = tifffile_crop(page, top, left, h, w)
 
         # then crop the polygon from the imarray_bbox
-        poly_pix_off = poly_pix - roi_offset
-        imarray_out, _ = imarray_crop(imarray_bbox, poly_pix_off, 
-                                      empty_value=self.header['nodata'])
+        poly_offseted_px = poly_px - bbox_left_top
+        imarray_out, _ = imarray_crop(imarray_bbox, poly_offseted_px, 
+                                      outside_value=self.header['nodata'])
 
         # check if need save geotiff
         if save_path is not None and os.path.splitext(save_path)[-1] == ".tif":
-            self.save_geotiff(imarray_out, roi_offset, save_path)
+            self.save_geotiff(imarray_out, bbox_left_top, save_path)
 
         return imarray_out
 
     @not_empty
-    def save_geotiff(self, imarray, pix_offset_hv, save_path):
-        geo_corner = pixel2geo(np.asarray([pix_offset_hv]), self.header)
+    def save_geotiff(self, imarray, left_top_corner, save_path):
+        """Save cropped region to geotiff file
+
+        Parameters
+        ----------
+        imarray : ndarray
+            (m, n, d) image ndarray cropped from `crop_polygon`
+        left_top_corner : ndarray
+            the pixel position of image top left cornder
+               the order is (left, top)
+        save_path : str
+            the save to geotiff file path
+        """
+        geo_corner = pixel2geo(np.array([left_top_corner]), self.header)
         geo_h = geo_corner[0, 0]
         geo_v = geo_corner[0, 1]
 
@@ -151,7 +200,7 @@ class GeoTiff(object):
             # <tifffile.TiffTag 33922 ModelTiepointTag @190>
             if k == 33922:
                 # replace the value for this tag
-                value = (0, 0, 0, geo_h, geo_v, 0)
+                value = model_tie_point
             else:
                 # other just using parent value.
                 value = t.value
@@ -172,9 +221,87 @@ class GeoTiff(object):
             raise TypeError("only *.tif file name is supported")
 
     @not_empty
-    def math_polygon(polygon_hv, is_geo=True, stats=""):
-        pass
+    def math_polygon(self, polygon_hv, is_geo=True, kernal="mean"):
+        """Calculate the valus inside given polygon
 
+        Parameters
+        ----------
+        polygon_hv : _type_
+            _description_
+        is_geo : bool, optional
+            whether the given polygon is pixel or geo coords
+                True -> geo coordaintes [default]
+                    e.g. [longtitude, latitude]
+                False -> pixel index on imarray
+                    e.g. [1038, 567] -> pixel id
+        kernal : str, optional
+            "mean": the mean value inside polygon
+            "min": the minimum value inside polygon
+            "max": the maximum value inside polygon
+            ----------------------------------------
+            "pmin5": 5th percentile mean inside polygon
+            "pmin10": 10th percentile mean inside polygon
+            "pmax5": 95th percentile mean inside polygon
+            "pmax10": 90th percentile mean inside polygon
+            -------------------------------
+            * percentile mean: the mean value of all pixels over/under xth percentile threshold
+        """
+        imarray = self.crop_polygon(polygon_hv, is_geo)
+
+        # remove outside values
+        if len(imarray.shape) == 2:  # seems dsm
+            dim = 2
+            inside_value = imarray[imarray != self.header["nodata"]]
+        elif len(imarray.shape) == 3 and imarray.shape[2]==4:  
+            # RGBA dom
+            # crop_polygon function only returns RGBA 4 layer data
+            dim = 3
+            mask = imarray[:, :, 3] == 255
+            inside_value = imarray[mask, :]   # (mxn-o, 4)
+        else:
+            raise IndexError("Only support (m,n) dsm and (m,n,4) RGBA dom")
+
+        def _get_idx(group, thresh, compare="<="):
+            if thresh.shape == ():  # single value
+                if compare == "<=":
+                    return group <= thresh
+                else:
+                    return group >= thresh
+            else:
+                if compare == "<=":
+                    return np.all(group <= thresh, axis=1)
+                else:
+                    return np.all(group >= thresh, axis=1)
+
+        if kernal == "mean":
+            return np.mean(inside_value, axis=0)
+        elif kernal == "min":
+            return np.min(inside_value, axis=0)
+        elif kernal == "max":
+            return np.max(inside_value, axis=0)
+        elif kernal == "pmin5":
+            thresh = np.percentile(inside_value, 5, axis=0)
+            idx = _get_idx(inside_value, thresh, "<=")
+            return np.mean(inside_value[idx], axis=0)
+        elif kernal == "pmin10":
+            thresh = np.percentile(inside_value, 10, axis=0)
+            idx = _get_idx(inside_value, thresh, "<=")
+            return np.mean(inside_value[idx], axis=0)
+        elif kernal == "pmax5":
+            thresh = np.percentile(inside_value, 95, axis=0)
+            idx = _get_idx(inside_value, thresh, ">=")
+            return np.mean(inside_value[idx], axis=0)
+        elif kernal == "pmax10":
+            thresh = np.percentile(inside_value, 90, axis=0)
+            idx = _get_idx(inside_value, thresh, ">=")
+            return np.mean(inside_value[idx], axis=0)
+        else:
+            raise KeyError(f"Could not find kernel [{kernal}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")
+
+    @not_empty
+    def create_grid(self, w, h, extend=False, grid_buffer=0):
+        raise NotImplementedError("This function will be provided in the future.")
+        
 
 def get_header(tif_path):
     """Read the necessary meta infomation from TIFF file
@@ -498,6 +625,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
     
     fh = page.parent.filehandle
 
+    # -------------------------------------------------
     # for data/pix4d/maize_tanashi dom:
     # dom shape: (722, 836)
     # >>> page.dataoffsets
@@ -506,17 +634,15 @@ def _get_untiled_crop(page, i0, j0, h, w):
     # (6688, 6688, 6688, 6688,  ...)
     # >>> len(page.dataoffsets)
     # 361  # = dom.h / 2 -> read 2 row once
-    row_step = im_height / len(page.dataoffsets)
-
-    # judge whether can be perfect divided
-    if row_step % 1 == 0.0:
-        row_step = int(row_step)
-    else:
-        raise InterruptedError(f"img.ht={im_height} with offset number {len(page.dataoffsets)}, {row_step} row per read, not a integer")
+    # -------------------------------------------------
+    # no need to calculate previous part, the geotiff tag 278
+    # already have this value:
+    # TiffTag 278 RowsPerStrip @94 SHORT @102 = 1
+    rows_per_strip = page.tags[278].value
 
     # commonly, it read 1 row once,
     # no need to do extra things
-    if row_step == 1: 
+    if rows_per_strip == 1: 
         read_tile_idx = np.arange(i0, i1)
 
     # sometime it not read once per row, it reads two rows once, etc...
@@ -532,13 +658,13 @@ def _get_untiled_crop(page, i0, j0, h, w):
         # >>> np.unique(idx_dv)
         # array([5, 6, 7])   -> known which index to read
         read_row_id = np.arange(i0, i1)
-        read_tile_idx = np.unique(np.floor(read_row_id / row_step).astype(int))
+        read_tile_idx = np.unique(np.floor(read_row_id / rows_per_strip).astype(int))
 
         # Then decide the start line and end line
         # >>> idx % 2
         # array([0, 1, 0, 1, 0], dtype=int32)
         # # get start id
-        st_line_id = read_row_id[0] % row_step
+        st_line_id = read_row_id[0] % rows_per_strip
         # # get reversed id
         # line id
         #  3  |  |  |  |...
@@ -548,7 +674,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
         #  2  |  |  |  |
         #  -> get the [:, 0], [:, -1] or [:, -2] index
         #     as the `ed_line_id`
-        ed_line_id = read_row_id[-1] % row_step - (row_step-1)
+        ed_line_id = read_row_id[-1] % rows_per_strip - (rows_per_strip-1)
 
     # crop them vertically first, then crop
     temp_out = np.empty((im_pyramid, 0, w, im_dim), dtype=page.dtype)
@@ -563,13 +689,13 @@ def _get_untiled_crop(page, i0, j0, h, w):
 
         # double check if is row_step per read
         # shape -> (1, 2, full_width, channel_num)
-        if shape[1] != row_step:
-            raise LookupError(f"the calculated {row_step} row per read does not match {shape[1]} of tifffile decoded.")
+        if shape[1] != rows_per_strip:
+            raise LookupError(f"the calculated {rows_per_strip} row per read does not match {shape[1]} of tifffile decoded.")
 
         temp_out = np.concatenate([temp_out, tile[:, :,j0:j1,:]], axis=1)
 
     # return cropped result
-    if row_step == 1:
+    if rows_per_strip == 1:
         if im_dim == 1:
             # is dsm -> shape (w, h)
             return temp_out[0,:,:,0]
@@ -671,100 +797,6 @@ def point_query(page, points_hv, header=None):
             values_list.append(cropped[0,0,:])
 
     return np.array(values_list)
-
-def imarray_crop(imarray, polygon_hv, empty_value=0):
-    """crop a given ndarray image by given polygon pixel positions
-
-    Parameters
-    ----------
-    imarray : ndarray
-        the image data, shape = (height,width)
-    polygon_hv : ndarray
-        pixel position of boundary point, (horizontal, vertical) which reverted the imarray axis 0 to 1
-    empty_value: int | float
-        for 
-
-    returns
-    -------
-    imarray_out : ndarray
-    roi_offset : ndarray
-    """
-    # (horizontal, vertical) remember to revert in all the following codes
-    roi_offset = polygon_hv.min(axis=0)
-    roi_max = polygon_hv.max(axis=0)
-    roi_length = roi_max - roi_offset
-
-    roi_rm_offset = polygon_hv - roi_offset
-    # the polygon will generate index outside the image
-    # this will cause out of index error in the `poly2mask`
-    # so need to find out the point locates on the maximum edge and minus 1 
-    # >>> a = np.array([217, 468])  # roi_max
-    # >>> b  # polygon
-    # array([[217, 456],
-    #        [ 30, 468],
-    #        [  0,  12],
-    #        [187,   0],
-    #        [217, 456]])
-    # >>> b[:,0] == a[0]
-    # array([ True, False, False, False,  True])
-    # >>> b[b[:,0] == a[0], 0] -= 1
-    # >>> b
-    # array([[216, 456],
-    #        [ 30, 468],
-    #        [  0,  12],
-    #        [187,   0],
-    #        [216, 456]])
-    roi_rm_offset[roi_rm_offset[:,0] == roi_length[0], 0] -= 1
-    roi_rm_offset[roi_rm_offset[:,1] == roi_length[1], 1] -= 1
-    
-    dim = len(imarray.shape)
-    if dim == 2: 
-        # only has 2 dimensions
-        # e.g. DSM 1 band only, other value outside polygon = empty value
-        
-        # here need to reverse 
-        # imarray.shape -> (h, w), but poly2mask need <- (w, h)
-        roi_clipped = imarray[roi_offset[1]:roi_max[1], 
-                              roi_offset[0]:roi_max[0]]
-        rh = roi_clipped.shape[0]
-        rw = roi_clipped.shape[1]
-        mask = poly2mask((rw, rh), roi_rm_offset)
-
-        roi_clipped[~mask] = empty_value
-        imarray_out = roi_clipped
-
-    elif dim == 3: 
-        # has 3 dimensions
-        # e.g. DOM with RGB or RGBA band, other value outside changed alpha layer to 0
-        roi_clipped = imarray[roi_offset[1]:roi_max[1], roi_offset[0]:roi_max[0], :]
-
-        rh = roi_clipped.shape[0]
-        rw = roi_clipped.shape[1]
-        layer_num = roi_clipped.shape[2]
-
-        # here need to reverse 
-        # imarray.shape -> (h, w), but poly2mask need <- (w, h)
-        mask = poly2mask((rw, rh), roi_rm_offset)
-
-        if layer_num == 3:  
-            # DOM without alpha layer
-            # but output add mask as alpha layer directly
-            mask = mask.astype(np.uint8) * 255
-
-            imarray_out = np.concatenate([roi_clipped, mask[:, :, None]], axis=2).astype(np.uint8)
-
-        elif layer_num == 4:  
-            # DOM with alpha layer
-            mask = mask.astype(int)
-
-            original_mask = roi_clipped[:, :, 3].copy()
-            merged_mask = original_mask * mask
-
-            imarray_out = np.dstack([roi_clipped[:,:, 0:3], merged_mask]).astype(np.uint8)
-        else:
-            raise TypeError(f'Unable to solve the layer number {layer_num}')
-
-    return imarray_out, roi_offset
 
 def _make_empty_imarray(header, h, w, layer_num=None):
     """

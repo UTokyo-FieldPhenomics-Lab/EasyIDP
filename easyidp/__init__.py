@@ -1,4 +1,16 @@
-from . import pointcloud, geotiff, jsonfile, reconstruct, shp, visualize, cvtools, roi
+from . import (
+    cvtools, 
+    geotiff, 
+    jsonfile, 
+    metashape,
+    pix4d, 
+    pointcloud, 
+    reconstruct, 
+    roi, 
+    shp, 
+    visualize, 
+    )
+
 from .pointcloud import PointCloud
 from .geotiff import GeoTiff
 

@@ -8,7 +8,7 @@ out_dir = r"./tests/out"
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
-out_folders = ["json_test", "pcd_test", "tiff_test"]
+out_folders = ["json_test", "pcd_test", "cv_test", "tiff_test"]
 
 for o in out_folders:
     sub_dir = os.path.join(out_dir, o)

@@ -6,7 +6,6 @@ import tifffile as tf
 import numpy as np
 import easyidp as idp
 import warnings
-import matplotlib.pyplot as plt
 import random
 
 
@@ -22,7 +21,7 @@ maize_part_dom = "./tests/data/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_In
 maize_part_dsm = "./tests/data/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/3_dsm_ortho/1_dsm/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_dsm.tif"
 
 
-def test_get_header():
+def test_def_get_header():
     lotus_full = idp.geotiff.get_header(lotus_full_dom)
     assert lotus_full["width"] == 5490
     assert lotus_full["height"] == 5752
@@ -53,7 +52,7 @@ def test_get_header():
     assert lotus_part["tie_point"][1] == 3955479.7512
 
 
-def test_get_imarray():
+def test_def_get_imarray():
     maize_part_np = idp.geotiff.get_imarray(maize_part_dom)
     assert maize_part_np.shape == (722, 836, 4)
 
@@ -62,7 +61,7 @@ def test_get_imarray():
     assert lotus_part_np.shape == (lh["height"], lh["width"], lh["dim"])
 
 
-def test_geo2pixel2geo():
+def test_def_geo2pixel2geo():
     gis_coord = np.asarray([
         [ 484593.67474654, 3862259.42413431],
         [ 484593.41064743, 3862259.92582402],
@@ -73,6 +72,7 @@ def test_geo2pixel2geo():
     # example file
     # TIFF file: 200423_G_M600pro_transparent_mosaic_group1.tif, 411 MiB, little endian, bigtiff
     # please check v1.0 easyric.tests.test_io_geotiff.py line 114
+    # > https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/blob/a3420bc7b1e0f1013411565cf0e66dd2d2ba5371/easyric/tests/test_io_geotiff.py#L114
     # to get the full string of this header
     # here we just use the extracted results
     header = {'width': 19436, 'height': 31255, 'dim':4, 
@@ -116,7 +116,7 @@ def test_geo2pixel2geo():
     np.testing.assert_almost_equal(gis_revert_flt, gis_coord, decimal=3)
 
 
-def test_tifffile_crop():
+def test_def_tifffile_crop():
     maize_part_np = idp.geotiff.get_imarray(maize_part_dom)
     # untiled tiff but 2 row as a patch
     with tf.TiffFile(maize_part_dom) as tif:
@@ -196,7 +196,7 @@ def test_tifffile_crop():
         np.testing.assert_equal(lotus_np_crop, lotus_tf_crop)
 
 
-def test_point_query():
+def test_def_point_query():
     # query one point
     point1 = (368023.004, 3955500.669)
     # query one point list
@@ -231,7 +231,7 @@ def test_point_query():
         np.testing.assert_almost_equal(out4, expects, decimal=3)
 
 
-def test_point_query_raise_error():
+def test_def_point_query_raise_error():
     with tf.TiffFile(lotus_full_dsm) as tif:
         page = tif.pages[0]
 
@@ -274,7 +274,7 @@ def test_point_query_raise_error():
             idp.geotiff.point_query(page, ndarray2)
 
 
-def test_point_query_raise_warn():
+def test_def_point_query_raise_warn():
     # warn without given header
     point = (3023.004, 3500.669)
     with tf.TiffFile(lotus_full_dsm) as tif:
@@ -282,56 +282,6 @@ def test_point_query_raise_warn():
 
         with pytest.warns(UserWarning, match=re.escape("The given pixel coordinates is not integer")):
             out = idp.geotiff.point_query(page, point)
-
-
-def test_imarray_clip_2d_rgb_rgba():
-    photo_path = r"./tests/data/pix4d/lotus_tanashi_full/photos/DJI_0174.JPG"
-    roi = np.asarray([
-        [2251, 1223], 
-        [2270, 1270], 
-        [2227, 1263], 
-        [2251, 1223]])
-
-    fig, ax = plt.subplots(1,3, figsize=(12,4))
-    # -----------------------------------------------
-    # 3d rgb
-    imarray_rgb = plt.imread(photo_path)
-    # imarray_rgb.shape == (3456, 4608, 3)
-    im_out_rgb, offsets_rgb = idp.geotiff.imarray_crop(imarray_rgb, roi)
-
-    ax[1].imshow(im_out_rgb)
-    ax[1].set_title('rgb')
-
-    # -----------------------------------------------
-    # 2d
-    imarray_2d = idp.cvtools.rgb2gray(imarray_rgb)
-
-    im_out_2d, offsets_2d = idp.geotiff.imarray_crop(imarray_2d, roi)
-
-    ax[0].imshow(im_out_2d, cmap='gray')
-    ax[0].set_title('gray')
-
-    # -----------------------------------------------
-    # rgba
-    imarray_rgba = np.dstack((imarray_rgb, np.ones((3456, 4608)) * 255))
-    # imarray_rgba.shape == (3456, 4608, 4)
-
-    im_out_rgba, offsets_rgba = idp.geotiff.imarray_crop(imarray_rgba, roi)
-    ax[2].imshow(im_out_rgba)
-    ax[2].set_title('rgba')
-
-    plt.savefig(r"./tests/out/tiff_test/imarray_clip_test.png")
-
-    # then check the results
-    expected_offsets = np.array([2227, 1223])
-    np.testing.assert_equal(offsets_2d, expected_offsets)
-    np.testing.assert_equal(offsets_rgb, expected_offsets)
-    np.testing.assert_equal(offsets_rgba, expected_offsets)
-
-    assert np.all(im_out_rgb == im_out_rgba)
-
-    assert im_out_2d[20,20] == 144.8887
-    np.testing.assert_equal(im_out_rgb[20,20,:], np.array([163, 138, 133, 255], dtype=np.uint8))
 
 # ==================================================================
 
@@ -349,7 +299,7 @@ lotus_header_dom = {'height': 5752, 'width': 5490, 'dim': 4,
                     'tie_point': [368014.54157, 3955518.2747700005],
                     'proj':pyproj.CRS.from_epsg(32654)}
 
-def test_make_is_empty_imarray():
+def test_def_make_is_empty_imarray():
     out1 = idp.geotiff._make_empty_imarray(lotus_header_dsm, 20, 30)
     np.testing.assert_equal(out1, np.ones((20, 30))*-10000.0)
 
@@ -364,7 +314,7 @@ def test_make_is_empty_imarray():
     lotus_header_dom["dim"] = 4
     assert idp.geotiff._is_empty_imarray(lotus_header_dom, out2)
 
-def test_make_empty_imarray_error():
+def test_def_make_empty_imarray_error():
     wrong_header1 = {"dim":5, "dtype": np.float32}
     wrong_header2 = {"dim":3, "dtype": np.float32}
 
@@ -375,7 +325,7 @@ def test_make_empty_imarray_error():
         idp.geotiff._make_empty_imarray(wrong_header2, 20, 30)
 
 
-def test_is_empty_imarray_error():
+def test_def_is_empty_imarray_error():
     wrong_header1 = {"dim":5, "dtype": np.float32}
     with pytest.raises(ValueError, match=re.escape("Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [5], dtype=np.uint8; get [<class 'numpy.float32'>])")):
         idp.geotiff._is_empty_imarray(wrong_header1, np.zeros((4,4,5)))
@@ -389,7 +339,7 @@ def test_is_empty_imarray_error():
 # GeoTiff Class
 # ==============
 
-def test_check_hasfile_decorator():
+def test_class_check_hasfile_decorator():
     obj = idp.GeoTiff()
 
     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
@@ -420,7 +370,7 @@ def test_class_read_geotiff():
     assert len(obj.file_path) >= len(lotus_full_dom)
     assert obj.header is not None
 
-def test_crop_polygon_save_geotiff():
+def test_class_crop_polygon_save_geotiff():
     obj = idp.GeoTiff(lotus_full_dom)
 
     plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
@@ -477,5 +427,76 @@ def test_crop_polygon_save_geotiff():
     assert ymax <= out.header["tie_point"][1]
     assert ymax >= out.header["tie_point"][1] - out.header["scale"][1]
 
-def test_crop():
+def test_class_math_polygon():
+    # test dsm results
+    dsm = idp.GeoTiff(lotus_full_dsm)
+
+    # plot_t["N1W1"] -> 
+    poly_geo = np.array([
+        [ 368017.7565143 , 3955511.08102277],
+        [ 368019.70190232, 3955511.49811902],
+        [ 368020.11263046, 3955509.54636219],
+        [ 368018.15769062, 3955509.13563382],
+        [ 368017.7565143 , 3955511.08102277]])
+
+    dsm_mean   = dsm.math_polygon(poly_geo, is_geo=True, kernal="mean")
+    dsm_min    = dsm.math_polygon(poly_geo, is_geo=True, kernal="min")
+    dsm_max    = dsm.math_polygon(poly_geo, is_geo=True, kernal="max")
+    dsm_pmin5  = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmin5")
+    dsm_pmin10 = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmin10")
+    dsm_pmax5  = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmax5")
+    dsm_pmax10 = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmax10")
+
+    assert 97 < dsm_mean   and dsm_mean   < 98
+    assert 97 < dsm_min    and dsm_min    < 98
+    assert 97 < dsm_max    and dsm_max    < 98
+    assert 97 < dsm_pmin5  and dsm_pmin5  < 98
+    assert 97 < dsm_pmin10 and dsm_pmin10 < 98
+    assert 97 < dsm_pmax5  and dsm_pmax5  < 98
+    assert 97 < dsm_pmax10 and dsm_pmax10 < 98
+
+    # test dom results
+    dom = idp.GeoTiff(lotus_full_dom)
+
+    dom_mean   = dom.math_polygon(poly_geo, is_geo=True, kernal="mean")
+    dom_min    = dom.math_polygon(poly_geo, is_geo=True, kernal="min")
+    dom_max    = dom.math_polygon(poly_geo, is_geo=True, kernal="max")
+    dom_pmin5  = dom.math_polygon(poly_geo, is_geo=True, kernal="pmin5")
+    dom_pmin10 = dom.math_polygon(poly_geo, is_geo=True, kernal="pmin10")
+    dom_pmax5  = dom.math_polygon(poly_geo, is_geo=True, kernal="pmax5")
+    dom_pmax10 = dom.math_polygon(poly_geo, is_geo=True, kernal="pmax10")
+
+    assert dom_mean  .shape == (4, )
+    assert dom_min   .shape == (4, )
+    assert dom_max   .shape == (4, )
+    assert dom_pmin5 .shape == (4, )
+    assert dom_pmin10.shape == (4, )
+    assert dom_pmax5 .shape == (4, )
+    assert dom_pmax10.shape == (4, )
+
+    assert dom_mean  [3] == 255.0
+    assert dom_min   [3] == 255.0
+    assert dom_max   [3] == 255.0
+    assert dom_pmin5 [3] == 255.0
+    assert dom_pmin10[3] == 255.0
+    assert dom_pmax5 [3] == 255.0
+    assert dom_pmax10[3] == 255.0
+
+def test_class_point_query():
+    obj = idp.GeoTiff(lotus_full_dsm)
+
+    # plot_t["N1W1"] -> 
+    poly_geo = np.array([
+        [ 368017.7565143 , 3955511.08102277],
+        [ 368019.70190232, 3955511.49811902],
+        [ 368020.11263046, 3955509.54636219],
+        [ 368018.15769062, 3955509.13563382],
+        [ 368017.7565143 , 3955511.08102277]])
+
+    pt = obj.point_query(poly_geo, is_geo=True)
+
+    assert pt.shape == (5,)
+    assert np.all(97 < pt) and np.all(pt < 98)
+
+def test_class_crop():
     pass

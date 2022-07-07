@@ -2,11 +2,108 @@ import numpy as np
 from PIL import Image, ImageDraw
 from shapely.geometry import MultiPoint, Polygon
 
-from easyidp.visualize import _view_poly2mask
-
 # ignore the warning of shapely convert coordiante
 import warnings
 warnings.filterwarnings("ignore", message="The array interface is deprecated and will no longer work in Shapely 2.0")
+
+
+def imarray_crop(imarray, polygon_hv, outside_value=0):
+    """crop a given ndarray image by given polygon pixel positions
+
+    Parameters
+    ----------
+    imarray : ndarray
+        the image data, shape = (height,width)
+    polygon_hv : ndarray
+        pixel position of boundary point, (horizontal, vertical) which reverted the imarray axis 0 to 1
+    outside_value: int | float
+        specify exact value outside the polgyon, default 0
+        But for some DSM geotiff, it can be -10000.0
+
+    returns
+    -------
+    imarray_out : ndarray
+        the (m,n,d) ndrray to store pixel info
+    roi_top_left_offset : ndarray
+        the (h, v) pixel index that represent the polygon bbox left top corner
+
+    """
+    # (horizontal, vertical) remember to revert in all the following codes
+    roi_top_left_offset = polygon_hv.min(axis=0)
+    roi_max = polygon_hv.max(axis=0)
+    roi_length = roi_max - roi_top_left_offset
+
+    roi_rm_offset = polygon_hv - roi_top_left_offset
+    # the polygon will generate index outside the image
+    # this will cause out of index error in the `poly2mask`
+    # so need to find out the point locates on the maximum edge and minus 1 
+    # >>> a = np.array([217, 468])  # roi_max
+    # >>> b  # polygon
+    # array([[217, 456],
+    #        [ 30, 468],
+    #        [  0,  12],
+    #        [187,   0],
+    #        [217, 456]])
+    # >>> b[:,0] == a[0]
+    # array([ True, False, False, False,  True])
+    # >>> b[b[:,0] == a[0], 0] -= 1
+    # >>> b
+    # array([[216, 456],
+    #        [ 30, 468],
+    #        [  0,  12],
+    #        [187,   0],
+    #        [216, 456]])
+    roi_rm_offset[roi_rm_offset[:,0] == roi_length[0], 0] -= 1
+    roi_rm_offset[roi_rm_offset[:,1] == roi_length[1], 1] -= 1
+    
+    dim = len(imarray.shape)
+    if dim == 2: 
+        # only has 2 dimensions
+        # e.g. DSM 1 band only, other value outside polygon = empty value
+        
+        # here need to reverse 
+        # imarray.shape -> (h, w), but poly2mask need <- (w, h)
+        roi_clipped = imarray[roi_top_left_offset[1]:roi_max[1], 
+                              roi_top_left_offset[0]:roi_max[0]]
+        rh = roi_clipped.shape[0]
+        rw = roi_clipped.shape[1]
+        mask = poly2mask((rw, rh), roi_rm_offset)
+
+        roi_clipped[~mask] = outside_value
+        imarray_out = roi_clipped
+
+    elif dim == 3: 
+        # has 3 dimensions
+        # e.g. DOM with RGB or RGBA band, other value outside changed alpha layer to 0
+        roi_clipped = imarray[roi_top_left_offset[1]:roi_max[1], roi_top_left_offset[0]:roi_max[0], :]
+
+        rh = roi_clipped.shape[0]
+        rw = roi_clipped.shape[1]
+        layer_num = roi_clipped.shape[2]
+
+        # here need to reverse 
+        # imarray.shape -> (h, w), but poly2mask need <- (w, h)
+        mask = poly2mask((rw, rh), roi_rm_offset)
+
+        if layer_num == 3:  
+            # DOM without alpha layer
+            # but output add mask as alpha layer directly
+            mask = mask.astype(np.uint8) * 255
+
+            imarray_out = np.concatenate([roi_clipped, mask[:, :, None]], axis=2).astype(np.uint8)
+
+        elif layer_num == 4:  
+            # DOM with alpha layer
+            mask = mask.astype(int)
+
+            original_mask = roi_clipped[:, :, 3].copy()
+            merged_mask = original_mask * mask
+
+            imarray_out = np.dstack([roi_clipped[:,:, 0:3], merged_mask]).astype(np.uint8)
+        else:
+            raise TypeError(f'Unable to solve the layer number {layer_num}')
+
+    return imarray_out, roi_top_left_offset
 
 
 def poly2mask(image_shape, poly_coord, engine="pillow"):

@@ -2,6 +2,7 @@ import os
 import re
 import pytest
 import numpy as np
+import matplotlib.pyplot as plt
 
 import easyidp as idp
 
@@ -102,3 +103,53 @@ def test_poly2mask_wrong_type():
     xy = np.array([[1, 0], [0, 1], [0, 0]], dtype=bool)
     with pytest.raises(TypeError, match=re.escape(f"The `poly_coord` only accept numpy ndarray integer and float types")):
         mask = idp.cvtools.poly2mask((6, 6), xy)
+
+
+def test_imarray_clip_2d_rgb_rgba():
+    photo_path = r"./tests/data/pix4d/lotus_tanashi_full/photos/DJI_0174.JPG"
+    roi = np.asarray([
+        [2251, 1223], 
+        [2270, 1270], 
+        [2227, 1263], 
+        [2251, 1223]])
+
+    fig, ax = plt.subplots(1,3, figsize=(12,4))
+    # -----------------------------------------------
+    # 3d rgb
+    imarray_rgb = plt.imread(photo_path)
+    # imarray_rgb.shape == (3456, 4608, 3)
+    im_out_rgb, offsets_rgb = idp.geotiff.imarray_crop(imarray_rgb, roi)
+
+    ax[1].imshow(im_out_rgb)
+    ax[1].set_title('rgb')
+
+    # -----------------------------------------------
+    # 2d
+    imarray_2d = idp.cvtools.rgb2gray(imarray_rgb)
+
+    im_out_2d, offsets_2d = idp.geotiff.imarray_crop(imarray_2d, roi)
+
+    ax[0].imshow(im_out_2d, cmap='gray')
+    ax[0].set_title('gray')
+
+    # -----------------------------------------------
+    # rgba
+    imarray_rgba = np.dstack((imarray_rgb, np.ones((3456, 4608)) * 255))
+    # imarray_rgba.shape == (3456, 4608, 4)
+
+    im_out_rgba, offsets_rgba = idp.geotiff.imarray_crop(imarray_rgba, roi)
+    ax[2].imshow(im_out_rgba)
+    ax[2].set_title('rgba')
+
+    plt.savefig(r"./tests/out/cv_test/imarray_clip_test.png")
+
+    # then check the results
+    expected_offsets = np.array([2227, 1223])
+    np.testing.assert_equal(offsets_2d, expected_offsets)
+    np.testing.assert_equal(offsets_rgb, expected_offsets)
+    np.testing.assert_equal(offsets_rgba, expected_offsets)
+
+    assert np.all(im_out_rgb == im_out_rgba)
+
+    assert im_out_2d[20,20] == 144.8887
+    np.testing.assert_equal(im_out_rgb[20,20,:], np.array([163, 138, 133, 255], dtype=np.uint8))

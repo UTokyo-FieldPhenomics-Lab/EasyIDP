@@ -54,7 +54,66 @@ def _get_full_path(short_path):
 
 
 def parse_p4d_param_folder(param_path:str, project_name=None):
-    pass
+    param_dict = {}
+    param_files = os.listdir(param_path)
+
+    if project_name is None:
+        project_name = os.path.commonprefix(param_files)
+        # > "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_"
+        if project_name[-1] == '_':
+            project_name = project_name[:-1]
+
+    xyz_file = f"{param_path}/{project_name}_offset.xyz"
+    if os.path.exists(xyz_file):
+        param_dict['xyz'] = xyz_file
+    else:
+        raise FileNotFoundError(
+            f"Could not find param file [{xyz_file}] in param folder [{param_path}]"
+            "please check whether the `param folder` has correct path or "
+            "`project_name` is correct."
+        )
+
+    pmat_file = f"{param_path}/{project_name}_pmatrix.txt"
+    if os.path.exists(pmat_file):
+        param_dict['pmat'] = pmat_file
+    else:
+        raise FileNotFoundError(
+            f"Could not find param file [{pmat_file}] in param folder [{param_path}]"
+            "please check whether the `param folder` has correct path or "
+            "`project_name` is correct."
+        )
+
+    cicp_file = f"{param_path}/{project_name}_pix4d_calibrated_internal_camera_parameters.cam"
+    if os.path.exists(cicp_file):
+        param_dict['cicp'] = cicp_file
+    else:
+        raise FileNotFoundError(
+            f"Could not find param file [{cicp_file}] in param folder [{param_path}]"
+            "please check whether the `param folder` has correct path or "
+            "`project_name` is correct."
+        )
+
+    ccp_file = f"{param_path}/{project_name}_calibrated_camera_parameters.txt"
+    if os.path.exists(ccp_file):
+        param_dict['ccp'] = ccp_file
+    else:
+        raise FileNotFoundError(
+            f"Could not find param file [{ccp_file}] in param folder [{param_path}]"
+            "please check whether the `param folder` has correct path or "
+            "`project_name` is correct."
+        )
+
+    campos_file = f"{param_path}/{project_name}_calibrated_images_position.txt"
+    if os.path.exists(campos_file):
+        param_dict['campos'] = campos_file
+    else:
+        raise FileNotFoundError(
+            f"Could not find param file [{campos_file}] in param folder [{param_path}]"
+            "please check whether the `param folder` has correct path or "
+            "`project_name` is correct."
+        )
+
+    return param_dict
 
 
 def parse_p4d_project_structure(project_path:str, project_name=None, force_find=False):
@@ -254,8 +313,8 @@ def read_pmat(pmat_path):
 
 
 def read_cicp(cicp_path):
-    """
-    Read PROJECTNAME_pix4d_calibrated_internal_camera_parameters.cam file
+    """Read PROJECTNAME_pix4d_calibrated_internal_camera_parameters.cam file
+
     Parameters
     ----------
     cicp_path: str
@@ -263,6 +322,24 @@ def read_cicp(cicp_path):
     Returns
     -------
     cicp_dict: dict
+
+    Notes
+    -----
+    It is the info about sensor
+    maize_cicp.txt:
+        Pix4D camera calibration file 0
+        #Focal Length mm assuming a sensor width of 17.49998592000000030566x13.12498944000000200560mm
+        F 15.01175404934517487732
+        #Principal Point mm
+        Px 8.48210511970419922534
+        Py 6.33434629978042273990
+        #Symmetrical Lens Distortion Coeffs
+        K1 0.03833474118270804865
+        K2 -0.01750917966495743258
+        K3 0.02049798716391852335
+        #Tangential Lens Distortion Coeffs
+        T1 0.00240851666319534747
+        T2 0.00292562392135245920
     """
     with open(cicp_path, 'r') as f:
         key_pool = ['F', 'Px', 'Py', 'K1', 'K2', 'K3', 'T1', 'T2']
@@ -274,7 +351,8 @@ def read_cicp(cicp_path):
                 if lead in key_pool:
                     cam_dict[lead] = float(contents[:-1])
             elif len(sp_list) == 9:
-                # Focal Length mm assuming a sensor width of 12.82x8.55mm\n
+                # one example:
+                # > Focal Length mm assuming a sensor width of 12.82x8.55mm\n
                 w_h = sp_list[8].split('x')
                 cam_dict['w_mm'] = float(w_h[0])  # extract e.g. 12.82
                 cam_dict['h_mm'] = float(w_h[1][:-4])  # extract e.g. 8.55
@@ -282,8 +360,8 @@ def read_cicp(cicp_path):
 
 
 def read_ccp(ccp_path):
-    """
-    Read PROJECTNAME_calibrated_camera_parameters.txt
+    """Read PROJECTNAME_calibrated_camera_parameters.txt
+
     Parameters
     ----------
     ccp_path: str
@@ -291,6 +369,20 @@ def read_ccp(ccp_path):
     Returns
     -------
     img_configs: dict
+        {'Image1.JPG': 
+            {'cam_matrix': array([[...]]), 
+             'rad_distort': array([ 0.03833474, ...02049799]),
+             'tan_distort': array([0.00240852, 0...00292562]), 
+             'cam_pos': array([ 21.54872207,...8570281 ]), 
+             'cam_rot': array([[ 0.78389904,...99236  ]])}, 
+             'w': 4608, 'h': 3456, 
+         'Image2.JPG':
+            ...
+        }
+
+    Notes
+    -----
+    It is the camera position info
     """
     with open(ccp_path, 'r') as f:
         '''
@@ -344,6 +436,41 @@ def read_ccp(ccp_path):
                 img_configs[file_name]['cam_rot'] = cam_rot
 
     return img_configs
+
+
+def read_campos_geo(campos_path):
+    """Read PROJECTNAME_calibrated_images_position.txt
+
+    Parameters
+    ----------
+    campos_path : str
+
+    Notes
+    -----
+    the geo position of each camera
+        DJI_0954.JPG,368030.548722,3955824.412658,127.857028
+        DJI_0955.JPG,368031.004387,3955824.824967,127.381322
+        DJI_0956.JPG,368033.252520,3955826.479610,127.080709
+        DJI_0957.JPG,368032.022104,3955826.060493,126.715974
+        DJI_0958.JPG,368031.901165,3955826.109158,126.666393
+        DJI_0959.JPG,368030.686490,3955830.981070,127.327741
+
+    Returns
+    -------
+    campos_dict:
+        {"Image1.JPG": np.array([x, y ,z]), 
+         "Image2.JPG": ...
+         ...}
+    """
+    with open(campos_path, 'r') as f:
+        cam_dict = {}
+        for line in f.readlines():
+            sp_list = line.split(',')
+            if len(sp_list) == 4: 
+                cam_dict[sp_list[0]] = np.array(sp_list[1:], dtype=np.float)
+
+    return cam_dict
+
 
 ################################
 # code for reverse calculation #

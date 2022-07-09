@@ -8,7 +8,7 @@ import warnings
 
 def _match_suffix(folder, ext):
     """
-    find the first file by given suffix, e.g. *.tif
+    find the *first* file by given suffix, e.g. *.tif
     Parameters
     ----------
     folder: str
@@ -53,15 +53,23 @@ def _get_full_path(short_path):
         return None
 
 
-def parse_p4d_param_folder(param_path:str, project_name=None):
+def parse_p4d_param_folder(param_path:str):
     param_dict = {}
+    # keys = ["project_name", "xyz", "pmat", "cicp", "ccp"]
+
     param_files = os.listdir(param_path)
 
-    if project_name is None:
-        project_name = os.path.commonprefix(param_files)
-        # > "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_"
-        if project_name[-1] == '_':
-            project_name = project_name[:-1]
+    if len(param_files) < 4:
+        raise FileNotFoundError(
+            f"Given param folder [{_get_full_path(param_path)}] "
+            "does not have enough param files to parse"
+        )
+
+    project_name = os.path.commonprefix(param_files)
+    # > "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_"
+    if project_name[-1] == '_':
+        project_name = project_name[:-1]
+    param_dict["project_name"] = project_name
 
     xyz_file = f"{param_path}/{project_name}_offset.xyz"
     if os.path.exists(xyz_file):
@@ -84,6 +92,9 @@ def parse_p4d_param_folder(param_path:str, project_name=None):
         )
 
     cicp_file = f"{param_path}/{project_name}_pix4d_calibrated_internal_camera_parameters.cam"
+    # two files with the same string
+    # {project_name}_      calibrated_internal_camera_parameters.cam
+    # {project_name}_pix4d_calibrated_internal_camera_parameters.cam
     if os.path.exists(cicp_file):
         param_dict['cicp'] = cicp_file
     else:
@@ -116,7 +127,7 @@ def parse_p4d_param_folder(param_path:str, project_name=None):
     return param_dict
 
 
-def parse_p4d_project_structure(project_path:str, project_name=None, force_find=False):
+def parse_p4d_project(project_path:str, param_folder=None):
     """
     A fuction to automatically analyze related subfiles in pix4d project folder
 
@@ -130,75 +141,72 @@ def parse_p4d_project_structure(project_path:str, project_name=None, force_find=
         |--- 2_densification\
         |___ 3_dsm_ortho\
 
-    project_name: str, optional
-        by default, the project_name is the same as given project path
-        e.g. project_path = xxxx/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d
-             then the project name is the same to "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
-        but sometimes, the project_folder is not the project_name, so it can be specified by user:
-        e,g, project_path = xxxx/20210303
-             but all the files beneath that folder have the prefix of "maize_tanashi"_dsm.tif, then
-             the project_name should be "maize_tanashi"
-
-    force_find: bool
-        if False, then only choose the files fit pix4d default name rule.
-            -> "{dom_folder}/{project_name}_transparent_mosaic_group1.tif"
-        But sometimes, those files are renamed and only one file is under certain folder
-            -> "{dom_folder}/the_renamed_dom.tif"
-        Give True, then it will find the first file that suits the suffix.
+    param_folder: str, default None
+        if not given, it will parse as a standard pix4d project, and trying
+            to get the project name from `1_initial/param` folder
+        if it is not a standard pix4d project (re-orgainzed folder), need manual
+            specify the path to param folder, in order to parse project_name
+            for later usage.
 
     Returns
     -------
     p4d: dict
         a python dictionary that contains the path to each file.
         {
+            "project_name": the prefix of whole project file.
             "param": the folder of parameters
             "pcd": the point cloud file
             "dom": the digital orthomosaic file
             "dsm": the digital surface model file
             "undist_raw": the undistorted images corrected by the pix4d software (when original image unable to find)
         }
+
+    Notes
+    -----
+    Project_name can be extracted from parameter folder prefix in easyidp 2.0, no need manual specify.
+    To find the outputs, it will pick the first file that fits the expected file format.
     """
     p4d = {"param": None, "pcd": None, "dom": None, "dsm": None, "undist_raw": None, "project_name": None}
 
     project_path = _get_full_path(project_path)
     sub_folder = os.listdir(project_path)
 
-    if project_name is None:
-        project_name = os.path.basename(project_path)
+    #################################
+    # parse defalt 1_initial folder #
+    #################################
+    if param_folder is None:
+        param_folder = f"{project_path}/1_initial/params"
 
-    p4d["project_name"] = project_name
-
-    # default structure
-    param_path = f"{project_path}/1_initial/params"
     undist_folder = f"{project_path}/1_initial/images/undistorted_images"
 
-    dense_folder = f"{project_path}/2_densification/point_cloud"
-    ply_file = f"{dense_folder}/{project_name}_group1_densified_point_cloud.ply"
-    laz_file = f"{dense_folder}/{project_name}_group1_densified_point_cloud.laz"
-    las_file = f"{dense_folder}/{project_name}_group1_densified_point_cloud.las"
-
-    dsm_folder = f"{project_path}/3_dsm_ortho/1_dsm"
-    dsm_file = f"{dsm_folder}/{project_name}_dsm.tif"
-
-    dom_folder = f"{project_path}/3_dsm_ortho/2_mosaic"
-    dom_file = f"{dom_folder}/{project_name}_transparent_mosaic_group1.tif"
-
     # check whether a correct pix4d project folder
-    if '1_initial' not in sub_folder:
-        raise FileNotFoundError(f"Current folder [{project_path}] is not a standard pix4d projects folder, unable to do automatic parse")
+    if '1_initial' not in sub_folder and param_folder is None:
+        raise FileNotFoundError(f"Current folder [{project_path}] is not a standard pix4d projects folder, please manual speccify `param_folder`")
 
-    if os.path.exists(param_path):
-        p4d["param"] = param_path
+    if os.path.exists(param_folder):
+        param = parse_p4d_param_folder(param_folder)
+        p4d["param"] = param
+        project_name = param["project_name"]
+        p4d["project_name"] = param["project_name"]
     else:
         raise FileNotFoundError(
-            "Can not find pix4d parameter in folder "
-            "['1_initial/params']"
+            "Can not find pix4d parameter in given project folder"
         )
 
     if os.path.exists(undist_folder):
         p4d["undist_raw"] = undist_folder
 
-    if os.path.exists(dense_folder):
+    ######################
+    # parse output files #
+    ######################
+
+    # point cloud file
+    pcd_folder = f"{project_path}/2_densification/point_cloud"
+    ply_file = f"{pcd_folder}/{project_name}_group1_densified_point_cloud.ply"
+    laz_file = f"{pcd_folder}/{project_name}_group1_densified_point_cloud.laz"
+    las_file = f"{pcd_folder}/{project_name}_group1_densified_point_cloud.las"
+
+    if os.path.exists(pcd_folder):
         if os.path.exists(ply_file):
             p4d["pcd"] = ply_file
         elif os.path.exists(las_file):
@@ -206,38 +214,26 @@ def parse_p4d_project_structure(project_path:str, project_name=None, force_find=
         elif os.path.exists(laz_file):
             p4d["pcd"] = laz_file
         else:
-            force = _match_suffix(dense_folder, ["ply", "las", "laz"])
+            force = _match_suffix(pcd_folder, ["ply", "las", "laz"])
             if force is not None:
-                if force_find:
-                    p4d["pcd"] = force
-                else:
-                    warnings.warn(
-                        f"Unable to find any point cloud output file "
-                        "that match [{project_name}], but we found file "
-                        "[{force}], please either check `project_name`" "or set `..(..., force_find=True)`"
-                    )
+                p4d["pcd"] = force
             else:
                 warnings.warn(
                     f"Unable to find any point cloud output file "
                     "[*.ply, *.las, *.laz] in the project folder "
-                    "[{dense_folder}]. Please specify manually."
+                    "[{pcd_folder}]. Please specify manually."
                 )
 
-
+    # digital surface model DSM file
+    dsm_folder = f"{project_path}/3_dsm_ortho/1_dsm"
+    dsm_file = f"{dsm_folder}/{project_name}_dsm.tif"
     if os.path.exists(dsm_folder):
         if os.path.exists(dsm_file):
             p4d["dsm"] = dsm_file
         else:
             force = _match_suffix(dsm_folder, "tif")
             if force is not None:
-                if force_find:
-                    p4d["dsm"] = force
-                else:
-                    warnings.warn(
-                        f"Unable to find any DSM output file "
-                        "that match [{project_name}], but we found file "
-                        "[{force}], please either check `project_name`" "or set `..(..., force_find=True)`"
-                    )
+                p4d["dsm"] = force
             else:
                 warnings.warn(
                     f"Unable to find any DSM output file "
@@ -245,21 +241,15 @@ def parse_p4d_project_structure(project_path:str, project_name=None, force_find=
                     "[{dense_folder}]. Please specify manually."
                 )
 
-
+    dom_folder = f"{project_path}/3_dsm_ortho/2_mosaic"
+    dom_file = f"{dom_folder}/{project_name}_transparent_mosaic_group1.tif"
     if os.path.exists(dom_folder):
         if os.path.exists(dom_file):
             p4d["dom"] = dom_file
         else:
             force = _match_suffix(dom_folder, "tif")
             if force is not None:
-                if force_find:
-                    p4d["dom"] = force
-                else:
-                    warnings.warn(
-                        f"Unable to find any DOM output file "
-                        "that match [{project_name}], but we found file "
-                        "[{force}], please either check `project_name`" "or set `..(..., force_find=True)`"
-                    )
+                p4d["dom"] = force
             else:
                 warnings.warn(
                     f"Unable to find any DOM output file "

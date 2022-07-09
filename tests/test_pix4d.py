@@ -35,11 +35,9 @@ def test_parse_p4d_project_structure():
     test_folder1 = os.path.join(maize_part, "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d")
     proj_name1 = "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
 
-    p4d1 = idp.pix4d.parse_p4d_project_structure(test_folder1)
+    p4d1 = idp.pix4d.parse_p4d_project(test_folder1)
     assert p4d1["project_name"] == proj_name1
-    assert gfp(p4d1["param"]) == gfp(
-        os.path.join(test_folder1, "1_initial/params")
-    )
+    assert p4d1["param"]["project_name"] == proj_name1
     assert gfp(p4d1["pcd"]) == gfp(
         os.path.join(
             test_folder1, 
@@ -62,39 +60,9 @@ def test_parse_p4d_project_structure():
 
     # test pix4d folder with wrong output name
     test_folder2 = os.path.join(maize_part, "maize_tanashi_raname_empty_test")
-    proj_name2 = "maize_tanashi_raname_empty_test"
 
-    with pytest.warns(UserWarning, 
-        match=re.escape("Unable to find any")
-    ):
-        p4d2 = idp.pix4d.parse_p4d_project_structure(test_folder2)
-
-    assert p4d2["project_name"] == proj_name2
-    assert gfp(p4d2["param"]) == gfp(
-        os.path.join(test_folder2, "1_initial/params")
-    )
-    assert p4d2["pcd"] is None
-    assert p4d2["dsm"] is None
-    assert p4d2["dom"] is None
-
-    # wrong project_name cause can not found outputs
-    with pytest.warns(UserWarning, 
-        match=re.escape("Unable to find any")
-    ):
-        p4d3 = idp.pix4d.parse_p4d_project_structure(
-            test_folder2, project_name="aaa_empty"
-        )
-    
-    assert p4d3["project_name"] == "aaa_empty"
-    assert gfp(p4d3["param"]) == gfp(
-        os.path.join(test_folder2, "1_initial/params")
-    )
-    assert p4d3["pcd"] is None
-    assert p4d3["dsm"] is None
-    assert p4d3["dom"] is None
-
-    # warong project_name force to find outputs by file format
-    p4d4 = idp.pix4d.parse_p4d_project_structure(test_folder2, force_find=True)
+    # wrong project_name force to find outputs by file format
+    p4d4 = idp.pix4d.parse_p4d_project(test_folder2)
     assert gfp(p4d4["pcd"]) == gfp(
         os.path.join(
             test_folder2, 
@@ -109,28 +77,36 @@ def test_parse_p4d_project_structure():
     )
 
 
-def test_parse_p4d_project_structure_error():
-    # use maize empty test
+def test_parse_p4d_project_warning():
+    # can not find output file
+    test_folder = os.path.join(maize_part, "maize_tanashi_raname_no_outputs")
     
+    with pytest.warns(UserWarning, 
+        match=re.escape("Unable to find any")
+    ):
+        p4d2 = idp.pix4d.parse_p4d_project(test_folder)
+
+
+def test_parse_p4d_project_structure_error():
     # folder without 1_init
     test_folder1 = lotus_part
     proj_name1 = "hasu_tanashi_20170525_Ins1RGB_30m"
 
     with pytest.raises(FileNotFoundError, 
         match=re.escape(
-            f"Current folder [{gfp(test_folder1)}] is not a standard"
+            f"Can not find pix4d parameter in given project folder"
         )
     ):
-        p4d = idp.pix4d.parse_p4d_project_structure(
+        p4d = idp.pix4d.parse_p4d_project(
             test_folder1, proj_name1
         )
 
     # no paramter folder
     test_folder2 = os.path.join(maize_part, "maize_tanashi_no_param")
     with pytest.raises(FileNotFoundError, 
-        match=re.escape(f"Can not find pix4d parameter in folder")
+        match=re.escape(f"Can not find pix4d parameter in given project folder")
     ):
-        p4d = idp.pix4d.parse_p4d_project_structure(test_folder2)
+        p4d = idp.pix4d.parse_p4d_project(test_folder2)
 
 ################
 # parse params #
@@ -143,12 +119,9 @@ param_folder = os.path.join(
 def test_parse_p4d_param_folder():
     param = idp.pix4d.parse_p4d_param_folder(param_folder)
 
+    assert param["project_name"] == "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
     assert os.path.basename(param["xyz"]) == "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_offset.xyz"
 
-
-def test_parse_p4d_param_folder_error():
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not find param file")):
-        param = idp.pix4d.parse_p4d_param_folder(param_folder, project_name="aaa")
 
 def test_read_params():
     param = idp.pix4d.parse_p4d_param_folder(param_folder)

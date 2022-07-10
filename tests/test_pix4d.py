@@ -1,6 +1,7 @@
 import os
 import pytest
 import numpy as np
+import pyproj
 import re
 import easyidp as idp
 from easyidp.pix4d import _get_full_path as gfp
@@ -147,10 +148,53 @@ def test_read_params():
     assert "cam_matrix" in ccp["DJI_0954.JPG"].keys()
     assert "rad_distort" in ccp["DJI_0954.JPG"].keys()
 
-    campos = idp.pix4d.read_campos_geo(param["campos"])
-    assert "DJI_0954.JPG" in campos.keys()
-    assert campos["DJI_0954.JPG"].shape == (3,)
+    cam_local_pos = np.array(
+        [21.54872206687879199194, 
+        -29.58734160676452162875,
+        30.85702810138878149360])   # == geo_pos - offset
+    np.testing.assert_almost_equal(ccp["DJI_0954.JPG"]["cam_pos"], cam_local_pos)
+
+    cam_geo_pos = idp.pix4d.read_campos_geo(param["campos"])
+    assert "DJI_0954.JPG" in cam_geo_pos.keys()
+    assert cam_geo_pos["DJI_0954.JPG"].shape == (3,)
     np.testing.assert_almost_equal(
-        campos["DJI_0954.JPG"],
+        cam_geo_pos["DJI_0954.JPG"],
         np.array([368030.548722,3955824.412658,127.857028])
     )
+
+    ssk = idp.pix4d.read_cam_ssk(param["ssk"])
+    assert ssk["label"] == "FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456"
+    assert ssk["type"] == "frame"
+    assert ssk["pixel_size"] == [3.79774000000000011568, 3.79774000000000011568]
+    assert ssk["image_size_in_pixels"] == [ccp["h"], ccp["w"]]
+    assert ssk["orientation"] == 1
+    assert ssk["photo_center_in_pixels"] == [1727.5, 2303.5]
+
+    crs = idp.pix4d.read_wkt_prj(param["crs"])
+    assert crs == pyproj.CRS.from_epsg(32654)
+
+
+def test_class_read_project():
+    p4d = idp.Pix4D()
+
+    param_folder = os.path.join(lotus_full, "params")
+    image_folder = os.path.join(lotus_full, "photos")
+    p4d.open_project(lotus_full, raw_img_folder=image_folder, param_folder=param_folder)
+
+    assert p4d.software == "pix4d"
+    assert p4d.label == "hasu_tanashi_20170525_Ins1RGB_30m"
+    assert p4d.meta["p4d_offset"] == (368043.0, 3955495.0, 98.0)
+
+    assert isinstance(p4d.sensors[0], idp.reconstruct.Sensor)
+    assert p4d.sensors[0].label == "FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456"
+
+    assert p4d.sensors[0].calibration.f == 3951.0935994102065
+    assert p4d.sensors[0].focal_length == 15.005226206224117
+
+    assert p4d.photos[0].label == "DJI_0151.JPG"
+    assert p4d.photos[0].path == ''
+    assert "photos" in p4d.photos["DJI_0174.JPG"].path
+    assert p4d.photos["DJI_0174.JPG"].cam_matrix.shape == (3,3)
+    assert p4d.photos["DJI_0174.JPG"].rotation.shape == (3,3)
+    assert p4d.photos["DJI_0174.JPG"].location.shape == (3,)
+    assert p4d.photos["DJI_0174.JPG"].transform.shape == (3,4)

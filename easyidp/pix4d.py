@@ -1,6 +1,142 @@
 import os
 import numpy as np
 import warnings
+from .reconstruct import Recons, Sensor, Photo
+from .shp import read_proj
+
+
+class Pix4D(Recons):
+
+    def __init__(self):
+        super(Pix4D, self).__init__()
+        self.software = "pix4d"
+
+    def open_project(self, project_path, raw_img_folder=None, param_folder=None):
+
+        p4d = parse_p4d_project(project_path, param_folder)
+
+        # project / chunk name
+        self.label = p4d["project_name"]
+
+        # pix4d point cloud offset?
+        self.meta["p4d_offset"] = read_xyz(p4d["param"]["xyz"])
+
+        #####################
+        # info for Sensor() #
+        #####################
+        ccp = read_ccp(p4d["param"]["ccp"])
+        cicp = read_cicp(p4d["param"]["cicp"])
+        ssk = read_cam_ssk(p4d["param"]["ssk"])
+        '''
+        CCP:
+        {'w': 4608, 
+         'h': 3456, 
+         'Image1.JPG': 
+            {'cam_matrix': array([[...]]),   # (3x3) K
+             'rad_distort': array([ 0.03833474, ...02049799]),
+             'tan_distort': array([0.00240852, 0...00292562]), 
+             'cam_pos': array([ 21.54872207,...8570281 ]),  (3x1) t
+             'cam_rot': array([[ 0.78389904,...99236  ]])}, (3x3) R
+             
+         'Image2.JPG':
+            ...
+        }
+
+
+        CICP:
+        {'w_mm','h_mm', 'F', 'Px', 'Py', 'K1', 'K2', 'K3', 'T1', 'T2'}
+        #Focal Length mm assuming a sensor width of 17.49998592000000030566x13.12498944000000200560mm
+        F 15.01175404934517487732
+        #Principal Point mm
+        Px 8.48210511970419922534
+        Py 6.33434629978042273990
+        #Symmetrical Lens Distortion Coeffs
+        K1 0.03833474118270804865
+        K2 -0.01750917966495743258
+        K3 0.02049798716391852335
+        #Tangential Lens Distortion Coeffs
+        T1 0.00240851666319534747
+        T2 0.00292562392135245920
+        '''
+
+        sensor = Sensor()
+        # seems pix4d only support one camera kind
+        sensor.id = 0
+        sensor.label = ssk["label"]
+        sensor.type = ssk["type"]
+
+        sensor.h_mm = cicp["h_mm"]
+        sensor.w_mm = cicp["w_mm"]
+        sensor.focal_length = cicp["F"]
+
+        sensor.height = ccp["h"]
+        sensor.width = ccp["w"]
+
+        # ensure the order is correct
+        # ssk -> image_size_in_pixels: 3456 4608
+        # it should be the orientation == 1
+        if ssk["image_size_in_pixels"] == [ccp["h"], ccp["w"]]:
+            sensor.pixel_size = ssk["pixel_size"]
+            # the scale of each pixel, unit is mm
+            sensor.pixel_height, sensor.pixel_width = ssk["pixel_size"]
+
+            # calibration params
+            sensor.calibration.cy, sensor.calibration.cx = ssk["photo_center_in_pixels"]
+        # the order is reversed, probably orientatio == 0
+        elif ssk["image_size_in_pixels"] == [ccp["w"], ccp["h"]]:
+            warnings.warn(f"It seems the orientation = {ssk['orientation']} and the height and width are reversed")
+            sensor.pixel_size = ssk["pixel_size"][::-1]   # reverse
+            sensor.pixel_width, sensor.pixel_height = ssk["pixel_size"]
+            sensor.calibration.cx, sensor.calibration.cy = ssk["photo_center_in_pixels"]
+        else:
+            raise NotImplementedError("Have no examples with sensor orientation != 1")
+
+        # save calibration values, pix4d unit is pixel for this value
+        sensor.calibration.f = sensor.focal_length * sensor.width / sensor.w_mm
+        sensor.calibration.k1 = cicp["K1"]
+        sensor.calibration.k2 = cicp["K2"]
+        sensor.calibration.k3 = cicp["K3"]
+
+        sensor.calibration.t1 = cicp["T1"]
+        sensor.calibration.t2 = cicp["T2"]
+
+        self.sensors[0] = sensor
+
+        #####################
+        # info for Photo() #
+        #####################
+        pmat = read_pmat(p4d["param"]["pmat"])
+
+        for i, img_label in enumerate(pmat.keys()):
+            img = Photo()
+            img.id = i
+            img.label = img_label
+            img.sensor_id = 0
+            img.enabled = True
+
+            # find raw image path
+            if raw_img_folder is not None:
+                img_list = os.listdir(raw_img_folder)
+                if img_label in img_list:
+                    img_full_path = os.path.join(raw_img_folder, img_label)
+                    img.path = _get_full_path(img_full_path)
+                else:
+                    warnings.warn(
+                        f"Could not find [{img_label}] in given raw_img_folder"
+                        "[{raw_img_folder}]"
+                    )
+
+            # pix4d reverse calculation only need pmatrix
+            img.transform = pmat[img_label]  # pmatrix
+
+            # and just in case need this:
+            img.cam_matrix = ccp[img_label]["cam_matrix"]  # K
+            img.location = ccp[img_label]["cam_pos"]  # t
+            img.rotation = ccp[img_label]["cam_rot"]   # R
+
+            self.photos[i] = img
+
+
 
 ####################
 # code for file IO #
@@ -59,7 +195,7 @@ def parse_p4d_param_folder(param_path:str):
 
     param_files = os.listdir(param_path)
 
-    if len(param_files) < 4:
+    if len(param_files) < 6:
         raise FileNotFoundError(
             f"Given param folder [{_get_full_path(param_path)}] "
             "does not have enough param files to parse"
@@ -77,8 +213,7 @@ def parse_p4d_param_folder(param_path:str):
     else:
         raise FileNotFoundError(
             f"Could not find param file [{xyz_file}] in param folder [{param_path}]"
-            "please check whether the `param folder` has correct path or "
-            "`project_name` is correct."
+            "please check whether the `param folder` has correct path."
         )
 
     pmat_file = f"{param_path}/{project_name}_pmatrix.txt"
@@ -87,8 +222,7 @@ def parse_p4d_param_folder(param_path:str):
     else:
         raise FileNotFoundError(
             f"Could not find param file [{pmat_file}] in param folder [{param_path}]"
-            "please check whether the `param folder` has correct path or "
-            "`project_name` is correct."
+            "please check whether the `param folder` has correct path."
         )
 
     cicp_file = f"{param_path}/{project_name}_pix4d_calibrated_internal_camera_parameters.cam"
@@ -100,8 +234,7 @@ def parse_p4d_param_folder(param_path:str):
     else:
         raise FileNotFoundError(
             f"Could not find param file [{cicp_file}] in param folder [{param_path}]"
-            "please check whether the `param folder` has correct path or "
-            "`project_name` is correct."
+            "please check whether the `param folder` has correct path."
         )
 
     ccp_file = f"{param_path}/{project_name}_calibrated_camera_parameters.txt"
@@ -110,8 +243,7 @@ def parse_p4d_param_folder(param_path:str):
     else:
         raise FileNotFoundError(
             f"Could not find param file [{ccp_file}] in param folder [{param_path}]"
-            "please check whether the `param folder` has correct path or "
-            "`project_name` is correct."
+            "please check whether the `param folder` has correct path."
         )
 
     campos_file = f"{param_path}/{project_name}_calibrated_images_position.txt"
@@ -120,8 +252,25 @@ def parse_p4d_param_folder(param_path:str):
     else:
         raise FileNotFoundError(
             f"Could not find param file [{campos_file}] in param folder [{param_path}]"
-            "please check whether the `param folder` has correct path or "
-            "`project_name` is correct."
+            "please check whether the `param folder` has correct path."
+        )
+
+    ssk_file = f"{param_path}/{project_name}_camera.ssk"
+    if os.path.exists(ssk_file):
+        param_dict['ssk'] = ssk_file
+    else:
+        raise FileNotFoundError(
+            f"Could not find param file [{ssk_file}] in param folder [{param_path}]"
+            "please check whether the `param folder` has correct path."
+        )
+
+    prj_file = f"{param_path}/{project_name}_wkt.prj"
+    if os.path.exists(prj_file):
+        param_dict['crs'] = prj_file
+    else:
+        raise FileNotFoundError(
+            f"Could not find param file [{ssk_file}] in param folder [{param_path}]"
+            "please check whether the `param folder` has correct path."
         )
 
     return param_dict
@@ -304,6 +453,7 @@ def read_pmat(pmat_path):
 
 def read_cicp(cicp_path):
     """Read PROJECTNAME_pix4d_calibrated_internal_camera_parameters.cam file
+    Used for Sensor() object
 
     Parameters
     ----------
@@ -351,6 +501,7 @@ def read_cicp(cicp_path):
 
 def read_ccp(ccp_path):
     """Read PROJECTNAME_calibrated_camera_parameters.txt
+    Used for Photo() object
 
     Parameters
     ----------
@@ -359,13 +510,15 @@ def read_ccp(ccp_path):
     Returns
     -------
     img_configs: dict
-        {'Image1.JPG': 
+        {'w': 4608, 
+         'h': 3456, 
+         'Image1.JPG': 
             {'cam_matrix': array([[...]]), 
              'rad_distort': array([ 0.03833474, ...02049799]),
              'tan_distort': array([0.00240852, 0...00292562]), 
              'cam_pos': array([ 21.54872207,...8570281 ]), 
              'cam_rot': array([[ 0.78389904,...99236  ]])}, 
-             'w': 4608, 'h': 3456, 
+             
          'Image2.JPG':
             ...
         }
@@ -430,6 +583,7 @@ def read_ccp(ccp_path):
 
 def read_campos_geo(campos_path):
     """Read PROJECTNAME_calibrated_images_position.txt
+    Used for Photo.location()? -> geo_location?
 
     Parameters
     ----------
@@ -462,6 +616,78 @@ def read_campos_geo(campos_path):
     return cam_dict
 
 
-################################
-# code for reverse calculation #
-################################
+def read_cam_ssk(ssk_path):
+    """Get the camera model name, used for Sensor() object
+
+    Parameters
+    ----------
+    ssk_path : str
+
+    Returns
+    -------
+    ssk_info : dict
+        {
+            "label": str
+            "type": str   # frame / fisheye ...
+            "pixel_size": [h, w]
+            "pixel_size_unit": "mm"
+            "image_size_in_pixels": [h ,w]
+            "orientation": 1   # guess 0 -> w, h?
+            "photo_center_in_pixels": [h, w]
+        }
+
+    Notes
+    -----
+    SSK file contents:
+    begin camera_parameters FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456 (RGB)(1)
+        focal_length:                      15.00522620622411729130
+        ppac:                              0.02793232590500918308 -0.02181191393910364776
+        ppbs:                               0 0
+        film_format:                       13.12498944000000200560 17.49998592000000030566
+        lens_distortion_flag:              off
+        io_required:                       yes
+        camera_type:                       frame
+        media_type:                        digital
+        pixel_size:                        3.79774000000000011568 3.79774000000000011568
+        image_size_in_pixels:              3456 4608
+        scanline_orientation:              4
+        photo_coord_sys_orientation:       1
+        photo_coord_sys_origin:            1727.50000000000000000000 2303.50000000000000000000
+        focal_length_calibration_flag:     off
+        calibrated_focal_length_stddev:    0.03
+        ppac_calibration_flag:             off
+        calibrated_ppac_stddevs:           0.003   0.003
+        self_calibration_enabled_params:   0
+        antenna_offsets:                   0   0   0
+    end camera_parameters
+    """
+    with open(ssk_path, 'r') as f:
+        ssk_info = {}
+        for line in f.readlines():
+            if "begin camera_parameters" in line:
+                # > ['begin', 'camera_parameters', 'FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456', '(RGB)(1)']
+                ssk_info["label"] = line.split(' ')[2]
+            elif "camera_type" in line:
+                # > ['', 'camera_type:', '', '',... '', '', 'frame\n']
+                ssk_info["type"] = str(line.split(' ')[-1][:-1])  # last and rm \n
+            elif "pixel_size" in line:
+                # > ['', 'pixel_size:', '', ..., '', '3.79774000000000011568', '3.79774000000000011568']
+                # the order is h, w, if orientation == 1
+                # because: image_size_in_pixels: 3456 4608
+                lsp = line.split(' ')
+                ssk_info["pixel_size"] = [float(lsp[-2]), float(lsp[-1])]
+            elif "image_size_in_pixels" in line:
+                # double check with ccp imageWidth & imageHeight
+                lsp = line.split(' ')
+                ssk_info["image_size_in_pixels"] = [int(lsp[-2]), int(lsp[-1])]
+            elif "photo_coord_sys_orientation" in line:
+                ssk_info["orientation"] = int(line.split(' ')[-1])
+            elif "photo_coord_sys_origin" in line:
+                lsp = line.split(' ')
+                ssk_info["photo_center_in_pixels"] = [float(lsp[-2]), float(lsp[-1])]
+
+    return ssk_info
+            
+
+def read_wkt_prj(prj_file):
+    return read_proj(prj_file)

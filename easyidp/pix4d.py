@@ -7,9 +7,12 @@ from .shp import read_proj
 
 class Pix4D(Recons):
 
-    def __init__(self):
+    def __init__(self, project_path=None, raw_img_folder=None, param_folder=None):
         super(Pix4D, self).__init__()
         self.software = "pix4d"
+
+        if project_path is not None:
+            self.open_project(project_path, raw_img_folder, param_folder)
 
     def open_project(self, project_path, raw_img_folder=None, param_folder=None):
 
@@ -92,6 +95,8 @@ class Pix4D(Recons):
             raise NotImplementedError("Have no examples with sensor orientation != 1")
 
         # save calibration values, pix4d unit is pixel for this value
+        sensor.calibration.software = self.software
+        sensor.calibration.type = sensor.type
         sensor.calibration.f = sensor.focal_length * sensor.width / sensor.w_mm
         sensor.calibration.k1 = cicp["K1"]
         sensor.calibration.k2 = cicp["K2"]
@@ -102,9 +107,9 @@ class Pix4D(Recons):
 
         self.sensors[0] = sensor
 
-        #####################
+        ####################
         # info for Photo() #
-        #####################
+        ####################
         pmat = read_pmat(p4d["param"]["pmat"])
 
         for i, img_label in enumerate(pmat.keys()):
@@ -136,6 +141,150 @@ class Pix4D(Recons):
 
             self.photos[i] = img
 
+        ######################
+        # info for seelf.CRS #
+        ######################
+        self.crs = read_proj(p4d["param"]["crs"])
+
+        ################################
+        # info for outpus(PCD|DOM|DSM) #
+        ################################
+        if p4d["pcd"] is not None:
+            self.pcd = p4d["pcd"]
+            self.pcd.offset = np.array(self.meta["p4d_offset"])
+
+        if p4d["dom"] is not None:
+            self.dom = p4d["dom"]
+
+        if p4d["dsm"] is not None:
+            self.dsm = p4d["dsm"]
+
+    ################################
+    # code for reverse calculation #
+    ################################
+    def _check_photo_type(self, photo):
+        if isinstance(photo, str):
+            if photo in self.photos.keys():
+                return self.photos[photo]
+            else:
+                raise KeyError(
+                    f"Could not find given image name [{photo}] in "
+                    f"[{self.photos[0].label}, {self.photos[1].label}, ..., {self.photos[-1].label}]")
+        elif isinstance(photo, Photo):
+            return photo
+        else:
+            raise TypeError("Only support <easyidp.Photo> or image_name string")
+
+    def _external_internal_calc(self, points, photo, distort_correct=True):
+        """Calculate backward projection by camera parameters, seems not correct, deprecated.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            the nx3 xyz numpy matrix
+        photo : str | easyidp.Photo object
+            if str -> photo name / keys
+        distort_correct : bool, optional
+            whether calibrate lens distortion, by default True
+
+        Returns
+        -------
+        coords_b
+            2d ndarray, 'lower-left' coordiantes
+        """
+        photo = self._check_photo_type(photo)
+        T = photo.location   # v1.0: T = param.img[image_name].cam_pos
+        R = photo.rotation   # v1.0: R = param.img[image_name].cam_rot
+
+        X_prime = (points - T).dot(R)
+        xh, yh = X_prime[:, 0] / X_prime[:, 2], X_prime[:, 1] / X_prime[:, 2]
+
+        # olderversion
+        # f = param.F * param.img[image_name].w / param.w_mm
+        # cx = param.Px * param.img[image_name].w / param.w_mm
+        # cy = param.Py * param.img[image_name].h / param.h_mm
+        calibration = self.sensors[photo.sensor_id].calibration
+        f = calibration.f
+        cx = calibration.cx
+        cy = calibration.cy
+
+        xb = f * xh + cx
+        yb = f * yh + cy
+
+        if distort_correct:
+            xb, yb = calibration.calibrate(xb, yb)
+
+        #xa = xb
+        #ya = param.img[image_name].h - yb
+        #coords_a = np.hstack([xa[:, np.newaxis], ya[:, np.newaxis]])
+        coords_b = np.hstack([xb[:, np.newaxis], yb[:, np.newaxis]])
+
+        return coords_b
+
+    def _pmatrix_calc(self, points, photo, distort_correct=True):
+        """Calculate backward projection by pix4d pmatrix
+
+        Parameters
+        ----------
+        points : np.ndarray
+            the nx3 xyz numpy matrix
+        photo : str | easyidp.Photo object
+            if str -> photo name / keys
+        distort_correct : bool, optional
+            whether calibrate lens distortion, by default True
+
+        Returns
+        -------
+        coords_b
+            2d ndarray, 'lower-left' coordiantes
+        """
+        photo = self._check_photo_type(photo)
+
+        xyz1_prime = np.insert(points, 3, 1, axis=1)
+        xyz = (xyz1_prime).dot(photo.transform.T)  # v1.0: param.img[image_name].pmat.T
+        u = xyz[:, 0] / xyz[:, 2]
+        v = xyz[:, 1] / xyz[:, 2]
+
+        calibration = self.sensors[photo.sensor_id].calibration
+        if distort_correct:
+            xh, yh = calibration.calibrate(u, v)
+            coords_b = np.vstack([xh, yh]).T
+        else:
+            coords_b = np.vstack([u, v]).T
+
+        return coords_b
+
+
+    def back2raw_single(self, points, distort_correct=True, ignore=None, log=False):
+        """
+        :param param: the p4d project objects
+        :param points: should be the geo coordinate - offsets
+        :param method: string
+            'exin' use external and internal parameters (seems not so accurate in some cases),
+            'pmat' use pmatrix to calculate (recommended method for common digital camera, fisheye camera not suit)
+        :param log: boolean, whether print logs in console
+        :return:
+        """
+        out_dict = {}
+        sensor = self.sensors[0]
+        # seems all teh calculation is based on no offset coordinate
+        points = points - self.meta["p4d_offset"]
+
+        for photo_name, photo in self.photos.items():
+            if log:
+                print(f'[Calculator][Judge]{photo.label}w:{photo.w}h:{photo.h}->', end='')
+            #if method == 'exin':
+            #    projected_coords = self._external_internal_calc(points, photo, distort_correct)
+            projected_coords = self._pmatrix_calc(points, photo, distort_correct)
+            coords = sensor.in_img_boundary(projected_coords, ignore=ignore, log=log)
+            if coords is not None:
+                out_dict[photo.label] = coords
+
+        return out_dict
+
+
+    def back2raw():
+        pass
 
 
 ####################
@@ -184,7 +333,7 @@ def _match_suffix(folder, ext):
 
 def _get_full_path(short_path):
     if isinstance(short_path, str):
-        return os.path.abspath(os.path.normpath(short_path)).replace('\\', '/')
+        return os.path.abspath(os.path.normpath(short_path))
     else:
         return None
 
@@ -209,7 +358,7 @@ def parse_p4d_param_folder(param_path:str):
 
     xyz_file = f"{param_path}/{project_name}_offset.xyz"
     if os.path.exists(xyz_file):
-        param_dict['xyz'] = xyz_file
+        param_dict["xyz"] = xyz_file
     else:
         raise FileNotFoundError(
             f"Could not find param file [{xyz_file}] in param folder [{param_path}]"
@@ -218,7 +367,7 @@ def parse_p4d_param_folder(param_path:str):
 
     pmat_file = f"{param_path}/{project_name}_pmatrix.txt"
     if os.path.exists(pmat_file):
-        param_dict['pmat'] = pmat_file
+        param_dict["pmat"] = pmat_file
     else:
         raise FileNotFoundError(
             f"Could not find param file [{pmat_file}] in param folder [{param_path}]"
@@ -230,7 +379,7 @@ def parse_p4d_param_folder(param_path:str):
     # {project_name}_      calibrated_internal_camera_parameters.cam
     # {project_name}_pix4d_calibrated_internal_camera_parameters.cam
     if os.path.exists(cicp_file):
-        param_dict['cicp'] = cicp_file
+        param_dict["cicp"] = cicp_file
     else:
         raise FileNotFoundError(
             f"Could not find param file [{cicp_file}] in param folder [{param_path}]"
@@ -239,7 +388,7 @@ def parse_p4d_param_folder(param_path:str):
 
     ccp_file = f"{param_path}/{project_name}_calibrated_camera_parameters.txt"
     if os.path.exists(ccp_file):
-        param_dict['ccp'] = ccp_file
+        param_dict["ccp"] = ccp_file
     else:
         raise FileNotFoundError(
             f"Could not find param file [{ccp_file}] in param folder [{param_path}]"
@@ -248,7 +397,7 @@ def parse_p4d_param_folder(param_path:str):
 
     campos_file = f"{param_path}/{project_name}_calibrated_images_position.txt"
     if os.path.exists(campos_file):
-        param_dict['campos'] = campos_file
+        param_dict["campos"] = campos_file
     else:
         raise FileNotFoundError(
             f"Could not find param file [{campos_file}] in param folder [{param_path}]"
@@ -257,7 +406,7 @@ def parse_p4d_param_folder(param_path:str):
 
     ssk_file = f"{param_path}/{project_name}_camera.ssk"
     if os.path.exists(ssk_file):
-        param_dict['ssk'] = ssk_file
+        param_dict["ssk"] = ssk_file
     else:
         raise FileNotFoundError(
             f"Could not find param file [{ssk_file}] in param folder [{param_path}]"
@@ -266,7 +415,7 @@ def parse_p4d_param_folder(param_path:str):
 
     prj_file = f"{param_path}/{project_name}_wkt.prj"
     if os.path.exists(prj_file):
-        param_dict['crs'] = prj_file
+        param_dict["crs"] = prj_file
     else:
         raise FileNotFoundError(
             f"Could not find param file [{ssk_file}] in param folder [{param_path}]"
@@ -423,7 +572,7 @@ def read_xyz(xyz_path):
     """
     with open(xyz_path, 'r') as f:
         x, y, z = f.read().split(' ')
-    return float(x), float(y), float(z)
+    return np.array([float(x), float(y), float(z)])
 
 
 def read_pmat(pmat_path):
@@ -687,7 +836,3 @@ def read_cam_ssk(ssk_path):
                 ssk_info["photo_center_in_pixels"] = [float(lsp[-2]), float(lsp[-1])]
 
     return ssk_info
-            
-
-def read_wkt_prj(prj_file):
-    return read_proj(prj_file)

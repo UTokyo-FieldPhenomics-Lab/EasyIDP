@@ -366,7 +366,7 @@ def test_class_pointcloud_offset_set_value():
     np.testing.assert_almost_equal(pcd._points, pts1)
 
     ## change offset value
-    pcd.offset = np.array([1,1,1])
+    pcd.set_offset(np.array([1,1,1]))
     
     np.testing.assert_almost_equal(pcd.points, pts1)
     np.testing.assert_almost_equal(pcd._points, np.array([[0,1,2],[3,4,5]]))
@@ -380,7 +380,7 @@ def test_class_pointcloud_offset_set_value():
     np.testing.assert_almost_equal(pcd._points, np.array([[-9, -8, -7],[-6, -5, -4]]))
 
     # then change offset
-    pcd.offset = [0, 0, 0]
+    pcd.set_offset([0, 0, 0])
 
     np.testing.assert_almost_equal(pcd.points, pts1)
     np.testing.assert_almost_equal(pcd._points, pts1)

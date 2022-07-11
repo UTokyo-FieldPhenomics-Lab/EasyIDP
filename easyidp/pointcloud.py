@@ -17,7 +17,7 @@ class PointCloud(object):
 
     def __init__(self, pcd_path="", offset=np.array([0.,0.,0.])) -> None:
 
-        self.file_path = os.path.abspath(pcd_path)
+        self.file_path = pcd_path
         self.file_ext = ".ply"
 
         self._points = None   # internal points with offsets to save memory
@@ -104,22 +104,43 @@ class PointCloud(object):
 
     @offset.setter
     def offset(self, o):
-        if len(o) == 3:
-            if isinstance(o, (list, tuple)):
-                o = np.asarray(o, dtype=np.float64)
-            elif isinstance(o, np.ndarray):
-                o = o.astype(np.float64)
-            else:
-                raise ValueError(f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(o)} type")
-        else:
-            raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(o)} was given")
+        # the point values will change:
+        # --------------------------------
+        # points =  _point + offset
+        #   |         |         |
+        # change   no change  change
+        o = self._offset_type_check(o)
+        self._offset = o
+        if self._points is not None:
+            self._update_btf_print()
+
+    def set_offset(self, o):
+        # the point values not change
+        # --------------------------------
+        # points =  _point + offset
+        #   |         |         |
+        # no change   change-   change+
+        o = self._offset_type_check(o)
         
         if self._points is not None:
             self._points = self._points + self._offset - o
             self._offset = o
-            warnings.warn("This will not change the value of point xyz values, if you want to move/drag points, please operate `points = new_xyz` where `new_xyz = points + offset` directly (not support `points += xxx` yet)")
+            warnings.warn("This will not change the value of point xyz values, if you want to just change offset value, please operate `pcd._offset = offset; pcd._update_btf_print()` directly")
+            self._update_btf_print()
         else:
             self._offset = o
+
+    @staticmethod
+    def _offset_type_check(o):
+        if len(o) == 3:
+            if isinstance(o, (list, tuple)):
+                return np.asarray(o, dtype=np.float64)
+            elif isinstance(o, np.ndarray):
+                return o.astype(np.float64)
+            else:
+                raise ValueError(f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(o)} type")
+        else:
+            raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(o)} was given")
 
     def has_colors(self):
         if self.colors is None:
@@ -147,6 +168,9 @@ class PointCloud(object):
 
         self.offset = np.array([0.,0.,0.])
 
+        self.file_ext = ".ply"
+        self.file_path = ""
+
     def read_point_cloud(self, pcd_path):
         if not os.path.exists(pcd_path):
             warnings.warn(f"Can not find file [{pcd_path}], skip loading")
@@ -158,6 +182,8 @@ class PointCloud(object):
             points, colors, normals = read_laz(pcd_path)
         else:
             raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
+
+        self.clear()
 
         self.file_ext = os.path.splitext(pcd_path)[-1]
         self.file_path = os.path.abspath(pcd_path)

@@ -128,7 +128,7 @@ def test_read_params():
     param = idp.pix4d.parse_p4d_param_folder(param_folder)
     xyz = idp.pix4d.read_xyz(param["xyz"])
 
-    assert xyz == (368009.0, 3955854.0, 97.0)
+    np.testing.assert_almost_equal(xyz, np.array([368009.0, 3955854.0, 97.0]))
 
     pmat = idp.pix4d.read_pmat(param["pmat"])
 
@@ -170,11 +170,11 @@ def test_read_params():
     assert ssk["orientation"] == 1
     assert ssk["photo_center_in_pixels"] == [1727.5, 2303.5]
 
-    crs = idp.pix4d.read_wkt_prj(param["crs"])
+    crs = idp.pix4d.read_proj(param["crs"])
     assert crs == pyproj.CRS.from_epsg(32654)
 
 
-def test_class_read_project():
+def test_class_read_renamed_project():
     p4d = idp.Pix4D()
 
     param_folder = os.path.join(lotus_full, "params")
@@ -183,7 +183,11 @@ def test_class_read_project():
 
     assert p4d.software == "pix4d"
     assert p4d.label == "hasu_tanashi_20170525_Ins1RGB_30m"
-    assert p4d.meta["p4d_offset"] == (368043.0, 3955495.0, 98.0)
+    assert p4d.crs == pyproj.CRS.from_epsg(32654)
+
+    np.testing.assert_almost_equal(
+        p4d.meta["p4d_offset"], 
+        np.array([368043.0, 3955495.0, 98.0]))
 
     assert isinstance(p4d.sensors[0], idp.reconstruct.Sensor)
     assert p4d.sensors[0].label == "FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456"
@@ -198,3 +202,62 @@ def test_class_read_project():
     assert p4d.photos["DJI_0174.JPG"].rotation.shape == (3,3)
     assert p4d.photos["DJI_0174.JPG"].location.shape == (3,)
     assert p4d.photos["DJI_0174.JPG"].transform.shape == (3,4)
+
+
+def test_class_read_default_project():
+    p4d = idp.Pix4D()
+    p4d.open_project(os.path.join(
+        maize_part, 
+        "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"))
+
+    assert p4d.dsm.file_path == gfp(
+        r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
+        r"_30m_pix4d\3_dsm_ortho\1_dsm\maize_tanashi_3NA_20190729_Ins1Rgb"
+        r"_30m_pix4d_dsm.tif")
+    assert p4d.dom.file_path == gfp(
+        r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
+        r"_30m_pix4d\3_dsm_ortho\2_mosaic\maize_tanashi_3NA_20190729_Ins1Rgb"
+        r"_30m_pix4d_transparent_mosaic_group1.tif")
+
+    np.testing.assert_almost_equal(p4d.pcd.offset, p4d.meta["p4d_offset"])
+
+    np.testing.assert_almost_equal(
+        p4d.pcd.points[0, :],  
+        np.array([368028.738, 3955822.024, 97.449]),
+        decimal=3)
+
+def test_class_back2raw_single():
+    # lotus example
+    p4d = idp.Pix4D()
+    param_folder = os.path.join(lotus_full, "params")
+    image_folder = os.path.join(lotus_full, "photos")
+    p4d.open_project(lotus_full, raw_img_folder=image_folder, param_folder=param_folder)
+    
+    #plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
+    #plot_t = idp.shp.convert_proj(plot, proj, p4d.crs)
+    plot =  np.array([   # N1E1
+        [ 368020.2974959 , 3955511.61264302,      97.56272272],
+        [ 368022.24288365, 3955512.02973983,      97.56272272],
+        [ 368022.65361232, 3955510.07798313,      97.56272272],
+        [ 368020.69867274, 3955509.66725421,      97.56272272],
+        [ 368020.2974959 , 3955511.61264302,      97.56272272]
+    ])
+
+    out_dict = p4d.back2raw_single(plot, distort_correct=True)
+    assert len(out_dict) == 39
+
+    px_0177 = np.array([
+        [ 137.10982937, 2359.55887614],
+        [ 133.56116243, 2107.13954299],
+        [ 384.767746  , 2097.05639105],
+        [ 388.10993307, 2350.41225998],
+        [ 137.10982937, 2359.55887614]])
+
+    np.testing.assert_almost_equal(out_dict["DJI_0177.JPG"], px_0177)
+
+    # plot figures
+    img_name = "DJI_0198.JPG"
+    photo = p4d.photos[img_name]
+    idp.visualize.draw_polygon_on_img(
+        img_name, photo.path, out_dict[img_name], show=False, 
+        save_as="./tests/out/visual_test/p4d_back2raw_single_view.png")

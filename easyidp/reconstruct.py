@@ -1,6 +1,8 @@
 import os
 import pyproj
 import numpy as np
+from .geotiff import GeoTiff
+from .pointcloud import PointCloud
 
 
 class ProjectPool(object):
@@ -45,32 +47,67 @@ class Recons(object):
         self.world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
         self.crs = None
 
+        self._dom = GeoTiff()
+        self._dsm = GeoTiff()
+        self._pcd = PointCloud()
 
     @property
     def dom(self):
         # default None
-        pass
+        if self._dom.has_data():
+            return self._dom
+        else:
+            return None
 
     @dom.setter
     def dom(self, p):
-        pass
+        if isinstance(p, str):
+            if os.path.exists(p):
+                self._dom.read_geotiff(p)
+            else:
+                raise FileNotFoundError(f"Given DOM file [{p}] does not exists")
+        elif isinstance(p, GeoTiff):
+            self._dom = p
+        else:
+            raise TypeError(f"Please either specify DOM file path (str) or idp.GeoTiff objects, not {type(p)}")
 
     @property
     def dsm(self):
-        pass
+        if self._dsm.has_data():
+            return self._dsm
+        else:
+            return None
 
     @dsm.setter
     def dsm(self, p):
-        pass
+        if isinstance(p, str):
+            if os.path.exists(p):
+                self._dsm.read_geotiff(p)
+            else:
+                raise FileNotFoundError(f"Given DSM file [{p}] does not exists")
+        elif isinstance(p, GeoTiff):
+            self._dsm = p
+        else:
+            raise TypeError(f"Please either specify DSM file path (str) or idp.GeoTiff objects, not {type(p)}")
 
     @property
     def pcd(self):
-        pass
+        if self._pcd.has_points():
+            return self._pcd
+        else:
+            return None
 
     @pcd.setter
     def pcd(self, p):
-        pass
-
+        if isinstance(p, str):
+            if os.path.exists(p):
+                self._pcd.read_point_cloud(p)
+            else:
+                raise FileNotFoundError(f"Given pointcloud file [{p}] does not exists")
+        elif isinstance(p, PointCloud):
+            self._pcd = p
+        else:
+            raise TypeError(f"Please either specify pointcloud file path (str) or idp.PointCloud objects, not {type(p)}")
 
 
 class Sensor:
@@ -95,6 +132,58 @@ class Sensor:
         self.focal_length = 0.0  # in mm
 
         self.calibration = Calibration()
+
+    def in_img_boundary(self, polygon_hv, ignore=None, log=False):
+        """Judge whether given polygon is in the image area, and move points to boundary if specify ignore.
+
+        Parameters
+        ----------
+        polygon_hv : numpy nx2 array
+            [horizontal, vertical] points
+        ignore : str | None, optional
+            None: strickly in image area
+            'x': only y (vertical) in image area, x can outside image
+            'y': only x (horizontal) in image area, y can outside image
+        log : bool, optional
+            whether print log for debugging, by default False
+
+        Returns
+        -------
+        None | polygon_hv
+        """
+        w, h = self.width, self.height
+        coord_min = polygon_hv.min(axis=0)
+        x_min, y_min = coord_min[0], coord_min[1]
+        coord_max= polygon_hv.max(axis=0)
+        x_max, y_max = coord_max[0], coord_max[1]
+
+        if ignore is None:
+            if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
+                if log: print('X ', (x_min, x_max, y_min, y_max))
+                return None
+            else:
+                if log: print('O ', (x_min, x_max, y_min, y_max))
+                return polygon_hv
+        elif ignore=='x':
+            if y_min < 0 or y_max > h:
+                if log: print('X ', (x_min, x_max, y_min, y_max))
+                return None
+            else:
+                # replace outside points to image boundary
+                polygon_hv[polygon_hv[:, 0] < 0, 0] = 0
+                polygon_hv[polygon_hv[:, 0] > w, 0] = w
+                if log: print('O ', (x_min, x_max, y_min, y_max))
+                return polygon_hv
+        elif ignore=='y':
+            if x_min < 0 or x_max > w:
+                if log: print('X ', (x_min, x_max, y_min, y_max))
+                return None
+            else:
+                # replace outside point to image boundary
+                polygon_hv[polygon_hv[:, 1] < 0, 1] = 0
+                polygon_hv[polygon_hv[:, 1] > h, 1] = h
+                if log: print('O ', (x_min, x_max, y_min, y_max))
+                return polygon_hv
 
 
 class Photo:
@@ -172,7 +261,8 @@ class Photo:
 class Calibration:
 
     def __init__(self):
-        # self.software = "metashape"
+        self.software = "metashape"
+        self.type = "frame"
         # focal length
         self.f = 0.0  # unit is px, not mm for pix4d
         #self.f_unit = "px"
@@ -204,6 +294,71 @@ class Calibration:
         self.t3 = self.p3 = 0.0  # metashape -> p3
         self.t4 = self.p4 = 0.0  # metashape -> p4
 
+    def calibrate(self, u, v):
+        if self.software == "pix4d":
+            if self.type == "frame":
+                return self._calibrate_pix4d_frame(u, v)
+            else:
+                raise NotImplementedError(
+                    f"Can not calibrate camera type [{self.type}], "
+                    "only support [frame] currently"
+                )
+        elif self.software == "metashape":
+            if self.type == "frame":
+                return self._calibrate_metashape_frame(u, v)
+            else:
+                raise NotImplementedError(
+                    f"Can not calibrate camera type [{self.type}], "
+                    "only support [frame] currently"
+                )
+        else:
+            raise TypeError(
+                f"Could only handle [pix4d | metashape] projects, "
+                "not {self.type}")
+
+    def _calibrate_pix4d_frame(self, u, v):
+        """Convert pix4d produced undistorted images pixel coordinate
+        to original image pixel coordinate
+
+        Parameters
+        ----------
+        u : ndarray
+            the x pixel coordinate
+        v : ndarray
+            the y pixel coordinate
+
+        Returns
+        -------
+        xb, yb: 
+            the pixel coordinate on the raw image
+
+        Notes
+        -----
+        Formula please refer: #2.1.2 in
+        https://support.pix4d.com/hc/en-us/articles/202559089-How-are-the-Internal-and-External-Camera-Parameters-defined
+        """
+        f = self.f
+        cx = self.cx
+        cy = self.cy
+
+        xh = (u - cx) / f
+        yh = (v - cy) / f
+
+        r2 = xh ** 2 + yh ** 2
+        r4 = r2 ** 2
+        r6 = r2 ** 3
+        a1 = 1 + self.k1 * r2 + self.k2 * r4 + self.k3 * r6
+        xhd = a1 * xh + 2 * self.t1 * xh * yh + self.t2 * (r2 + 2 * xh ** 2)
+        yhd = a1 * yh + 2 * self.t2 * xh * yh + self.t1 * (r2 + 2 * yh ** 2)
+
+        xb = f * xhd + cx
+        yb = f * yhd + cy
+
+        return xb, yb
+
+    def _calibrate_metashape_frame(self, u, v):
+        pass
+
 
 class ChunkTransform:
 
@@ -230,6 +385,7 @@ class Container(dict):
         self.item_label[item.label] = key
 
     def __getitem__(self, key):
+        print(type(key))
         if isinstance(key, int):  # index by photo order
             return self.id_item[key]
         elif isinstance(key, str):  # index by photo name
@@ -248,6 +404,18 @@ class Container(dict):
     def __delitem__(self, key):
         del self.item_label[self.id_item[key]]
         del self.id_item[key]
+
+    def __iter__(self):
+        return iter(self.id_item.values())
+
+    def keys(self):
+        return self.id_item.keys()
+
+    def values(self):
+        return self.id_item.values()
+
+    def items(self):
+        return self.id_item.items()
 
 
 def filter_closest_img(p4d, img_dict, plot_geo, dist_thresh=None, num=None):

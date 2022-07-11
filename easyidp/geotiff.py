@@ -32,10 +32,16 @@ class GeoTiff(object):
         else:
             warnings.warn(f"Can not find file [{tif_path}], skip loading")
 
+    def has_data(self):
+        if self.header is None or not os.path.exists(self.file_path):
+            return False
+        else:
+            return True
+
     def not_empty(func):
         # the decorator to check before doing functions
         def wrapper(self, *args, **kwargs):
-            if self.header is None or not os.path.exists(self.file_path):
+            if not self.has_data():
                 raise FileNotFoundError("Could not operate if not specify correct geotiff file")
             return func(self, *args, **kwargs)
 

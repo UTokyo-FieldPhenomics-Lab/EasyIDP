@@ -5,11 +5,60 @@ from .geotiff import GeoTiff
 from .pointcloud import PointCloud
 
 
-class ProjectPool(object):
+class Container(dict):
+    # a dict-like class, to contain items like {"id": item.label}
+    # but enable using both [item.id] and [item.label] to fetch items
+    # https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
+
+    def __init__(self):
+        super().__init__()
+        self.id_item = {}
+        self.item_label = {}
+
+    def __setitem__(self, key, item):
+        self.id_item[key] = item
+        self.item_label[item.label] = key
+
+    def __getitem__(self, key):
+        print(type(key))
+        if isinstance(key, int):  # index by photo order
+            return self.id_item[key]
+        elif isinstance(key, str):  # index by photo name
+            return self.id_item[self.item_label[key]]
+        # elif isinstance(key, slice):
+        #     return list(self.id_item.values())[key]
+        else:
+            raise KeyError(f"Key should be 'int', 'str', 'slice', not {key}")
+
+    def __repr__(self):
+        return repr(self.id_item)
+
+    def __len__(self):
+        return len(self.id_item)
+
+    def __delitem__(self, key):
+        del self.item_label[self.id_item[key]]
+        del self.id_item[key]
+
+    def __iter__(self):
+        return iter(self.id_item.values())
+
+    def keys(self):
+        return self.id_item.keys()
+
+    def values(self):
+        return self.id_item.values()
+
+    def items(self):
+        return self.id_item.items()
+
+
+class ProjectPool(Container):
 
     def __init__(self) -> None:
-        pass
-
+        super().__init__()
+        self.id_item = {}
+        self.item_label = {}
 
     def add_pix4d(self, paths):
         # proj.add_pix4d(["aaa.p4d", "bbb.p4d", ...]) 
@@ -368,54 +417,6 @@ class ChunkTransform:
         self.translation = None
         self.scale = None
         self.matrix_inv = None
-
-
-class Container(dict):
-    # a dict-like class, to contain items like {"id": item.label}
-    # but enable using both [item.id] and [item.label] to fetch items
-    # https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
-
-    def __init__(self):
-        super().__init__()
-        self.id_item = {}
-        self.item_label = {}
-
-    def __setitem__(self, key, item):
-        self.id_item[key] = item
-        self.item_label[item.label] = key
-
-    def __getitem__(self, key):
-        print(type(key))
-        if isinstance(key, int):  # index by photo order
-            return self.id_item[key]
-        elif isinstance(key, str):  # index by photo name
-            return self.id_item[self.item_label[key]]
-        # elif isinstance(key, slice):
-        #     return list(self.id_item.values())[key]
-        else:
-            raise KeyError(f"Key should be 'int', 'str', 'slice', not {key}")
-
-    def __repr__(self):
-        return repr(self.id_item)
-
-    def __len__(self):
-        return len(self.id_item)
-
-    def __delitem__(self, key):
-        del self.item_label[self.id_item[key]]
-        del self.id_item[key]
-
-    def __iter__(self):
-        return iter(self.id_item.values())
-
-    def keys(self):
-        return self.id_item.keys()
-
-    def values(self):
-        return self.id_item.values()
-
-    def items(self):
-        return self.id_item.items()
 
 
 def filter_closest_img(p4d, img_dict, plot_geo, dist_thresh=None, num=None):

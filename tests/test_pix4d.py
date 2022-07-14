@@ -4,7 +4,7 @@ import numpy as np
 import pyproj
 import re
 import easyidp as idp
-from easyidp.pix4d import _get_full_path as gfp
+from easyidp.pix4d import get_full_path as gfp
 
 data_path =  "./tests/data/pix4d"
 

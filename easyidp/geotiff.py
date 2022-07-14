@@ -792,7 +792,7 @@ def point_query(page, points_hv, header=None):
             wanted = cropped[0,0,:]
         if dsm:
             cropped.shape = (1, 1, 1)
-            cropped -> array([[-10000.]], dtype=float32)
+            cropped -> array([[-10000.]], dtype=np.float32)
             wanted = cropped[0,0]
         '''
         cropped = tifffile_crop(page, top=p[1], left=p[0], h=1, w=1)

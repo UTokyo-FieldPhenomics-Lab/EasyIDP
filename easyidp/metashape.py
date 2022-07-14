@@ -6,6 +6,7 @@ import warnings
 from xml.etree import ElementTree
 
 from .reconstruct import Container, Recons, Photo, Sensor, Calibration, ChunkTransform
+from .pathtools import parse_relative_path
 
 
 class Metashape(Recons):
@@ -14,23 +15,23 @@ class Metashape(Recons):
     def __init__(self, project_path=None, chunk_id=None):
         super(Metashape, self).__init__()
         self.software = "metashape"
+        self.transform = ChunkTransform()
 
         # the whole metashape project (parent) info
         self.project_folder = None
         self.project_name = None
-        self.project_dict = None
+        self.project_chunks_dict = None
 
         if project_path is not None:
             self._open_whole_project(project_path)
+            if chunk_id is not None:
+                self.open_chunk(chunk_id)
+        else:
+            if chunk_id is not None:
+                raise LookupError(
+                    f"Could not load chunk_id [{chunk_id}] for project_path [{project_path}]")
 
-        # metashape chunk.transform.matrix
-        # from kunihiro kodama's Metashape API usage <kkodama@kazusa.or.jp>
-        # >>> transm = chunk.transform.matrix
-        # >>> invm = Metashape.Matrix.inv(chunk.transform.matrix)
-        # invm.mulp(local_vec) --> transform chunk local coord to world coord(if you handle vec in local coord)
-        # how to calculate from xml data:
-        # https://www.agisoft.com/forum/index.php?topic=6176.0
-        #self.transform = MetashapeChunkTransform()
+        
 
     ###############
     # zip/xml I/O #
@@ -42,23 +43,26 @@ class Metashape(Recons):
             self._open_whole_project(project_path)
         else:
             # not given metashape project path when init this class
-            if self.project_dict is None:
+            if self.project_chunks_dict is None:
                 raise FileNotFoundError(
                     f"Not specify Metashape project (project_path="
                     f"'{os.path.join(self.project_folder, self.project_name)}')"
                     f"Please specify `project_path` to this function"
                 )
+        
+        if isinstance(chunk_id, int):
+            chunk_id = str(chunk_id)
 
-        if chunk_id in self.project_dict.keys():
-            chunk_dict = read_chunk_zip(
+        if chunk_id in self.project_chunks_dict.keys():
+            chunk_content_dict = read_chunk_zip(
                 self.project_folder, 
                 self.project_name, 
                 chunk_id=chunk_id, skip_disabled=False)
-            self._chunk_dict_to_object(chunk_dict)
+            self._chunk_dict_to_object(chunk_content_dict)
         else:
             raise KeyError(
                 f"Could not find chunk_id [{chunk_id}] in "
-                f"{list(self.project_dict.keys())}")
+                f"{list(self.project_chunks_dict.keys())}")
 
     def _open_whole_project(self, project_path):
         _check_is_software(project_path)
@@ -69,7 +73,7 @@ class Metashape(Recons):
 
         self.project_folder = folder_path
         self.project_name = project_name
-        self.project_dict = project_dict
+        self.project_chunks_dict = project_dict
 
     def _chunk_dict_to_object(self, chunk_dict):
         self.label = chunk_dict["label"]
@@ -84,74 +88,67 @@ class Metashape(Recons):
     # backward projection #
     #######################
 
-    def _local2world(self, points_df):
-        return apply_transform_matrix(self.transform.matrix, points_df)
+    def _local2world(self, points_np):
+        return apply_transform_matrix(points_np, self.transform.matrix)
 
-    def _world2local(self, points_df):
+    def _world2local(self, points_np):
         if self.transform.matrix_inv is None:
             self.transform.matrix_inv = np.linalg.inv(self.transform.matrix)
 
-        return apply_transform_matrix(self.transform.matrix_inv, points_df)
+        return apply_transform_matrix(points_np, self.transform.matrix_inv)
 
-    def _world2crs(self, points_df):
-        return apply_transform_crs(self.world_crs, self.crs, points_df)
+    def _world2crs(self, points_np):
+        return convert_proj3d(
+            points_np, self.world_crs, self.crs, is_geo=False
+        )
 
-    def _crs2world(self, points_df):
-        return apply_transform_crs(self.crs, self.world_crs, points_df)
+    def _crs2world(self, points_np):
+        return convert_proj3d(
+            points_np, self.crs, self.world_crs, is_geo=True
+        )
 
-    def back2raw_single(self, points_df, photo_id, distortion_correct=False):
+    def back2raw_single(self, points_np, photo_id, distortion_correct=False):
+
         camera_i = self.photos[photo_id]
         sensor_i = self.sensors[camera_i.sensor_id]
-        t = camera_i.get_camera_center()
+        t = camera_i.transform[0:3, 3]
         r = camera_i.transform[0:3, 0:3]
-        xyz = (points_df.values - t).dot(r)
 
-        x = xyz[:, 0] / xyz[:, 2]
-        y = xyz[:, 1] / xyz[:, 2]
+        points_np, is_single = _is_single_point(points_np)
 
-        w = sensor_i.width
-        h = sensor_i.height
-        f = sensor_i.calibration.f
-        cx = sensor_i.calibration.cx
-        cy = sensor_i.calibration.cy
+        xyz = (points_np - t).dot(r)
+
+        xh = xyz[:, 0] / xyz[:, 2]
+        yh = xyz[:, 1] / xyz[:, 2]
 
         # without distortion
-        if not distortion_correct:
+        if distortion_correct:
+                        # with distortion
+            u, v = sensor_i.calibration.calibrate(xh, yh)
+
+            out = np.vstack([u, v]).T
+
+        else:
+            w = sensor_i.width
+            h = sensor_i.height
+            f = sensor_i.calibration.f
+            cx = sensor_i.calibration.cx
+            cy = sensor_i.calibration.cy
+
             k = np.asarray([[f, 0, w / 2 + cx, 0],
                             [0, f, h / 2 + cy, 0],
                             [0, 0, 1, 0]])
 
             # make [x, y, 1, 1] for multiple points
-            pch = np.vstack([x, y, np.ones(len(x)), np.ones(len(x))]).T
+            pch = np.vstack([xh, yh, np.ones(len(xh)), np.ones(len(xh))]).T
             ppix = pch.dot(k.T)
 
-            return pd.DataFrame(ppix[:, 0:2], columns=['x', 'y'])
+            out = ppix[:, 0:2]
+
+        if is_single:
+            return out[0, :]
         else:
-            # with distortion
-            r2 = x ** 2 + y ** 2
-            r4 = r2 ** 2
-            r6 = r2 ** 3
-            r8 = r2 ** 4
-
-            k1 = sensor_i.calibration.k1
-            k2 = sensor_i.calibration.k2
-            k3 = sensor_i.calibration.k3
-            k4 = sensor_i.calibration.k4
-
-            p1 = sensor_i.calibration.t1
-            p2 = sensor_i.calibration.t2
-            b1 = sensor_i.calibration.b1
-            b2 = sensor_i.calibration.b2
-
-            eq_part1 = (1 + k1 * r2 + k2 * r4 + k3 * r6 + k4 * r8)
-
-            x_prime = x * eq_part1 + (p1 * (r2 + 2 * x ** 2) + 2 * p2 * x * y)
-            y_prime = y * eq_part1 + (p2 * (r2 + 2 * y ** 2) + 2 * p1 * x * y)
-
-            u = w * 0.5 + cx + x_prime * f + x_prime * b1 + y_prime * b2
-            v = h * 0.5 + cy + y_prime * f
-
-            return pd.DataFrame(np.vstack([u, v]).T, columns=['x', 'y'])
+            return out
 
 ###############
 # zip/xml I/O #
@@ -286,6 +283,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
     photos = Container()
     for camera_tag in xml_tree.findall("./cameras/camera"):
         camera = _decode_camera_tag(camera_tag)
+        camera.set_sensor(sensors[camera.sensor_id])
         photos[camera.id] = camera
     chunk_dict["photos"] = photos
 
@@ -302,23 +300,13 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
             # here need to resolve absolute path
             # <photo path="../../../../source/220613_G_M600pro/DSC06035.JPG">
             # this is the root to 220613_G_M600pro.files\0\0\frame.zip"
-            chunk_dict["photos"][camera_idx].path = parse_photo_relative_path(
+            chunk_dict["photos"][camera_idx].path = parse_relative_path(
                 frame_zip_file, camera_path
             )  
 
     chunk_dict["crs"] = _decode_chunk_reference_tag(xml_tree.findall("./reference"))
 
     return chunk_dict
-
-
-def parse_photo_relative_path(frame_zip_path, cam_relative_path):
-    if r"../../" in cam_relative_path:
-        frame_path = os.path.dirname(os.path.abspath(frame_zip_path))
-        merge = os.path.join(frame_path, cam_relative_path)
-        return os.path.abspath(merge)
-    else:
-        warnings.warn(f"Seems it is an absolute path [{cam_relative_path}]")
-        return cam_relative_path
 
 
 def _split_project_path(path: str):
@@ -450,6 +438,7 @@ def _decode_chunk_reference_tag(xml_obj):
 
     """
     crs_str = xml_obj[0].text
+    # metashape default value
     local_crs = 'LOCAL_CS["Local Coordinates (m)",LOCAL_DATUM["Local Datum",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
 
     if crs_str == local_crs:
@@ -457,10 +446,62 @@ def _decode_chunk_reference_tag(xml_obj):
     else:
         crs_obj = pyproj.CRS.from_string(crs_str)
 
-    # sometimes, the Photoscan given CRS string can not transform correctly
-    # this is the solution for "WGS 84" CRS shown in the previous example
+    '''
+    sometimes, the Photoscan given CRS string can not transform correctly
+    this is the solution for "WGS 84" CRS shown in the previous example
+    
+    <reference>GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9102"]],AUTHORITY["EPSG","4326"]]</reference>
+    
+    only works when pyproj==2.6.1.post
+    
+    when pyproj==3.3.1
+    crs_obj.datum = 
+      DATUM["World Geodetic System 1984",
+      ELLIPSOID["WGS 84",6378137,298.257223563,
+            LENGTHUNIT["metre",1]],
+      ID["EPSG",6326]]
+    pyproj.CRS.from_epsg(4326).datum = 
+      ENSEMBLE["World Geodetic System 1984 ensemble",
+      MEMBER["World Geodetic System 1984 (Transit)",
+          ID["EPSG",1166]],
+      MEMBER["World Geodetic System 1984 (G730)",
+          ID["EPSG",1152]],
+      MEMBER["World Geodetic System 1984 (G873)",
+          ID["EPSG",1153]],
+      MEMBER["World Geodetic System 1984 (G1150)",
+          ID["EPSG",1154]],
+      MEMBER["World Geodetic System 1984 (G1674)",
+          ID["EPSG",1155]],
+      MEMBER["World Geodetic System 1984 (G1762)",
+          ID["EPSG",1156]],
+      MEMBER["World Geodetic System 1984 (G2139)",
+          ID["EPSG",1309]],
+      ELLIPSOID["WGS 84",6378137,298.257223563,
+          LENGTHUNIT["metre",1],
+          ID["EPSG",7030]],
+      ENSEMBLEACCURACY[2.0],
+      ID["EPSG",6326]]
+    '''
     crs_wgs84 = pyproj.CRS.from_epsg(4326)
-    if crs_obj.datum == crs_wgs84.datum:
+
+    obj_d = crs_obj.datum.to_json_dict()
+    # {'$schema': 'https://proj.org/sch...chema.json', 
+    # 'type': 'GeodeticReferenceFrame', 
+    # 'name': 'World Geodetic System 1984', 
+    # 'ellipsoid': {'name': 'WGS 84', 'semi_major_axis': 6378137, 'inverse_flattening': 298.257223563}, 
+    # 'id': {'authority': 'EPSG', 'code': 6326}}
+
+    wgs84_d = crs_wgs84.datum.to_json_dict()
+    # {'$schema': 'https://proj.org/sch...chema.json', 
+    # 'type': 'DatumEnsemble', 
+    # 'name': 'World Geodetic Syste...4 ensemble', 
+    # 'members': [{...}, {...}, {...}, {...}, {...}, {...}, {...}], 
+    # 'ellipsoid': {'name': 'WGS 84', 'semi_major_axis': 6378137, 'inverse_flattening': 298.257223563}, 
+    # 'accuracy': '2.0', 
+    # 'id': {'authority': 'EPSG', 'code': 6326}}
+
+    if  obj_d["id"] == wgs84_d["id"] and \
+        obj_d["ellipsoid"] == wgs84_d["ellipsoid"]:
         return crs_wgs84
     else:
         return crs_obj
@@ -517,6 +558,7 @@ def _decode_sensor_tag(xml_obj):
     sensor.focal_length = float(xml_obj.findall("./property/[@name='focal_length']")[0].attrib["value"])
 
     sensor.calibration = _decode_calibration_tag(xml_obj.findall("./calibration")[0])
+    sensor.calibration.sensor = sensor
 
     return sensor
 
@@ -720,7 +762,7 @@ def _decode_frame_xml(xml_str):
 # calculation #
 ###############
 
-def apply_transform_matrix(matrix, points_xyz):
+def apply_transform_matrix(points_xyz, matrix):
     """
     Transforms a point or points in homogeneous coordinates.
     equal to Metashape.Matrix.mulp() or Metashape.Matrix.mulv()
@@ -750,15 +792,19 @@ def apply_transform_matrix(matrix, points_xyz):
         0  1  2  3
         1  4  5  6
     """
-    # may need if judge here
+    points_xyz, is_single = _is_single_point(points_xyz)
+
     point_ext = np.insert(points_xyz, 3, 1, axis=1)
     dot_matrix = point_ext.dot(matrix.T)
     dot_points = dot_matrix[:, 0:3] / dot_matrix[:, 3][:, np.newaxis]
 
-    return dot_points
+    if is_single:
+        return dot_points[0,:]
+    else:
+        return dot_points
 
 
-def apply_transform_crs(crs_origin, crs_target, points_df):
+def convert_proj3d(points_np, crs_origin, crs_target, is_geo=False):
     """
     Transform a point or points from one CRS to another CRS, by pyproj.CRS.Transformer function
 
@@ -768,11 +814,7 @@ def apply_transform_crs(crs_origin, crs_target, points_df):
 
     Parameters
     ----------
-    crs_origin: pyproj.CRS object
-
-    crs_target: pyproj.CRS object
-
-    points_df: pd.DataFrame
+    points_np: np.ndarray
            x  y  z
         0  1  2  3
 
@@ -782,28 +824,50 @@ def apply_transform_crs(crs_origin, crs_target, points_df):
         0    1    2    3
         1    4    5    6
 
+    crs_origin: pyproj.CRS object
+    crs_target: pyproj.CRS object
+    is_geo: bool, default false
+        whether points_np is geo coordinates
+        True: lon, lat, alt
+        False: x, y, z
+
     Returns
     -------
 
     """
     ts = pyproj.Transformer.from_crs(crs_origin, crs_target)
 
+    points_np, is_single = _is_single_point(points_np)
+
     # xyz order common points
-    if 'x' in points_df.columns.values:
+    if not is_geo:
         if crs_target.is_geocentric:
-            x, y, z = ts.transform(points_df.x.values, points_df.y.values, points_df.z.values)
-            return pd.DataFrame({'x':x, 'y':y, 'z':z})
+            x, y, z = ts.transform(*points_np.T)
+            out =  np.vstack([x, y, z]).T
 
         if crs_target.is_geographic:
-            lat, lon, alt = ts.transform(points_df.x.values, points_df.y.values, points_df.z.values)
-            return pd.DataFrame({'lon': lon, 'lat': lat, 'alt': alt})
-
-
-    if 'lat' in points_df.columns.values:
+            lat, lon, alt = ts.transform(*points_np.T)
+            # the pyproj output order is reversed
+            out = np.vstack([lon, lat, alt]).T
+    else:
         if crs_target.is_geocentric:
-            x, y, z = ts.transform(points_df.lat.values, points_df.lon.values, points_df.alt.values)
-            return pd.DataFrame({'x': x, 'y': y, 'z': z})
+            lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
+            x, y, z = ts.transform(lat, lon, alt)
+            out = np.vstack([x, y, z]).T
 
         if crs_target.is_geographic:
-            lat, lon, alt = ts.transform(points_df.lat.values, points_df.lon.values, points_df.alt.values)
-            return pd.DataFrame({'lon': lon, 'lat': lat, 'alt': alt})
+            lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
+            lat, lon, alt = ts.transform(lat, lon, alt)
+            out = np.vstack([lon, lat, alt]).T
+
+    if is_single:
+        return out[0, :]
+    else:
+        return out
+
+def _is_single_point(points_np):
+    if points_np.shape == (3,):
+        # with only single point
+        return np.array([points_np]), True
+    else:
+        return points_np, False

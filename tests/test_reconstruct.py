@@ -203,5 +203,21 @@ def test_class_container():
     for value in ctn.values():
         assert value in v
 
+def test_class_container_photo():
+    p1 = idp.reconstruct.Photo()
+    p2 = idp.reconstruct.Photo()
+    p1.id = 1
+    p1.label = "aaa.jpg"
+    p2.id = 2
+    p2.label = "bbb.jpg"
+
+    a = idp.reconstruct.Container()
+    a[p1.id] = p1
+    a[p2.id] = p2
+
+    assert len(a) == 2
+    assert a[1] == p1
+    assert a["bbb.jpg"] == p2
+
 def test_func_filter_cloest_img():
     pass

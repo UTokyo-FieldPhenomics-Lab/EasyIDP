@@ -3,6 +3,7 @@ import numpy as np
 import warnings
 from .reconstruct import Recons, Sensor, Photo
 from .shp import read_proj
+from .pathtools import get_full_path
 
 
 class Pix4D(Recons):
@@ -113,7 +114,7 @@ class Pix4D(Recons):
         pmat = read_pmat(p4d["param"]["pmat"])
 
         for i, img_label in enumerate(pmat.keys()):
-            img = Photo()
+            img = Photo(self.sensors[0])
             img.id = i
             img.label = img_label
             img.sensor_id = 0
@@ -124,7 +125,7 @@ class Pix4D(Recons):
                 img_list = os.listdir(raw_img_folder)
                 if img_label in img_list:
                     img_full_path = os.path.join(raw_img_folder, img_label)
-                    img.path = _get_full_path(img_full_path)
+                    img.path = get_full_path(img_full_path)
                 else:
                     warnings.warn(
                         f"Could not find [{img_label}] in given raw_img_folder"
@@ -197,29 +198,31 @@ class Pix4D(Recons):
         R = photo.rotation   # v1.0: R = param.img[image_name].cam_rot
 
         X_prime = (points - T).dot(R)
-        xh, yh = X_prime[:, 0] / X_prime[:, 2], X_prime[:, 1] / X_prime[:, 2]
+        xh = X_prime[:, 0] / X_prime[:, 2]
+        yh = X_prime[:, 1] / X_prime[:, 2]
 
         # olderversion
         # f = param.F * param.img[image_name].w / param.w_mm
         # cx = param.Px * param.img[image_name].w / param.w_mm
         # cy = param.Py * param.img[image_name].h / param.h_mm
         calibration = self.sensors[photo.sensor_id].calibration
-        f = calibration.f
-        cx = calibration.cx
-        cy = calibration.cy
-
-        xb = f * xh + cx
-        yb = f * yh + cy
 
         if distort_correct:
-            xb, yb = calibration.calibrate(xb, yb)
+            xb, yb = calibration.calibrate(xh, yh)
+        else:
+            f = calibration.f
+            cx = calibration.cx
+            cy = calibration.cy
+
+            xb = f * xh + cx
+            yb = f * yh + cy
 
         #xa = xb
         #ya = param.img[image_name].h - yb
         #coords_a = np.hstack([xa[:, np.newaxis], ya[:, np.newaxis]])
-        coords_b = np.hstack([xb[:, np.newaxis], yb[:, np.newaxis]])
+        #coords_b = np.hstack([xb[:, np.newaxis], yb[:, np.newaxis]])
+        return np.vstack([xb, yb]).T
 
-        return coords_b
 
     def _pmatrix_calc(self, points, photo, distort_correct=True):
         """Calculate backward projection by pix4d pmatrix
@@ -242,7 +245,7 @@ class Pix4D(Recons):
 
         xyz1_prime = np.insert(points, 3, 1, axis=1)
         xyz = (xyz1_prime).dot(photo.transform.T)  # v1.0: param.img[image_name].pmat.T
-        u = xyz[:, 0] / xyz[:, 2]
+        u = xyz[:, 0] / xyz[:, 2]   # already the pixel coords
         v = xyz[:, 1] / xyz[:, 2]
 
         calibration = self.sensors[photo.sensor_id].calibration
@@ -331,13 +334,6 @@ def _match_suffix(folder, ext):
     return find_path
 
 
-def _get_full_path(short_path):
-    if isinstance(short_path, str):
-        return os.path.abspath(os.path.normpath(short_path))
-    else:
-        return None
-
-
 def parse_p4d_param_folder(param_path:str):
     param_dict = {}
     # keys = ["project_name", "xyz", "pmat", "cicp", "ccp"]
@@ -346,7 +342,7 @@ def parse_p4d_param_folder(param_path:str):
 
     if len(param_files) < 6:
         raise FileNotFoundError(
-            f"Given param folder [{_get_full_path(param_path)}] "
+            f"Given param folder [{get_full_path(param_path)}] "
             "does not have enough param files to parse"
         )
 
@@ -466,7 +462,7 @@ def parse_p4d_project(project_path:str, param_folder=None):
     """
     p4d = {"param": None, "pcd": None, "dom": None, "dsm": None, "undist_raw": None, "project_name": None}
 
-    project_path = _get_full_path(project_path)
+    project_path = get_full_path(project_path)
     sub_folder = os.listdir(project_path)
 
     #################################
@@ -589,7 +585,7 @@ def read_pmat(pmat_path):
         pmat_dict = {"DJI_0000.JPG": nparray(3x4), ... ,"DJI_9999.JPG": nparray(3x4)}
 
     """
-    pmat_nb = np.loadtxt(pmat_path, dtype=float, delimiter=None, usecols=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,))
+    pmat_nb = np.loadtxt(pmat_path, dtype=np.float, delimiter=None, usecols=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,))
     pmat_names = np.loadtxt(pmat_path, dtype=str, delimiter=None, usecols=0)
 
     pmat_dict = {}
@@ -706,24 +702,24 @@ def read_ccp(ccp_path):
                 img_configs['w'] = int(w)
                 img_configs['h'] = int(h)
             elif block_id == 2:
-                cam_mat_line1 = np.fromstring(line, dtype=float, sep=' ')
+                cam_mat_line1 = np.fromstring(line, dtype=np.float, sep=' ')
             elif block_id == 3:
-                cam_mat_line2 = np.fromstring(line, dtype=float, sep=' ')
+                cam_mat_line2 = np.fromstring(line, dtype=np.float, sep=' ')
             elif block_id == 4:
-                cam_mat_line3 = np.fromstring(line, dtype=float, sep=' ')
+                cam_mat_line3 = np.fromstring(line, dtype=np.float, sep=' ')
                 img_configs[file_name]['cam_matrix'] = np.vstack([cam_mat_line1, cam_mat_line2, cam_mat_line3])
             elif block_id == 5:
-                img_configs[file_name]['rad_distort'] = np.fromstring(line, dtype=float, sep=' ')
+                img_configs[file_name]['rad_distort'] = np.fromstring(line, dtype=np.float, sep=' ')
             elif block_id == 6:
-                img_configs[file_name]['tan_distort'] = np.fromstring(line, dtype=float, sep=' ')
+                img_configs[file_name]['tan_distort'] = np.fromstring(line, dtype=np.float, sep=' ')
             elif block_id == 7:
-                img_configs[file_name]['cam_pos'] = np.fromstring(line, dtype=float, sep=' ')
+                img_configs[file_name]['cam_pos'] = np.fromstring(line, dtype=np.float, sep=' ')
             elif block_id == 8:
-                cam_rot_line1 = np.fromstring(line, dtype=float, sep=' ')
+                cam_rot_line1 = np.fromstring(line, dtype=np.float, sep=' ')
             elif block_id == 9:
-                cam_rot_line2 = np.fromstring(line, dtype=float, sep=' ')
+                cam_rot_line2 = np.fromstring(line, dtype=np.float, sep=' ')
             elif block_id == 0:
-                cam_rot_line3 = np.fromstring(line, dtype=float, sep=' ')
+                cam_rot_line3 = np.fromstring(line, dtype=np.float, sep=' ')
                 cam_rot = np.vstack([cam_rot_line1, cam_rot_line2, cam_rot_line3])
                 img_configs[file_name]['cam_rot'] = cam_rot
 

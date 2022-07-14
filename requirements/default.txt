@@ -13,7 +13,8 @@ tabulate >= 0.8.9
 tqdm >= 4.64.0
 
 # transform between CRS projections
-pyproj>=2.6.1.post1
+# pyproj==2.6.1.post1
+pyproj ~= 3.3.1
 
 # read geotiff file
 tifffile>=2020.09.03

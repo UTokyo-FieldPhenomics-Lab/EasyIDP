@@ -202,7 +202,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         return shp_dict
 
 
-def convert_proj(shp_dict, shp_proj, target_proj):
+def convert_proj(shp_dict, origin_proj, target_proj):
     """ 
     Provide the geo coordinate transfrom based on pyproj package
 
@@ -217,7 +217,7 @@ def convert_proj(shp_dict, shp_proj, target_proj):
         [1] pyproj.CRS.from_epsg(4326)  # default WGS 84 longitude latitude
         [2] r'path/to/{shp_name}.prj',
     """
-    transformer = pyproj.Transformer.from_proj(shp_proj, target_proj)
+    transformer = pyproj.Transformer.from_proj(origin_proj, target_proj)
     trans_dict = {}
     for k, coord_np in shp_dict.items():
         transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
@@ -225,12 +225,13 @@ def convert_proj(shp_dict, shp_proj, target_proj):
 
         # judge if has inf value, means convert fail
         if True in np.isinf(coord_np):
-            raise ValueError(f'Fail to convert points from "{shp_proj.name}" to '
-                             f'"{target_proj.name}"(dsm projection), '
-                             f'this may caused by the uncertainty of .prj file strings, '
-                             f'please check the coordinate manually via QGIS Layer Infomation, '
-                             f'get the EPGS code, and specify the function argument'
-                             f'read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))')
+            raise ValueError(
+                f'Fail to convert points from "{origin_proj.name}" to '
+                f'"{target_proj.name}"(dsm projection), '
+                f'this may caused by the uncertainty of .prj file strings, '
+                f'please check the coordinate manually via QGIS Layer Infomation, '
+                f'get the EPGS code, and specify the function argument'
+                f'read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))')
         trans_dict[k] = coord_np
 
     return trans_dict

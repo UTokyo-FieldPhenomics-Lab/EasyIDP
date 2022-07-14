@@ -1,4 +1,5 @@
 import os
+import weakref
 import pyproj
 import numpy as np
 from .geotiff import GeoTiff
@@ -180,7 +181,7 @@ class Sensor:
 
         self.focal_length = 0.0  # in mm
 
-        self.calibration = Calibration()
+        self.calibration = Calibration(self)
 
     def in_img_boundary(self, polygon_hv, ignore=None, log=False):
         """Judge whether given polygon is in the image area, and move points to boundary if specify ignore.
@@ -254,12 +255,13 @@ class Photo:
             self.cam_rot = cam_rot   -> rotation
     """
 
-    def __init__(self):
+    def __init__(self, sensor=None):
         self.id = 0
         self.path = ""
         self._path = ""
         self.label = ""
         self.sensor_id = 0
+        self.set_sensor(sensor)
         self.enabled = False
 
         # reconstruction info in local coord
@@ -280,6 +282,11 @@ class Photo:
         #self.xyz = {"X": 0, "Y": 0, "Z": 0}
         #self.orientation = {"yaw": 0.0, "pitch": 0.0, "roll": 0.0}
 
+    def set_sensor(self, sensor):
+        if sensor is None:
+            self.sensor = None
+        else:
+            self.sensor = weakref.ref(sensor)
 
     def img_exists(func):
         # the decorator to check if image exists
@@ -294,27 +301,16 @@ class Photo:
     def get_imarray(self, roi=None):
         pass
 
-    @property
-    def center(self):
-        # the camera center? is the last column of transform matrix
-        # correct!
-        return self.transform[0:3, 3]
-
-    #def get_rotation_r(self):
-        # the camera rotation R is the first 3x3 part of transform matrix, ideally,
-        # but actually is self.rotation, not the same
-        # return self.transform[0:3, 0:3]
-    #    pass
-
 
 class Calibration:
 
-    def __init__(self):
+    def __init__(self, sensor=None):
         self.software = "metashape"
         self.type = "frame"
+        self.set_sensor(sensor)
+
         # focal length
         self.f = 0.0  # unit is px, not mm for pix4d
-        #self.f_unit = "px"
 
         # principle point offset
         # metashape: In the older versions Cx and Cy were given in pixels from the top-left corner of the image,
@@ -343,6 +339,12 @@ class Calibration:
         self.t3 = self.p3 = 0.0  # metashape -> p3
         self.t4 = self.p4 = 0.0  # metashape -> p4
 
+    def set_sensor(self, sensor):
+        if sensor is None:
+            self.sensor = None
+        else:
+            self.sensor = weakref.ref(sensor)
+
     def calibrate(self, u, v):
         if self.software == "pix4d":
             if self.type == "frame":
@@ -366,20 +368,19 @@ class Calibration:
                 "not {self.type}")
 
     def _calibrate_pix4d_frame(self, u, v):
-        """Convert pix4d produced undistorted images pixel coordinate
-        to original image pixel coordinate
+        """Convert undistorted images -> original image pixel coordinate
 
         Parameters
         ----------
         u : ndarray
-            the x pixel coordinate
+            the x pixel coordinate after R transform
         v : ndarray
-            the y pixel coordinate
+            the y pixel coordinate after R transform
 
         Returns
         -------
         xb, yb: 
-            the pixel coordinate on the raw image
+            the pixel coordinate on the original image
 
         Notes
         -----
@@ -400,18 +401,75 @@ class Calibration:
         xhd = a1 * xh + 2 * self.t1 * xh * yh + self.t2 * (r2 + 2 * xh ** 2)
         yhd = a1 * yh + 2 * self.t2 * xh * yh + self.t1 * (r2 + 2 * yh ** 2)
 
-        xb = f * xhd + cx
-        yb = f * yhd + cy
+        xh = f * xhd + cx
+        yh = f * yhd + cy
+
+        return xh, yh
+
+    def _calibrate_metashape_frame(self, xh, yh):
+        """Convert undistorted images -> original image pixel coordinate
+
+        Parameters
+        ----------
+        xh : ndarray
+            the x pixel coordinate after R transform
+        yh : ndarray
+            the y pixel coordinate after R transform
+
+        Returns
+        -------
+        xb, yb: 
+            the pixel coordinate on the original image
+
+        Notes
+        -----
+        Formula please refer: Appendix C. Camera models
+        https://www.agisoft.com/pdf/metashape-pro_1_7_en.pdf
+        """
+        r2 = xh ** 2 + yh ** 2
+        r4 = r2 ** 2
+        r6 = r2 ** 3
+        r8 = r2 ** 4
+
+        f = self.f
+        cx = self.cx
+        cy = self.cy
+
+        k1 = self.k1
+        k2 = self.k2
+        k3 = self.k3
+        k4 = self.k4
+
+        p1 = self.t1
+        p2 = self.t2
+        b1 = self.b1
+        b2 = self.b2
+
+        w = self.sensor.width
+        h = self.sensor.height
+
+        eq_part1 = (1 + k1 * r2 + k2 * r4 + k3 * r6 + k4 * r8)
+
+        x_prime = xh * eq_part1 + (p1 * (r2 + 2 * xh ** 2) + 2 * p2 * xh * yh)
+        y_prime = yh * eq_part1 + (p2 * (r2 + 2 * yh ** 2) + 2 * p1 * xh * yh)
+
+        xb = w * 0.5 + cx + x_prime * f + x_prime * b1 + y_prime * b2
+        yb = h * 0.5 + cy + y_prime * f
 
         return xb, yb
-
-    def _calibrate_metashape_frame(self, u, v):
-        pass
 
 
 class ChunkTransform:
 
     def __init__(self):
+        """metashape chunk.transform.matrix
+        from kunihiro kodama's Metashape API usage <kkodama@kazusa.or.jp>
+        >>> transm = chunk.transform.matrix
+        >>> invm = Metashape.Matrix.inv(chunk.transform.matrix)
+        invm.mulp(local_vec) --> transform chunk local coord to world coord(if you handle vec in local coord)
+        how to calculate from xml data:
+        https://www.agisoft.com/forum/index.php?topic=6176.0
+        """
         self.matrix = None
         self.rotation = None
         self.translation = None

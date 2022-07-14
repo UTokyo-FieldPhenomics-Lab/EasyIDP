@@ -2,7 +2,7 @@
 
 <p>
    <!-- <a align="left" href="https://ultralytics.com/yolov5" target="_blank"> -->
-   <img width="850" src="https://github.com/HowcanoeWang/EasyIDP/wiki/static/easyidp_head.svg"></a>
+   <img width="850" src="docs/_static/images/header_v2.0.png"></a>
 </p>
 
 <p align="center">
@@ -17,8 +17,9 @@
 
 EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions: 
 
-1. crop ROI on GeoTiff Maps (DOM & DSM) and Point Cloud.
-2. Backward Projection ROI to original images.
+1. Backward Projection ROI to original images (`Backward Projector`).
+2. Crop ROI on GeoTiff Maps (DOM & DSM) and Point Cloud (`ROI Cropper`).
+3. Save cropped results to corresponding files (`ROI Saver`).
 
 This project tried to use packges based on pure-python, instead of installing some heavy packages (Open3D, OpenCV) and hard to install packages (GDAL dependices) for one or two individual functions. This may cause efficiency loss and differences in coding habit.
 

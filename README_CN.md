@@ -2,7 +2,7 @@
 
 <p>
    <!-- <a align="left" href="https://ultralytics.com/yolov5" target="_blank"> -->
-   <img width="850" src="https://github.com/HowcanoeWang/EasyIDP/wiki/static/easyidp_head.svg"></a>
+   <img width="850" src="docs/_static/images/header_v2.0.png"></a>
 </p>
 
 <p align="center">
@@ -16,8 +16,9 @@
 </div>
 EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)产品上感兴趣区域(ROI)的软件包(主要是农业应用)，提供如下的功能：
 
-1. 在正射地图(DOM)、高程图(DSM)和点云上把ROI切出来
-2. 把ROI反投影回原始图片上
+1. 把ROI反投影回原始图片上 (`Backward Projector`)
+2. 在正射地图(DOM)、高程图(DSM)和点云上把ROI切出来 (`ROI Cropper`)
+3. 把切块后的结果保存为对应文件格式 (`ROI Saver`)
 
 本项目尽量使用纯python实现的第三方库，避免因为个别功能而去使用可能安装失败的GDAL库依赖包(GeoPandas, GDAL)和过于繁重的大型库(如Open3D, OpenCV)，因此效率和代码习惯上会有一些损失。
 

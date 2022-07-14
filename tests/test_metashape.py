@@ -5,6 +5,8 @@ import pyproj
 import numpy as np
 import easyidp as idp
 
+ms_path = "tests/data/metashape"
+
 #########################
 # test math calculation #
 #########################
@@ -66,15 +68,31 @@ def test_class_init_metashape():
     assert m1.software == "metashape"
 
     # load with project_path
-
+    m2 = idp.Metashape(project_path=os.path.join(ms_path, "goya_test.psx"))
+    assert m2.project_name == "goya_test"
+    assert m2.label == ''
 
     # load with project_path + chunk_id
-
+    m2 = idp.Metashape(
+        project_path=os.path.join(ms_path, "goya_test.psx"), chunk_id=0
+    )
+    assert m2.project_name == "goya_test"
+    ## check values
+    assert m2.label == 'Chunk 1'
+    assert m2.meta == {}
+    assert len(m2.photos) == 259
+    assert m2.photos[0].label == "DJI_0284.JPG"
+    assert m2.photos[0].enabled == False
+    assert m2.photos[0].path == "//172.31.12.56/pgg2020a/drone/20201029/goya/DJI_0284.JPG"
+    assert m2.photos[0].rotation.shape == (3, 3)
+    assert m2.photos[0].sensor.width == m2.sensors[0].width
 
     # error init with chunk_id without project_path
+    with pytest.raises(
+        LookupError, 
+        match=re.escape("Could not load chunk_id ")):
+        m3 = idp.Metashape(chunk_id=0)
 
-
-    # check values
 
 def test_local2world2local():
     attempt1 = idp.Metashape()
@@ -97,7 +115,6 @@ def test_local2world2local():
     local_pos = attempt1._world2local(w_pos)
     np.testing.assert_array_almost_equal(l_pos, local_pos, decimal=6)
 
-ms_path = "tests/data/metashape"
 
 def test_metashape_project_local_points_on_raw():
     test_project_folder = os.path.join(ms_path, "goya_test.psx")

@@ -30,7 +30,6 @@ class Metashape(Recons):
             if chunk_id is not None:
                 raise LookupError(
                     f"Could not load chunk_id [{chunk_id}] for project_path [{project_path}]")
-
         
 
     ###############
@@ -283,7 +282,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
     photos = Container()
     for camera_tag in xml_tree.findall("./cameras/camera"):
         camera = _decode_camera_tag(camera_tag)
-        camera.set_sensor(sensors[camera.sensor_id])
+        camera.sensor = sensors[camera.sensor_id]
         photos[camera.id] = camera
     chunk_dict["photos"] = photos
 

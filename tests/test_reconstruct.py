@@ -197,8 +197,8 @@ def test_class_container():
     for idx, value in ctn.items():
         assert value in v
 
-    for key in ctn.keys():
-        assert key in k
+    for key in ctn.keys():  # [6,7,8,9,10]
+        assert key in [6,7,8,9,10]
 
     for value in ctn.values():
         assert value in v

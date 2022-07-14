@@ -1,5 +1,4 @@
 import os
-import weakref
 import pyproj
 import numpy as np
 from .geotiff import GeoTiff
@@ -21,7 +20,6 @@ class Container(dict):
         self.item_label[item.label] = key
 
     def __getitem__(self, key):
-        print(type(key))
         if isinstance(key, int):  # index by photo order
             return self.id_item[key]
         elif isinstance(key, str):  # index by photo name
@@ -45,7 +43,7 @@ class Container(dict):
         return iter(self.id_item.values())
 
     def keys(self):
-        return self.id_item.keys()
+        return self.item_label.keys()
 
     def values(self):
         return self.id_item.values()
@@ -261,7 +259,7 @@ class Photo:
         self._path = ""
         self.label = ""
         self.sensor_id = 0
-        self.set_sensor(sensor)
+        self.sensor = sensor
         self.enabled = False
 
         # reconstruction info in local coord
@@ -282,12 +280,6 @@ class Photo:
         #self.xyz = {"X": 0, "Y": 0, "Z": 0}
         #self.orientation = {"yaw": 0.0, "pitch": 0.0, "roll": 0.0}
 
-    def set_sensor(self, sensor):
-        if sensor is None:
-            self.sensor = None
-        else:
-            self.sensor = weakref.ref(sensor)
-
     def img_exists(func):
         # the decorator to check if image exists
         def wrapper(self, *args, **kwargs):
@@ -307,7 +299,7 @@ class Calibration:
     def __init__(self, sensor=None):
         self.software = "metashape"
         self.type = "frame"
-        self.set_sensor(sensor)
+        self.sensor = sensor
 
         # focal length
         self.f = 0.0  # unit is px, not mm for pix4d
@@ -338,12 +330,6 @@ class Calibration:
         self.t2 = self.p2 = 0.0  # metashape -> p2
         self.t3 = self.p3 = 0.0  # metashape -> p3
         self.t4 = self.p4 = 0.0  # metashape -> p4
-
-    def set_sensor(self, sensor):
-        if sensor is None:
-            self.sensor = None
-        else:
-            self.sensor = weakref.ref(sensor)
 
     def calibrate(self, u, v):
         if self.software == "pix4d":

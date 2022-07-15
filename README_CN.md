@@ -142,6 +142,11 @@ array([[ 779,  902],
        [ 779,  902]])
 ```
  
+保存反投影的图片结果：
+
+```python
+img_dict = roi.back2raw(chunk1, save_folder="folder/to/put/results/")
+```
 </details>
 
 

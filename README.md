@@ -62,7 +62,7 @@ The 2D roi can be used to crop the DOM, DSM, and point cloud (`2.crop by ROI`). 
 </details>
 
 <details close>
-<summary>2. crop by ROI</summary>
+<summary>2. Crop by ROI</summary>
 
 Read the DOM and DSM Geotiff Maps
 ```python
@@ -134,7 +134,13 @@ array([[ 779,  902],
        [ 834, 1166],
        [ 779,  902]])
 ```
- 
+
+Save backward projected images
+
+```python
+img_dict = roi.back2raw(chunk1, save_folder="folder/to/put/results/")
+```
+
 </details>
 
 ## <div align="center">References</div>

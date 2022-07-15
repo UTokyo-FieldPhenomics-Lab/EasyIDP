@@ -11,6 +11,6 @@ build/*
 docs/_build/*
 dist/*
 easyidp.egg-info/*
-notes/static/data/*
+dev.notes/*
 tests/data/*
 tests/out/*

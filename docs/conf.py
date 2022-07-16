@@ -31,6 +31,9 @@ release = 'v2.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',   # support numpy docs string
+    'sphinx.ext.todo'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -52,8 +55,11 @@ language = 'zh_CN'
 # a list of builtin themes.
 #
 html_theme = 'furo'
+html_title = "EasyIDP 2.0"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+todo_include_todos = True

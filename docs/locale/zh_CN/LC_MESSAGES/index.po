@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-16 14:29+0900\n"
+"POT-Creation-Date: 2022-07-16 18:45+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.10.1\n"
 
-#: ../../index.rst:7
+#: ../../index.rst:37
+msgid "Getting started"
+msgstr "快速上手"
+
+#: ../../index.rst:44
+msgid "Backgrounds"
+msgstr "背景知识"
+
+#: ../../index.rst:52
+msgid "Python API"
+msgstr ""
+
+#: ../../index.rst:60
+msgid "Development"
+msgstr "项目开发"
+
+#: ../../index.rst:8
 msgid "Welcome to EasyIDP's documentation!"
 msgstr "欢迎查阅EasyIDP官方文档"
 
@@ -25,7 +41,7 @@ msgstr "欢迎查阅EasyIDP官方文档"
 msgid "Header Page"
 msgstr ""
 
-#: ../../index.rst:12
+#: ../../index.rst:13
 msgid ""
 "EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing "
 "with region of interest (ROI) on the image reconstruction (Metashape & "
@@ -33,15 +49,15 @@ msgid ""
 "following functions:"
 msgstr "EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)产品上感兴趣区域(ROI)的软件包(主要是农业应用)，提供如下的功能："
 
-#: ../../index.rst:14
+#: ../../index.rst:15
 msgid "Backward Projection ROI to original images."
 msgstr "把ROI反投影回原始图片上"
 
-#: ../../index.rst:15
+#: ../../index.rst:16
 msgid "Clip ROI on GeoTiff Maps (DOM & DSM) and Point Cloud."
 msgstr "在正射地图(DOM)、高程图(DSM)和点云上把ROI切出来"
 
-#: ../../index.rst:16
+#: ../../index.rst:17
 msgid "Save cropped results to corresponding files"
 msgstr "把切块后的结果保存为对应文件格式"
 
@@ -57,20 +73,19 @@ msgstr ""
 msgid "GitHub top language"
 msgstr ""
 
-#: ../../index.rst:32
+#: ../../index.rst:33
 msgid "Target Translation"
 msgstr "这是一个多语言文档，你可以通过左下角来切换文档语言\n"
 
-#: ../../index.rst:34
+#: ../../index.rst:35
 msgid ""
 "This is a multi-language document, you can change document languages at "
 "the bottom left corner."
 msgstr ""
 
-#: ../../index.rst:38
-msgid "Getting Started"
-msgstr "快速上手"
-
 #~ msgid "首页"
 #~ msgstr ""
+
+#~ msgid "Header Page"
+#~ msgstr "首页"
 

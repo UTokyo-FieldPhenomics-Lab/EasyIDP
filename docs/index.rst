@@ -34,16 +34,37 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
    
    This is a multi-language document, you can change document languages at the bottom left corner.
 
-
-Getting Started
-===============
-
 .. toctree::
+   :hidden:
    :maxdepth: 1
+   :caption: Getting started
 
    install
-   contribute
 
+.. toctree::
+   :hidden:
+   :maxdepth: 2
+   :caption: Backgrounds
+
+   backgrounds/virtualenv
+   backgrounds/roi_marking
+
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Python API
+
+   python_api/index
+   python_api/pointcloud
+
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Development
+
+   contribute
 
 .. Getting Started
 .. ==================

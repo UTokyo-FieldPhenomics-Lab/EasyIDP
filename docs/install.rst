@@ -55,7 +55,7 @@ Then install the package by:
     `virtual environment <https://docs.python-guide.org/dev/virtualenvs/>`_
     or `conda environment <https://docs.conda.io/en/latest/miniconda.html>`_ to avoid dependices conflict with your local environment.
 
-    Please refer :doc:`virtualenv` for more details.
+    Please refer :doc:`backgrounds/virtualenv` for more details.
 
     For Linux users, depending on the configurations, ``pip3`` may be needed for
     Python 3, or the ``--user`` option may need to be used to avoid permission

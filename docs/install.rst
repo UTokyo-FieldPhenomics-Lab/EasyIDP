@@ -11,12 +11,8 @@ EasyIDP Python packages are distributed via
 
 Supported Python versions:
 
-.. hlist::
-    :columns: 3
-
-    * 3.7
-    * 3.8
-    * 3.9
+* 3.8
+* 3.9
 
 Supported operating systems:
 

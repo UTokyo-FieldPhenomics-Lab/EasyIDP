@@ -14,11 +14,11 @@ tqdm >= 4.64.0
 
 # transform between CRS projections
 # pyproj==2.6.1.post1
-pyproj ~= 3.3.1
+pyproj >= 3.2.0
 
 # read geotiff file
 tifffile>=2020.09.03
-imagecodecs>=2022.2.22
+imagecodecs>=2021.11.20
 
 # polygon analysis
 shapely ~= 1.8.0

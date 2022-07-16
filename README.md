@@ -172,7 +172,6 @@ We also thanks the benefits from the following open source projects:
 * shapely: [https://github.com/shapely/shapely](https://github.com/shapely/shapely)
 * laspy/lasrs/lasio: [https://github.com/laspy/laspy](https://github.com/laspy/laspy)
 * plyfile: [https://github.com/dranjan/python-plyfile](https://github.com/dranjan/python-plyfile)
-* ezdxf: [https://github.com/mozman/ezdxf](https://github.com/mozman/ezdxf)
 * pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
 * tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
 * tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)

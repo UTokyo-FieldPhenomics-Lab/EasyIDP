@@ -37,8 +37,5 @@ laspy>=2.1.2
 # read ply file:
 plyfile==0.7.2
 
-# read dxf file:
-ezdxf==0.16.4
-
 # read shp file:
 pyshp==2.1.3

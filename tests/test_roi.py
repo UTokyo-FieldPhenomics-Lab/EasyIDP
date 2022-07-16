@@ -1,4 +1,5 @@
 import os
+import re
 import pytest
 import numpy as np
 
@@ -29,6 +30,7 @@ def test_read_cc_txt():
 
     np.testing.assert_almost_equal(lxyz_np, results)
 
+
 def test_class_roi_init():
     roi = idp.ROI()
 
@@ -52,6 +54,25 @@ def test_class_roi_read_shp():
 
     assert roi.crs.name == "WGS 84"
     assert "N1W1" in roi.keys()
+
+def test_class_read_labelme_json():
+    json_path = r"./tests/data/json_test/labelme_demo_img.json"
+
+    roi = idp.ROI(json_path)
+
+    assert roi['1'][0,0] == 2447.239263803681
+
+    # test errors
+    err_json = r"./tests/data/json_test/for_read_json.json"
+    with pytest.raises(TypeError, match=re.escape("It seems [./tests/data/json_test/for_read_json.json] is not a Labelme json file")):
+        roi = idp.ROI(err_json)
+
+    # test warnings
+    warn_json = r"./tests/data/json_test/labelme_warn_img.json"
+    with pytest.warns(UserWarning, match=re.escape("Only labelme [polygon] shape are accepted, not [points] of [1]")):
+        roi = idp.ROI(warn_json)
+
+        assert len(roi) == 0
 
 
 def test_class_roi_change_crs():

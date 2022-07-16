@@ -9,7 +9,7 @@ from .pathtools import get_full_path
 class Pix4D(Recons):
 
     def __init__(self, project_path=None, raw_img_folder=None, param_folder=None):
-        super(Pix4D, self).__init__()
+        super().__init__()
         self.software = "pix4d"
 
         if project_path is not None:
@@ -477,7 +477,7 @@ def parse_p4d_project(project_path:str, param_folder=None):
     if '1_initial' not in sub_folder and param_folder is None:
         raise FileNotFoundError(f"Current folder [{project_path}] is not a standard pix4d projects folder, please manual speccify `param_folder`")
 
-    if os.path.exists(param_folder):
+    if os.path.exists(param_folder) and len(os.listdir(param_folder)) > 0:
         param = parse_p4d_param_folder(param_folder)
         p4d["param"] = param
         project_name = param["project_name"]

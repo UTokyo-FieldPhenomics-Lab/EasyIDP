@@ -13,7 +13,7 @@ class Metashape(Recons):
     # the object for each chunk in Metashape project
 
     def __init__(self, project_path=None, chunk_id=None):
-        super(Metashape, self).__init__()
+        super().__init__()
         self.software = "metashape"
         self.transform = ChunkTransform()
 

@@ -1,8 +1,10 @@
 import os
 import pyproj
+import warnings
 import numpy as np
 from .shp import read_proj, read_shp, convert_proj, show_shp_fields
 from .reconstruct import Container
+from .jsonfile import read_json
 
 class ROI(Container):
     """
@@ -15,18 +17,25 @@ class ROI(Container):
         # self.id_item = {}
         # self.item_label = {}
         # if has CRS -> GPS coordiantes -> geo2pix convert
-        self.crs = None
+        self.crs = None   # default -> pixel coords
         self.source = target_path
 
         if target_path is not None:
-            ext = os.path.splitext(target_path)[-1]
-            if ext == ".shp":
-                self.read_shp(target_path)
+            self.open(target_path)
+            
 
     def __setitem__(self, key, item):
         idx = len(self.id_item)
         self.id_item[idx] = item
         self.item_label[key] = idx
+
+
+    def open(self, target_path):
+        ext = os.path.splitext(target_path)[-1]
+        if ext == ".shp":
+            self.read_shp(target_path)
+        elif ext == ".json":
+            self.read_labelme_json(target_path)
 
 
     def read_shp(self, shp_path, shp_proj=None, name_field=None, include_title=False, encoding='utf-8'):
@@ -42,6 +51,29 @@ class ROI(Container):
 
         for k, v in roi_dict.items():
             self[k] = v
+
+    def read_labelme_json(self, json_path):
+        js_dict = read_json(json_path)
+
+        # check if is labelme json
+        if all(x in js_dict.keys() for x in ["version", "flags", "shapes", "imagePath", "imageHeight"]):
+
+            # init values
+            self.crs = None
+            self.id_item = {}
+            self.item_label = {}
+
+            for shapes in js_dict["shapes"]:
+                if shapes["shape_type"] == "polygon":
+                    label = shapes["label"]
+                    poly = shapes["points"]
+
+                    self[label] = np.array(poly)
+                else:
+                    warnings.warn(
+                        f"Only labelme [polygon] shape are accepted, not [{shapes['shape_type']}] of [{shapes['label']}]")
+        else:
+            raise TypeError(f"It seems [{json_path}] is not a Labelme json file.")
 
     def change_crs(self, target_crs):
         if self.crs is None:
@@ -60,9 +92,9 @@ class ROI(Container):
         self.crs = target_crs
         
 
-    def get_z_from_dsm(self, dsm_path):
+    def get_z_from_dsm(self, dsm_path, by="mean", buffer=0):
         """
-        get_z_by : str, optional
+        by : str, optional
             ["local", "mean", "min", "max", "all"], by default 'mean'
             - "local" using the z value of where boundary points located, each point will get different z-values
                     -> this will get a 3D curved mesh of ROI
@@ -71,7 +103,7 @@ class ROI(Container):
             - "max": 95th percentile mean height (the mean value of all pixels > 95th percentile)
             - "all": using the mean value of whole DSM as the same z-value for all boundary points
                     -> this will get a 2D plane of ROI
-        get_z_buffer : int, optional
+        buffer : int, optional
             the buffer of ROI, by default 0
             it is suitable when the given ROI is points rather than polygons. Given this paramter will generate a round buffer
                 polygon first, then extract the z-value by this region, but the return will only be a single point

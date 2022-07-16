@@ -15,6 +15,8 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath("../"))
 
+import easyidp
+
 # -- Project information -----------------------------------------------------
 
 project = 'EasyIDP'
@@ -22,7 +24,9 @@ copyright = '2022, Haozhou Wang'
 author = 'Haozhou Wang'
 
 # The full version, including alpha/beta/rc tags
-release = 'v2.0'
+release = easyidp.__version__
+
+print(easyidp.__version__)
 
 
 # -- General configuration ---------------------------------------------------

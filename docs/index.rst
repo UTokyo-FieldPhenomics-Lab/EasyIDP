@@ -8,7 +8,7 @@ Welcome to EasyIDP's documentation!
 ===================================
 
 .. image:: _static/images/header_v2.0.png
-   :alt: Header Page
+   :alt: header_v2.0.png
 
 EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions:
 
@@ -29,10 +29,17 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
 .. image:: https://img.shields.io/github/languages/top/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub top language
 
-.. tip::
-   Target Translation
+.. admonition:: other languages
    
-   This is a multi-language document, you can change document languages at the bottom left corner.
+   This is a multi-language document, you can change document languages here or at the bottom left corner.
+
+   .. hlist::
+      :columns: 3
+
+      * `English <https://easyidp.readthedocs.io/en/latest/>`_
+      * `中文 <https://easyidp.readthedocs.io/zh-CN/latest/>`_
+      * `日本語(翻訳募集) <https://easyidp.readthedocs.io/ja/latest/>`_
+
 
 .. toctree::
    :hidden:

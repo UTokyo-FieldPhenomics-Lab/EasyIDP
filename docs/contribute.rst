@@ -47,6 +47,6 @@ To be continued
 
 
 Todo lists
-----------
+==========
 
 .. todolist::

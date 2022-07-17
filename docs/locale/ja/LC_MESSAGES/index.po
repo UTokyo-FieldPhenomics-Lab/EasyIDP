@@ -19,11 +19,11 @@ msgstr ""
 
 #: ../../index.rst:44
 msgid "Getting started"
-msgstr "快速上手"
+msgstr "はじめに"
 
 #: ../../index.rst:51
 msgid "Backgrounds"
-msgstr "背景知识"
+msgstr "背景"
 
 #: ../../index.rst:60
 msgid "Python API"
@@ -31,11 +31,11 @@ msgstr ""
 
 #: ../../index.rst:69
 msgid "Development"
-msgstr "项目开发"
+msgstr "開発"
 
 #: ../../index.rst:8
 msgid "Welcome to EasyIDP's documentation!"
-msgstr "欢迎查阅EasyIDP官方文档"
+msgstr "EasyIDPのドキュメントへようこそ!"
 
 #: ../../index.rst:-1
 msgid "header_v2.0.png"
@@ -47,19 +47,21 @@ msgid ""
 "with region of interest (ROI) on the image reconstruction (Metashape & "
 "Pix4D) outputs, mainly in agriculture applications. It provides the "
 "following functions:"
-msgstr "EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)产品上感兴趣区域(ROI)的软件包(主要是农业应用)，提供如下的功能："
+msgstr ""
+"EasyIDP (Easy Intermediate Data Processor) は、主に農業分野での画像再構成（Metashape & "
+"Pix4D）出力における関心領域（ROI）を処理するための便利なツールです。以下の機能を備えています。"
 
 #: ../../index.rst:15
 msgid "Backward Projection ROI to original images."
-msgstr "把ROI反投影回原始图片上"
+msgstr "元画像への逆投影ROI。"
 
 #: ../../index.rst:16
 msgid "Clip ROI on GeoTiff Maps (DOM & DSM) and Point Cloud."
-msgstr "在正射地图(DOM)、高程图(DSM)和点云上把ROI切出来"
+msgstr "GeoTiffマップ(DOM & DSM)と点群にROIをクリップします。"
 
 #: ../../index.rst:17
 msgid "Save cropped results to corresponding files"
-msgstr "把切块后的结果保存为对应文件格式"
+msgstr "切り出した結果を対応するファイルに保存"
 
 #: ../../index.rst:-1
 msgid "GitHub code size in bytes"
@@ -75,13 +77,13 @@ msgstr ""
 
 #: ../../index.rst:32
 msgid "other languages"
-msgstr "其他语言"
+msgstr "他言語"
 
 #: ../../index.rst:34
 msgid ""
 "This is a multi-language document, you can change document languages here"
 " or at the bottom left corner."
-msgstr "这是一个多语言文档，你可以通过这里或左下角切换语言"
+msgstr "これは多言語の文書です、ここか左下で文書の言語を変更できます。"
 
 #: ../../index.rst:39
 msgid "`English <https://easyidp.readthedocs.io/en/latest/>`_"

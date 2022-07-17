@@ -77,7 +77,7 @@ Then install the package by:
 Using from source code
 ======================
 
-If you need to make some changes to the source code (e.g. fix bugs) and want it work immediately. You can also using from the source code directly.
+If you need to make some changes to the source code (e.g. fix bugs) and want it work immediately (rather than waiting for offical fix). You can also using from the source code directly.
 
 .. tip::
     Please ensure you have uninstalled the pypi easyidp in your current environment:

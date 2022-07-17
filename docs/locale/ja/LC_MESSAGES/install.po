@@ -19,17 +19,17 @@ msgstr ""
 
 #: ../../install.rst:5
 msgid "Install EasyIDP"
-msgstr "安装EasyIDP"
+msgstr ""
 
 #: ../../install.rst:8
 msgid ""
 "EasyIDP Python packages are distributed via `PyPI "
 "<https://pypi.org/project/easyidp/>`_."
-msgstr "EasyIDP的Python包通过 `PyPI <https://pypi.org/project/easyidp/>`_ 来进行发布."
+msgstr ""
 
 #: ../../install.rst:12
 msgid "Supported Python versions:"
-msgstr "支持的Python版本："
+msgstr ""
 
 #: ../../install.rst:14
 msgid "3.8"
@@ -41,7 +41,7 @@ msgstr ""
 
 #: ../../install.rst:17
 msgid "Supported operating systems:"
-msgstr "支持的操作系统："
+msgstr ""
 
 #: ../../install.rst:19
 msgid "Windows 10 (64-bit)"
@@ -55,7 +55,7 @@ msgstr ""
 msgid ""
 "The following operating system should also works, but have not been "
 "tested:"
-msgstr "下面的这些操作系统应该也可行，但是没有官方测试过"
+msgstr ""
 
 #: ../../install.rst:24
 msgid "Ubuntu 18.04+"
@@ -69,21 +69,21 @@ msgstr ""
 msgid ""
 "Using this package requires basic Python programming knowledge, including"
 " basic python gramma and package installation."
-msgstr "使用这个软件包需要使用者有基本的Python编程基础知识，包括基本的Python语法和安装第三方包的能力"
+msgstr ""
 
 #: ../../install.rst:31
 msgid "Install from PyPI"
-msgstr "从PyPI安装"
+msgstr ""
 
 #: ../../install.rst:33
 msgid ""
 "Here assuming the user has python3 and pip installed in the computer, and"
 " in the command line, the following operation works:"
-msgstr "这边假设用户已经把Python3和pip成功安装到电脑上，然后在命令行里也可以成功的进行如下指令："
+msgstr ""
 
 #: ../../install.rst:42
 msgid "Then install the package by:"
-msgstr "然后通过下面的方法来安装所需要的包："
+msgstr ""
 
 #: ../../install.rst:50
 msgid ""
@@ -92,13 +92,10 @@ msgid ""
 "<https://docs.conda.io/en/latest/miniconda.html>`_ to avoid dependices "
 "conflict with your local environment."
 msgstr ""
-"通常情况下，我们推荐使用 `虚拟环境 <https://docs.python-guide.org/dev/virtualenvs/>`_ 或 "
-"`conda环境 <https://docs.conda.io/en/latest/miniconda.html>`_ "
-"来避免和你本地环境中的依赖版本冲突."
 
 #: ../../install.rst:54
 msgid "Please refer :doc:`backgrounds/virtualenv` for more details."
-msgstr "更多细节请参考 :doc:`使用虚拟环境 <backgrounds/virtualenv>`."
+msgstr ""
 
 #: ../../install.rst:56
 msgid ""
@@ -106,51 +103,42 @@ msgid ""
 "for Python 3, or the ``--user`` option may need to be used to avoid "
 "permission issues. For example:"
 msgstr ""
-"对于Linux用户来说，取决于具体的设置。Python3的版本可能需要安装 ``pip3``，  或者需要额外提供 ``--user`` "
-"选项来避免权限问题，例如："
 
 #: ../../install.rst:70
 msgid ""
 "For users in China, it is recommended to use Tsinghua source to "
 "accelerate the download speed:"
-msgstr "对于中国的用户，推荐使用清华源来加速下载速度："
+msgstr ""
 
 #: ../../install.rst:78
 msgid "Using from source code"
-msgstr "使用源码"
+msgstr ""
 
 #: ../../install.rst:80
-#, fuzzy
 msgid ""
 "If you need to make some changes to the source code (e.g. fix bugs) and "
 "want it work immediately (rather than waiting for offical fix). You can "
 "also using from the source code directly."
-msgstr "如果你对源代码进行一些修改(如修复bug)并且想让它立即生效(而不是等待easyidp官方修复)。这种情况下可以直接使用源码"
+msgstr ""
 
 #: ../../install.rst:83
 msgid ""
 "Please ensure you have uninstalled the pypi easyidp in your current "
 "environment:"
-msgstr "请确保从PyPI安装的easyidp已经从环境中移除："
+msgstr ""
 
 #: ../../install.rst:89
 msgid "and need to restart python to make changes taking effects."
-msgstr "并且需要重启python来让改变生效"
+msgstr ""
 
 #: ../../install.rst:92
 msgid ""
 "Assuming the source package was downloaded in "
 "``C:\\path\\to\\source\\code`` and the ``code`` folder has the following "
 "files:"
-msgstr "假设源代码已经被下载到 ``C:\\path\\to\\source\\code`` 文件夹内，并且 ``code`` 文件夹有着如下的文件结构："
+msgstr ""
 
 #: ../../install.rst:104
 msgid "Then you can used the following code to manual import easyidp package:"
-msgstr "然后可以用下面的代码来手动导入easyidp的包："
-
-#~ msgid "Install"
-#~ msgstr "安装"
-
-#~ msgid "3.7"
-#~ msgstr ""
+msgstr ""
 

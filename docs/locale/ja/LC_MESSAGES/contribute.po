@@ -19,28 +19,28 @@ msgstr ""
 
 #: ../../contribute.rst:5
 msgid "Contribute"
-msgstr "贡献"
+msgstr ""
 
 #: ../../contribute.rst:8
 msgid "Code contribution"
-msgstr "贡献代码"
+msgstr ""
 
 #: ../../contribute.rst:10 ../../contribute.rst:22 ../../contribute.rst:40
 #: ../../contribute.rst:46
 msgid "To be continued"
-msgstr "待续"
+msgstr ""
 
 #: ../../contribute.rst:20
 msgid "Bug reports"
-msgstr "汇报错误"
+msgstr ""
 
 #: ../../contribute.rst:26
 msgid "Documentation"
-msgstr "文档"
+msgstr ""
 
 #: ../../contribute.rst:29
 msgid "Build documentation"
-msgstr "构建文档"
+msgstr ""
 
 #: ../../contribute.rst:31
 msgid ""
@@ -49,9 +49,6 @@ msgid ""
 "`sphinx <http://www.sphinx-doc.org/>`_. Hosted publishing by `ReadTheDocs"
 " <https://readthedocs.org/>`_ platform."
 msgstr ""
-"主文档是通过 `reStructuredText <http://www.sphinx-"
-"doc.org/en/stable/rest.html>`_ 来进行书写，并且使用 `sphinx <http://www.sphinx-"
-"doc.org/>`_ 来生成。在线文档通过 `ReadTheDocs <https://readthedocs.org/>`_ 平台来进行托管."
 
 #: ../../contribute.rst:35
 msgid ""
@@ -60,17 +57,16 @@ msgid ""
 "possible due to the python cross-platform features but it is not "
 "officially tested."
 msgstr ""
-"文档已经在Windows 11 (开发平台)和Linux "
-"(ReadTheDocs平台)通过了构建测试。由于python的跨平台特性，在macOS上构建文档应该也可行但是没有进行过官方测试。 "
 
 #: ../../contribute.rst:38
 msgid "Prerequisites"
-msgstr "先决依赖"
+msgstr ""
 
 #: ../../contribute.rst:44
 msgid "Translation"
-msgstr "翻译文档"
+msgstr ""
 
 #: ../../contribute.rst:50
 msgid "Todo lists"
-msgstr "代办列表"
+msgstr ""
+

@@ -1,0 +1,94 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022, Haozhou Wang
+# This file is distributed under the same license as the EasyIDP package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: EasyIDP \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-07-16 19:46+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.1\n"
+
+#: ../../python_api/index.rst:3
+msgid "API Summary"
+msgstr ""
+
+#: ../../python_api/index.rst:5
+msgid "The EasyIDP package have the following modules:"
+msgstr ""
+
+#: ../../python_api/index.rst:7
+msgid ":doc:`Point cloud Module <./pointcloud>`."
+msgstr ""
+
+#: ../../python_api/pointcloud.rst:3
+msgid "Point Cloud"
+msgstr ""
+
+#: ../../python_api/pointcloud.rst:7
+msgid "Class"
+msgstr ""
+
+#: easyidp.pointcloud.PointCloud.crop_point_cloud:1 of
+msgid "crop the point cloud along z axis"
+msgstr ""
+
+#: easyidp.pointcloud.PointCloud.crop_point_cloud easyidp.pointcloud.write_ply
+#: of
+msgid "参数"
+msgstr ""
+
+#: easyidp.pointcloud.PointCloud.crop_point_cloud:3 of
+msgid "the polygon xy coords"
+msgstr ""
+
+#: easyidp.pointcloud.PointCloud.crop_point_cloud of
+msgid "返回"
+msgstr ""
+
+#: easyidp.pointcloud.PointCloud.crop_point_cloud:6 of
+msgid "The cropped point cloud"
+msgstr ""
+
+#: easyidp.pointcloud.PointCloud.crop_point_cloud of
+msgid "返回类型"
+msgstr ""
+
+#: ../../python_api/pointcloud.rst:15
+msgid "Functions"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:1 of
+msgid "Save point cloud to ply format"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:3 of
+msgid "the nx3 numpy ndarray of point XYZ info"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:5 of
+msgid "the nx3 numpy ndarray of point RGB info, dtype=np.uint8"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:7 of
+msgid "the output point cloud file, including ext."
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:9 of
+msgid "the nx3 numpy ndarray of point normal info, by default None"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:11 of
+msgid ""
+"whether save the binary file. by default True: save BINARY ply file "
+"False: save ASCII ply file."
+msgstr ""
+

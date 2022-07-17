@@ -37,7 +37,7 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
       :columns: 3
 
       * `English <https://easyidp.readthedocs.io/en/latest/>`_
-      * `中文 <https://easyidp.readthedocs.io/zh-CN/latest/>`_
+      * `中文 <https://easyidp.readthedocs.io/zh_CN/latest/>`_
       * `日本語(翻訳募集) <https://easyidp.readthedocs.io/ja/latest/>`_
 
 

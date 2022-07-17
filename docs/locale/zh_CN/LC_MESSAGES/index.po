@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-17 09:04+0900\n"
+"POT-Creation-Date: 2022-07-17 09:15+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -88,7 +88,7 @@ msgid "`English <https://easyidp.readthedocs.io/en/latest/>`_"
 msgstr ""
 
 #: ../../index.rst:40
-msgid "`中文 <https://easyidp.readthedocs.io/zh-CN/latest/>`_"
+msgid "`中文 <https://easyidp.readthedocs.io/zh_CN/latest/>`_"
 msgstr ""
 
 #: ../../index.rst:41

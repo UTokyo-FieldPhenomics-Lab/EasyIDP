@@ -102,7 +102,7 @@ msgstr ""
 
 #: ../../backgrounds/roi_marking.rst:3
 msgid "Region of Interest (ROI) Marking"
-msgstr ""
+msgstr "関心領域(ROI)マーキング"
 
 #: ../../backgrounds/roi_marking.rst:6
 msgid "1\\. Marking ROI on digital images"
@@ -385,7 +385,7 @@ msgstr ""
 
 #: ../../backgrounds/virtualenv.rst:5
 msgid "Use Virtual Environment"
-msgstr ""
+msgstr "仮想環境の利用"
 
 #: ../../backgrounds/virtualenv.rst:7
 msgid "Please choose either ``virtualenv`` python package or ``conda``."

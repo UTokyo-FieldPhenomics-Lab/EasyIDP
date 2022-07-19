@@ -37,7 +37,8 @@ print(easyidp.__version__)
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',   # support numpy docs string
-    'sphinx.ext.todo'
+    'sphinx.ext.todo',
+    "sphinx_inline_tabs",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

@@ -81,9 +81,8 @@ msgid ""
 msgstr ""
 
 #: ../../contribute.rst:58
-#, fuzzy
 msgid "Then you can build the documentation by:"
-msgstr "ビルドドキュメント"
+msgstr "そうすれば、次のようにドキュメントを構築することができます。"
 
 #: ../../contribute.rst:64
 msgid ""

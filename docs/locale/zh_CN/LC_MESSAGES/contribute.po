@@ -35,7 +35,7 @@ msgstr "汇报错误"
 
 #: ../../contribute.rst:26
 msgid "Documentation"
-msgstr "文档"
+msgstr "撰写文档"
 
 #: ../../contribute.rst:28
 msgid ""

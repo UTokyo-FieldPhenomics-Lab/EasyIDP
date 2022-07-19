@@ -120,7 +120,6 @@ msgid "Using from source code"
 msgstr "使用源码"
 
 #: ../../install.rst:80
-#, fuzzy
 msgid ""
 "If you need to make some changes to the source code (e.g. fix bugs) and "
 "want it work immediately (rather than waiting for offical fix). You can "

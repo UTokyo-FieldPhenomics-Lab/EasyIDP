@@ -55,6 +55,7 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
 
    backgrounds/virtualenv
    backgrounds/roi_marking
+   backgrounds/geotiff_transparency
 
 
 .. toctree::

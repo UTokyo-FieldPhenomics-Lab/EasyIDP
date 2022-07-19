@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-16 22:48+0900\n"
+"POT-Creation-Date: 2022-07-19 17:57+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,89 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.10.1\n"
+
+#: ../../backgrounds/geotiff_transparency.rst:3
+msgid "GeoTiff Transparency"
+msgstr "GeoTiffの透明度"
+
+#: ../../backgrounds/geotiff_transparency.rst:6
+msgid "Background"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:8
+msgid ""
+"In the most cases, the region of interest (ROI) is not perfectly fit the "
+"rectangle image boundary, and the other part is not what we need, and "
+"\"mute\" them will make the later analysis easier"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:-1
+msgid "crop_png.png"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:13
+msgid ""
+"For GeoTiff, there are two methods to mark the transparency part, for "
+"equalized RGB type or reflectance type respectively. Please check `Pix4D "
+"| Relectance map vs Orthomosaic <https://support.pix4d.com/hc/en-"
+"us/articles/202739409-Reflectance-map-vs-orthomosaic>`_ for more details."
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:16
+msgid ""
+"provide an extra mask layer (channel), like PNG image format does. This "
+"suits for RGB GeoTiff type (e.g. Orthomosaic DOM). Their values are "
+"equalized and stretched into integer ranging from 0 to 255. This method "
+"can represent different transparency strength without lossing original "
+"pixel values."
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:17
+msgid ""
+"change pixel value to -10000 (default, or other no-data value specified "
+"in geotiff tag). This method suits for Reflectance GeoTiff type (e.g. "
+"DSM, multispectral map). Their values are not stretched, and different "
+"layer has different value ranges"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:20
+msgid "Check data"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:22
+msgid ""
+"For example, we have 2 different type of Geotiff data, "
+"``index_trans.tif`` is reflectance map while ``mosaic_trans.tif`` is RGB "
+"map."
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:-1
+msgid "ref_rgb.png"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:27
+msgid ""
+"The data can be loaded by ``tifffile`` package or ``rasterio`` (hard to "
+"install sometimes, but please check the docs for more detail about "
+"GeoTiff masks: `RasterIO docs | Nodata Masks "
+"<https://rasterio.readthedocs.io/en/latest/topics/masks.html>`_)"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:37
+msgid "check Geotiff tags:"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:48
+msgid "check Geotiff values:"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:57
+msgid "RGB value and its range"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:74
+msgid "Reflectance value and its range"
+msgstr ""
 
 #: ../../backgrounds/roi_marking.rst:3
 msgid "Region of Interest (ROI) Marking"

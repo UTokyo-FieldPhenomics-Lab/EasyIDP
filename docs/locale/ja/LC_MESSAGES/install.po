@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../install.rst:5
 msgid "Install EasyIDP"
-msgstr ""
+msgstr "EasyIDPのインストール"
 
 #: ../../install.rst:8
 msgid ""

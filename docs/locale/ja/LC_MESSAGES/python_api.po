@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../python_api/index.rst:3
 msgid "API Summary"
-msgstr ""
+msgstr "API概要"
 
 #: ../../python_api/index.rst:5
 msgid "The EasyIDP package have the following modules:"
@@ -31,7 +31,7 @@ msgstr ""
 
 #: ../../python_api/pointcloud.rst:3
 msgid "Point Cloud"
-msgstr ""
+msgstr "点群"
 
 #: ../../python_api/pointcloud.rst:7
 msgid "Class"

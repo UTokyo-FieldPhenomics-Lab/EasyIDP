@@ -19,28 +19,28 @@ msgstr ""
 
 #: ../../contribute.rst:5
 msgid "Contribute"
-msgstr ""
+msgstr "貢献する"
 
 #: ../../contribute.rst:8
 msgid "Code contribution"
-msgstr ""
+msgstr "コード提供"
 
 #: ../../contribute.rst:10 ../../contribute.rst:22 ../../contribute.rst:40
 #: ../../contribute.rst:46
 msgid "To be continued"
-msgstr ""
+msgstr "続きはこちら"
 
 #: ../../contribute.rst:20
 msgid "Bug reports"
-msgstr ""
+msgstr "バグ報告"
 
 #: ../../contribute.rst:26
 msgid "Documentation"
-msgstr ""
+msgstr "ドキュメント作成"
 
 #: ../../contribute.rst:29
 msgid "Build documentation"
-msgstr ""
+msgstr "ビルドドキュメント"
 
 #: ../../contribute.rst:31
 msgid ""
@@ -60,13 +60,13 @@ msgstr ""
 
 #: ../../contribute.rst:38
 msgid "Prerequisites"
-msgstr ""
+msgstr "前提条件"
 
 #: ../../contribute.rst:44
 msgid "Translation"
-msgstr ""
+msgstr "翻訳"
 
 #: ../../contribute.rst:50
 msgid "Todo lists"
-msgstr ""
+msgstr "Todoリスト"
 

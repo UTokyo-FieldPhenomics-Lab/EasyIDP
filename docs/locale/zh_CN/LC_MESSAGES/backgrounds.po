@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-16 22:48+0900\n"
+"POT-Creation-Date: 2022-07-19 17:57+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,93 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.10.1\n"
+
+#: ../../backgrounds/geotiff_transparency.rst:3
+msgid "GeoTiff Transparency"
+msgstr "GeoTiff透明度"
+
+#: ../../backgrounds/geotiff_transparency.rst:6
+msgid "Background"
+msgstr "背景"
+
+#: ../../backgrounds/geotiff_transparency.rst:8
+msgid ""
+"In the most cases, the region of interest (ROI) is not perfectly fit the "
+"rectangle image boundary, and the other part is not what we need, and "
+"\"mute\" them will make the later analysis easier"
+msgstr "大部分情况下，感兴趣区域(ROI)并不能完美的符合矩形图片的边界，外部的那些部分是我们不需要的，将它排除可以降低后续数据处理的难度"
+
+#: ../../backgrounds/geotiff_transparency.rst:-1
+msgid "crop_png.png"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:13
+msgid ""
+"For GeoTiff, there are two methods to mark the transparency part, for "
+"equalized RGB type or reflectance type respectively. Please check `Pix4D "
+"| Relectance map vs Orthomosaic <https://support.pix4d.com/hc/en-"
+"us/articles/202739409-Reflectance-map-vs-orthomosaic>`_ for more details."
+msgstr "对于GeoTiff有两种制作透明部分的方法，分别是用来对付RGB类和反射波谱类。查看下面的网站获取更多信息：`Pix4D "
+"| Relectance map vs Orthomosaic <https://support.pix4d.com/hc/en-"
+"us/articles/202739409-Reflectance-map-vs-orthomosaic>`_“
+
+#: ../../backgrounds/geotiff_transparency.rst:16
+msgid ""
+"provide an extra mask layer (channel), like PNG image format does. This "
+"suits for RGB GeoTiff type (e.g. Orthomosaic DOM). Their values are "
+"equalized and stretched into integer ranging from 0 to 255. This method "
+"can represent different transparency strength without lossing original "
+"pixel values."
+msgstr "像PNG格式那样使用额外的alpha图层来表示透明度，适合RGB图像类的GeoTiff，如正摄影像DOM等。像素的数值被均衡和拉伸成为0-255范围内的整数。这个方法可以表示不同的透明度程度，并且不会丢失原本的像素信息"
+
+#: ../../backgrounds/geotiff_transparency.rst:17
+msgid ""
+"change pixel value to -10000 (default, or other no-data value specified "
+"in geotiff tag). This method suits for Reflectance GeoTiff type (e.g. "
+"DSM, multispectral map). Their values are not stretched, and different "
+"layer has different value ranges"
+msgstr "直接把透明地方的像素值修改为-10000(默认值，或者其他Geotiff无数据标签指定的值)。这个方法适合反射波谱类的Geotiff，如地形图DSM，多光谱图。像素值没有进行任何拉伸处理，不同的图层可以拥有完全不同的数值范围"
+
+#: ../../backgrounds/geotiff_transparency.rst:20
+msgid "Check data"
+msgstr "数据检查"
+
+#: ../../backgrounds/geotiff_transparency.rst:22
+msgid ""
+"For example, we have 2 different type of Geotiff data, "
+"``index_trans.tif`` is reflectance map while ``mosaic_trans.tif`` is RGB "
+"map."
+msgstr "例如，我们有下面两个不同的Geotiff数据，``index_trans.tif`` 是反射波谱图而 ``mosaic_trans.tif`` 是RGB图"
+
+#: ../../backgrounds/geotiff_transparency.rst:-1
+msgid "ref_rgb.png"
+msgstr ""
+
+#: ../../backgrounds/geotiff_transparency.rst:27
+msgid ""
+"The data can be loaded by ``tifffile`` package or ``rasterio`` (hard to "
+"install sometimes, but please check the docs for more detail about "
+"GeoTiff masks: `RasterIO docs | Nodata Masks "
+"<https://rasterio.readthedocs.io/en/latest/topics/masks.html>`_)"
+msgstr "具体的像素数据可以用 ``tifffile`` 包，或者比较难安装的 ``rasterio`` 包（但请务必查看文档里面的GeoTiff无数据掩膜部分："
+" `RasterIO docs | Nodata Masks "
+"<https://rasterio.readthedocs.io/en/latest/topics/masks.html>`_)"
+
+#: ../../backgrounds/geotiff_transparency.rst:37
+msgid "check Geotiff tags:"
+msgstr "检查Geotiff的标签"
+
+#: ../../backgrounds/geotiff_transparency.rst:48
+msgid "check Geotiff values:"
+msgstr "检查Geotiff像素值"
+
+#: ../../backgrounds/geotiff_transparency.rst:57
+msgid "RGB value and its range"
+msgstr "RGB的值和范围"
+
+#: ../../backgrounds/geotiff_transparency.rst:74
+msgid "Reflectance value and its range"
+msgstr "反射波谱的值和范围"
 
 #: ../../backgrounds/roi_marking.rst:3
 msgid "Region of Interest (ROI) Marking"
@@ -117,8 +204,10 @@ msgid ""
 "points to txt file. Users can also choosing other 3D software which can "
 "obtain the point coordinates, and saving ``x,y,z`` points to ``*.txt`` "
 "file."
-msgstr "一个开源的软件 `CloudCompare <http://cloudcompare.org/>`_ "
-"被用来标注点云的ROI并且把点保存为txt格式。用户也可以选择其他能够获取点坐标的3D软件，并且把点 ``x,y,z`` 保存为 ``*.txt`` 文件。"
+msgstr ""
+"一个开源的软件 `CloudCompare <http://cloudcompare.org/>`_ "
+"被用来标注点云的ROI并且把点保存为txt格式。用户也可以选择其他能够获取点坐标的3D软件，并且把点 ``x,y,z`` 保存为 "
+"``*.txt`` 文件。"
 
 #: ../../backgrounds/roi_marking.rst:113
 msgid "ROI marking"

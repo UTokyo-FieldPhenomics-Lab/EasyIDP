@@ -68,3 +68,8 @@ html_title = "EasyIDP 2.0"
 html_static_path = ['_static']
 
 todo_include_todos = True
+
+#---------------
+# numpy documentations
+napoleon_google_docstring = False
+napoleon_use_admonition_for_references = True

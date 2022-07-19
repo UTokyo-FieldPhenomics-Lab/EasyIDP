@@ -28,15 +28,20 @@ Create virtual env
 Activate virtual env
 --------------------
 
-.. code-block:: bash
+.. tab:: Windows
 
-    # on windows
-    C:\path\to\env\folder> easyidp\Scripts\activate.bat
-    (easyidp) C:\path\to\env\folder>
+    .. code-block:: bash
 
-    # on linux
-    path/to/env/folder$ source easyidpName/bin/activate
-    (easyidp) path/to/env/folder$
+        C:\path\to\env\folder> easyidp\Scripts\activate.bat
+        (easyidp) C:\path\to\env\folder>
+
+
+.. tab:: Linux/BSD
+
+    .. code-block:: bash
+
+        path/to/env/folder$ source easyidp/bin/activate
+        (easyidp) path/to/env/folder$
 
 Install EasyIDP package
 ------------------------

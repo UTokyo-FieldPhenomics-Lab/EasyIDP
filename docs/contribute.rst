@@ -175,18 +175,18 @@ Please do the following things:
 Lastly, change the language of local preview ( ``-Dlanguage='your_lang'`` ), and render the document pages:
 
 
-.. tab:: Linux/BSD
-
-    .. code-block:: bash
-
-        (venv) EasyIDP/docs> make -e SPHINXOPTS="-Dlanguage='zh_CN'" html
-
 .. tab:: Windows
 
     .. code-block:: bash
 
         (venv) EasyIDP/docs> set SPHINXOPTS=-Dlanguage=zh_CN
         (venv) EasyIDP/docs> make html
+
+.. tab:: Linux/BSD
+
+    .. code-block:: bash
+
+        (venv) EasyIDP/docs> make -e SPHINXOPTS="-Dlanguage='zh_CN'" html
 
 You can open the ``_build\html\index.html`` to see the generated documentations.
 

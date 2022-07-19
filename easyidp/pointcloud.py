@@ -361,31 +361,34 @@ def write_ply(points, colors, ply_path, normals=None, binary=True):
         the nx3 numpy ndarray of point normal info, by default None
     binary : bool, optional
         whether save the binary file.
-        by default True: save BINARY ply file
+        True: save BINARY ply file (by default)
         False: save ASCII ply file.
-    """
-    
-    '''
+
     Notes
     -----
-    need to convert to structured arrays then save
-    https://github.com/dranjan/python-plyfile#creating-a-ply-file
+    Need to convert to structured arrays [1]_ then save 
     the point cloud structure looks like this:
-    >>> cloud_data.elements
-    (PlyElement('vertex', 
-        (PlyProperty('x', 'float'), 
-        PlyProperty('y', 'float'), 
-        PlyProperty('z', 'float'), 
-        PlyProperty('red', 'uchar'), 
-        PlyProperty('green', 'uchar'), 
-        PlyProperty('blue', 'uchar')), count=42454, comments=[]),)
+
+    .. code-block:: python
+
+        >>> cloud_data.elements
+        (PlyElement('vertex', 
+            (PlyProperty('x', 'float'), 
+             PlyProperty('y', 'float'), 
+             PlyProperty('z', 'float'), 
+             PlyProperty('red', 'uchar'), 
+             PlyProperty('green', 'uchar'), 
+             PlyProperty('blue', 'uchar')), count=42454, comments=[]),)
     
-    and numpy way to convert ndarray to strucutred array:
-    https://stackoverflow.com/questions/3622850/converting-a-2d-numpy-array-to-a-structured-array
-    
-    and method to merge to structured arrays
-    https://stackoverflow.com/questions/5355744/numpy-joining-structured-arrays
-    '''
+    convert ndarray to strucutred array [2]_ and method to merge to structured arrays [3]_
+
+    References
+    ----------
+    .. [1] https://github.com/dranjan/python-plyfile#creating-a-ply-file
+    .. [2] https://stackoverflow.com/questions/3622850/converting-a-2d-numpy-array-to-a-structured-array
+    .. [3] https://stackoverflow.com/questions/5355744/numpy-joining-structured-arrays
+
+    """
 
     # convert to strucutrre array
     struct_points = np.core.records.fromarrays(points.T, names="x, y, z")

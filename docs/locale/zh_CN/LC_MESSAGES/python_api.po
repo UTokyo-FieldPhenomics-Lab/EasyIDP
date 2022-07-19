@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-16 19:19+0900\n"
+"POT-Creation-Date: 2022-07-20 00:49+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -88,6 +88,42 @@ msgstr "点云的法向量信息numpy ndarray (nx3)，默认为None"
 
 #: easyidp.pointcloud.write_ply:11 of
 msgid ""
-"whether save the binary file. by default True: save BINARY ply file "
+"whether save the binary file. True: save BINARY ply file (by default) "
 "False: save ASCII ply file."
-msgstr "是否保存为二进制文件。默认True:保存为BINARY点云PLY文件;False: 保存为ASCII点云PLY文件"
+msgstr "是否保存为二进制文件。 默认True:保存为BINARY点云PLY文件;  False: 保存为ASCII点云PLY文件"
+
+#: easyidp.pointcloud.write_ply:17 of
+msgid "提示"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:18 of
+msgid ""
+"Need to convert to structured arrays [1]_ then save the point cloud "
+"structure looks like this:"
+msgstr "需要转换成结构性数组(structured arrays) [1]_ ， 然后保存像这样的点云结构"
+
+#: easyidp.pointcloud.write_ply:32 of
+msgid ""
+"convert ndarray to strucutred array [2]_ and method to merge to "
+"structured arrays [3]_"
+msgstr "把ndarray转换为结构性数组的方法 [2]_ 与合并结构性数组的方法 [3]_ "
+
+#: easyidp.pointcloud.write_ply:34 of
+msgid "引用"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:36 of
+msgid "https://github.com/dranjan/python-plyfile#creating-a-ply-file"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:37 of
+msgid ""
+"https://stackoverflow.com/questions/3622850/converting-a-2d-numpy-array-"
+"to-a-structured-array"
+msgstr ""
+
+#: easyidp.pointcloud.write_ply:38 of
+msgid ""
+"https://stackoverflow.com/questions/5355744/numpy-joining-structured-"
+"arrays"
+msgstr ""

@@ -15,6 +15,9 @@ import easyidp as idp
 
 class PointCloud(object):
 
+    """PointCloud class. A point cloud consists of point coordinates, and optionally point colors and point normals.
+    """
+
     def __init__(self, pcd_path="", offset=np.array([0.,0.,0.])) -> None:
 
         self.file_path = pcd_path
@@ -143,18 +146,36 @@ class PointCloud(object):
             raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(o)} was given")
 
     def has_colors(self):
+        """Returns True if the point cloud contains point colors.
+
+        Returns
+        -------
+        bool
+        """
         if self.colors is None:
             return False
         else:
             return True
 
     def has_points(self):
+        """Returns True if the point cloud contains points.
+
+        Returns
+        -------
+        bool
+        """
         if self._points is None:
             return False
         else:
             return True
 
     def has_normals(self):
+        """Returns True if the point cloud contains point normals.
+
+        Returns
+        -------
+        bool
+        """
         if self.normals is None:
             return False
         else:

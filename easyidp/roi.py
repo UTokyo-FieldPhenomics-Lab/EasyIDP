@@ -92,9 +92,18 @@ class ROI(Container):
         self.crs = target_crs
         
 
-    def get_z_from_dsm(self, dsm_path, by="mean", buffer=0):
-        """
-        by : str, optional
+    def get_z_from_dsm(self, dsm_path, mode="face", kernel="mean", buffer=0):
+        """get the z values (heights) from DSM for 2D polygon
+
+        Parameters
+        ----------
+        dsm_path : str | <GeoTiff> object
+            the path of dsm, or the GeoTiff object from idp.GeoTiff()
+        mode : str, optional
+            - point: get height on each vertex, result in different values for each vertex
+            - face: get height on polygon face, result in the same value for each vertex
+        kernal : str, optional
+            THe math kernal to calculate the z value.
             ["local", "mean", "min", "max", "all"], by default 'mean'
             - "local" using the z value of where boundary points located, each point will get different z-values
                     -> this will get a 3D curved mesh of ROI

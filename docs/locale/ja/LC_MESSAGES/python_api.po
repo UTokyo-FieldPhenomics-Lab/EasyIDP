@@ -8,14 +8,403 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-20 00:49+0900\n"
+"POT-Creation-Date: 2022-07-20 23:48+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.10.1\n"
+"Generated-By: Babel 2.10.3\n"
+
+#: ../../python_api/geotiff.rst:3
+msgid "GeoTiff"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:7 ../../python_api/pointcloud.rst:11
+msgid "Class"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff:1 of
+msgid ""
+"A GeoTiff class, consisted by header information and file path to raw "
+"file."
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon:1 of
+msgid "crop given polygon from geotiff"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon easyidp.geotiff.GeoTiff.math_polygon
+#: easyidp.geotiff.GeoTiff.point_query easyidp.geotiff.GeoTiff.read_geotiff
+#: easyidp.geotiff.GeoTiff.save_geotiff easyidp.geotiff.geo2pixel
+#: easyidp.geotiff.get_header easyidp.geotiff.get_imarray
+#: easyidp.geotiff.pixel2geo easyidp.geotiff.tifffile_crop
+#: easyidp.pointcloud.PointCloud.crop_point_cloud easyidp.pointcloud.write_ply
+#: of
+msgid "参数"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon:3
+#: easyidp.geotiff.GeoTiff.math_polygon:3 of
+msgid "(horizontal, vertical) points"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon:5
+#: easyidp.geotiff.GeoTiff.math_polygon:5 easyidp.geotiff.GeoTiff.point_query:5
+#: of
+msgid ""
+"whether the given polygon is pixel coords on imarray or geo coords "
+"(default)"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon:7 of
+msgid "if given, will save the cropped as \\*.tif file to path"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon easyidp.geotiff.GeoTiff.point_query
+#: easyidp.geotiff.geo2pixel easyidp.geotiff.get_header
+#: easyidp.geotiff.get_imarray easyidp.geotiff.tifffile_crop
+#: easyidp.pointcloud.PointCloud.crop_point_cloud of
+msgid "返回"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon:10 of
+msgid "The cropped numpy pixels imarray"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_polygon easyidp.geotiff.GeoTiff.has_data
+#: easyidp.geotiff.GeoTiff.point_query easyidp.geotiff.geo2pixel
+#: easyidp.geotiff.get_header easyidp.geotiff.get_imarray
+#: easyidp.geotiff.pixel2geo easyidp.geotiff.tifffile_crop
+#: easyidp.pointcloud.PointCloud.crop_point_cloud
+#: easyidp.pointcloud.PointCloud.has_colors
+#: easyidp.pointcloud.PointCloud.has_normals
+#: easyidp.pointcloud.PointCloud.has_points of
+msgid "返回类型"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.has_data:1 of
+msgid "Return True if current objects has geotiff infomation"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:1 of
+msgid "Calculate the valus inside given polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:7 of
+msgid ""
+"The method to calculate polygon summary, options are: [\"mean\", \"min\","
+" \"max\", \"pmin5\", \"pmin10\", \"pmax5\", \"pmax10\"], please check "
+"notes section for more details."
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:11 easyidp.geotiff.geo2pixel:15
+#: easyidp.geotiff.tifffile_crop:39 easyidp.pointcloud.write_ply:17 of
+msgid "提示"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:12 of
+msgid "Option details for ``kernal`` parameter:"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:14 of
+msgid "\"mean\": the mean value inside polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:15 of
+msgid "\"min\": the minimum value inside polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:16 of
+msgid "\"max\": the maximum value inside polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:17 of
+msgid "\"pmin5\": 5th percentile mean [1]_ inside polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:18 of
+msgid "\"pmin10\": 10th percentile mean [1]_ inside polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:19 of
+msgid "\"pmax5\": 95th percentile mean [1]_ inside polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:20 of
+msgid "\"pmax10\": 90th percentile mean [1]_ inside polygon"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.math_polygon:22 of
+msgid ""
+"percentile mean: the mean value of all pixels over/under xth percentile "
+"threshold"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:1 of
+msgid "get the pixel value of given point(s)"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:3 of
+msgid "The coordinates of qurey points, in order (horizontal, vertical)"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:8 of
+msgid "the obtained pixel value (RGB or height)"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:12 easyidp.geotiff.geo2pixel:28 of
+msgid "实际案例"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:13 of
+msgid "Prequirements"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:20 of
+msgid "Query one point by tuple"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:29 of
+msgid "Query one point by list"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:38 of
+msgid "Query several points by list"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.point_query:49 of
+msgid "Query several points by numpy"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.read_geotiff:1 of
+msgid "Open and get the meta information (header) from geotiff"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.read_geotiff:3 easyidp.geotiff.get_imarray:3 of
+msgid "the path to geotiff file"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.save_geotiff:1 of
+msgid "Save cropped region to geotiff file"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.save_geotiff:3 of
+msgid "(m, n, d) image ndarray cropped from `crop_polygon`"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.save_geotiff:5 of
+msgid "the pixel position of image top left cornder, the order is (left, top)"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.save_geotiff:8 of
+msgid "the save to geotiff file path"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:15 ../../python_api/pointcloud.rst:19
+msgid "Functions"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:19 ../../python_api/pointcloud.rst:23
+msgid ""
+"The ``easyidp.GeoTiff`` class should satisfy most simple application "
+"cases, please don't use the following functions unless you really need "
+"to."
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.geotiff.get_header <easyidp.geotiff.get_header>`\\ "
+"\\(tif\\_path\\)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1 easyidp.geotiff.get_header:1
+#: of
+msgid "Read the necessary meta infomation from TIFF file"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.geotiff.get_imarray <easyidp.geotiff.get_imarray>`\\ "
+"\\(tif\\_path\\)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1
+#: easyidp.geotiff.get_imarray:1 of
+msgid "Read full map data as numpy array (time and RAM costy, not recommended)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.geotiff.geo2pixel <easyidp.geotiff.geo2pixel>`\\ "
+"\\(points\\_hv\\, header\\)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1 easyidp.geotiff.geo2pixel:1
+#: of
+msgid ""
+"convert point cloud xyz coordinate to geotiff pixel coordinate "
+"(horizontal, vertical)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.geotiff.pixel2geo <easyidp.geotiff.pixel2geo>`\\ "
+"\\(points\\_hv\\, header\\)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1 easyidp.geotiff.pixel2geo:1
+#: of
+msgid ""
+"convert geotiff pixel coordinate (horizontal, vertical) to point cloud "
+"xyz coordinate (x, y, z)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.geotiff.tifffile_crop <easyidp.geotiff.tifffile_crop>`\\"
+" \\(page\\, top\\, ...\\)"
+msgstr ""
+
+#: ../../python_api/geotiff.rst:28:<autosummary>:1
+#: easyidp.geotiff.tifffile_crop:1 of
+msgid "Extract a crop from a TIFF image file directory (IFD)."
+msgstr ""
+
+#: ../../python_api/geotiff/easyidp.geotiff.geo2pixel.rst:2
+msgid "easyidp.geotiff.geo2pixel"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:3 easyidp.geotiff.pixel2geo:3 of
+msgid "[horizontal, vertical] points"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:5 easyidp.geotiff.pixel2geo:5 of
+msgid "the geotiff head dictionary from get_header()"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:7 of
+msgid ""
+"if false: will get float coordinates -> (23.5, 27.8) if true: will get "
+"int pixel index -> (23, 27)"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:11 of
+msgid "pixel position of these points (horizontal, vertical)"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:16 of
+msgid ""
+"Please note: gis coordinate, horizontal is x axis, vertical is y axis, "
+"origin at left upper."
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:18 of
+msgid "To crop image ndarray:"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:20 of
+msgid "the first columns is vertical pixel (along height),"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:21 of
+msgid "the second columns is horizontal pixel number (along width),"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:22 of
+msgid "the third columns is 3 or 4 bands (RGB, alpha),"
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:23 of
+msgid "the x and y is reversed compared with gis coordinates."
+msgstr ""
+
+#: easyidp.geotiff.geo2pixel:25 of
+msgid ""
+"This function has already do this reverse, so that you can use the output"
+" directly."
+msgstr ""
+
+#: ../../python_api/geotiff/easyidp.geotiff.get_header.rst:2
+msgid "easyidp.geotiff.get\\_header"
+msgstr ""
+
+#: easyidp.geotiff.get_header:3 of
+msgid "the path to the geotiff file"
+msgstr ""
+
+#: easyidp.geotiff.get_header:6 of
+msgid "**header** -- the container of acquired meta info"
+msgstr ""
+
+#: ../../python_api/geotiff/easyidp.geotiff.get_imarray.rst:2
+msgid "easyidp.geotiff.get\\_imarray"
+msgstr ""
+
+#: easyidp.geotiff.get_imarray:6 of
+msgid "**data** -- the obtained image data"
+msgstr ""
+
+#: ../../python_api/geotiff/easyidp.geotiff.pixel2geo.rst:2
+msgid "easyidp.geotiff.pixel2geo"
+msgstr ""
+
+#: easyidp.geotiff.pixel2geo:10 of
+msgid ":obj:`get_header`"
+msgstr ""
+
+#: ../../python_api/geotiff/easyidp.geotiff.tifffile_crop.rst:2
+msgid "easyidp.geotiff.tifffile\\_crop"
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:3 of
+msgid ""
+"Only the tiles englobing the crop area are loaded and not the whole page."
+" This is usefull for large Whole slide images that can't fit int RAM."
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:20 of
+msgid "TIFF image file directory (IFD) from which the crop must be extracted."
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:22 easyidp.geotiff.tifffile_crop:26 of
+msgid ""
+"Coordinates of the top left corner of the desired crop. top = i0 = "
+"height_st left = j0 = w_st"
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:30 of
+msgid "Desired crop height."
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:32 of
+msgid "Desired crop width."
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:35 of
+msgid "**out** -- Extracted crop."
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:40 of
+msgid "Modified from [1]_ ,"
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:42 of
+msgid ""
+"In EasyIDP v1.0, the function is ``caas_lite.get_crop(page, i0, j0, h, "
+"w)``"
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:44 easyidp.pointcloud.write_ply:34 of
+msgid "引用"
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:46 of
+msgid ""
+"https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-"
+"get_crop-py-L60"
+msgstr ""
 
 #: ../../python_api/index.rst:3
 msgid "API Summary"
@@ -33,41 +422,55 @@ msgstr ""
 msgid "Point Cloud"
 msgstr "点群"
 
-#: ../../python_api/pointcloud.rst:7
-msgid "Class"
+#: ../../python_api/pointcloud.rst:9:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.PointCloud <easyidp.PointCloud>`\\ \\(\\[pcd\\_path\\, "
+"offset\\]\\)"
+msgstr ""
+
+#: ../../python_api/pointcloud.rst:9:<autosummary>:1
+msgid "PointCloud class."
+msgstr ""
+
+#: ../../python_api/pointcloud.rst:9:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.pointcloud.write_ply <easyidp.pointcloud.write_ply>`\\ "
+"\\(points\\, colors\\, ...\\)"
+msgstr ""
+
+#: ../../python_api/pointcloud.rst:9:<autosummary>:1
+#: easyidp.pointcloud.write_ply:1 of
+msgid "Save point cloud to ply format"
+msgstr ""
+
+#: easyidp.pointcloud.PointCloud:1 of
+msgid ""
+"PointCloud class. A point cloud consists of point coordinates, and "
+"optionally point colors and point normals."
 msgstr ""
 
 #: easyidp.pointcloud.PointCloud.crop_point_cloud:1 of
 msgid "crop the point cloud along z axis"
 msgstr ""
 
-#: easyidp.pointcloud.PointCloud.crop_point_cloud easyidp.pointcloud.write_ply
-#: of
-msgid "参数"
-msgstr ""
-
 #: easyidp.pointcloud.PointCloud.crop_point_cloud:3 of
 msgid "the polygon xy coords"
-msgstr ""
-
-#: easyidp.pointcloud.PointCloud.crop_point_cloud of
-msgid "返回"
 msgstr ""
 
 #: easyidp.pointcloud.PointCloud.crop_point_cloud:6 of
 msgid "The cropped point cloud"
 msgstr ""
 
-#: easyidp.pointcloud.PointCloud.crop_point_cloud of
-msgid "返回类型"
+#: easyidp.pointcloud.PointCloud.has_colors:1 of
+msgid "Returns True if the point cloud contains point colors."
 msgstr ""
 
-#: ../../python_api/pointcloud.rst:15
-msgid "Functions"
+#: easyidp.pointcloud.PointCloud.has_normals:1 of
+msgid "Returns True if the point cloud contains point normals."
 msgstr ""
 
-#: easyidp.pointcloud.write_ply:1 of
-msgid "Save point cloud to ply format"
+#: easyidp.pointcloud.PointCloud.has_points:1 of
+msgid "Returns True if the point cloud contains points."
 msgstr ""
 
 #: easyidp.pointcloud.write_ply:3 of
@@ -92,10 +495,6 @@ msgid ""
 "False: save ASCII ply file."
 msgstr ""
 
-#: easyidp.pointcloud.write_ply:17 of
-msgid "提示"
-msgstr ""
-
 #: easyidp.pointcloud.write_ply:18 of
 #, fuzzy
 msgid ""
@@ -107,10 +506,6 @@ msgstr ""
 msgid ""
 "convert ndarray to strucutred array [2]_ and method to merge to "
 "structured arrays [3]_"
-msgstr ""
-
-#: easyidp.pointcloud.write_ply:34 of
-msgid "引用"
 msgstr ""
 
 #: easyidp.pointcloud.write_ply:36 of
@@ -128,3 +523,58 @@ msgid ""
 "https://stackoverflow.com/questions/5355744/numpy-joining-structured-"
 "arrays"
 msgstr ""
+
+#~ msgid "_summary_"
+#~ msgstr "API概要"
+
+#~ msgid "_description_"
+#~ msgstr ""
+
+#~ msgid "引发"
+#~ msgstr ""
+
+#~ msgid "get the pixel value of given point(s)"
+#~ msgstr ""
+
+#~ msgid "The coordinates of qurey points, in order (horizontal, vertical)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "whether the given polygon is pixel "
+#~ "coords on imarray or geo coords "
+#~ "(default)"
+#~ msgstr ""
+
+#~ msgid "the obtained pixel value (RGB or height)"
+#~ msgstr ""
+
+#~ msgid "Prequirements"
+#~ msgstr ""
+
+#~ msgid "Query one point by tuple"
+#~ msgstr ""
+
+#~ msgid "Query one point by list"
+#~ msgstr ""
+
+#~ msgid "Query several points by list"
+#~ msgstr ""
+
+#~ msgid "Query several points by numpy"
+#~ msgstr ""
+
+#~ msgid "\"pmin5\": 5th percentile mean [pm]_ inside polygon"
+#~ msgstr ""
+
+#~ msgid "\"pmin10\": 10th percentile mean [pm]_ inside polygon"
+#~ msgstr ""
+
+#~ msgid "\"pmax5\": 95th percentile mean [pm]_ inside polygon"
+#~ msgstr ""
+
+#~ msgid "\"pmax10\": 90th percentile mean [pm]_ inside polygon"
+#~ msgstr ""
+
+#~ msgid ":py:obj:`easyidp.GeoTiff <easyidp.GeoTiff>`\\ \\(\\[tif\\_path\\]\\)"
+#~ msgstr ""
+

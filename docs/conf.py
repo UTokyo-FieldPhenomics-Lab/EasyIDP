@@ -39,6 +39,7 @@ extensions = [
     'sphinx.ext.napoleon',   # support numpy docs string
     'sphinx.ext.todo',
     "sphinx_inline_tabs",
+    "sphinx.ext.autosummary"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -73,3 +74,6 @@ todo_include_todos = True
 # numpy documentations
 napoleon_google_docstring = False
 napoleon_use_admonition_for_references = True
+
+autodoc_default_flags = ['members']
+autosummary_generate = True

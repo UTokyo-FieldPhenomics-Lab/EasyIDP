@@ -10,6 +10,8 @@ import easyidp as idp
 
 
 class GeoTiff(object):
+    """A GeoTiff class, consisted by header information and file path to raw file.
+    """
 
     def __init__(self, tif_path="") -> None:
         self.file_path = os.path.abspath(tif_path)
@@ -33,47 +35,90 @@ class GeoTiff(object):
             warnings.warn(f"Can not find file [{tif_path}], skip loading")
 
     def has_data(self):
+        """Return True if current objects has geotiff infomation
+
+        Returns
+        -------
+        bool
+        """
         if self.header is None or not os.path.exists(self.file_path):
             return False
         else:
             return True
 
-    def not_empty(func):
-        # the decorator to check before doing functions
-        def wrapper(self, *args, **kwargs):
-            if not self.has_data():
-                raise FileNotFoundError("Could not operate if not specify correct geotiff file")
-            return func(self, *args, **kwargs)
+    def _not_empty(self):
+        # check before doing functions
+        if not self.has_data():
+            raise FileNotFoundError("Could not operate if not specify correct geotiff file")
 
-        return wrapper
 
-    @not_empty
-    def point_query(self, points_hv, is_geo=None):
+    def point_query(self, points_hv, is_geo=True):
         """get the pixel value of given point(s)
 
         Parameters
         ----------
         points_hv : tuple | list | nx2 ndarray
-            1. one point tuple
-                e.g. (34.57, 45.62)
-            2. one point list
-                e.g. [34.57, 45.62]
-            3. points lists
-                e.g. [[34.57, 45.62],[35.57, 46.62]]
-            4. 2d numpy array
-                e.g. np.array([[34.57, 45.62],[35.57, 46.62]])
+            The coordinates of qurey points, in order (horizontal, vertical)
         is_geo : bool, optional
-            whether the given polygon is pixel or geo coords
-                True -> geo coordaintes [default]
-                    e.g. [longtitude, latitude]
-                False -> pixel index on imarray
-                    e.g. [1038, 567] -> pixel id
+            whether the given polygon is pixel coords on imarray or geo coords (default)
 
         Returns
         -------
-        values: ndarray
+        ndarray
             the obtained pixel value (RGB or height) 
+
+        Examples
+        --------
+        Prequirements
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> dom = idp.GeoTiff("lotus_full_dsm.tiff")
+
+        Query one point by tuple
+
+        .. code-block:: python
+        
+            >>> # one point tuple
+            >>> pts = (368023.004, 3955500.669)
+            >>> dom.point_query(pts, is_geo=True)
+            array([97.45558])
+
+        Query one point by list
+
+        .. code-block:: python
+
+            >>> # one point list
+            >>> pts = [368023.004, 3955500.669]
+            >>> dom.point_query(pts, is_geo=True)
+            array([97.45558])
+        
+        
+        Query several points by list
+
+        .. code-block:: python
+
+            >>> pts = [
+            ...    [368022.581, 3955501.054], 
+            ...    [368024.032, 3955500.465]
+            ... ]
+            >>> dom.point_query(pts, is_geo=True)
+            array([97.624344, 97.59617])
+
+        Query several points by numpy
+
+        .. code-block:: python
+
+            >>> pts = np.array([
+            ...    [368022.581, 3955501.054], 
+            ...    [368024.032, 3955500.465]]
+            ... ])
+            >>> dom.point_query(pts, is_geo=True)
+            array([97.624344, 97.59617])
         """
+        self._not_empty()
+
         with tf.TiffFile(self.file_path) as tif:
             page = tif.pages[0]
             if is_geo:
@@ -82,33 +127,29 @@ class GeoTiff(object):
                 return point_query(page, points_hv)
 
 
-    @not_empty
     def crop(self, roi, save_folder=None):  # clip_roi
         # roi: ROI class, with several roi lists
+        self._not_empty()
         raise NotImplementedError("This function will be provided in the future.")
 
-    @not_empty
     def crop_polygon(self, polygon_hv, is_geo=True, save_path=None):
         """crop given polygon from geotiff
 
         Parameters
         ----------
         polygon_hv : numpy nx2 array
-            [horizontal, vertical] points
+            (horizontal, vertical) points
         is_geo : bool, optional
-            whether the given polygon is pixel or geo coords
-                True -> geo coordaintes [default]
-                    e.g. [longtitude, latitude]
-                False -> pixel index on imarray
-                    e.g. [1038, 567] -> pixel id
+            whether the given polygon is pixel coords on imarray or geo coords (default)
         save_path : str, optional
-            if given, will save the cropped as *.tif file to path
+            if given, will save the cropped as \*.tif file to path
 
         Returns
         -------
         imarray_out
             The cropped numpy pixels imarray
         """
+        self._not_empty()
         if is_geo:
             poly_px = geo2pixel(polygon_hv, self.header, return_index=True)
         else:
@@ -151,7 +192,6 @@ class GeoTiff(object):
 
         return imarray_out
 
-    @not_empty
     def save_geotiff(self, imarray, left_top_corner, save_path):
         """Save cropped region to geotiff file
 
@@ -160,11 +200,12 @@ class GeoTiff(object):
         imarray : ndarray
             (m, n, d) image ndarray cropped from `crop_polygon`
         left_top_corner : ndarray
-            the pixel position of image top left cornder
-               the order is (left, top)
+            the pixel position of image top left cornder, 
+            the order is (left, top)
         save_path : str
             the save to geotiff file path
         """
+        self._not_empty()
         geo_corner = pixel2geo(np.array([left_top_corner]), self.header)
         geo_h = geo_corner[0, 0]
         geo_v = geo_corner[0, 1]
@@ -226,32 +267,34 @@ class GeoTiff(object):
         else:
             raise TypeError("only *.tif file name is supported")
 
-    @not_empty
     def math_polygon(self, polygon_hv, is_geo=True, kernal="mean"):
         """Calculate the valus inside given polygon
 
         Parameters
         ----------
-        polygon_hv : _type_
-            _description_
+        polygon_hv : numpy nx2 array
+            (horizontal, vertical) points
         is_geo : bool, optional
-            whether the given polygon is pixel or geo coords
-                True -> geo coordaintes [default]
-                    e.g. [longtitude, latitude]
-                False -> pixel index on imarray
-                    e.g. [1038, 567] -> pixel id
+            whether the given polygon is pixel coords on imarray or geo coords (default)
         kernal : str, optional
-            "mean": the mean value inside polygon
-            "min": the minimum value inside polygon
-            "max": the maximum value inside polygon
-            ----------------------------------------
-            "pmin5": 5th percentile mean inside polygon
-            "pmin10": 10th percentile mean inside polygon
-            "pmax5": 95th percentile mean inside polygon
-            "pmax10": 90th percentile mean inside polygon
-            -------------------------------
-            * percentile mean: the mean value of all pixels over/under xth percentile threshold
+            The method to calculate polygon summary, options are: ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"], please check notes section for more details.
+        
+        Notes
+        -----
+        Option details for ``kernal`` parameter:
+
+        - "mean": the mean value inside polygon
+        - "min": the minimum value inside polygon
+        - "max": the maximum value inside polygon
+        - "pmin5": 5th percentile mean [1]_ inside polygon
+        - "pmin10": 10th percentile mean [1]_ inside polygon
+        - "pmax5": 95th percentile mean [1]_ inside polygon
+        - "pmax10": 90th percentile mean [1]_ inside polygon
+
+        .. [1] percentile mean: the mean value of all pixels over/under xth percentile threshold
         """
+        self._not_empty()
+
         imarray = self.crop_polygon(polygon_hv, is_geo)
 
         # remove outside values
@@ -304,8 +347,8 @@ class GeoTiff(object):
         else:
             raise KeyError(f"Could not find kernel [{kernal}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")
 
-    @not_empty
     def create_grid(self, w, h, extend=False, grid_buffer=0):
+        self._not_empty()
         raise NotImplementedError("This function will be provided in the future.")
         
 
@@ -415,24 +458,46 @@ def geo2pixel(points_hv, header, return_index=False):
 
     Returns
     -------
-    The ndarray pixel position of these points (horizontal, vertical)
-        Please note: gis coordinate, horizontal is x axis, vertical is y axis, origin at left upper
-        To crop image ndarray, the first columns is vertical pixel (along height),
-            then second columns is horizontal pixel number (along width),
-            the third columns is 3 or 4 bands (RGB, alpha),
-            the x and y is reversed compared with gis coordinates.
-            This function has already do this reverse, so that you can use the output directly.
+    ndarray 
+        pixel position of these points (horizontal, vertical)
+
+    Notes
+    -----
+    Please note: gis coordinate, horizontal is x axis, vertical is y axis, origin at left upper.
+
+    To crop image ndarray:
+
+    - the first columns is vertical pixel (along height),
+    - the second columns is horizontal pixel number (along width),
+    - the third columns is 3 or 4 bands (RGB, alpha),
+    - the x and y is reversed compared with gis coordinates.
+        
+    This function has already do this reverse, so that you can use the output directly.
 
     Examples
     --------
-    >>> geo_head = easyric.io.geotiff.get_header('dom_path.tiff')
-    >>> gis_coord = np.asarray([(x1, y1), ..., (xn, yn)])  # x is horizonal, y is vertical
-    >>> photo_ndarray = skimage.io.imread('img_path.jpg')
-    (h, w, 4) ndarray  # please note the axes differences
-    >>> pixel_coord = geo2pixel(gis_coord, geo_head)
-    (horizontal, vertical) ndarray
-    # then you can used the outputs with reverse 0 and 1 axis
-    >>> region_of_interest = photo_ndarray[pixel_coord[:,1], pixel_coord[:,0], 0:3]
+    .. code-block:: python
+
+        # manual specify header just as example (no need to open geotiff)
+        >>> header = {'width': 19436, 'height': 31255, 'dim':4, 
+        >>>          'scale': [0.001, 0.001], 'nodata': None,
+        >>>          'tie_point': [484576.70205, 3862285.5109300003], 
+        >>>          'proj': pyproj.CRS.from_string("WGS 84 / UTM zone 53N")}
+        # prepare coord data (no need to read)
+        >>> gis_coord = np.asarray([
+        >>>     [ 484593.67474654, 3862259.42413431],
+        >>>     [ 484593.41064743, 3862259.92582402],
+        >>>     [ 484593.64841806, 3862260.06515117],
+        >>>     [ 484593.93077419, 3862259.55455913],
+        >>>     [ 484593.67474654, 3862259.42413431]])
+        # get the results
+        >>> idp.geotiff.geo2pixel(gis_coord, header, return_index=True)
+        array([[16972, 26086],
+               [16708, 25585],
+               [16946, 25445],
+               [17228, 25956],
+               [16972, 26086]])
+
     """
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
@@ -469,6 +534,10 @@ def pixel2geo(points_hv, header):
     Returns
     -------
     The ndarray pixel position of these points (horizontal, vertical)
+
+    See also
+    --------
+    get_header
     """
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
@@ -506,22 +575,19 @@ def tifffile_crop(page, top, left, h, w):
     Only the tiles englobing the crop area are loaded and not the whole page.
     This is usefull for large Whole slide images that can't fit int RAM.
 
-    (0,0)
-      o--------------------------
-      |           ^
-      |           | top
-      |           v
-      | <-------> o=============o  ^
-      |   left    |<---- w ---->|  |
-      |           |             |  h
-      |           |             |  |
-      |           o=============o  v
+    .. code-block:: text
 
-    Modified from: 
-    https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
+        (0,0)
+        o--------------------------
+        |           ^
+        |           | top
+        |           v
+        | <-------> o=============o  ^
+        |   left    |<---- w ---->|  |
+        |           |             |  h
+        |           |             |  |
+        |           o=============o  v
 
-    Previous version: 
-    caas_lite.get_crop(page, i0, j0, h, w)
     
     Parameters
     ----------
@@ -539,7 +605,17 @@ def tifffile_crop(page, top, left, h, w):
     Returns
     -------
     out : ndarray of shape (h, w, sampleperpixel)
-        Extracted crop.""
+        Extracted crop.
+
+    Notes
+    -----
+    Modified from [1]_ , 
+    
+    In EasyIDP v1.0, the function is ``caas_lite.get_crop(page, i0, j0, h, w)``
+
+    References
+    ----------
+    .. [1] https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
     """
     if page.is_tiled:
         out = _get_tiled_crop(page, top, left, h, w)

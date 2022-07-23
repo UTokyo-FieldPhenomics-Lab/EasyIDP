@@ -336,6 +336,18 @@ def read_ply(ply_path):
 
 
 def read_las(las_path):
+    """Read the las file
+
+    Parameters
+    ----------
+    las_path : str
+        The path to las file
+
+    Returns
+    -------
+    ndarray, ndarray, ndarray
+        points, colors, normals of given point cloud data
+    """
     return read_laz(las_path)
 
 def read_laz(laz_path):

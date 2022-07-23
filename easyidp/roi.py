@@ -100,23 +100,54 @@ class ROI(Container):
         dsm_path : str | <GeoTiff> object
             the path of dsm, or the GeoTiff object from idp.GeoTiff()
         mode : str, optional
-            - point: get height on each vertex, result in different values for each vertex
-            - face: get height on polygon face, result in the same value for each vertex
+            the mode to calculate z values, option in "point" and "face"
+            **point**: get height on each vertex, result in different values for each vertex
+            **face**: get height on polygon face, result in the same value for each vertex
         kernal : str, optional
-            THe math kernal to calculate the z value.
-            ["local", "mean", "min", "max", "all"], by default 'mean'
-            - "local" using the z value of where boundary points located, each point will get different z-values
-                    -> this will get a 3D curved mesh of ROI
-            - "mean": using the mean value of boundary points closed part.
-            - "min": 5th percentile mean height (the mean value of all pixels < 5th percentile)
-            - "max": 95th percentile mean height (the mean value of all pixels > 95th percentile)
-            - "all": using the mean value of whole DSM as the same z-value for all boundary points
-                    -> this will get a 2D plane of ROI
-        buffer : int, optional
-            the buffer of ROI, by default 0
-            it is suitable when the given ROI is points rather than polygons. Given this paramter will generate a round buffer
-                polygon first, then extract the z-value by this region, but the return will only be a single point
-            The unit of buffer follows the ROI coordinates, either pixel or meter.
+            The math kernal to calculate the z value.
+            ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"], by default 'mean'
+        buffer : float, optional
+            the buffer of ROI, by default 0 (no buffer),
+            can be positive values or -1 (using all map), 
+            please check the Notes section for more details
+
+        Notes
+        -----
+
+        **Option details for** ``kernal`` **parameter**
+
+        - "mean": the mean value inside polygon
+        - "min": the minimum value inside polygon
+        - "max": the maximum value inside polygon
+        - "pmin5": 5th *percentile mean* inside polygon
+        - "pmin10": 10th *percentile mean* inside polygon
+        - "pmax5": 95th *percentile mean* inside polygon
+        - "pmax10": 90th *percentile mean* inside polygon
+
+        percentile mean: the mean value of all pixels over/under xth percentile threshold
+
+        **Option details for** ``buffer`` **parameter**
+
+        - 0: not using buffer
+        - -1: ignore given polygon, using the full dsm to calculate the height
+        - float: buffer distance, the unit of buffer follows the ROI coordinates, either pixel or meter.
+
+        If mode is "point", will generate a round buffer polygon first, then extract the z-value by this region, but the return will only be a single point.
+
+        If mode is "face", will buffer the polygon and then calculate the height inside the buffered polygon
+
+        .. image:: ../_static/images/python_api/roi_crop_mode.png
+            :alt: roi_crop_mode.png
+
+
+        Examples
+        --------
+
+        Combine 
+
+        See also
+        --------
+        easyidp.GeoTiff.math_polygon
         """
 
     def crop(self, target):

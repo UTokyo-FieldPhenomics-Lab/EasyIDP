@@ -127,8 +127,22 @@ class GeoTiff(object):
                 return point_query(page, points_hv)
 
 
-    def crop(self, roi, save_folder=None):  # clip_roi
+    def crop(self, roi, save_folder=""):  # clip_roi
         # roi: ROI class, with several roi lists
+        """Crop the geotiff by given <ROI> object with several polygons and polygon names
+
+        Parameters
+        ----------
+        roi : easyidp.ROI
+            the <ROI> object created by easyidp.ROI()
+        save_folder : str, optional
+            the folder to save cropped images, use ROI indices as file_names, by default "", means not save.
+
+        Raises
+        ------
+        NotImplementedError
+            have not finished yet.
+        """
         self._not_empty()
         raise NotImplementedError("This function will be provided in the future.")
 
@@ -286,12 +300,12 @@ class GeoTiff(object):
         - "mean": the mean value inside polygon
         - "min": the minimum value inside polygon
         - "max": the maximum value inside polygon
-        - "pmin5": 5th percentile mean [1]_ inside polygon
-        - "pmin10": 10th percentile mean [1]_ inside polygon
-        - "pmax5": 95th percentile mean [1]_ inside polygon
-        - "pmax10": 90th percentile mean [1]_ inside polygon
+        - "pmin5": 5th [percentile mean]_ inside polygon
+        - "pmin10": 10th [percentile mean]_ inside polygon
+        - "pmax5": 95th [percentile mean]_ inside polygon
+        - "pmax10": 90th [percentile mean]_ inside polygon
 
-        .. [1] percentile mean: the mean value of all pixels over/under xth percentile threshold
+        .. [percentile mean] the mean value of all pixels over/under xth percentile threshold
         """
         self._not_empty()
 

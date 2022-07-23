@@ -6,6 +6,19 @@ GeoTiff
 Class
 =====
 
+A summary of class ``GeoTiff``
+
+.. autosummary::
+
+    easyidp.GeoTiff.read_geotiff
+    easyidp.GeoTiff.has_data
+    easyidp.GeoTiff.point_query
+    .. easyidp.GeoTiff.crop
+    easyidp.GeoTiff.crop_polygon
+    easyidp.GeoTiff.save_geotiff
+    easyidp.GeoTiff.math_polygon
+    .. easyidp.GeoTiff.create_grid
+
 .. autoclass:: easyidp.GeoTiff
     :members:
     :noindex:
@@ -16,10 +29,10 @@ Functions
 
 .. caution::
     
-    The ``easyidp.GeoTiff`` class should satisfy most simple application cases, please don't use the following functions unless you really need to.
+    The ``easyidp.GeoTiff`` class is an advanced wrapper around the following functions, which is generally sufficient for most simple application cases, please don't use the following functions unless you really need to.
 
 .. autosummary::
-    :toctree: geotiff
+    :toctree: autodoc
 
     easyidp.geotiff.get_header
     easyidp.geotiff.get_imarray

@@ -206,6 +206,121 @@ class GeoTiff(object):
 
         return imarray_out
 
+    def crop_rectangle(self, left, top, w, h, is_geo=True, save_path=None):
+        """Extract a rectangle regeion crop from a GeoTIFF image file.
+
+        .. code-block:: text
+
+            (0,0)
+            o--------------------------
+            |           ^
+            |           | top
+            |           v
+            | <-------> o=============o  ^
+            |   left    |<---- w ---->|  |
+            |           |             |  h
+            |           |             |  |
+            |           o=============o  v
+
+        
+        Parameters
+        ----------
+        top: int | float
+            Coordinates of 
+        left: int | float
+            Coordinates of the top left corner of the desired crop.
+        h: int | float
+            Desired crop height.
+        w: int | float
+            Desired crop width.
+        is_geo : bool, optional
+            whether the given polygon is pixel coords on imarray or geo coords (default)
+        save_path : str, optional
+            if given, will save the cropped as \*.tif file to path
+            
+        Returns
+        -------
+        ndarray
+            Extracted crop.
+
+        See also
+        --------
+        tifffile_crop
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+            obj = idp.GeoTiff(lotus_full_dom)
+            out1 = obj.crop_rectangle(left=434, top=918, w=320, h=321, is_geo=False)
+
+        .. caution::
+            It is not recommended to use without specifying parameters like this:
+            
+            ``crop_rectiange(434, 918, 320, 321)``
+
+            It is hard to know the exactly order
+
+            PS: subfunction ``tifffile_crop`` has the order ``(top, left, h, w)`` which is too heavy to change it.
+        """
+
+        self._not_empty()
+
+        
+        if is_geo:
+            polygon = np.array([[left, top], [left+w, top+h]])
+            polygon_px = geo2pixel(polygon, self.header, return_index=True)
+
+            left = polygon_px[0,0]
+            top  = polygon_px[0,1]
+            w    = polygon_px[1,0] - left
+            h    = top - polygon_px[1,1]
+            '''
+            the geotiff coordiate y axis is upward, so need to reverse top-h
+            otherwise will get an negative value.
+
+            Not using abs() to fit the same logic with the geo2pixel() and
+            to avoid potential logic error.
+
+            Y    easyidp coord
+            ^    o--------------------------> X
+            |    |           ^
+            |    |           | top
+            |    |           v
+            |    | <-------> o=============o  ^
+            |    |   left    |<---- w ---->|  |
+            |    |           |             |  h
+            |    |           |             |  |
+            |    |           o=============o  v
+            |    v Y
+            |
+            o--------------------------------------------------> X
+            Geotiff coordinate
+            '''
+
+        # check if in the boundary
+        gw = self.header['width']
+        gh = self.header['height']
+        if left < 0 or top < 0 or left + w > gw or top + h > gh:
+            raise IndexError(
+                f"The given rectange [left {left}, top {top}, width {w}, height {h}] "
+                f"can not fit into geotiff shape [0, 0, {gw}, {gh}]. \n"
+                f"Please check is a geo coordinate or pixel coordinate and specify"
+                f" `is_geo=True|False` correctly"
+            )
+
+        with tf.TiffFile(self.file_path) as tif:
+            page = tif.pages[0]
+            out = tifffile_crop(page, top, left, h, w)
+
+        # check if need save geotiff
+        if save_path is not None and os.path.splitext(save_path)[-1] == ".tif":
+            self.save_geotiff(out, np.array([left, top]), save_path)
+
+        return out
+
+
     def save_geotiff(self, imarray, left_top_corner, save_path):
         """Save cropped region to geotiff file
 
@@ -630,6 +745,27 @@ def tifffile_crop(page, top, left, h, w):
     References
     ----------
     .. [1] https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
+
+    Examples
+    --------
+
+    .. code-block:: python
+
+        with tf.TiffFile(maize_part_dom) as tif:
+            page = tif.pages[0]
+
+            cropped = idp.geotiff.tifffile_crop(page, top=30, left=40, h=100, w=150)
+
+    .. caution::
+        It is not recommended to use without specifying parameters like this:
+        
+        ``crop_rectiange(434, 918, 320, 321)``
+
+        It is hard to know the exactly order immediately.
+
+    See also
+    --------
+    Geotiff.crop_rectange
     """
     if page.is_tiled:
         out = _get_tiled_crop(page, top, left, h, w)

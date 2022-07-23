@@ -396,8 +396,8 @@ def test_class_crop_polygon_save_geotiff():
 
     out = idp.GeoTiff(save_tiff)
     '''
-    N1W1 case
-    ---------------------
+    N1W1 case, the output offset are not the same as input
+    ------------------------------------------------------
     result ->
         [368017.75187, 3955511.4999300004]
     polygon_hv (input) ->
@@ -426,6 +426,34 @@ def test_class_crop_polygon_save_geotiff():
     assert xmin <= out.header["tie_point"][0] + out.header["scale"][0]
     assert ymax <= out.header["tie_point"][1]
     assert ymax >= out.header["tie_point"][1] - out.header["scale"][1]
+
+
+def test_crop_rectange_save_geotiff():
+    obj = idp.GeoTiff(lotus_full_dom)
+
+    out1 = obj.crop_rectangle(left=434, top=918, w=320, h=321, is_geo=False)
+
+    out2 = obj.crop_rectangle(
+        left=368017.75187, top=3955511.49993, 
+        w=2.3561161599936895, h=2.362485199701041, 
+        is_geo=True)
+
+    assert out1.shape == (321, 320, 4)
+    assert out2.shape == (321, 320, 4)
+
+    np.testing.assert_almost_equal(out1, out2)
+
+    # check if 
+    with pytest.raises(IndexError, match=re.escape(
+        f"The given rectange [left 368017.75187, top 3955511.49993, "
+        f"width 2.3561161599936895, height 2.362485199701041] can not fit "
+        f"into geotiff shape [0, 0, 5490, 5752]. ")):
+        out2 = obj.crop_rectangle(
+        left=368017.75187, top=3955511.49993, 
+        w=2.3561161599936895, h=2.362485199701041, 
+        is_geo=False)
+
+
 
 def test_class_math_polygon():
     # test dsm results

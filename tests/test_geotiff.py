@@ -467,13 +467,13 @@ def test_class_math_polygon():
         [ 368018.15769062, 3955509.13563382],
         [ 368017.7565143 , 3955511.08102277]])
 
-    dsm_mean   = dsm.math_polygon(poly_geo, is_geo=True, kernal="mean")
-    dsm_min    = dsm.math_polygon(poly_geo, is_geo=True, kernal="min")
-    dsm_max    = dsm.math_polygon(poly_geo, is_geo=True, kernal="max")
-    dsm_pmin5  = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmin5")
-    dsm_pmin10 = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmin10")
-    dsm_pmax5  = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmax5")
-    dsm_pmax10 = dsm.math_polygon(poly_geo, is_geo=True, kernal="pmax10")
+    dsm_mean   = dsm.math_polygon(poly_geo, is_geo=True, kernel="mean")
+    dsm_min    = dsm.math_polygon(poly_geo, is_geo=True, kernel="min")
+    dsm_max    = dsm.math_polygon(poly_geo, is_geo=True, kernel="max")
+    dsm_pmin5  = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmin5")
+    dsm_pmin10 = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmin10")
+    dsm_pmax5  = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmax5")
+    dsm_pmax10 = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmax10")
 
     assert 97 < dsm_mean   and dsm_mean   < 98
     assert 97 < dsm_min    and dsm_min    < 98
@@ -486,13 +486,13 @@ def test_class_math_polygon():
     # test dom results
     dom = idp.GeoTiff(lotus_full_dom)
 
-    dom_mean   = dom.math_polygon(poly_geo, is_geo=True, kernal="mean")
-    dom_min    = dom.math_polygon(poly_geo, is_geo=True, kernal="min")
-    dom_max    = dom.math_polygon(poly_geo, is_geo=True, kernal="max")
-    dom_pmin5  = dom.math_polygon(poly_geo, is_geo=True, kernal="pmin5")
-    dom_pmin10 = dom.math_polygon(poly_geo, is_geo=True, kernal="pmin10")
-    dom_pmax5  = dom.math_polygon(poly_geo, is_geo=True, kernal="pmax5")
-    dom_pmax10 = dom.math_polygon(poly_geo, is_geo=True, kernal="pmax10")
+    dom_mean   = dom.math_polygon(poly_geo, is_geo=True, kernel="mean")
+    dom_min    = dom.math_polygon(poly_geo, is_geo=True, kernel="min")
+    dom_max    = dom.math_polygon(poly_geo, is_geo=True, kernel="max")
+    dom_pmin5  = dom.math_polygon(poly_geo, is_geo=True, kernel="pmin5")
+    dom_pmin10 = dom.math_polygon(poly_geo, is_geo=True, kernel="pmin10")
+    dom_pmax5  = dom.math_polygon(poly_geo, is_geo=True, kernel="pmax5")
+    dom_pmax10 = dom.math_polygon(poly_geo, is_geo=True, kernel="pmax10")
 
     assert dom_mean  .shape == (4, )
     assert dom_min   .shape == (4, )

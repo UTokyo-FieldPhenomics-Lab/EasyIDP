@@ -396,16 +396,16 @@ class GeoTiff(object):
         else:
             raise TypeError("only *.tif file name is supported")
 
-    def math_polygon(self, polygon_hv, is_geo=True, kernal="mean"):
+    def math_polygon(self, polygon_hv, is_geo=True, kernel="mean"):
         """Calculate the valus inside given polygon
 
         Parameters
         ----------
-        polygon_hv : numpy nx2 array
+        polygon_hv : numpy nx2 array | 'all'
             (horizontal, vertical) points
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
-        kernal : str, optional
+        kernel : str, optional
             The method to calculate polygon summary, options are: ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"], please check notes section for more details.
         
         Notes
@@ -424,16 +424,19 @@ class GeoTiff(object):
         """
         self._not_empty()
 
-        imarray = self.crop_polygon(polygon_hv, is_geo)
+        if polygon_hv == "all":
+            imarray = get_imarray(self.file_path)
+        else:
+            imarray = self.crop_polygon(polygon_hv, is_geo)
 
         # remove outside values
         if len(imarray.shape) == 2:  # seems dsm
-            dim = 2
+            # dim = 2
             inside_value = imarray[imarray != self.header["nodata"]]
         elif len(imarray.shape) == 3 and imarray.shape[2]==4:  
             # RGBA dom
             # crop_polygon function only returns RGBA 4 layer data
-            dim = 3
+            # dim = 3
             mask = imarray[:, :, 3] == 255
             inside_value = imarray[mask, :]   # (mxn-o, 4)
         else:
@@ -451,30 +454,30 @@ class GeoTiff(object):
                 else:
                     return np.all(group >= thresh, axis=1)
 
-        if kernal == "mean":
+        if kernel == "mean":
             return np.mean(inside_value, axis=0)
-        elif kernal == "min":
+        elif kernel == "min":
             return np.min(inside_value, axis=0)
-        elif kernal == "max":
+        elif kernel == "max":
             return np.max(inside_value, axis=0)
-        elif kernal == "pmin5":
+        elif kernel == "pmin5":
             thresh = np.percentile(inside_value, 5, axis=0)
             idx = _get_idx(inside_value, thresh, "<=")
             return np.mean(inside_value[idx], axis=0)
-        elif kernal == "pmin10":
+        elif kernel == "pmin10":
             thresh = np.percentile(inside_value, 10, axis=0)
             idx = _get_idx(inside_value, thresh, "<=")
             return np.mean(inside_value[idx], axis=0)
-        elif kernal == "pmax5":
+        elif kernel == "pmax5":
             thresh = np.percentile(inside_value, 95, axis=0)
             idx = _get_idx(inside_value, thresh, ">=")
             return np.mean(inside_value[idx], axis=0)
-        elif kernal == "pmax10":
+        elif kernel == "pmax10":
             thresh = np.percentile(inside_value, 90, axis=0)
             idx = _get_idx(inside_value, thresh, ">=")
             return np.mean(inside_value[idx], axis=0)
         else:
-            raise KeyError(f"Could not find kernel [{kernal}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")
+            raise KeyError(f"Could not find kernel [{kernel}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")
 
     def create_grid(self, w, h, extend=False, grid_buffer=0):
         self._not_empty()

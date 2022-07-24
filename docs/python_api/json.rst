@@ -1,23 +1,9 @@
-===
-ROI
-===
+:hide-toc:
 
-Class
-=====
+===============
+↪ jsonfile
+===============
 
-A summary of class ``ROI``
-
-.. autosummary::
-
-    easyidp.ROI.is_geo
-    easyidp.ROI.get_z_from_dsm
-    easyidp.ROI.open
-    easyidp.ROI.copy
-
-
-.. autoclass:: easyidp.ROI
-    :members:
-    :noindex:
 
 Functions
 =========
@@ -29,4 +15,7 @@ Functions
 .. autosummary::
     :toctree: autodoc
 
-    easyidp.roi.read_cc_txt
+    easyidp.jsonfile.read_json
+    easyidp.jsonfile.save_json
+    easyidp.jsonfile.write_json
+    easyidp.jsonfile.dict2json

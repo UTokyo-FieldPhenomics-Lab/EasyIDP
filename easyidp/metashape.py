@@ -5,7 +5,8 @@ import numpy as np
 import warnings
 from xml.etree import ElementTree
 
-from .reconstruct import Container, Recons, Photo, Sensor, Calibration, ChunkTransform
+from . import Container
+from .reconstruct import Recons, Photo, Sensor, Calibration, ChunkTransform
 from .pathtools import parse_relative_path
 
 
@@ -629,7 +630,12 @@ def _decode_camera_tag(xml_obj):
         one element of xml_tree.findall("./cameras/camera")
 
         <camera id="0" sensor_id="0" label="DJI_0151">
-          <transform>9.9181741779621246e-01 ... 0 0 0 1</transform>  // 16 numbers
+          <transform>
+           0.99893511, -0.04561155,  0.00694542, -5.50542042
+          -0.04604262, -0.9951647 ,  0.08676   , 13.25994938
+           0.00295458, -0.0869874 , -0.99620503,  2.15491524
+           0.        ,  0.        ,  0.        ,  1.         
+          </transform>  // 16 numbers
           <rotation_covariance>5.9742650282250832e-04 ... 2.3538470709659123e-04</rotation_covariance>  // 9 numbers
           <location_covariance>2.0254219245789448e-02 ... 2.6760756179895751e-02</location_covariance>  // 9 numbers
           <orientation>1</orientation>

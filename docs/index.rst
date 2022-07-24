@@ -67,6 +67,8 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
    python_api/pointcloud
    python_api/geotiff
    python_api/roi
+   python_api/shp
+   python_api/json
 
 
 .. toctree::

@@ -20,6 +20,17 @@ class MyEncoder(json.JSONEncoder):
             return super(MyEncoder, self).default(obj)
 
 def read_json(json_path):
+    """Read json file to python dict.
+
+    Parameters
+    ----------
+    json_path : str
+        The path to json file
+
+    Returns
+    -------
+    dict
+    """
     if os.path.exists(json_path):
         with open(json_path) as json_file:
             data = json.load(json_file)
@@ -28,8 +39,7 @@ def read_json(json_path):
         raise FileNotFoundError(f"Could not locate the given json file [{json_path}]")
 
 def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
-    """
-    Convert dict to the same structure json file
+    """Convert dict to the same structure json file
     
     Parameters
     ----------
@@ -37,11 +47,18 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
         the dict object want to save as json file
     json_path : str
         the path including json file name to save the json file
-        e.g. "D:/xxx/xxxx/save.json"
+        e.g. ``D:/xxx/xxxx/save.json``
     indent : int | None
         whether save "readable" json with indent, default 0 without indent
+    encoding : str
+        the encoding type of output file
 
-        example:
+    Notes
+    -----
+    **indient example**
+
+    .. code-block:: python
+
         >>> print(json.dumps(data), indent=0)
         {"age": 4, "name": "niuniuche", "attribute": "toy"}
         >>> print(json.dumps(data,indent=4))
@@ -50,8 +67,10 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
             "name": "niuniuche",
             "attribute": "toy"
         }
-    encoding : str
-        the encoding type of output file
+
+    See also
+    --------
+    easyidp.jsonfile.write_json, easyidp.jsonfile.save_json
     """
     if isinstance(json_path, str) and json_path[-5:] == '.json':
         with open(json_path, 'w', encoding=encoding) as result_file:
@@ -61,9 +80,75 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
 
 
 def write_json(data_dict, json_path, indent=0, encoding='utf-8'):
+    """Save dict to the same structure json file
+    
+    Parameters
+    ----------
+    data_dict : dict
+        the dict object want to save as json file
+    json_path : str
+        the path including json file name to save the json file
+        e.g. ``D:/xxx/xxxx/save.json``
+    indent : int | None
+        whether save "readable" json with indent, default 0 without indent
+    encoding : str
+        the encoding type of output file
+
+    Notes
+    -----
+    **indient example**
+
+    .. code-block:: python
+
+        >>> print(json.dumps(data), indent=0)
+        {"age": 4, "name": "niuniuche", "attribute": "toy"}
+        >>> print(json.dumps(data,indent=4))
+        {
+            "age": 4,
+            "name": "niuniuche",
+            "attribute": "toy"
+        }
+
+    See also
+    --------
+    easyidp.jsonfile.dict2json, easyidp.jsonfile.save_json
+    """
     dict2json(data_dict, json_path, indent, encoding)
 
 def save_json(data_dict, json_path, indent=0, encoding='utf-8'):
+    """Save dict to the same structure json file
+    
+    Parameters
+    ----------
+    data_dict : dict
+        the dict object want to save as json file
+    json_path : str
+        the path including json file name to save the json file
+        e.g. ``D:/xxx/xxxx/save.json``
+    indent : int | None
+        whether save "readable" json with indent, default 0 without indent
+    encoding : str
+        the encoding type of output file
+
+    Notes
+    -----
+    **indient example**
+
+    .. code-block:: python
+
+        >>> print(json.dumps(data), indent=0)
+        {"age": 4, "name": "niuniuche", "attribute": "toy"}
+        >>> print(json.dumps(data,indent=4))
+        {
+            "age": 4,
+            "name": "niuniuche",
+            "attribute": "toy"
+        }
+
+    See also
+    --------
+    easyidp.jsonfile.dict2json, easyidp.jsonfile.save_json
+    """
     dict2json(data_dict, json_path, indent, encoding)
 
 # just copied from previous `caas_lite.py`, haven't modified yet

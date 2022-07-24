@@ -2,16 +2,21 @@ import os
 import pyproj
 import warnings
 import numpy as np
+from copy import copy as ccopy
+from shapely.geometry import Point, Polygon
+
+from . import Container
 from .shp import read_proj, read_shp, convert_proj, show_shp_fields
-from .reconstruct import Container
 from .jsonfile import read_json
+from .geotiff import GeoTiff
+from .pointcloud import PointCloud
 
 class ROI(Container):
     """
     Summary APIs of each objects, often read from shp file.
     """
 
-    def __init__(self, target_path=None):
+    def __init__(self, target_path=None, **kwargs):
         super().__init__()
         # in super
         # self.id_item = {}
@@ -21,7 +26,7 @@ class ROI(Container):
         self.source = target_path
 
         if target_path is not None:
-            self.open(target_path)
+            self.open(target_path, **kwargs)
             
 
     def __setitem__(self, key, item):
@@ -29,16 +34,68 @@ class ROI(Container):
         self.id_item[idx] = item
         self.item_label[key] = idx
 
+    def is_geo(self):
+        """Returns True if the ROI is geo coordinate.
 
-    def open(self, target_path):
+        Returns
+        -------
+        bool
+        """
+        if self.crs is None:
+            return False
+        else:
+            return True
+
+
+    def open(self, target_path, **kwargs):
+        """An advanced wrapper to open ROI without dealing with format
+
+        Parameters
+        ----------
+        target_path : str
+            the path to roi files, current support \*.shp and labelme.json
+
+        Notes
+        -----
+        You can also pass several control parameters in this function, please refer see also for more information
+
+        See also
+        --------
+        read_shp, read_labelme_json
+        """
         ext = os.path.splitext(target_path)[-1]
         if ext == ".shp":
-            self.read_shp(target_path)
+            self.read_shp(target_path, **kwargs)
         elif ext == ".json":
             self.read_labelme_json(target_path)
 
 
     def read_shp(self, shp_path, shp_proj=None, name_field=None, include_title=False, encoding='utf-8'):
+        """read ROI from shp file
+
+        Parameters
+        ----------
+        shp_path : str
+            the file path of \*.shp
+        shp_proj : str | pyproj object
+            by default None, will read automatically from prj file with the same name of shp filename, 
+            or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or 
+            ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)``
+        name_field : str or int or list[ str|int ], optional
+            by default None, the id or name of shp file fields as output dictionary keys
+        include_title : bool, optional
+            by default False, whether add column name to roi key.
+        encoding : str
+            by default 'utf-8', for some chinese characters, 'gbk' may required
+
+        Notes
+        -----
+        For details of this parameters, please refer to see also.
+
+        See also
+        --------
+        easyidp.shp.read_shp
+        """
         # if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
         # shp.convert_proj()
         roi_dict, crs = read_shp(shp_path, shp_proj, name_field, include_title, encoding, return_proj=True)
@@ -90,14 +147,57 @@ class ROI(Container):
 
         self.id_item = convert_proj(self.id_item, self.crs, target_crs)
         self.crs = target_crs
-        
 
-    def get_z_from_dsm(self, dsm_path, mode="face", kernel="mean", buffer=0):
+    def _get_z_input_check(self, obj, mode, kernel, buffer, func="dsm"):
+        # check if has CRS (GeoROI), otherwise stop
+        if not self.is_geo():
+            raise TypeError("Could not operate without CRS specified")
+
+        # check input type
+        if mode not in ["point", "face"]:
+            raise KeyError(
+                f"The param 'mode' only accept 'point' or 'face', not '{mode}'"
+            )
+
+        if kernel not in [
+            "mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"
+        ]:
+            raise KeyError(f"The param 'kernal' only accept "
+                f"'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10'"
+                f" not '{kernel}'"
+            )
+
+        if not isinstance(buffer, (int, float)):
+            raise TypeError(
+                f"Only 'int' and 'float' are acceptable for 'buffer', not "
+                f"{type(buffer)} [{buffer}]."
+            )
+
+        # convert input objects
+        if isinstance(obj, str) and os.path.exists(obj):
+            if func == "dsm":
+                return GeoTiff(obj)
+            else:
+                return PointCloud(obj)
+        elif isinstance(obj, (GeoTiff, PointCloud)):
+            return obj
+        else:
+            if func == "dsm":
+                raise TypeError(
+                    f"Only geotiff path <str> and <easyidp.GeoTiff> object"
+                    f"are accepted, not {type(obj)}")
+            else:
+                raise TypeError(
+                    f"Only geotiff path <str> and <easyidp.PointCloud> object"
+                    f"are accepted, not {type(obj)}")
+
+
+    def get_z_from_dsm(self, dsm, mode="face", kernel="mean", buffer=0, keep_crs=False):
         """get the z values (heights) from DSM for 2D polygon
 
         Parameters
         ----------
-        dsm_path : str | <GeoTiff> object
+        dsm : str | <GeoTiff> object
             the path of dsm, or the GeoTiff object from idp.GeoTiff()
         mode : str, optional
             the mode to calculate z values, option in "point" and "face"
@@ -110,6 +210,10 @@ class ROI(Container):
             the buffer of ROI, by default 0 (no buffer),
             can be positive values or -1 (using all map), 
             please check the Notes section for more details
+        keep_crs : bool, optional
+            When the crs is not the save with DSM crs, where change the ROI crs to fit DSM.
+            **False**(default): change ROI's CRS;
+            **True**: not change ROI's CRS, only attach the z value to current coordinate. 
 
         Notes
         -----
@@ -149,6 +253,70 @@ class ROI(Container):
         --------
         easyidp.GeoTiff.math_polygon
         """
+        dsm = self._get_z_input_check(dsm, mode, kernel, buffer, func="dsm")
+
+        # check is the dsm, not RGB or multiband GeoTiff.
+        if dsm.header["dim"] != 1:
+            raise TypeError(
+                f"Only one layer geotiff (DSM) are accepted, current "
+                f"layer is {dsm.header['dim']}")
+
+        # using the full map to calculate
+        if buffer == -1 or buffer == -1.0:
+            global_z = dsm.math_polygon(polygon_hv="all", kernel=kernel)
+        else:
+            global_z = None
+
+        # convert CRS is necessary
+        if self.crs.name != dsm.header["proj"].name and not keep_crs:
+            self.change_crs(dsm.header["proj"])
+            poly_dict = self.id_item.copy()
+        else:
+            poly_dict = convert_proj(self.id_item, self.crs, dsm.header["proj"])
+
+        for key, poly in poly_dict.items():
+            # only get the x and y of coords
+            poly = poly[:, 0:2]
+
+            # using the full map
+            if global_z is not None:
+                poly3d = np.insert(self.id_item[key], obj=2, values=global_z, axis=1)
+            else:
+                if mode == "face":    # using the polygon as uniform z values
+                    # need do buffer
+                    if buffer != 0 or buffer != 0.0:
+                        p = Polygon(poly)
+                        p_buffer = p.buffer(buffer)
+                        p_buffer_np = np.array(p_buffer.exterior.coords)
+
+                    poly_z = dsm.math_polygon(p_buffer_np, is_geo=True, kernel=kernel)
+                    
+                    poly3d = np.insert(self.id_item[key], obj=2, values=poly_z, axis=1)
+
+                else:    # using each point own z values
+                    if buffer != 0 or buffer != 0.0:
+                        z_values = []
+                        for po in poly:
+                            p = Point(po)
+                            p_buffer = p.buffer(buffer)
+                            p_buffer_np = np.array(p_buffer.exterior.coords)
+
+                            poly_z = dsm.math_polygon(p_buffer_np, is_geo=True, kernel=kernel)
+                            z_values.append(poly_z)
+
+                        z_values = np.array(z_values)
+                    else:
+                        # just qurey pixel value 
+                        z_values = dsm.point_query(poly, is_geo=True)
+
+                    poly3d = np.concatenate([self.id_item[key], z_values[:, None]], axis=1)
+
+            self.id_item[key] = poly3d
+
+
+    def get_z_from_pcd(self, pcd, mode="face", kernel="mean", buffer=0):
+        # if mode = point, buffer > 0, otherwise raise error
+        pcd = self._get_z_input_check(pcd, mode, kernel, buffer, func="pcd")
 
     def crop(self, target):
         # call related function
@@ -158,6 +326,21 @@ class ROI(Container):
         # call related function
         # need check alt exists, the alt is changing for different dsm?
         pass
+
+    def copy(self):
+        """make a deep copy of current file
+
+        Returns
+        -------
+        easyidp.ROI
+        """
+        ctn = ROI()
+        ctn.id_item = self.id_item.copy()
+        ctn.item_label = self.item_label.copy()
+        ctn.crs = ccopy(self.crs)
+        ctn.source = ccopy(self.source)
+
+        return ctn
 
 
 def read_cc_txt(txt_path):

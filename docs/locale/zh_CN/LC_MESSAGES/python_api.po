@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-21 07:59+0900\n"
+"POT-Creation-Date: 2022-07-24 22:15+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.10.3\n"
+"Generated-By: Babel 2.10.1\n"
 
 #: ../../python_api/autodoc/easyidp.geotiff.geo2pixel.rst:2
 msgid "easyidp.geotiff.geo2pixel"
@@ -29,12 +29,18 @@ msgid ""
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.crop easyidp.geotiff.GeoTiff.crop_polygon
-#: easyidp.geotiff.GeoTiff.math_polygon easyidp.geotiff.GeoTiff.point_query
-#: easyidp.geotiff.GeoTiff.read_geotiff easyidp.geotiff.GeoTiff.save_geotiff
-#: easyidp.geotiff.geo2pixel easyidp.geotiff.get_header
-#: easyidp.geotiff.get_imarray easyidp.geotiff.pixel2geo
-#: easyidp.geotiff.tifffile_crop easyidp.pointcloud.PointCloud.crop_point_cloud
-#: easyidp.pointcloud.read_las easyidp.pointcloud.write_ply of
+#: easyidp.geotiff.GeoTiff.crop_rectangle easyidp.geotiff.GeoTiff.math_polygon
+#: easyidp.geotiff.GeoTiff.point_query easyidp.geotiff.GeoTiff.read_geotiff
+#: easyidp.geotiff.GeoTiff.save_geotiff easyidp.geotiff.geo2pixel
+#: easyidp.geotiff.get_header easyidp.geotiff.get_imarray
+#: easyidp.geotiff.pixel2geo easyidp.geotiff.tifffile_crop
+#: easyidp.jsonfile.dict2json easyidp.jsonfile.read_json
+#: easyidp.jsonfile.save_json easyidp.jsonfile.write_json
+#: easyidp.pointcloud.PointCloud.crop_point_cloud easyidp.pointcloud.read_las
+#: easyidp.pointcloud.write_ply easyidp.roi.ROI.get_z_from_dsm
+#: easyidp.roi.ROI.open easyidp.roi.ROI.read_shp easyidp.roi.read_cc_txt
+#: easyidp.shp.convert_proj easyidp.shp.read_proj easyidp.shp.read_shp
+#: easyidp.shp.show_shp_fields of
 msgid "参数"
 msgstr ""
 
@@ -52,11 +58,11 @@ msgid ""
 "int pixel index -> (23, 27)"
 msgstr ""
 
-#: easyidp.geotiff.GeoTiff.crop_polygon easyidp.geotiff.GeoTiff.point_query
-#: easyidp.geotiff.geo2pixel easyidp.geotiff.get_header
-#: easyidp.geotiff.get_imarray easyidp.geotiff.tifffile_crop
-#: easyidp.pointcloud.PointCloud.crop_point_cloud easyidp.pointcloud.read_las
-#: of
+#: easyidp.geotiff.GeoTiff.crop_polygon easyidp.geotiff.GeoTiff.crop_rectangle
+#: easyidp.geotiff.GeoTiff.point_query easyidp.geotiff.geo2pixel
+#: easyidp.geotiff.get_header easyidp.geotiff.get_imarray
+#: easyidp.geotiff.tifffile_crop easyidp.pointcloud.PointCloud.crop_point_cloud
+#: easyidp.pointcloud.read_las easyidp.shp.read_proj easyidp.shp.read_shp of
 msgid "返回"
 msgstr ""
 
@@ -64,19 +70,24 @@ msgstr ""
 msgid "pixel position of these points (horizontal, vertical)"
 msgstr ""
 
-#: easyidp.geotiff.GeoTiff.crop_polygon easyidp.geotiff.GeoTiff.has_data
-#: easyidp.geotiff.GeoTiff.point_query easyidp.geotiff.geo2pixel
-#: easyidp.geotiff.get_header easyidp.geotiff.get_imarray
-#: easyidp.geotiff.pixel2geo easyidp.geotiff.tifffile_crop
+#: easyidp.geotiff.GeoTiff.crop_polygon easyidp.geotiff.GeoTiff.crop_rectangle
+#: easyidp.geotiff.GeoTiff.has_data easyidp.geotiff.GeoTiff.point_query
+#: easyidp.geotiff.geo2pixel easyidp.geotiff.get_header
+#: easyidp.geotiff.get_imarray easyidp.geotiff.pixel2geo
+#: easyidp.geotiff.tifffile_crop easyidp.jsonfile.read_json
 #: easyidp.pointcloud.PointCloud.crop_point_cloud
 #: easyidp.pointcloud.PointCloud.has_colors
 #: easyidp.pointcloud.PointCloud.has_normals
-#: easyidp.pointcloud.PointCloud.has_points easyidp.pointcloud.read_las of
+#: easyidp.pointcloud.PointCloud.has_points easyidp.pointcloud.read_las
+#: easyidp.roi.ROI.copy easyidp.roi.ROI.is_geo easyidp.shp.read_proj of
 msgid "返回类型"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.math_polygon:11 easyidp.geotiff.geo2pixel:15
-#: easyidp.geotiff.tifffile_crop:39 easyidp.pointcloud.write_ply:17 of
+#: easyidp.geotiff.tifffile_crop:39 easyidp.jsonfile.dict2json:14
+#: easyidp.jsonfile.save_json:14 easyidp.jsonfile.write_json:14
+#: easyidp.pointcloud.write_ply:17 easyidp.roi.ROI.get_z_from_dsm:22
+#: easyidp.roi.ROI.open:7 easyidp.roi.ROI.read_shp:17 of
 msgid "提示"
 msgstr ""
 
@@ -112,7 +123,10 @@ msgid ""
 " directly."
 msgstr ""
 
-#: easyidp.geotiff.GeoTiff.point_query:12 easyidp.geotiff.geo2pixel:28 of
+#: easyidp.geotiff.GeoTiff.crop_rectangle:36
+#: easyidp.geotiff.GeoTiff.point_query:12 easyidp.geotiff.geo2pixel:28
+#: easyidp.geotiff.tifffile_crop:49 easyidp.roi.ROI.get_z_from_dsm:49
+#: easyidp.shp.read_shp:27 of
 msgid "实际案例"
 msgstr ""
 
@@ -190,11 +204,13 @@ msgid ""
 "height_st left = j0 = w_st"
 msgstr ""
 
-#: easyidp.geotiff.tifffile_crop:30 of
+#: easyidp.geotiff.GeoTiff.crop_rectangle:21 easyidp.geotiff.tifffile_crop:30
+#: of
 msgid "Desired crop height."
 msgstr ""
 
-#: easyidp.geotiff.tifffile_crop:32 of
+#: easyidp.geotiff.GeoTiff.crop_rectangle:23 easyidp.geotiff.tifffile_crop:32
+#: of
 msgid "Desired crop width."
 msgstr ""
 
@@ -220,6 +236,93 @@ msgstr ""
 msgid ""
 "https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-"
 "get_crop-py-L60"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:43 easyidp.geotiff.tifffile_crop:58
+#: of
+msgid "It is not recommended to use without specifying parameters like this:"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:45 easyidp.geotiff.tifffile_crop:60
+#: of
+msgid "``crop_rectiange(434, 918, 320, 321)``"
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:62 of
+msgid "It is hard to know the exactly order immediately."
+msgstr ""
+
+#: easyidp.geotiff.tifffile_crop:64 of
+msgid ":obj:`Geotiff.crop_rectange`"
+msgstr ""
+
+#: ../../python_api/autodoc/easyidp.jsonfile.dict2json.rst:2
+msgid "easyidp.jsonfile.dict2json"
+msgstr ""
+
+#: ../../python_api/json.rst:21:<autosummary>:1 easyidp.jsonfile.dict2json:1 of
+msgid "Convert dict to the same structure json file"
+msgstr ""
+
+#: easyidp.jsonfile.dict2json:3 easyidp.jsonfile.save_json:3
+#: easyidp.jsonfile.write_json:3 of
+msgid "the dict object want to save as json file"
+msgstr ""
+
+#: easyidp.jsonfile.dict2json:5 easyidp.jsonfile.save_json:5
+#: easyidp.jsonfile.write_json:5 of
+msgid ""
+"the path including json file name to save the json file e.g. "
+"``D:/xxx/xxxx/save.json``"
+msgstr ""
+
+#: easyidp.jsonfile.dict2json:8 easyidp.jsonfile.save_json:8
+#: easyidp.jsonfile.write_json:8 of
+msgid "whether save \"readable\" json with indent, default 0 without indent"
+msgstr ""
+
+#: easyidp.jsonfile.dict2json:10 easyidp.jsonfile.save_json:10
+#: easyidp.jsonfile.write_json:10 of
+msgid "the encoding type of output file"
+msgstr ""
+
+#: easyidp.jsonfile.dict2json:15 easyidp.jsonfile.save_json:15
+#: easyidp.jsonfile.write_json:15 of
+msgid "**indient example**"
+msgstr ""
+
+#: easyidp.jsonfile.dict2json:28 of
+msgid ":obj:`easyidp.jsonfile.write_json`, :obj:`easyidp.jsonfile.save_json`"
+msgstr ""
+
+#: ../../python_api/autodoc/easyidp.jsonfile.read_json.rst:2
+msgid "easyidp.jsonfile.read\\_json"
+msgstr ""
+
+#: ../../python_api/json.rst:21:<autosummary>:1 easyidp.jsonfile.read_json:1 of
+msgid "Read json file to python dict."
+msgstr ""
+
+#: easyidp.jsonfile.read_json:3 of
+#, fuzzy
+msgid "The path to json file"
+msgstr "Geotiff文件的路径"
+
+#: ../../python_api/autodoc/easyidp.jsonfile.save_json.rst:2
+msgid "easyidp.jsonfile.save\\_json"
+msgstr ""
+
+#: ../../python_api/json.rst:21:<autosummary>:1 easyidp.jsonfile.save_json:1
+#: easyidp.jsonfile.write_json:1 of
+msgid "Save dict to the same structure json file"
+msgstr ""
+
+#: easyidp.jsonfile.save_json:28 easyidp.jsonfile.write_json:28 of
+msgid ":obj:`easyidp.jsonfile.dict2json`, :obj:`easyidp.jsonfile.save_json`"
+msgstr ""
+
+#: ../../python_api/autodoc/easyidp.jsonfile.write_json.rst:2
+msgid "easyidp.jsonfile.write\\_json"
 msgstr ""
 
 #: ../../python_api/autodoc/easyidp.pointcloud.read_las.rst:2
@@ -298,11 +401,300 @@ msgid ""
 "arrays"
 msgstr ""
 
+#: ../../python_api/autodoc/easyidp.roi.read_cc_txt.rst:2
+msgid "easyidp.roi.read\\_cc\\_txt"
+msgstr ""
+
+#: ../../python_api/roi.rst:32:<autosummary>:1 easyidp.roi.read_cc_txt:1 of
+msgid "Read the point cloud annotation made by cloudcompare"
+msgstr ""
+
+#: easyidp.roi.read_cc_txt:3 of
+#, fuzzy
+msgid "The path to cloudcompare annotation txt file"
+msgstr "Geotiff文件的路径"
+
+#: ../../python_api/autodoc/easyidp.shp.convert_proj.rst:2
+msgid "easyidp.shp.convert\\_proj"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1 easyidp.shp.convert_proj:1 of
+msgid "Provide the geo coordinate transfrom based on pyproj package"
+msgstr ""
+
+#: easyidp.shp.convert_proj:3 of
+msgid "the output of read_shp() function"
+msgstr ""
+
+#: easyidp.shp.convert_proj:5 of
+msgid "the hidden output of read_shp(..., return_proj=True)"
+msgstr ""
+
+#: easyidp.shp.convert_proj:7 of
+msgid "Examples: [1] pyproj.CRS.from_epsg(4326) [2] r'path/to/{shp_name}.prj',"
+msgstr ""
+
+#: ../../python_api/autodoc/easyidp.shp.read_proj.rst:2
+msgid "easyidp.shp.read\\_proj"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1 easyidp.shp.read_proj:1 of
+msgid "read \\*.prj file to pyproj object"
+msgstr ""
+
+#: easyidp.shp.read_proj:3 of
+msgid "the file path of shp \\*.prj"
+msgstr ""
+
+#: easyidp.shp.read_proj:6 of
+msgid "**proj**"
+msgstr ""
+
+#: ../../python_api/autodoc/easyidp.shp.read_shp.rst:2
+msgid "easyidp.shp.read\\_shp"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1 easyidp.shp.read_shp:1 of
+msgid "read shp file to python numpy object"
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:3 easyidp.shp.read_shp:3
+#: easyidp.shp.show_shp_fields:3 of
+msgid "the file path of \\*.shp"
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:5 easyidp.shp.read_shp:5 of
+msgid ""
+"by default None, will read automatically from prj file with the same name"
+" of shp filename, or give manually by ``read_shp(..., "
+"shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or ``read_shp(..., "
+"shp_proj=r'path/to/{shp_name}.prj', ...)``"
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:9 easyidp.shp.read_shp:9 of
+msgid ""
+"by default None, the id or name of shp file fields as output dictionary "
+"keys"
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:11 easyidp.shp.read_shp:11 of
+msgid "by default False, whether add column name to roi key."
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:13 easyidp.shp.read_shp:13 of
+msgid "by default 'utf-8', for some chinese characters, 'gbk' may required"
+msgstr ""
+
+#: easyidp.shp.read_shp:15 of
+msgid ""
+"by default False, if given as true, will return extra pyproj.CRS object "
+"of current shp file."
+msgstr ""
+
+#: easyidp.shp.read_shp:18 of
+msgid ""
+"* *dict,* -- the dictionary with read numpy polygon coordinates    .. "
+"code-block:: python        {'id1': np.array([[x1,y1],[x2,y2],...]),"
+"        'id2': np.array([[x1,y1],[x2,y2],...]),...} * *pyproj.CRS, "
+"optional* -- once set return_proj=True"
+msgstr ""
+
+#: easyidp.shp.read_shp:18 of
+msgid "*dict,* -- the dictionary with read numpy polygon coordinates"
+msgstr ""
+
+#: easyidp.shp.read_shp:24 of
+msgid "*pyproj.CRS, optional* -- once set return_proj=True"
+msgstr ""
+
+#: easyidp.shp.read_shp:28 of
+msgid "The example shp file has the following columns:"
+msgstr ""
+
+#: easyidp.shp.read_shp:31 of
+msgid "[0] ID"
+msgstr ""
+
+#: easyidp.shp.read_shp:31 of
+msgid "[1] MASSIFID"
+msgstr ""
+
+#: easyidp.shp.read_shp:31 of
+msgid "[2] CROPTYPE"
+msgstr ""
+
+#: easyidp.shp.read_shp:31 of
+msgid "[3] CROPDATE"
+msgstr ""
+
+#: easyidp.shp.read_shp:31 of
+msgid "[4] CROPAREA"
+msgstr ""
+
+#: easyidp.shp.read_shp:31 of
+msgid "[5] ATTID"
+msgstr ""
+
+#: easyidp.shp.read_shp:33 of
+msgid "23010...0000"
+msgstr ""
+
+#: easyidp.shp.read_shp:33 of
+msgid "小麦"
+msgstr ""
+
+#: easyidp.shp.read_shp:33 easyidp.shp.read_shp:35 easyidp.shp.read_shp:37
+#: easyidp.shp.read_shp:39 easyidp.shp.read_shp:41 easyidp.shp.read_shp:45
+#: easyidp.shp.read_shp:47 easyidp.shp.read_shp:49 easyidp.shp.read_shp:51
+#: easyidp.shp.read_shp:53 of
+msgid "2018-09-01"
+msgstr ""
+
+#: easyidp.shp.read_shp:33 of
+msgid "61525.26302"
+msgstr ""
+
+#: easyidp.shp.read_shp:35 of
+msgid "23010...0012"
+msgstr ""
+
+#: easyidp.shp.read_shp:35 of
+msgid "蔬菜"
+msgstr ""
+
+#: easyidp.shp.read_shp:35 of
+msgid "2802.33512"
+msgstr ""
+
+#: easyidp.shp.read_shp:37 of
+msgid "23010...0014"
+msgstr ""
+
+#: easyidp.shp.read_shp:37 easyidp.shp.read_shp:41 of
+msgid "玉米"
+msgstr ""
+
+#: easyidp.shp.read_shp:37 of
+msgid "6960.7745"
+msgstr ""
+
+#: easyidp.shp.read_shp:39 of
+msgid "23010...0061"
+msgstr ""
+
+#: easyidp.shp.read_shp:39 of
+msgid "牧草"
+msgstr ""
+
+#: easyidp.shp.read_shp:39 of
+msgid "25349.08639"
+msgstr ""
+
+#: easyidp.shp.read_shp:41 of
+msgid "23010...0062"
+msgstr ""
+
+#: easyidp.shp.read_shp:41 of
+msgid "71463.27666"
+msgstr ""
+
+#: easyidp.shp.read_shp:43 of
+msgid "..."
+msgstr ""
+
+#: easyidp.shp.read_shp:45 of
+msgid "23010...0582"
+msgstr ""
+
+#: easyidp.shp.read_shp:45 of
+msgid "胡萝卜"
+msgstr ""
+
+#: easyidp.shp.read_shp:45 of
+msgid "288.23876"
+msgstr ""
+
+#: easyidp.shp.read_shp:47 of
+msgid "23010...0577"
+msgstr ""
+
+#: easyidp.shp.read_shp:47 of
+msgid "杂豆"
+msgstr ""
+
+#: easyidp.shp.read_shp:47 of
+msgid "2001.80384"
+msgstr ""
+
+#: easyidp.shp.read_shp:49 of
+msgid "23010...0583"
+msgstr ""
+
+#: easyidp.shp.read_shp:49 of
+msgid "大豆"
+msgstr ""
+
+#: easyidp.shp.read_shp:49 of
+msgid "380.41704"
+msgstr ""
+
+#: easyidp.shp.read_shp:51 of
+msgid "23010...0584"
+msgstr ""
+
+#: easyidp.shp.read_shp:51 easyidp.shp.read_shp:53 of
+msgid "其它"
+msgstr ""
+
+#: easyidp.shp.read_shp:51 of
+msgid "9133.25998"
+msgstr ""
+
+#: easyidp.shp.read_shp:53 of
+msgid "23010...0585"
+msgstr ""
+
+#: easyidp.shp.read_shp:53 of
+msgid "1704.27193"
+msgstr ""
+
+#: easyidp.shp.read_shp:56 of
+msgid "First, prepare data"
+msgstr ""
+
+#: easyidp.shp.read_shp:63 of
+msgid "Then using the second column ``MASSIFID`` as shape keys:"
+msgstr ""
+
+#: easyidp.shp.read_shp:79 of
+msgid ""
+"Due to the duplication of ``CROPTYPE``, you can not using it as the "
+"unique key, but you can combine several columns together by passing a "
+"list to ``name_field``:"
+msgstr ""
+
+#: easyidp.shp.read_shp:91 of
+msgid "And you can also add column_names to id by ``include_title=True`` :"
+msgstr ""
+
+#: ../../python_api/autodoc/easyidp.shp.show_shp_fields.rst:2
+msgid "easyidp.shp.show\\_shp\\_fields"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1 easyidp.shp.show_shp_fields:1 of
+msgid "Read shp field data to pandas.DataFrame, for further json metadata usage"
+msgstr ""
+
+#: easyidp.shp.show_shp_fields:5 of
+msgid "default is 'utf-8', however, or some chinese characters, 'gbk' is required"
+msgstr ""
+
 #: ../../python_api/geotiff.rst:3
 msgid "GeoTiff"
 msgstr ""
 
 #: ../../python_api/geotiff.rst:7 ../../python_api/pointcloud.rst:7
+#: ../../python_api/roi.rst:6
 msgid "Class"
 msgstr "类"
 
@@ -410,6 +802,7 @@ msgid "(horizontal, vertical) points"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.crop_polygon:5
+#: easyidp.geotiff.GeoTiff.crop_rectangle:25
 #: easyidp.geotiff.GeoTiff.math_polygon:5 easyidp.geotiff.GeoTiff.point_query:5
 #: of
 msgid ""
@@ -417,12 +810,43 @@ msgid ""
 "(default)"
 msgstr ""
 
-#: easyidp.geotiff.GeoTiff.crop_polygon:7 of
+#: easyidp.geotiff.GeoTiff.crop_polygon:7
+#: easyidp.geotiff.GeoTiff.crop_rectangle:27 of
 msgid "if given, will save the cropped as \\*.tif file to path"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.crop_polygon:10 of
 msgid "The cropped numpy pixels imarray"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:1 of
+msgid "Extract a rectangle regeion crop from a GeoTIFF image file."
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:17 of
+msgid "Coordinates of"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:19 of
+msgid "Coordinates of the top left corner of the desired crop."
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:30 of
+msgid "Extracted crop."
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:33 of
+msgid ":obj:`tifffile_crop`"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:47 of
+msgid "It is hard to know the exactly order"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop_rectangle:49 of
+msgid ""
+"PS: subfunction ``tifffile_crop`` has the order ``(top, left, h, w)`` "
+"which is too heavy to change it."
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.math_polygon:7 of
@@ -436,38 +860,32 @@ msgstr ""
 msgid "Option details for ``kernal`` parameter:"
 msgstr ""
 
-#: easyidp.geotiff.GeoTiff.math_polygon:14 of
+#: easyidp.geotiff.GeoTiff.math_polygon:14 easyidp.roi.ROI.get_z_from_dsm:25 of
 msgid "\"mean\": the mean value inside polygon"
 msgstr ""
 
-#: easyidp.geotiff.GeoTiff.math_polygon:15 of
+#: easyidp.geotiff.GeoTiff.math_polygon:15 easyidp.roi.ROI.get_z_from_dsm:26 of
 msgid "\"min\": the minimum value inside polygon"
 msgstr ""
 
-#: easyidp.geotiff.GeoTiff.math_polygon:16 of
+#: easyidp.geotiff.GeoTiff.math_polygon:16 easyidp.roi.ROI.get_z_from_dsm:27 of
 msgid "\"max\": the maximum value inside polygon"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.math_polygon:17 of
-msgid "\"pmin5\": 5th percentile mean [1]_ inside polygon"
+msgid "\"pmin5\": 5th [percentile mean]_ inside polygon"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.math_polygon:18 of
-msgid "\"pmin10\": 10th percentile mean [1]_ inside polygon"
+msgid "\"pmin10\": 10th [percentile mean]_ inside polygon"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.math_polygon:19 of
-msgid "\"pmax5\": 95th percentile mean [1]_ inside polygon"
+msgid "\"pmax5\": 95th [percentile mean]_ inside polygon"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.math_polygon:20 of
-msgid "\"pmax10\": 90th percentile mean [1]_ inside polygon"
-msgstr ""
-
-#: easyidp.geotiff.GeoTiff.math_polygon:22 of
-msgid ""
-"percentile mean: the mean value of all pixels over/under xth percentile "
-"threshold"
+msgid "\"pmax10\": 90th [percentile mean]_ inside polygon"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.point_query:3 of
@@ -510,7 +928,9 @@ msgstr ""
 msgid "the save to geotiff file path"
 msgstr "Geotiff文件的保存路径"
 
-#: ../../python_api/geotiff.rst:28 ../../python_api/pointcloud.rst:25
+#: ../../python_api/geotiff.rst:28 ../../python_api/json.rst:9
+#: ../../python_api/pointcloud.rst:25 ../../python_api/roi.rst:23
+#: ../../python_api/shp.rst:9
 msgid "Functions"
 msgstr "函数"
 
@@ -561,14 +981,35 @@ msgid "The EasyIDP package have the following modules:"
 msgstr "EasyIDP含有下面的几个模块"
 
 #: ../../python_api/index.rst:7
-msgid ":doc:`Point cloud Module <./pointcloud>`"
+#, fuzzy
+msgid ""
+":doc:`Point cloud Module <./pointcloud>` : read, write, check and crop "
+"opertation."
 msgstr ":doc:`点云模块 <./pointcloud>`"
 
 #: ../../python_api/index.rst:8
-msgid ":doc:`GeoTiff Module <./geotiff>`"
-msgstr ":doc:`GeoTiff模块 <./geotiff>`"
+msgid ""
+":doc:`GeoTiff Module <./geotiff>` : read, write, crop, and statistics "
+"opertation."
+msgstr ":doc:`GeoTiff模块 <./geotiff>`： 读、写、切以及统计操作"
+
+#: ../../python_api/index.rst:11
+msgid ":doc:`ROI Module <./roi>`"
+msgstr ""
+
+#: ../../python_api/index.rst:-1
+msgid "read region of interest from shp and txt file."
+msgstr ""
 
 #: ../../python_api/index.rst:10
+msgid ":doc:`Shp Submodule <./shp>`: read shape (\\*.shp) file."
+msgstr ""
+
+#: ../../python_api/index.rst:11
+msgid ":doc:`Json Submodule <./json>`: read and write json file."
+msgstr ""
+
+#: ../../python_api/index.rst:13
 msgid ""
 "For each module, consisted by several base functions (e.g. "
 "``easyidp.geotiff.*`` ) and an advanced wrapper class for them (e.g. "
@@ -579,22 +1020,59 @@ msgstr ""
 "每一个模块都由一些底层函数(如 ``easyidp.geotiff.*`` )和一个高级封装的类(如 ``easyidp.GeoTiff`` "
 ")组成。大部分情况下，除非特别需要，请使用大写的高级封装的类而不是小写的底层函数"
 
-#: ../../python_api/index.rst:12
+#: ../../python_api/index.rst:15
 msgid "For example, this function can be used to read geotiff meta infomation:"
 msgstr "例如，下面这个函数可以用来读取geotiff的元信息："
 
-#: ../../python_api/index.rst:19
+#: ../../python_api/index.rst:22
 msgid ""
 "But it is more recommended use the advanced wrapper in most application "
 "cases:"
 msgstr "但是大部分情况下更推荐使用高级封装："
 
-#: ../../python_api/index.rst:26
+#: ../../python_api/index.rst:29
 msgid ""
 "Although it may seem like more code, advanced wrappers have more "
 "convenient functions to use without caring about specific data structure "
 "details. Most of our example cases are using the advanced class wrapper."
 msgstr "尽管看上去代码数量变多了，但是高级封装有更方便使用的函数，而不用关心具体的数据结构细节。大部分的例子也使用高级封装的类"
+
+#: ../../python_api/json.rst:5
+msgid "\\|\\-\\- jsonfile"
+msgstr ""
+
+#: ../../python_api/json.rst:13 ../../python_api/roi.rst:27
+#: ../../python_api/shp.rst:13
+msgid ""
+"The ``easyidp.ROI`` class is an advanced wrapper around the following "
+"functions, which is generally sufficient for most simple application "
+"cases, please don't use the following functions unless you really need "
+"to."
+msgstr ""
+
+#: ../../python_api/json.rst:21:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.jsonfile.read_json <easyidp.jsonfile.read_json>`\\ "
+"\\(json\\_path\\)"
+msgstr ""
+
+#: ../../python_api/json.rst:21:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.jsonfile.save_json <easyidp.jsonfile.save_json>`\\ "
+"\\(data\\_dict\\, json\\_path\\)"
+msgstr ""
+
+#: ../../python_api/json.rst:21:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.jsonfile.write_json <easyidp.jsonfile.write_json>`\\ "
+"\\(data\\_dict\\, json\\_path\\)"
+msgstr ""
+
+#: ../../python_api/json.rst:21:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.jsonfile.dict2json <easyidp.jsonfile.dict2json>`\\ "
+"\\(data\\_dict\\, json\\_path\\)"
+msgstr ""
 
 #: ../../python_api/pointcloud.rst:3
 msgid "Point Cloud"
@@ -681,4 +1159,234 @@ msgid ""
 ":py:obj:`easyidp.pointcloud.read_las <easyidp.pointcloud.read_las>`\\ "
 "\\(las\\_path\\)"
 msgstr ""
+
+#: ../../python_api/roi.rst:3
+msgid "ROI"
+msgstr ""
+
+#: ../../python_api/roi.rst:8
+msgid "A summary of class ``ROI``"
+msgstr ""
+
+#: ../../python_api/roi.rst:17:<autosummary>:1
+msgid ":py:obj:`easyidp.ROI.is_geo <easyidp.ROI.is_geo>`\\ \\(\\)"
+msgstr ""
+
+#: ../../python_api/roi.rst:17:<autosummary>:1 easyidp.roi.ROI.is_geo:1 of
+#, fuzzy
+msgid "Returns True if the ROI is geo coordinate."
+msgstr "如果点云有点坐标信息，返回True"
+
+#: ../../python_api/roi.rst:17:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.ROI.get_z_from_dsm <easyidp.ROI.get_z_from_dsm>`\\ "
+"\\(dsm\\[\\, mode\\, ...\\]\\)"
+msgstr ""
+
+#: ../../python_api/roi.rst:17:<autosummary>:1 easyidp.roi.ROI.get_z_from_dsm:1
+#: of
+msgid "get the z values (heights) from DSM for 2D polygon"
+msgstr ""
+
+#: ../../python_api/roi.rst:17:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.ROI.open <easyidp.ROI.open>`\\ \\(target\\_path\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../python_api/roi.rst:17:<autosummary>:1 easyidp.roi.ROI.open:1 of
+msgid "An advanced wrapper to open ROI without dealing with format"
+msgstr ""
+
+#: ../../python_api/roi.rst:17:<autosummary>:1
+msgid ":py:obj:`easyidp.ROI.copy <easyidp.ROI.copy>`\\ \\(\\)"
+msgstr ""
+
+#: ../../python_api/roi.rst:17:<autosummary>:1 easyidp.roi.ROI.copy:1 of
+msgid "make a deep copy of current file"
+msgstr ""
+
+#: easyidp.roi.ROI:1 of
+msgid "Summary APIs of each objects, often read from shp file."
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:3 of
+#, fuzzy
+msgid "the path of dsm, or the GeoTiff object from idp.GeoTiff()"
+msgstr "Geotiff文件的路径"
+
+#: easyidp.roi.ROI.get_z_from_dsm:5 of
+msgid ""
+"the mode to calculate z values, option in \"point\" and \"face\" "
+"**point**: get height on each vertex, result in different values for each"
+" vertex **face**: get height on polygon face, result in the same value "
+"for each vertex"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:9 of
+msgid ""
+"The math kernal to calculate the z value. [\"mean\", \"min\", \"max\", "
+"\"pmin5\", \"pmin10\", \"pmax5\", \"pmax10\"], by default 'mean'"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:12 of
+msgid ""
+"the buffer of ROI, by default 0 (no buffer), can be positive values or -1"
+" (using all map), please check the Notes section for more details"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:16 of
+msgid ""
+"When the crs is not the save with DSM crs, where change the ROI crs to "
+"fit DSM. **False**(default): change ROI's CRS; **True**: not change ROI's"
+" CRS, only attach the z value to current coordinate."
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:23 of
+msgid "**Option details for** ``kernal`` **parameter**"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:28 of
+msgid "\"pmin5\": 5th *percentile mean* inside polygon"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:29 of
+msgid "\"pmin10\": 10th *percentile mean* inside polygon"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:30 of
+msgid "\"pmax5\": 95th *percentile mean* inside polygon"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:31 of
+msgid "\"pmax10\": 90th *percentile mean* inside polygon"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:33 of
+msgid ""
+"percentile mean: the mean value of all pixels over/under xth percentile "
+"threshold"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:35 of
+msgid "**Option details for** ``buffer`` **parameter**"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:37 of
+msgid "0: not using buffer"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:38 of
+msgid "-1: ignore given polygon, using the full dsm to calculate the height"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:39 of
+msgid ""
+"float: buffer distance, the unit of buffer follows the ROI coordinates, "
+"either pixel or meter."
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:41 of
+msgid ""
+"If mode is \"point\", will generate a round buffer polygon first, then "
+"extract the z-value by this region, but the return will only be a single "
+"point."
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:43 of
+msgid ""
+"If mode is \"face\", will buffer the polygon and then calculate the "
+"height inside the buffered polygon"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:-1 of
+msgid "roi_crop_mode.png"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:50 of
+msgid "Combine"
+msgstr ""
+
+#: easyidp.roi.ROI.get_z_from_dsm:52 of
+msgid ":obj:`easyidp.GeoTiff.math_polygon`"
+msgstr ""
+
+#: easyidp.roi.ROI.open:3 of
+msgid "the path to roi files, current support \\*.shp and labelme.json"
+msgstr ""
+
+#: easyidp.roi.ROI.open:8 of
+msgid ""
+"You can also pass several control parameters in this function, please "
+"refer see also for more information"
+msgstr ""
+
+#: easyidp.roi.ROI.open:10 of
+msgid ":obj:`read_shp`, :obj:`read_labelme_json`"
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:1 of
+msgid "read ROI from shp file"
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:18 of
+msgid "For details of this parameters, please refer to see also."
+msgstr ""
+
+#: easyidp.roi.ROI.read_shp:20 of
+msgid ":obj:`easyidp.shp.read_shp`"
+msgstr ""
+
+#: ../../python_api/roi.rst:32:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.roi.read_cc_txt <easyidp.roi.read_cc_txt>`\\ "
+"\\(txt\\_path\\)"
+msgstr ""
+
+#: ../../python_api/shp.rst:5
+msgid "\\|\\-\\- shapefile"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1
+msgid ":py:obj:`easyidp.shp.read_proj <easyidp.shp.read_proj>`\\ \\(prj\\_path\\)"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.shp.show_shp_fields <easyidp.shp.show_shp_fields>`\\ "
+"\\(shp\\_path\\[\\, ...\\]\\)"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.shp.read_shp <easyidp.shp.read_shp>`\\ "
+"\\(shp\\_path\\[\\, shp\\_proj\\, ...\\]\\)"
+msgstr ""
+
+#: ../../python_api/shp.rst:21:<autosummary>:1
+msgid ""
+":py:obj:`easyidp.shp.convert_proj <easyidp.shp.convert_proj>`\\ "
+"\\(shp\\_dict\\, ...\\)"
+msgstr ""
+
+#~ msgid "Json"
+#~ msgstr "Json子模块"
+
+#~ msgid ""
+#~ ":doc:`ROI Module <./roi>` : read region"
+#~ " of interest from shp and txt "
+#~ "file."
+#~ msgstr ""
+
+#~ msgid "Jsonfile"
+#~ msgstr ""
+
+#~ msgid "Shapefile"
+#~ msgstr ""
+
+#~ msgid "jsonfile"
+#~ msgstr ""
+
+#~ msgid "shapefile"
+#~ msgstr ""
 

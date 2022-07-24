@@ -5,15 +5,16 @@ import numpy as np
 from tabulate import tabulate
 from tqdm import tqdm
 
+from . import _find_key
+
 
 def read_proj(prj_path):
-    """
-    read *.prj file to pyproj object
+    """read \*.prj file to pyproj object
     
     Parameters
     ----------
     prj_path : str
-        the file path of shp *.prj
+        the file path of shp \*.prj
     
     Returns
     -------
@@ -37,7 +38,7 @@ def show_shp_fields(shp_path, encoding="utf-8", show_num=5):
     Parameters
     ----------
     shp_path : str
-        the file path of *.shp
+        the file path of \*.shp
     encoding : str
         default is 'utf-8', however, or some chinese characters, 'gbk' is required
     """
@@ -71,29 +72,110 @@ def show_shp_fields(shp_path, encoding="utf-8", show_num=5):
 
 
 def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, encoding='utf-8', return_proj=False):
-    """
-    read shp file to python numpy object
+    """read shp file to python numpy object
     
     Parameters
     ----------
     shp_path : str
-        the file path of *.shp
-    name_field : str or int or list[ str|int ], 
-        the id or name of shp file fields as output dictionary keys
+        the file path of \*.shp
     shp_proj : str | pyproj object
-        default None, 
-            -> will read automatically from prj file with the same name of shp filename, 
-        or give manually
-            -> read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)  # default WGS 84 with longitude and latitude
-            -> read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)
+        by default None, will read automatically from prj file with the same name of shp filename, 
+        or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or 
+        ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)``
+    name_field : str or int or list[ str|int ], optional
+        by default None, the id or name of shp file fields as output dictionary keys
+    include_title : bool, optional
+        by default False, whether add column name to roi key.
     encoding : str
-        default is 'utf-8', however, or some chinese characters, 'gbk' is required
+        by default 'utf-8', for some chinese characters, 'gbk' may required
+    return_proj : bool, optional
+        by default False, if given as true, will return extra pyproj.CRS object of current shp file.
     
     Returns
     -------
-    shp_dict: dict, the dictionary with read numpy polygon coordinates
-                {'id1': np.array([[x1,y1],[x2,y2],...]),
-                'id2': np.array([[x1,y1],[x2,y2],...]),...}
+    dict, 
+        the dictionary with read numpy polygon coordinates
+
+        .. code-block:: python
+
+            {'id1': np.array([[x1,y1],[x2,y2],...]),
+             'id2': np.array([[x1,y1],[x2,y2],...]),...}
+    pyproj.CRS, optional
+        once set return_proj=True
+
+    Examples
+    --------
+
+    The example shp file has the following columns:
+
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | [0] ID       | [1] MASSIFID | [2] CROPTYPE   | [3] CROPDATE   | [4] CROPAREA   | [5] ATTID   |
+    +==============+==============+================+================+================+=============+
+    | 23010...0000 | 23010...0000 | 小麦           | 2018-09-01     | 61525.26302    |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0012 | 23010...0012 | 蔬菜           | 2018-09-01     | 2802.33512     |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0014 | 23010...0014 | 玉米           | 2018-09-01     | 6960.7745      |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0061 | 23010...0061 | 牧草           | 2018-09-01     | 25349.08639    |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0062 | 23010...0062 | 玉米           | 2018-09-01     | 71463.27666    |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | ...          | ...          | ...            | ...            | ...            | ...         |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0582 | 23010...0582 | 胡萝卜         | 2018-09-01     | 288.23876      |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0577 | 23010...0577 | 杂豆           | 2018-09-01     | 2001.80384     |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0583 | 23010...0583 | 大豆           | 2018-09-01     | 380.41704      |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0584 | 23010...0584 | 其它           | 2018-09-01     | 9133.25998     |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+    | 23010...0585 | 23010...0585 | 其它           | 2018-09-01     | 1704.27193     |             |
+    +--------------+--------------+----------------+----------------+----------------+-------------+
+
+    First, prepare data
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> data_path = "./tests/data/shp_test/complex_shp_review.shp"
+
+    Then using the second column ``MASSIFID`` as shape keys:
+
+    .. code-block:: python
+
+        >>> out = idp.shp.read_shp(data_path, name_field="MASSIFID", encoding='gbk')
+        >>> # or 
+        >>> out = idp.shp.read_shp(data_path, name_field=1, encoding='gbk')
+        [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
+        [shp] read shp [complex_shp_review.shp]: 100%|███████████████████████████████████████| 323/323 [00:02<00:00, 143.13it/s] 
+        >>> out['23010...0000'] 
+        array([[ 45.83319255, 126.84383445],
+               [ 45.83222256, 126.84212197],
+               ...
+               [ 45.83321205, 126.84381378],
+               [ 45.83319255, 126.84383445]])
+
+    Due to the duplication of ``CROPTYPE``, you can not using it as the unique key, but you can combine several columns together by passing a list to ``name_field``:
+
+    .. code-block:: python
+
+        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], encoding='gbk') 
+        >>> # or
+        >>> out = idp.shp.read_shp(data_path, name_field=[2, 1], include_title=True, encoding='gbk') 
+        [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
+        [shp] read shp [complex_shp_review.shp]: 100%|███████████████████████████████████████| 323/323 [00:02<00:00, 143.13it/s] 
+        >>> out.keys()
+        dict_keys(['小麦_23010...0000', '蔬菜_23010...0012', '玉米_23010...0014', ... ])
+
+    And you can also add column_names to id by ``include_title=True`` :
+
+    .. code-block:: python
+
+        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], include_title=True, encoding='gbk') 
+        >>> out.keys()
+        dict_keys(['CROPTYPE_小麦_MASSIFID_23010...0000', 'CROPTYPE_蔬菜_MASSIFID_23010...0012', ... ])
     """
     #####################################
     # check projection coordinate first #
@@ -213,8 +295,8 @@ def convert_proj(shp_dict, origin_proj, target_proj):
     shp_proj : pyproj object
         the hidden output of read_shp(..., return_proj=True)
     target_proj : str | pyproj object
-        e.g. 
-        [1] pyproj.CRS.from_epsg(4326)  # default WGS 84 longitude latitude
+        Examples:
+        [1] pyproj.CRS.from_epsg(4326)  
         [2] r'path/to/{shp_name}.prj',
     """
     transformer = pyproj.Transformer.from_proj(origin_proj, target_proj)
@@ -248,22 +330,24 @@ def _get_field_key(shp):
 
     Returns
     -------
-    shp_fields : dict
-        Format: {"Column": int_id}
+    dict
+        Format: {"Column": int_id}; 
         Exmaple: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
     """
     shp_fields = {}
     f_count = 0
     for l in shp.fields:
         if isinstance(l, list):
-            # the fields 0 -> delection flags, and is a tuple type, ignore this tag
-            # [('DeletionFlag', 'C', 1, 0),
-            #  ['ID', 'C', 36, 0],
-            #  ['MASSIFID', 'C', 19, 0],
-            #  ['CROPTYPE', 'C', 36, 0],
-            #  ['CROPDATE', 'D', 8, 0],
-            #  ['CROPAREA', 'N', 13, 5],
-            #  ['ATTID', 'C', 36, 0]]
+            '''
+            the fields 0 -> delection flags, and is a tuple type, ignore this tag
+            [('DeletionFlag', 'C', 1, 0),
+             ['ID', 'C', 36, 0],
+             ['MASSIFID', 'C', 19, 0],
+             ['CROPTYPE', 'C', 36, 0],
+             ['CROPDATE', 'D', 8, 0],
+             ['CROPAREA', 'N', 13, 5],
+             ['ATTID', 'C', 36, 0]]
+            '''
             shp_fields[l[0]] = f_count
             f_count += 1
 
@@ -286,14 +370,18 @@ def _find_name_related_int_id(shp_fields, name_field):
     Returns
     -------
     field_id : int or list[ int ]
-        e.g. 
-        >>> a = {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
-        >>> b = "ID"
-        >>> _find_name_related_int_id(a, b)
-        0
-        >>> c = ["ID", "CROPTYPE"]
-        >>> _find_name_related_int_id(a, b)
-        [0, 2]
+        
+        For example:
+
+        .. code-block:: python
+
+            >>> a = {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+            >>> b = "ID"
+            >>> _find_name_related_int_id(a, b)
+            0
+            >>> c = ["ID", "CROPTYPE"]
+            >>> _find_name_related_int_id(a, b)
+            [0, 2]
     """
     if name_field is None:
         field_id = None
@@ -309,14 +397,3 @@ def _find_name_related_int_id(shp_fields, name_field):
         raise KeyError(f'Can not find key {name_field} in {shp_fields}')
     
     return field_id
-
-
-def _find_key(mydict, value):
-    """
-    a simple function to using dict value to find key
-    e.g. 
-    >>> mydict = {"a": 233, "b": 456}
-    >>> _find_key(mydict, 233)
-    "a"
-    """
-    return list(mydict.keys())[value]

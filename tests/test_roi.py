@@ -85,4 +85,95 @@ def test_class_roi_change_crs():
     assert roi.crs.name == obj.header["proj"].name
 
 def test_class_roi_get_z_from_dsm():
-    pass
+    # only test whether works, not examine the value is true or not
+    roi = idp.ROI(lotus_shp, name_field=0)
+    # have different CRS from shp file
+    lotus_full_dsm = "./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
+
+    # only pick 3 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N2E2", "S1W1"]:
+            del roi[key]
+            
+    assert len(roi) == 3
+
+    #######################
+    # test mode == points #
+    #######################
+    ht = 97.63990020751953
+    map_ht = 97.56273651123047
+    # var name -> roi_mode_kernel_buffer_keepcrs
+    roi_p_mean_0_f = roi.copy()
+    roi_p_mean_0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+    assert roi_p_mean_0_f.crs.name == 'WGS 84 / UTM zone 54N'
+    assert roi_p_mean_0_f[0].shape == (5,3)
+    assert roi_p_mean_0_f[0][0,0] == 368017.7565143015
+    assert roi_p_mean_0_f[0][0,1] == 3955511.081022765
+    assert roi_p_mean_0_f[0][0,2] == ht
+
+    roi_p_mean_0_t = roi.copy()
+    roi_p_mean_0_t.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=True)
+    assert roi_p_mean_0_t.crs.name == "WGS 84"
+    assert roi_p_mean_0_t[0].shape == (5,3)
+    assert roi_p_mean_0_t[0][0,0] == 35.73475194328632  # latitude
+    assert roi_p_mean_0_t[0][0,1] == 139.54052962153048  # longitude
+    assert roi_p_mean_0_t[0][0,2] == ht
+
+    roi_p_mean_1_f = roi.copy()
+    roi_p_mean_1_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=1, keep_crs=False)
+    assert roi_p_mean_1_f[0].shape == (5,3)
+    assert roi_p_mean_1_f[0][0,1] != ht
+
+    roi_p_mean_1d0_f = roi.copy()
+    roi_p_mean_1d0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=1.0, keep_crs=False)
+    assert roi_p_mean_1d0_f[0].shape == (5,3)
+    # buffer 1.0 and buffer 1 should be the same
+    assert roi_p_mean_1d0_f[0][0,2] == roi_p_mean_1_f[0][0,2]
+
+    # using full map as results
+    roi_p_mean_m1_f = roi.copy()
+    roi_p_mean_m1_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=-1, keep_crs=False)
+    # all the z values should be the same
+    assert all(np.all(i[:,2] == map_ht) for i in roi_p_mean_m1_f.values())
+
+    roi_p_mean_m1d0_f = roi.copy()
+    roi_p_mean_m1d0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=-1.0, keep_crs=False)
+    # all the z values should be the same
+    assert all(np.all(i[:,2] == map_ht) for i in roi_p_mean_m1d0_f.values())
+
+    #####################
+    # test mode == face #
+    #####################
+    roi_f_mean_1_f = roi.copy()
+    roi_f_mean_1_f.get_z_from_dsm(lotus_full_dsm, mode="face", kernel="mean", buffer=1, keep_crs=False)
+    assert roi_f_mean_1_f[0].shape == (5,3)
+    assert roi_f_mean_1_f[0][0,0] == 368017.7565143015
+    assert roi_f_mean_1_f[0][0,1] == 3955511.081022765
+
+def test_class_roi_get_z_from_dsm_errors():
+    roi = idp.ROI(lotus_shp)
+    lotus_full_dsm = "./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
+
+    with pytest.raises(KeyError, match=re.escape("The param 'mode' only accept 'point' or 'face', not 'abcde'")):
+        roi.get_z_from_dsm(lotus_full_dsm, mode="abcde")
+
+    with pytest.raises(KeyError, match=re.escape(
+        "The param 'kernal' only accept 'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10' not 'abcde'"
+        )):
+        roi.get_z_from_dsm(lotus_full_dsm, kernel="abcde")
+
+    with pytest.raises(TypeError, match=re.escape(
+        "Only 'int' and 'float' are acceptable for 'buffer', not <class 'str'> [abcde]"
+        )):
+        roi.get_z_from_dsm(lotus_full_dsm, buffer="abcde")
+
+    with pytest.raises(TypeError, match=re.escape("Only geotiff path <str> and <easyidp.GeoTiff> object")):
+        roi.get_z_from_dsm("seffed")
+
+    with pytest.raises(TypeError, match=re.escape("Only geotiff path <str> and <easyidp.GeoTiff> object")):
+        roi.get_z_from_dsm(23345)
+
+    with pytest.raises(TypeError, match=re.escape("Could not operate without CRS specified")):
+        roi.crs = None
+        roi.get_z_from_dsm(lotus_full_dsm, buffer="abcde")

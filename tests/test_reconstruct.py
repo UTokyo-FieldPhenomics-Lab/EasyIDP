@@ -173,7 +173,7 @@ def test_class_container():
     # for i in c.keys, 
     # for i in c.values, 
     # for i, j in c.items()
-    ctn = idp.reconstruct.Container()
+    ctn = idp.Container()
 
     k = [str(_) for _ in range(5)]
 
@@ -186,7 +186,7 @@ def test_class_container():
     val = {}
     for i, j in zip(k,v):
         ctn[i] = j
-        val[i] = j
+        val[int(i)] = j
     
     assert ctn.id_item == val
 
@@ -211,7 +211,7 @@ def test_class_container_photo():
     p2.id = 2
     p2.label = "bbb.jpg"
 
-    a = idp.reconstruct.Container()
+    a = idp.Container()
     a[p1.id] = p1
     a[p2.id] = p2
 

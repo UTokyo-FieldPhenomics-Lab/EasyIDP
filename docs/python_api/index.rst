@@ -11,6 +11,8 @@ The EasyIDP package have the following modules:
   - :doc:`shp Submodule <./shp>`: read shape (\*.shp) file.
   - :doc:`jsonfile Submodule <./json>`: read and write json file.
 
+- :doc:`Data Module <./data>` : Download and provide path to example files.
+
 
 For each module, consisted by several base functions (e.g. ``easyidp.geotiff.*`` ) and an advanced wrapper class for them (e.g. ``easyidp.GeoTiff``). In the most cases, please use the upper case class wrapper rather than the lowercase base functions unless you really need them.
 

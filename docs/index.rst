@@ -20,14 +20,20 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
 
 .. image:: https://img.shields.io/tokei/lines/github/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub code size in bytes
-   :target: https://img.shields.io/
 
 .. image:: https://img.shields.io/github/license/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub
-   :target: https://img.shields.io/
 
 .. image:: https://img.shields.io/github/languages/top/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub top language
+
+.. image:: https://img.shields.io/github/downloads/UTokyo-FieldPhenomics-Lab/EasyIDP/total?label=github%20downloads&style=plastic
+   :alt: GitHub Downloads
+
+.. image:: https://img.shields.io/pypi/dm/easyidp?color=%233775A9&label=pypi%20downloads&style=plastic
+   :alt: Pypi downloads
+   :target: https://pypi.org/project/easyidp/
+
 
 .. admonition:: other languages
    
@@ -69,6 +75,7 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
    python_api/roi
    python_api/shp
    python_api/json
+   python_api/data
 
 
 .. toctree::

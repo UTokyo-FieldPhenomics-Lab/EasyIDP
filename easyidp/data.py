@@ -6,7 +6,8 @@ import gdown
 import subprocess
 
 def user_data_dir(file_name=""):
-    r"""Get OS specific data directory path for SwagLyrics.
+    r"""Get OS specific data directory path for EasyIDP.
+    
     Parameters
     ----------
     file_name : str
@@ -14,23 +15,28 @@ def user_data_dir(file_name=""):
 
     Returns
     -------
-    str,
+    str
         full path to the user-specific data dir
 
     Notes
     -----
     Typical user data directories are:
-        macOS:    ~/Library/Application Support/SwagLyrics
-        Unix:     ~/.local/share/SwagLyrics   # or in $XDG_DATA_HOME, if defined
-        Win 10:   C:\Users\<username>\AppData\Local\SwagLyrics
-    For Unix, we follow the XDG spec and support $XDG_DATA_HOME if defined.
+
+    .. code-block:: text
+
+        macOS:    ~/Library/Application Support/easyidp.data
+        Unix:     ~/.local/share/easyidp.data   # or in $XDG_DATA_HOME, if defined
+        Win 10:   C:\Users\<username>\AppData\Local\easyidp.data
+
+    For Unix, we follow the XDG spec and support ``$XDG_DATA_HOME`` if defined.
 
     Referenced from stackoverflow [1]_ then get github [2]_ .
 
     References
     ----------
-    .. [1] Python: Getting AppData folder in a cross-platform way `url <https://stackoverflow.com/questions/19078969/python-getting-appdata-folder-in-a-cross-platform-way>`_
-    .. [2] SwagLyrics-For-Spotify/swaglyrics/__init__.py `url <https://github.com/SwagLyrics/SwagLyrics-For-Spotify/blob/master/swaglyrics/__init__.py#L8-L32>`_
+    .. [1] Python: Getting AppData folder in a cross-platform way https://stackoverflow.com/questions/19078969/python-getting-appdata-folder-in-a-cross-platform-way
+    .. [2] SwagLyrics-For-Spotify/swaglyrics/__init__.py https://github.com/SwagLyrics/SwagLyrics-For-Spotify/blob/master/swaglyrics/__init__.py#L8-L32
+
     """
     # get os specific path
     if sys.platform.startswith("win"):
@@ -41,19 +47,22 @@ def user_data_dir(file_name=""):
         # linux
         os_path = os.getenv("XDG_DATA_HOME", "~/.local/share")
 
-    # join with SwagLyrics dir
+    # join with easyidp.data dir
     path = pathlib.Path(os_path) / "easyidp.data"
 
     return path.expanduser() / file_name
 
 def show_data_dir():
-    """open the cached data files in cross-platform [1]_ system default viewer.
+    """open the cached data files in cross-platform system default viewer.
 
-    Reference
-    ---------
-    .. [1] Python: Opening a folder in Explorer/Nautilus/Finder `url <https://stackoverflow.com/questions/6631299/python-opening-a-folder-in-explorer-nautilus-finder>`_
+    It modified from this [1]_ webpage.
+
+    References
+    ----------
+    .. [1] Python: Opening a folder in Explorer/Nautilus/Finder https://stackoverflow.com/questions/6631299/python-opening-a-folder-in-explorer-nautilus-finder
+
     """
-    path=user_data_dir()
+    path = user_data_dir()
 
     if sys.platform.startswith("win"):
         os.startfile(path)
@@ -62,9 +71,51 @@ def show_data_dir():
     else:
         subprocess.Popen(["xdg-open", path])
 
+
 class EasyidpDataSet():
 
     def __init__(self, name="", url="", size=""):
+        """The dataset has the following properties (all in string type)
+
+        name
+            The dataset name
+        url
+            The download url
+        size
+            Ths size of zipped file
+        data_dir
+            The final dataset directory
+        zip_file
+            The *temporary* downloaded zip file path (won't be used in)
+        shp
+            The path to plot ROI shapefile (\*.shp)
+        photo
+            The folder path to the raw photos
+
+        pix4d.proj
+            The pix4d project folder
+        pix4d.param
+            The parameter folder of pix4d porject
+        pix4d.dom
+            The generated DOM path of plot map
+        pix4d.dsm
+            The generated DSM path of plot map
+        pix4d.pcd
+            The generated pointcloud path of plot map
+
+        metashape.proj
+            The metashape project file
+        metashape.param
+            The parameter folder of metashape porject
+        metashape.dom
+            The generated DOM path of plot map
+        metashape.dsm
+            The generated DSM path of plot map
+        metashape.pcd
+            The generated pointcloud path of plot map
+        
+
+        """
         self.name = name
         self.url = url
         self.size = size
@@ -75,11 +126,52 @@ class EasyidpDataSet():
         self.metashape = self.ReconsProj()
 
     def load_data(self):
+        r"""Download dataset from Google Drive to user AppData folder
+
+        Caution
+        -------
+        For users in China mainland, please either find a way to access google drive,
+        or download from `CowTransfer Link <https://cowtransfer.com/s/4cc3d3f199824b>`_ 
+
+        Save and extract all \*.zip file to folder ``idp.data.show_data_dir()``.
+
+        The data structure should like this:
+
+        
+        .. tab:: Windows
+
+            .. code-block:: text
+
+                . C:\Users\<user>\AppData\Local\easyidp.data
+                |-- 2017_tanashi_lotus
+                |-- gdown_test
+                |-- ...
+
+        .. tab:: MacOS
+
+            .. code-block:: text
+
+                . ~/Library/Application Support/easyidp.data
+                |-- 2017_tanashi_lotus
+                |-- gdown_test
+                |-- ...
+
+        .. tab:: Linux/BSD
+
+            .. code-block:: text
+
+                . ~/.local/share/easyidp.data   # or in $XDG_DATA_HOME, if defined
+                |-- 2017_tanashi_lotus
+                |-- gdown_test
+                |-- ...
+
+        """
+
         if not os.path.exists(self.data_dir):
-            out = self.download_data()
+            out = self._download_data()
 
             if os.path.exists(self.zip_file):
-                self.unzip_data()
+                self._unzip_data()
             else:
                 raise FileNotFoundError(
                     f"Could not find the downloaded file [{self.zip_file}], "
@@ -87,14 +179,18 @@ class EasyidpDataSet():
                     f"Tips: ensure you can access Google Drive url."
                 )
         
-    def download_data(self):
+    def _download_data(self):
+        """using gdown to download dataset from Google Drive to user AppData folder
+        """
         # Download; extract data to disk.
         # Raise an exception if the link is bad, or we can't connect, etc.
         output = gdown.download(url=self.url, output=str(self.zip_file), quiet=False, fuzzy=True)
 
         return output
 
-    def unzip_data(self):
+    def _unzip_data(self):
+        """Unzip downloaded zip data and remove after decompression
+        """
         with zipfile.ZipFile(self.zip_file, 'r') as zip_ref:
             zip_ref.extractall(self.data_dir)
 
@@ -104,26 +200,29 @@ class EasyidpDataSet():
 
     class ReconsProj():
 
+
         def __init__(self) -> None:
             self.proj = ""
             self.param = ""
-            self.photo = ""
             self.dom = ""
             self.dsm = ""
             self.pcd = ""
 
 
-class TanashiLotus2017(EasyidpDataSet):
+class Lotus(EasyidpDataSet):
 
     def __init__(self):
         url = "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing"
-        super().__init__(name="2017_tanashi_lotus", url=url, size="3.3GB")
+        super().__init__(name="2017_tanashi_lotus", url=url, size="3.6GB")
 
         super().load_data()
 
+        self.pix4d.photo = str(self.data_dir / "20170531" / "photos")
+        self.shp = str(self.data_dir / "plots.shp")
+
         self.pix4d.proj = str(self.data_dir / "20170531")
         self.pix4d.param = str(self.data_dir / "20170531" / "params")
-        self.pix4d.photo = str(self.data_dir / "20170531" / "photos")
+        
         self.pix4d.dom = str(
             self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif"
         )
@@ -136,10 +235,9 @@ class TanashiLotus2017(EasyidpDataSet):
 
         self.metashape.proj = str(self.data_dir / "170531.Lotus.psx")
         self.metashape.param = str(self.data_dir / "170531.Lotus.files")
-        self.metashape.photo = str(self.data_dir / "20170531" / "photos")
         self.metashape.dom = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dom.tif")
         self.metashape.dsm = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif")
-        self.metashape.dom = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz")
+        self.metashape.pcd = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz")
 
         
 class GDownTest(EasyidpDataSet):

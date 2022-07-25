@@ -261,7 +261,7 @@ class GeoTiff(object):
 
         See also
         --------
-        tifffile_crop
+        easyidp.geotiff.tifffile_crop
 
         Examples
         --------
@@ -685,7 +685,7 @@ def pixel2geo(points_hv, header):
 
     See also
     --------
-    get_header
+    easyidp.geotiff.get_header
     """
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
@@ -784,7 +784,7 @@ def tifffile_crop(page, top, left, h, w):
 
     See also
     --------
-    Geotiff.crop_rectange
+    :class:`easyidp.Geotiff.crop_rectange`
     """
     if page.is_tiled:
         out = _get_tiled_crop(page, top, left, h, w)

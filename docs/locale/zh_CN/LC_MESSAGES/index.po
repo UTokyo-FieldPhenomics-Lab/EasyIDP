@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-17 09:15+0900\n"
+"POT-Creation-Date: 2022-07-25 23:31+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,19 +17,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.10.1\n"
 
-#: ../../index.rst:44
+#: ../../index.rst:50
 msgid "Getting started"
 msgstr "快速上手"
 
-#: ../../index.rst:51
+#: ../../index.rst:57
 msgid "Backgrounds"
 msgstr "背景知识"
 
-#: ../../index.rst:60
+#: ../../index.rst:67
 msgid "Python API"
 msgstr ""
 
-#: ../../index.rst:69
+#: ../../index.rst:81
 msgid "Development"
 msgstr "项目开发"
 
@@ -73,24 +73,33 @@ msgstr ""
 msgid "GitHub top language"
 msgstr ""
 
-#: ../../index.rst:32
+#: ../../index.rst:-1
+msgid "GitHub Downloads"
+msgstr ""
+
+#: ../../index.rst:-1
+msgid "Pypi downloads"
+msgstr ""
+
+#: ../../index.rst:38
 msgid "other languages"
 msgstr "其他语言"
 
-#: ../../index.rst:34
+#: ../../index.rst:40
 msgid ""
 "This is a multi-language document, you can change document languages here"
 " or at the bottom left corner."
 msgstr "这是一个多语言文档，你可以通过这里或左下角切换语言"
 
-#: ../../index.rst:39
+#: ../../index.rst:45
 msgid "`English <https://easyidp.readthedocs.io/en/latest/>`_"
 msgstr ""
 
-#: ../../index.rst:40
+#: ../../index.rst:46
 msgid "`中文 <https://easyidp.readthedocs.io/zh_CN/latest/>`_"
 msgstr ""
 
-#: ../../index.rst:41
+#: ../../index.rst:47
 msgid "`日本語(翻訳募集) <https://easyidp.readthedocs.io/ja/latest/>`_"
 msgstr ""
+

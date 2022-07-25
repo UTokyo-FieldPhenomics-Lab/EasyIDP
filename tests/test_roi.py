@@ -2,6 +2,7 @@ import os
 import re
 import pytest
 import numpy as np
+import pyproj
 
 import easyidp as idp
 
@@ -177,3 +178,46 @@ def test_class_roi_get_z_from_dsm_errors():
     with pytest.raises(TypeError, match=re.escape("Could not operate without CRS specified")):
         roi.crs = None
         roi.get_z_from_dsm(lotus_full_dsm, buffer="abcde")
+
+
+def test_class_roi_crop():
+    # just ensure it can run, the data examine please check corresponding modules' test
+
+    # data prepare
+    lotus_full_dsm = r"./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
+    lotus_full_pcd = r"./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply"
+    lotus_full_dom = r"./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
+    lotus_full_shp = r"./tests/data/pix4d/lotus_tanashi_full/plots.shp"
+
+    roi = idp.ROI(lotus_full_shp, name_field=0)
+
+    # only pick 3 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N2E2", "S1W1"]:
+            del roi[key]
+
+    roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+
+    # crop geotiff
+    out_dom = roi.crop(lotus_full_dom)
+    assert len(out_dom) == 3
+
+    out_dsm = roi.crop(lotus_full_dsm)
+    assert len(out_dsm) == 3
+
+    # crop point cloud
+    out_pcd = roi.crop(lotus_full_pcd)
+    assert len(out_pcd) == 3
+
+def test_class_roi_crop_error():
+    roi = idp.ROI()
+
+    with pytest.raises(TypeError, match=re.escape("Could not operate without CRS specified")):
+        roi.crop("aaa")
+
+    roi.crs = pyproj.CRS.from_epsg(4326)
+    with pytest.raises(TypeError, match=re.escape(
+        "Only file path <str> or <easyidp.GeoTiff> object or <easyidp.PointCloud>"
+        " object are accepted, not <class 'str'>")):
+        roi.crop("aaa")

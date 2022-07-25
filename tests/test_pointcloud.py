@@ -1,9 +1,11 @@
 import os
 import re
 import sys
-import easyidp as idp
 import numpy as np
 import pytest
+import shutil
+
+import easyidp as idp
 
 ####################
 # global variables #
@@ -515,3 +517,42 @@ def test_class_point_cloud_crop():
         "Cropped 0 point in given polygon. Please check whether the coords is correct.")):
         cropped = pcd.crop_point_cloud(polygon + 10)
         assert cropped is None
+
+def test_class_crop():
+    lotus_full_dsm = r"./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
+    lotus_full_pcd = r"./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply"
+
+    roi = idp.ROI(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0)
+
+    # only pick 3 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N2E2", "S1W1"]:
+            del roi[key]
+
+    roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+
+    p4d = idp.Pix4D(
+        project_path=r"./tests/data/pix4d/lotus_tanashi_full/",
+        param_folder=r"./tests/data/pix4d/lotus_tanashi_full/params/"
+    )
+    p4d.load_pcd(lotus_full_pcd)
+
+    tif_out_folder = r"./tests/out/pcd_test/class_crop/"
+    # clear temp output folder
+    if os.path.exists(tif_out_folder):
+        shutil.rmtree(tif_out_folder)
+    os.makedirs(tif_out_folder)
+
+    out = p4d.pcd.crop(roi, save_folder=tif_out_folder)
+
+    assert len(out) == 3
+    assert len(out["N1W1"]) == 15226
+
+    assert os.path.exists(os.path.join(tif_out_folder, "N1W1.ply"))
+
+    # also need check the offsets and points values
+    # should belong to -> test_class_point_cloud_crop()
+    # but previous function have no pix4d offset
+    np.testing.assert_almost_equal(out["N1W1"].offset, p4d.pcd.offset)
+    assert np.all(out["N1W1"]._points[:, 0:2] < 300)

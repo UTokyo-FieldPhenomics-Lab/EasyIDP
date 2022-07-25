@@ -1,5 +1,11 @@
 __version__ = "2.0.0.dev2"
 
+import os
+import warnings
+
+##############
+# dict tools #
+##############
 
 class Container(dict):
     """Self designed dictionary like classto contain items like {"id": item.label}
@@ -88,7 +94,10 @@ class Container(dict):
         return self.id_item.values()
 
     def items(self):
-        return self.id_item.items()
+        out_dict = {}
+        for k, idx in self.item_label.items():
+            out_dict[k] = self.id_item[idx]
+        return out_dict.items()
 
 
 def _find_key(mydict, value):
@@ -101,11 +110,40 @@ def _find_key(mydict, value):
     key_idx = list(mydict.values()).index(value)
     return list(mydict.keys())[key_idx]
 
-from . import visualize, shp, jsonfile
+
+##############
+# path tools #
+##############
+
+def get_full_path(short_path):
+    if isinstance(short_path, str):
+        return os.path.abspath(os.path.normpath(short_path))
+    else:
+        return None
+
+def parse_relative_path(root_path, relative_path):
+    # for metashape frame.zip path use only
+    if r"../../" in relative_path:
+        frame_path = os.path.dirname(os.path.abspath(root_path))
+        merge = os.path.join(frame_path, relative_path)
+        return os.path.abspath(merge)
+    else:
+        warnings.warn(f"Seems it is an absolute path [{relative_path}]")
+        return relative_path
+
+###############
+# import APIs #
+###############
+
+from . import (
+    visualize, 
+    shp, 
+    jsonfile, 
+    cvtools
+)
+from .reconstruct import ProjectPool
 from .pointcloud import PointCloud
 from .geotiff import GeoTiff
 from .pix4d import Pix4D
 from .metashape import Metashape
-from .reconstruct import ProjectPool
-from .pathtools import get_full_path, parse_relative_path
 from .roi import ROI

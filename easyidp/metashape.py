@@ -5,18 +5,16 @@ import numpy as np
 import warnings
 from xml.etree import ElementTree
 
-from . import Container
-from .reconstruct import Recons, Photo, Sensor, Calibration, ChunkTransform
-from .pathtools import parse_relative_path
+import easyidp as idp
 
 
-class Metashape(Recons):
+class Metashape(idp.reconstruct.Recons):
     # the object for each chunk in Metashape project
 
     def __init__(self, project_path=None, chunk_id=None):
         super().__init__()
         self.software = "metashape"
-        self.transform = ChunkTransform()
+        self.transform = idp.reconstruct.ChunkTransform()
 
         # the whole metashape project (parent) info
         self.project_folder = None
@@ -273,14 +271,14 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
     if len(transform_tags) == 1:
         chunk_dict["transform"] = _decode_chunk_transform_tag(transform_tags[0])
 
-    sensors = Container()
+    sensors = idp.Container()
     for sensor_tag in xml_tree.findall("./sensors/sensor"):
         sensor = _decode_sensor_tag(sensor_tag)
         sensor.calibration.software = "metashape"
         sensors[sensor.id] = sensor
     chunk_dict["sensors"] = sensors
 
-    photos = Container()
+    photos = idp.Container()
     for camera_tag in xml_tree.findall("./cameras/camera"):
         camera = _decode_camera_tag(camera_tag)
         camera.sensor = sensors[camera.sensor_id]
@@ -300,7 +298,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
             # here need to resolve absolute path
             # <photo path="../../../../source/220613_G_M600pro/DSC06035.JPG">
             # this is the root to 220613_G_M600pro.files\0\0\frame.zip"
-            chunk_dict["photos"][camera_idx].path = parse_relative_path(
+            chunk_dict["photos"][camera_idx].path = idp.parse_relative_path(
                 frame_zip_file, camera_path
             )  
 
@@ -400,7 +398,7 @@ def _decode_chunk_transform_tag(xml_obj):
     transform_dict: dict
        key: ["rotation", "translation", "scale", "transform"]
     """
-    transform = ChunkTransform()
+    transform = idp.reconstruct.ChunkTransform()
     chunk_rotation_str = xml_obj.findall("./rotation")[0].text
     transform.rotation = np.fromstring(chunk_rotation_str, sep=" ", dtype=np.float).reshape((3, 3))
 
@@ -539,7 +537,7 @@ def _decode_sensor_tag(xml_obj):
     -------
     sensor: easyidp.Sensor object
     """
-    sensor = Sensor()
+    sensor = idp.reconstruct.Sensor()
 
     sensor.id = int(xml_obj.attrib["id"])
     sensor.label = xml_obj.attrib["label"]
@@ -586,7 +584,7 @@ def _decode_calibration_tag(xml_obj):
     -------
     calibration: easyidp.Calibration object
     """
-    calibration = Calibration()
+    calibration = idp.reconstruct.Calibration()
 
     calibration.f = float(xml_obj.findall("./f")[0].text)
     calibration.f_unit = "px"
@@ -657,7 +655,7 @@ def _decode_camera_tag(xml_obj):
     -------
     camera: easyidp.Photo object
     """
-    camera = Photo()
+    camera = idp.reconstruct.Photo()
     camera.id = int(xml_obj.attrib["id"])
     camera.sensor_id = int(xml_obj.attrib["sensor_id"])
     camera.label = xml_obj.attrib["label"]

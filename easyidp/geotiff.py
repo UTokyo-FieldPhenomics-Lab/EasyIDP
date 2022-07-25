@@ -3,9 +3,8 @@ import pyproj
 import numpy as np
 import tifffile as tf
 import warnings
-
 from pyproj.exceptions import CRSError
-from .cvtools import poly2mask, imarray_crop
+
 import easyidp as idp
 
 
@@ -126,28 +125,43 @@ class GeoTiff(object):
             else:
                 return point_query(page, points_hv)
 
-
-    def crop(self, roi, save_folder=""):  # clip_roi
-        # roi: ROI class, with several roi lists
-        """Crop the geotiff by given <ROI> object with several polygons and polygon names
+    def crop(self, roi, is_geo=True, save_folder=""):
+        """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
         Parameters
         ----------
-        roi : easyidp.ROI
+        roi : easyidp.ROI | dict
             the <ROI> object created by easyidp.ROI()
+        is_geo : bool, optional
+            whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
             the folder to save cropped images, use ROI indices as file_names, by default "", means not save.
 
-        Raises
-        ------
-        NotImplementedError
-            have not finished yet.
+        Returns
+        -------
+        dict,
+            The dictionary with key=id and value=ndarray data
         """
         self._not_empty()
-        raise NotImplementedError("This function will be provided in the future.")
+        
+        if not isinstance(roi, (dict, idp.ROI)):
+            raise TypeError(f"Only <dict> and <easyidp.ROI> are accepted, not {type(roi)}")
+
+        out_dict = {}
+        for k, polygon_hv in roi.items():
+            if os.path.isdir(save_folder):
+                save_path = os.path.join(save_folder, k + ".tif")
+            else:
+                save_path = None
+
+            imarray = self.crop_polygon(polygon_hv, is_geo, save_path)
+
+            out_dict[k] = imarray
+
+        return out_dict
 
     def crop_polygon(self, polygon_hv, is_geo=True, save_path=None):
-        """crop given polygon from geotiff
+        """crop a given polygon from geotiff
 
         Parameters
         ----------
@@ -197,8 +211,10 @@ class GeoTiff(object):
 
         # then crop the polygon from the imarray_bbox
         poly_offseted_px = poly_px - bbox_left_top
-        imarray_out, _ = imarray_crop(imarray_bbox, poly_offseted_px, 
-                                      outside_value=self.header['nodata'])
+        imarray_out, _ = idp.cvtools.imarray_crop(
+            imarray_bbox, poly_offseted_px, 
+            outside_value=self.header['nodata']
+        )
 
         # check if need save geotiff
         if save_path is not None and os.path.splitext(save_path)[-1] == ".tif":

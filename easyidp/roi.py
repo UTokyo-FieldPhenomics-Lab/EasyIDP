@@ -5,13 +5,10 @@ import numpy as np
 from copy import copy as ccopy
 from shapely.geometry import Point, Polygon
 
-from . import Container
-from .shp import read_proj, read_shp, convert_proj, show_shp_fields
-from .jsonfile import read_json
-from .geotiff import GeoTiff
-from .pointcloud import PointCloud
+import easyidp as idp
 
-class ROI(Container):
+
+class ROI(idp.Container):
     """
     Summary APIs of each objects, often read from shp file.
     """
@@ -27,7 +24,6 @@ class ROI(Container):
 
         if target_path is not None:
             self.open(target_path, **kwargs)
-            
 
     def __setitem__(self, key, item):
         idx = len(self.id_item)
@@ -62,6 +58,7 @@ class ROI(Container):
         See also
         --------
         read_shp, read_labelme_json
+
         """
         ext = os.path.splitext(target_path)[-1]
         if ext == ".shp":
@@ -80,7 +77,7 @@ class ROI(Container):
         shp_proj : str | pyproj object
             by default None, will read automatically from prj file with the same name of shp filename, 
             or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or 
-            ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)``
+            ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)`` 
         name_field : str or int or list[ str|int ], optional
             by default None, the id or name of shp file fields as output dictionary keys
         include_title : bool, optional
@@ -98,7 +95,7 @@ class ROI(Container):
         """
         # if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
         # shp.convert_proj()
-        roi_dict, crs = read_shp(shp_path, shp_proj, name_field, include_title, encoding, return_proj=True)
+        roi_dict, crs = idp.shp.read_shp(shp_path, shp_proj, name_field, include_title, encoding, return_proj=True)
 
         self.source = shp_path
 
@@ -110,7 +107,7 @@ class ROI(Container):
             self[k] = v
 
     def read_labelme_json(self, json_path):
-        js_dict = read_json(json_path)
+        js_dict = idp.jsonfile.read_json(json_path)
 
         # check if is labelme json
         if all(x in js_dict.keys() for x in ["version", "flags", "shapes", "imagePath", "imageHeight"]):
@@ -145,7 +142,7 @@ class ROI(Container):
                 f"<{type(target_crs)}> should be <pyproj.CRS> type"
             )
 
-        self.id_item = convert_proj(self.id_item, self.crs, target_crs)
+        self.id_item = idp.shp.convert_proj(self.id_item, self.crs, target_crs)
         self.crs = target_crs
 
     def _get_z_input_check(self, obj, mode, kernel, buffer, func="dsm"):
@@ -176,10 +173,10 @@ class ROI(Container):
         # convert input objects
         if isinstance(obj, str) and os.path.exists(obj):
             if func == "dsm":
-                return GeoTiff(obj)
+                return idp.GeoTiff(obj)
             else:
-                return PointCloud(obj)
-        elif isinstance(obj, (GeoTiff, PointCloud)):
+                return idp.PointCloud(obj)
+        elif isinstance(obj, (idp.GeoTiff, idp.PointCloud)):
             return obj
         else:
             if func == "dsm":
@@ -212,7 +209,7 @@ class ROI(Container):
             please check the Notes section for more details
         keep_crs : bool, optional
             When the crs is not the save with DSM crs, where change the ROI crs to fit DSM.
-            **False**(default): change ROI's CRS;
+            **False** (default): change ROI's CRS;
             **True**: not change ROI's CRS, only attach the z value to current coordinate. 
 
         Notes
@@ -272,7 +269,7 @@ class ROI(Container):
             self.change_crs(dsm.header["proj"])
             poly_dict = self.id_item.copy()
         else:
-            poly_dict = convert_proj(self.id_item, self.crs, dsm.header["proj"])
+            poly_dict = idp.shp.convert_proj(self.id_item, self.crs, dsm.header["proj"])
 
         for key, poly in poly_dict.items():
             # only get the x and y of coords
@@ -317,10 +314,52 @@ class ROI(Container):
     def get_z_from_pcd(self, pcd, mode="face", kernel="mean", buffer=0):
         # if mode = point, buffer > 0, otherwise raise error
         pcd = self._get_z_input_check(pcd, mode, kernel, buffer, func="pcd")
+        raise NotImplementedError("Will be implemented in the future.")
 
-    def crop(self, target):
-        # call related function
-        pass
+    def crop(self, target, save_folder=""):
+        """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
+
+        Parameters
+        ----------
+        target : str | <GeoTiff> object
+            the path of dsm, or the GeoTiff object from idp.GeoTiff()
+        is_geo : bool, optional
+            whether the given polygon is pixel coords on imarray or geo coords (default)
+        save_folder : str, optional
+            the folder to save cropped images, use ROI indices as file_names, by default "", means not save.
+
+        Returns
+        -------
+        dict,
+            The dictionary with key=id and value=ndarray data
+
+        See also
+        --------
+        easyidp.GeoTiff.crop
+        """
+        if not self.is_geo():
+            raise TypeError("Could not operate without CRS specified")
+            
+        if isinstance(target, str) and os.path.exists(target):
+            ext = os.path.splitext(target)[-1]
+            if ext == ".tif":
+                target = idp.GeoTiff(target)
+            elif ext in [".ply", ".laz", ".las"]:
+                target = idp.PointCloud(target)
+        elif isinstance(target, (idp.GeoTiff, idp.PointCloud)):
+            pass
+        else:
+            raise TypeError(
+                f"Only file path <str> or <easyidp.GeoTiff> object or <easyidp.PointCloud> object "
+                f"are accepted, not {type(target)}"
+            )
+
+        if isinstance(target, idp.GeoTiff):
+            out = target.crop(self, is_geo=True, save_folder=save_folder)
+        elif isinstance(target, idp.PointCloud):
+            out = target.crop(self, save_folder=save_folder)
+
+        return out
 
     def back2raw(self, chunks):
         # call related function

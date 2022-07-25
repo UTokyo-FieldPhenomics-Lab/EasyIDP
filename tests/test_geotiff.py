@@ -4,10 +4,11 @@ import pyproj
 import re
 import tifffile as tf
 import numpy as np
-import easyidp as idp
 import warnings
 import random
+import shutil
 
+import easyidp as idp
 
 data_path =  "./tests/data/tiff_test"
 
@@ -454,7 +455,6 @@ def test_crop_rectange_save_geotiff():
         is_geo=False)
 
 
-
 def test_class_math_polygon():
     # test dsm results
     dsm = idp.GeoTiff(lotus_full_dsm)
@@ -527,4 +527,25 @@ def test_class_point_query():
     assert np.all(97 < pt) and np.all(pt < 98)
 
 def test_class_crop():
-    pass
+    obj = idp.GeoTiff(lotus_full_dom)
+
+    roi = idp.ROI(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0)
+
+    # only pick 3 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N2E2", "S1W1"]:
+            del roi[key]
+
+    roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+
+    tif_out_folder = "./tests/out/tiff_test/class_crop"
+    if os.path.exists(tif_out_folder):
+        shutil.rmtree(tif_out_folder)
+    os.makedirs(tif_out_folder)
+
+    out_dict = obj.crop(roi, save_folder=tif_out_folder)
+
+    assert len(out_dict) == 3
+    assert os.path.exists(tif_out_folder + r"/N1W1.tif")
+    assert out_dict["N2E2"].shape == (320, 320, 4)

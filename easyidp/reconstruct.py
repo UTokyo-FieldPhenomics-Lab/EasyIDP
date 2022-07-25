@@ -2,13 +2,9 @@ import os
 import pyproj
 import numpy as np
 
-from . import Container
-from .geotiff import GeoTiff
-from .pointcloud import PointCloud
+import easyidp as idp
 
-
-
-class ProjectPool(Container):
+class ProjectPool(idp.Container):
 
     def __init__(self) -> None:
         super().__init__()
@@ -45,15 +41,15 @@ class Recons(object):
         self.meta = {}
         self.enabled = True
 
-        self.sensors = Container()
-        self.photos = Container()
+        self.sensors = idp.Container()
+        self.photos = idp.Container()
 
         self.world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
         self.crs = None
 
-        self._dom = GeoTiff()
-        self._dsm = GeoTiff()
-        self._pcd = PointCloud()
+        self._dom = idp.GeoTiff()
+        self._dsm = idp.GeoTiff()
+        self._pcd = idp.PointCloud()
 
     @property
     def dom(self):
@@ -70,7 +66,7 @@ class Recons(object):
                 self._dom.read_geotiff(p)
             else:
                 raise FileNotFoundError(f"Given DOM file [{p}] does not exists")
-        elif isinstance(p, GeoTiff):
+        elif isinstance(p, idp.GeoTiff):
             self._dom = p
         else:
             raise TypeError(f"Please either specify DOM file path (str) or idp.GeoTiff objects, not {type(p)}")
@@ -89,7 +85,7 @@ class Recons(object):
                 self._dsm.read_geotiff(p)
             else:
                 raise FileNotFoundError(f"Given DSM file [{p}] does not exists")
-        elif isinstance(p, GeoTiff):
+        elif isinstance(p, idp.GeoTiff):
             self._dsm = p
         else:
             raise TypeError(f"Please either specify DSM file path (str) or idp.GeoTiff objects, not {type(p)}")
@@ -108,7 +104,7 @@ class Recons(object):
                 self._pcd.read_point_cloud(p)
             else:
                 raise FileNotFoundError(f"Given pointcloud file [{p}] does not exists")
-        elif isinstance(p, PointCloud):
+        elif isinstance(p, idp.PointCloud):
             self._pcd = p
         else:
             raise TypeError(f"Please either specify pointcloud file path (str) or idp.PointCloud objects, not {type(p)}")

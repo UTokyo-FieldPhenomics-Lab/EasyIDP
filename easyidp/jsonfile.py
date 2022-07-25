@@ -3,12 +3,10 @@ import os
 import numpy as np
 
 class MyEncoder(json.JSONEncoder):
-    """
-    The original json package doesn't compatible to numpy object, add this compatible encoder to it.
-    usage: json.dump(..., cls=MyEncoder)
+    # The original json package doesn't compatible to numpy object, add this compatible encoder to it.
+    # usage: json.dump(..., cls=MyEncoder)
+    # references: https://stackoverflow.com/questions/27050108/convert-numpy-type-to-python
     
-    references: https://stackoverflow.com/questions/27050108/convert-numpy-type-to-python
-    """
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -47,7 +45,7 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
         the dict object want to save as json file
     json_path : str
         the path including json file name to save the json file
-        e.g. ``D:/xxx/xxxx/save.json``
+        e.g. ``D:/xxx/xxxx/save.json`` 
     indent : int | None
         whether save "readable" json with indent, default 0 without indent
     encoding : str
@@ -112,8 +110,10 @@ def write_json(data_dict, json_path, indent=0, encoding='utf-8'):
     See also
     --------
     easyidp.jsonfile.dict2json, easyidp.jsonfile.save_json
+
     """
     dict2json(data_dict, json_path, indent, encoding)
+
 
 def save_json(data_dict, json_path, indent=0, encoding='utf-8'):
     """Save dict to the same structure json file
@@ -148,56 +148,87 @@ def save_json(data_dict, json_path, indent=0, encoding='utf-8'):
     See also
     --------
     easyidp.jsonfile.dict2json, easyidp.jsonfile.save_json
+
     """
     dict2json(data_dict, json_path, indent, encoding)
 
 # just copied from previous `caas_lite.py`, haven't modified yet
 def _to_labelme_json(grid_tagged, json_folder, minimize=True):
-    """
-    Save the tagged shp polygon crop result to json file, for deeplearing use
-        The single json file has the following structure:
-            {
-                "version": "4.5.6",  # the Labelme.exe version, optional
-                "flags": {},
-                "imagePath": "xxxx.tiff",
-                "imageHeight": 1000,
-                "imageWidth": 1000,
-                "imageData": null,
-                "shapes": [{ }, { }, { }]
-            }             |    |    |
-        for each {} items in shapes:
-            {
-                "label": "field",
-                "group_id": null,
-                "shape_type": "polygon",
-                "flags": {},
-                "points": [[x1, y1], [x2, y2], [x3, y3]]  # with or without the first point
-            }
-    
+    """Save the tagged shp polygon crop result to json file, for deeplearing use
+
     Parameters
     ----------
-    grid_tagged: pandas.DataFrame
+    grid_tagged : pandas.DataFrame
         the output of self.dataframe_add_shp_tags()
         The 4 column dataframe shows in this function introduction, sorted by "grid_name"
-        +------------------+----------+---------------------+-------+
-        |     grid_name    | dict_key |    polygon_list     |  tag  |
-        |------------------|----------|---------------------|-------|
-        | 'grid_x1_y1.tif' | 'key1'   | [poly1, poly2, ...] | field |
-        | 'grid_x1_y1.tif' | 'key2'   | [poly1, poly2, ...] | crops |
-        | 'grid_x1_y2.tif' | 'key1'   | [poly1, poly2, ...] | field |
-        | 'grid_x2_y1.tif' | 'key1'   | [poly1, poly2, ...] | field |
-        | 'grid_x3_y2.tif' | 'key2'   | [poly1, poly2, ...] | crops |
-        |      ...         |   ...    |         ...         |  ...  | 
-        +------------------+----------+---------------------+-------+
-    json_folder: str
+    json_folder : str
         the folder or path to save those json files
-    minimize: bool
-        True:  {"name":"lucy","sex":"boy"}
-        False：
-                {
-                    "name":"lucy",
-                    "sex":"boy"
-                } 
+    minimize : bool
+        whether create a json without space
+
+    Notes
+    -----
+    The labelme json file has the following structure:
+
+    .. code-block:: json
+
+        {
+            "version": "4.5.6",  # the Labelme.exe version, optional
+            "flags": {},
+            "imagePath": "xxxx.tiff",
+            "imageHeight": 1000,
+            "imageWidth": 1000,
+            "imageData": null,
+            "shapes": [{ }, { }, { }]
+        }      
+
+    for each ``{}`` items in "shapes":
+
+    .. code-block:: json
+
+        {
+            "label": "field",
+            "group_id": null,
+            "shape_type": "polygon",
+            "flags": {},
+            "points": [[x1, y1], [x2, y2], [x3, y3]]  # with or without the first point
+        }
+
+    Example of ``grid_tagged`` 
+
+    +------------------+----------+---------------------+-------+
+    |     grid_name    | dict_key |    polygon_list     |  tag  |
+    +==================+==========+=====================+=======+
+    | 'grid_x1_y1.tif' | 'key1'   | [poly1, poly2, ...] | field |
+    +------------------+----------+---------------------+-------+
+    | 'grid_x1_y1.tif' | 'key2'   | [poly1, poly2, ...] | crops |
+    +------------------+----------+---------------------+-------+
+    | 'grid_x1_y2.tif' | 'key1'   | [poly1, poly2, ...] | field |
+    +------------------+----------+---------------------+-------+
+    | 'grid_x2_y1.tif' | 'key1'   | [poly1, poly2, ...] | field |
+    +------------------+----------+---------------------+-------+
+    | 'grid_x3_y2.tif' | 'key2'   | [poly1, poly2, ...] | crops |
+    +------------------+----------+---------------------+-------+
+    |      ...         |   ...    |         ...         |  ...  | 
+    +------------------+----------+---------------------+-------+
+
+    Example of ``minimize``
+
+    - True
+
+      .. code-block:: json
+
+        {"name":"lucy","sex":"boy"}
+    
+    - False
+
+      .. code-block:: json
+
+        {
+            "name":"lucy",
+            "sex":"boy"
+        } 
+
     """
     total_dict = {}
     for i in range(len(grid_tagged)):

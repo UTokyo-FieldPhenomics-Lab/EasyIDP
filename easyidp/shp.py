@@ -5,8 +5,7 @@ import numpy as np
 from tabulate import tabulate
 from tqdm import tqdm
 
-from . import _find_key
-
+import easyidp as idp
 
 def read_proj(prj_path):
     """read \*.prj file to pyproj object
@@ -221,7 +220,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
             plot_name = ""
             for j, fid in enumerate(field_id):
                 if include_title:
-                    plot_name += f"{_find_key(shp_fields, fid)}_{shp.records()[i][fid]}"
+                    plot_name += f"{idp._find_key(shp_fields, fid)}_{shp.records()[i][fid]}"
                 else:
                     plot_name += f"{shp.records()[i][fid]}"
 
@@ -235,7 +234,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
                 plot_name = f"{i}"
         else:
             if include_title:
-                plot_name = f"{_find_key(shp_fields, field_id)}_{shp.records()[i][field_id]}"
+                plot_name = f"{idp._find_key(shp_fields, field_id)}_{shp.records()[i][field_id]}"
             else:
                 plot_name = f"{shp.records()[i][field_id]}"
 

@@ -4,7 +4,8 @@ import numpy as np
 import pyproj
 import re
 import easyidp as idp
-from easyidp.pix4d import get_full_path as gfp
+
+from easyidp import get_full_path as gfp
 
 data_path =  "./tests/data/pix4d"
 
@@ -170,7 +171,7 @@ def test_read_params():
     assert ssk["orientation"] == 1
     assert ssk["photo_center_in_pixels"] == [1727.5, 2303.5]
 
-    crs = idp.pix4d.read_proj(param["crs"])
+    crs = idp.shp.read_proj(param["crs"])
     assert crs == pyproj.CRS.from_epsg(32654)
 
 

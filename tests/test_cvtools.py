@@ -118,7 +118,7 @@ def test_imarray_clip_2d_rgb_rgba():
     # 3d rgb
     imarray_rgb = plt.imread(photo_path)
     # imarray_rgb.shape == (3456, 4608, 3)
-    im_out_rgb, offsets_rgb = idp.geotiff.imarray_crop(imarray_rgb, roi)
+    im_out_rgb, offsets_rgb = idp.cvtools.imarray_crop(imarray_rgb, roi)
 
     ax[1].imshow(im_out_rgb)
     ax[1].set_title('rgb')
@@ -127,7 +127,7 @@ def test_imarray_clip_2d_rgb_rgba():
     # 2d
     imarray_2d = idp.cvtools.rgb2gray(imarray_rgb)
 
-    im_out_2d, offsets_2d = idp.geotiff.imarray_crop(imarray_2d, roi)
+    im_out_2d, offsets_2d = idp.cvtools.imarray_crop(imarray_2d, roi)
 
     ax[0].imshow(im_out_2d, cmap='gray')
     ax[0].set_title('gray')
@@ -137,7 +137,7 @@ def test_imarray_clip_2d_rgb_rgba():
     imarray_rgba = np.dstack((imarray_rgb, np.ones((3456, 4608)) * 255))
     # imarray_rgba.shape == (3456, 4608, 4)
 
-    im_out_rgba, offsets_rgba = idp.geotiff.imarray_crop(imarray_rgba, roi)
+    im_out_rgba, offsets_rgba = idp.cvtools.imarray_crop(imarray_rgba, roi)
     ax[2].imshow(im_out_rgba)
     ax[2].set_title('rgba')
 

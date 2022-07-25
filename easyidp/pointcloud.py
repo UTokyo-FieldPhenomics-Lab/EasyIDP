@@ -18,7 +18,7 @@ class PointCloud(object):
     """PointCloud class. A point cloud consists of point coordinates, and optionally point colors and point normals.
     """
 
-    def __init__(self, pcd_path="", offset=np.array([0.,0.,0.])) -> None:
+    def __init__(self, pcd_path="", offset=[0.,0.,0.]) -> None:
 
         self.file_path = pcd_path
         self.file_ext = ".ply"
@@ -28,7 +28,7 @@ class PointCloud(object):
         self.normals = None
         self.shape = (0,3)
 
-        self.offset = offset
+        self.offset = self._offset_type_check(offset)
         self._btf_print = '<Empty easyidp.PointCloud object>'
 
         if len(pcd_path) > 0:
@@ -39,6 +39,9 @@ class PointCloud(object):
 
     def __repr__(self) -> str:
         return self._btf_print
+
+    def __len__(self) -> int:
+        return self.points.shape[0]
 
     def _update_btf_print(self):
         """Print Point Cloud in "DataFrame" beautiful way
@@ -204,7 +207,8 @@ class PointCloud(object):
         else:
             raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
 
-        self.clear()
+        if self.has_points():
+            self.clear()
 
         self.file_ext = os.path.splitext(pcd_path)[-1]
         self.file_path = os.path.abspath(pcd_path)
@@ -241,6 +245,43 @@ class PointCloud(object):
             write_ply(self._points + self._offset, self.colors, ply_path=file_name+file_ext, normals=self.normals)
         else:
             write_laz(self._points + self._offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self._offset)
+
+    def crop(self, roi, save_folder=""):
+        """Crop several ROIs by given <ROI> object with several polygons and polygon names
+
+        Parameters
+        ----------
+        roi : easyidp.ROI | dict
+            the <ROI> object created by easyidp.ROI()
+        is_geo : bool, optional
+            whether the given polygon is pixel coords on imarray or geo coords (default)
+        save_folder : str, optional
+            the folder to save cropped images, use ROI indices as file_names, by default "", means not save.
+
+        Returns
+        -------
+        dict,
+            The dictionary with key=id and value=<idp.PointCloud>
+        """
+        if not self.has_points():
+            raise ValueError("Could not operate when PointCloud has no points")
+
+        if not isinstance(roi, (dict, idp.ROI)):
+            raise TypeError(f"Only <dict> and <easyidp.ROI> are accepted, not {type(roi)}")
+
+        out_dict = {}
+        for k, polygon_hv in roi.items():
+            if os.path.isdir(save_folder):
+                save_path = os.path.join(save_folder, k + self.file_ext)
+            else:
+                save_path = None
+
+            out_dict[k] = self.crop_point_cloud(polygon_hv[:, 0:2])
+
+            if save_path is not None:
+                out_dict[k].write_point_cloud(save_path)
+
+        return out_dict
 
     def crop_point_cloud(self, polygon_xy):
         """crop the point cloud along z axis
@@ -296,7 +337,7 @@ class PointCloud(object):
             # create new Point Cloud object
             crop_pcd = PointCloud()
             crop_pcd.points = self.points[pick_idx, :]
-            crop_pcd._offset = self._offset
+            crop_pcd.set_offset(self.offset)
             if self.has_colors():
                 crop_pcd.colors = self.colors[pick_idx, :]
             if self.has_normals():

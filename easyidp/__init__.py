@@ -139,7 +139,8 @@ from . import (
     visualize, 
     shp, 
     jsonfile, 
-    cvtools
+    cvtools,
+    data
 )
 from .reconstruct import ProjectPool
 from .pointcloud import PointCloud

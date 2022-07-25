@@ -14,7 +14,7 @@
 <a href="README.md">English</a>
 
 </div>
-EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)产品上感兴趣区域(ROI)的软件包(主要是农业应用)，提供如下的功能：
+EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)产品上兴趣区域(ROI)的软件包(主要是农业应用)，提供如下的功能：
 
 1. 把ROI反投影回原始图片上 (`Backward Projector`)
 2. 在正射地图(DOM)、高程图(DSM)和点云上把ROI切出来 (`ROI Cropper`)
@@ -81,7 +81,7 @@ dsm = idp.GeoTiff("xxx_dsm.tif")
 ply = idp.PointCloud("xxx_pcd.ply")
 ```
   
-把感兴趣区域(ROI)切出来：
+把兴趣区域(ROI)切出来：
 ```python
 dom_parts = roi.crop(dom)
 dsm_parts = roi.crop(dsm)

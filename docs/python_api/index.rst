@@ -4,11 +4,13 @@ API Summary
 
 The EasyIDP package have the following modules:
 
-* :doc:`Point cloud Module <./pointcloud>` : read, write, check and crop opertation.
-* :doc:`GeoTiff Module <./geotiff>` : read, write, crop, and statistics opertation.
-* :doc:`ROI Module <./roi>` : read region of interest from shp and txt file.
-    * :doc:`Shp Submodule <./shp>`: read shape (\*.shp) file.
-    * :doc:`Json Submodule <./json>`: read and write json file.
+- :doc:`Point cloud Module <./pointcloud>` : read, write, check and crop opertation.
+- :doc:`GeoTiff Module <./geotiff>` : read, write, crop, and statistics opertation.
+- :doc:`ROI Module <./roi>` : read region of interest from shp and txt file.
+  
+  - :doc:`shp Submodule <./shp>`: read shape (\*.shp) file.
+  - :doc:`jsonfile Submodule <./json>`: read and write json file.
+
 
 For each module, consisted by several base functions (e.g. ``easyidp.geotiff.*`` ) and an advanced wrapper class for them (e.g. ``easyidp.GeoTiff``). In the most cases, please use the upper case class wrapper rather than the lowercase base functions unless you really need them.
 

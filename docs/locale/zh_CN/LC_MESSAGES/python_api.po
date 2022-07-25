@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-24 22:15+0900\n"
+"POT-Creation-Date: 2022-07-25 10:41+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -993,23 +993,20 @@ msgid ""
 "opertation."
 msgstr ":doc:`GeoTiff模块 <./geotiff>`： 读、写、切以及统计操作"
 
-#: ../../python_api/index.rst:11
-msgid ":doc:`ROI Module <./roi>`"
-msgstr ""
-
-#: ../../python_api/index.rst:-1
-msgid "read region of interest from shp and txt file."
-msgstr ""
-
-#: ../../python_api/index.rst:10
-msgid ":doc:`Shp Submodule <./shp>`: read shape (\\*.shp) file."
-msgstr ""
+#: ../../python_api/index.rst:9
+#, fuzzy
+msgid ":doc:`ROI Module <./roi>` : read region of interest from shp and txt file."
+msgstr ":doc:`GeoTiff模块 <./geotiff>`： 读、写、切以及统计操作"
 
 #: ../../python_api/index.rst:11
-msgid ":doc:`Json Submodule <./json>`: read and write json file."
+msgid ":doc:`shp Submodule <./shp>`: read shape (\\*.shp) file."
 msgstr ""
 
-#: ../../python_api/index.rst:13
+#: ../../python_api/index.rst:12
+msgid ":doc:`jsonfile Submodule <./json>`: read and write json file."
+msgstr ""
+
+#: ../../python_api/index.rst:15
 msgid ""
 "For each module, consisted by several base functions (e.g. "
 "``easyidp.geotiff.*`` ) and an advanced wrapper class for them (e.g. "
@@ -1020,17 +1017,17 @@ msgstr ""
 "每一个模块都由一些底层函数(如 ``easyidp.geotiff.*`` )和一个高级封装的类(如 ``easyidp.GeoTiff`` "
 ")组成。大部分情况下，除非特别需要，请使用大写的高级封装的类而不是小写的底层函数"
 
-#: ../../python_api/index.rst:15
+#: ../../python_api/index.rst:17
 msgid "For example, this function can be used to read geotiff meta infomation:"
 msgstr "例如，下面这个函数可以用来读取geotiff的元信息："
 
-#: ../../python_api/index.rst:22
+#: ../../python_api/index.rst:24
 msgid ""
 "But it is more recommended use the advanced wrapper in most application "
 "cases:"
 msgstr "但是大部分情况下更推荐使用高级封装："
 
-#: ../../python_api/index.rst:29
+#: ../../python_api/index.rst:31
 msgid ""
 "Although it may seem like more code, advanced wrappers have more "
 "convenient functions to use without caring about specific data structure "
@@ -1038,7 +1035,7 @@ msgid ""
 msgstr "尽管看上去代码数量变多了，但是高级封装有更方便使用的函数，而不用关心具体的数据结构细节。大部分的例子也使用高级封装的类"
 
 #: ../../python_api/json.rst:5
-msgid "\\|\\-\\- jsonfile"
+msgid "• jsonfile"
 msgstr ""
 
 #: ../../python_api/json.rst:13 ../../python_api/roi.rst:27
@@ -1076,7 +1073,7 @@ msgstr ""
 
 #: ../../python_api/pointcloud.rst:3
 msgid "Point Cloud"
-msgstr "点云"
+msgstr "点云(PointCloud)"
 
 #: ../../python_api/pointcloud.rst:9
 msgid "A summary of class ``PointCloud``"
@@ -1162,11 +1159,11 @@ msgstr ""
 
 #: ../../python_api/roi.rst:3
 msgid "ROI"
-msgstr ""
+msgstr "兴趣区域(ROI)"
 
 #: ../../python_api/roi.rst:8
 msgid "A summary of class ``ROI``"
-msgstr ""
+msgstr " ``ROI`` 类概述"
 
 #: ../../python_api/roi.rst:17:<autosummary>:1
 msgid ":py:obj:`easyidp.ROI.is_geo <easyidp.ROI.is_geo>`\\ \\(\\)"
@@ -1344,7 +1341,7 @@ msgid ""
 msgstr ""
 
 #: ../../python_api/shp.rst:5
-msgid "\\|\\-\\- shapefile"
+msgid "• shapefile"
 msgstr ""
 
 #: ../../python_api/shp.rst:21:<autosummary>:1
@@ -1368,25 +1365,4 @@ msgid ""
 ":py:obj:`easyidp.shp.convert_proj <easyidp.shp.convert_proj>`\\ "
 "\\(shp\\_dict\\, ...\\)"
 msgstr ""
-
-#~ msgid "Json"
-#~ msgstr "Json子模块"
-
-#~ msgid ""
-#~ ":doc:`ROI Module <./roi>` : read region"
-#~ " of interest from shp and txt "
-#~ "file."
-#~ msgstr ""
-
-#~ msgid "Jsonfile"
-#~ msgstr ""
-
-#~ msgid "Shapefile"
-#~ msgstr ""
-
-#~ msgid "jsonfile"
-#~ msgstr ""
-
-#~ msgid "shapefile"
-#~ msgstr ""
 

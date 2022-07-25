@@ -47,7 +47,7 @@ msgid ""
 "with region of interest (ROI) on the image reconstruction (Metashape & "
 "Pix4D) outputs, mainly in agriculture applications. It provides the "
 "following functions:"
-msgstr "EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)产品上感兴趣区域(ROI)的软件包(主要是农业应用)，提供如下的功能："
+msgstr "EasyIDP(中间数据处理助手)是一个处理三维重建(Metashape和Pix4D)产品上兴趣区域(ROI)的软件包(主要是农业应用)，提供如下的功能："
 
 #: ../../index.rst:15
 msgid "Backward Projection ROI to original images."

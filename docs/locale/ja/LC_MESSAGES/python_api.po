@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-24 22:15+0900\n"
+"POT-Creation-Date: 2022-07-25 10:41+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -991,23 +991,19 @@ msgid ""
 "opertation."
 msgstr ""
 
-#: ../../python_api/index.rst:11
-msgid ":doc:`ROI Module <./roi>`"
-msgstr ""
-
-#: ../../python_api/index.rst:-1
-msgid "read region of interest from shp and txt file."
-msgstr ""
-
-#: ../../python_api/index.rst:10
-msgid ":doc:`Shp Submodule <./shp>`: read shape (\\*.shp) file."
+#: ../../python_api/index.rst:9
+msgid ":doc:`ROI Module <./roi>` : read region of interest from shp and txt file."
 msgstr ""
 
 #: ../../python_api/index.rst:11
-msgid ":doc:`Json Submodule <./json>`: read and write json file."
+msgid ":doc:`shp Submodule <./shp>`: read shape (\\*.shp) file."
 msgstr ""
 
-#: ../../python_api/index.rst:13
+#: ../../python_api/index.rst:12
+msgid ":doc:`jsonfile Submodule <./json>`: read and write json file."
+msgstr ""
+
+#: ../../python_api/index.rst:15
 msgid ""
 "For each module, consisted by several base functions (e.g. "
 "``easyidp.geotiff.*`` ) and an advanced wrapper class for them (e.g. "
@@ -1016,17 +1012,17 @@ msgid ""
 "them."
 msgstr ""
 
-#: ../../python_api/index.rst:15
+#: ../../python_api/index.rst:17
 msgid "For example, this function can be used to read geotiff meta infomation:"
 msgstr ""
 
-#: ../../python_api/index.rst:22
+#: ../../python_api/index.rst:24
 msgid ""
 "But it is more recommended use the advanced wrapper in most application "
 "cases:"
 msgstr ""
 
-#: ../../python_api/index.rst:29
+#: ../../python_api/index.rst:31
 msgid ""
 "Although it may seem like more code, advanced wrappers have more "
 "convenient functions to use without caring about specific data structure "
@@ -1034,7 +1030,7 @@ msgid ""
 msgstr ""
 
 #: ../../python_api/json.rst:5
-msgid "\\|\\-\\- jsonfile"
+msgid "• jsonfile"
 msgstr ""
 
 #: ../../python_api/json.rst:13 ../../python_api/roi.rst:27
@@ -1338,7 +1334,7 @@ msgid ""
 msgstr ""
 
 #: ../../python_api/shp.rst:5
-msgid "\\|\\-\\- shapefile"
+msgid "• shapefile"
 msgstr ""
 
 #: ../../python_api/shp.rst:21:<autosummary>:1
@@ -1408,5 +1404,23 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "shapefile"
+#~ msgstr ""
+
+#~ msgid ":doc:`ROI Module <./roi>`"
+#~ msgstr ""
+
+#~ msgid "read region of interest from shp and txt file."
+#~ msgstr ""
+
+#~ msgid ":doc:`Shp Submodule <./shp>`: read shape (\\*.shp) file."
+#~ msgstr ""
+
+#~ msgid ":doc:`Json Submodule <./json>`: read and write json file."
+#~ msgstr ""
+
+#~ msgid "\\|\\-\\- jsonfile"
+#~ msgstr ""
+
+#~ msgid "\\|\\-\\- shapefile"
 #~ msgstr ""
 

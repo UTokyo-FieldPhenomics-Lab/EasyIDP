@@ -30,7 +30,7 @@ msgid ""
 "In the most cases, the region of interest (ROI) is not perfectly fit the "
 "rectangle image boundary, and the other part is not what we need, and "
 "\"mute\" them will make the later analysis easier"
-msgstr "大部分情况下，感兴趣区域(ROI)并不能完美的符合矩形图片的边界，外部的那些部分是我们不需要的，将它排除可以降低后续数据处理的难度"
+msgstr "大部分情况下，兴趣区域(ROI)并不能完美的符合矩形图片的边界，外部的那些部分是我们不需要的，将它排除可以降低后续数据处理的难度"
 
 #: ../../backgrounds/geotiff_transparency.rst:-1
 msgid "crop_png.png"
@@ -110,7 +110,7 @@ msgstr "反射波谱的值和范围"
 
 #: ../../backgrounds/roi_marking.rst:3
 msgid "Region of Interest (ROI) Marking"
-msgstr "感兴趣区域(ROI)标注"
+msgstr "兴趣区域(ROI)标注"
 
 #: ../../backgrounds/roi_marking.rst:6
 msgid "1\\. Marking ROI on digital images"

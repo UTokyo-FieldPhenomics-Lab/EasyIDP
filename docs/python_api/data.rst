@@ -6,13 +6,7 @@ Data
 Dataset
 =======
 
-All the dataset is in the following format:
-
-.. autoclass:: easyidp.data.EasyidpDataSet
-   :members: 
-   :special-members: __init__
-
-**Usage**
+**Quick usage**
 
 .. code-block:: python
 
@@ -31,11 +25,17 @@ All the dataset is in the following format:
     >>> lotus.pix4d.param
     'C:\\Users\\<user>\\AppData\\Local\\easyidp.data\\2017_tanashi_lotus\\20170531\\params'
 
+All the dataset is in the following format:
+
+.. autoclass:: easyidp.data.EasyidpDataSet
+   :members: 
+   :special-members: __init__
+
 
 Here have the following dataset: 
 
-TanashiLotus2017
-----------------
+Lotus
+-----
 
 .. image:: ../_static/images/data/2017_tanashi_lotus.png 
     :width: 600
@@ -60,3 +60,4 @@ Functions
 
     easyidp.data.user_data_dir
     easyidp.data.show_data_dir
+    easyidp.data.url_checker

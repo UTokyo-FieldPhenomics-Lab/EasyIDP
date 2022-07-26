@@ -20,4 +20,4 @@ def test_gdown():
     assert os.path.exists(gd.data_dir / "file1.txt")
 
     assert gd.pix4d.proj == os.path.join(str(gd.data_dir), "file1.txt")
-    assert gd.pix4d.param == os.path.join(str(gd.data_dir), "folder1")
+    assert gd.metashape.param == os.path.join(str(gd.data_dir), "folder1")

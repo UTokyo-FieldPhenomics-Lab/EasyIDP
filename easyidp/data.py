@@ -3,7 +3,9 @@ import sys
 import pathlib
 import zipfile
 import gdown
+import requests
 import subprocess
+import webbrowser
 
 def user_data_dir(file_name=""):
     r"""Get OS specific data directory path for EasyIDP.
@@ -72,15 +74,44 @@ def show_data_dir():
         subprocess.Popen(["xdg-open", path])
 
 
+def url_checker(url):
+    r"""Check if download url is accessable or not.
+    
+    Modified from this [1]_ link.
+
+    Parameters
+    ----------
+    url : str
+        The url need to be checked
+
+    References
+    ----------
+    .. [1] https://pytutorial.com/check-url-is-reachable
+    """
+    try:
+        #Get Url
+        get = requests.get(url, timeout=3)
+        # if the request succeeds 
+        if get.status_code == 200:
+            return True
+        else:
+            return False
+
+    #Exception
+    except requests.exceptions.RequestException as e:
+        # print URL with Errs
+        return False
+
+
 class EasyidpDataSet():
 
-    def __init__(self, name="", url="", size=""):
-        """The dataset has the following properties (all in string type)
+    def __init__(self, name="", url_list=[], size="",):
+        """The dataset has the following properties (almost in string type)
 
         name
             The dataset name
-        url
-            The download url
+        url_list
+            The possible download urls
         size
             Ths size of zipped file
         data_dir
@@ -117,7 +148,7 @@ class EasyidpDataSet():
 
         """
         self.name = name
-        self.url = url
+        self.url_list = url_list
         self.size = size
         self.data_dir = user_data_dir(self.name)
         self.zip_file = user_data_dir(self.name + ".zip")
@@ -184,7 +215,21 @@ class EasyidpDataSet():
         """
         # Download; extract data to disk.
         # Raise an exception if the link is bad, or we can't connect, etc.
-        output = gdown.download(url=self.url, output=str(self.zip_file), quiet=False, fuzzy=True)
+
+        if url_checker(self.url_list[0]):   # google drive 
+            output = gdown.download(url=self.url_list[0], output=str(self.zip_file), quiet=False, fuzzy=True)
+        elif url_checker(self.url_list[1]):  # cowtransfer
+            print(
+                f"Could not access to default google drive download link <{self.url_list[1]}>."
+                f"Please download the file in browser and unzip to the popup folder "
+                f"[{str(user_data_dir())}]"
+            )
+            # open url
+            webbrowser.open(self.url_list[1], new=0, autoraise=True)
+            # open folder in file explorer
+            show_data_dir()
+        else:
+            raise ConnectionError("Could not find any downloadable link. Please contact the maintainer via github.")
 
         return output
 
@@ -197,6 +242,8 @@ class EasyidpDataSet():
         # already extracted
         if os.path.exists(self.data_dir):
             os.remove(self.zip_file)
+        else:
+            raise FileNotFoundError("Seems fail to unzip, please check whether the zip file is fully downloaded.")
 
     class ReconsProj():
 
@@ -212,8 +259,11 @@ class EasyidpDataSet():
 class Lotus(EasyidpDataSet):
 
     def __init__(self):
-        url = "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing"
-        super().__init__(name="2017_tanashi_lotus", url=url, size="3.6GB")
+        url_list = [
+            "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing",
+            "https://cowtransfer.com/s/03355b0b684442"
+        ]
+        super().__init__(name="2017_tanashi_lotus", url_list=url_list, size="3.6GB")
 
         super().load_data()
 
@@ -239,16 +289,25 @@ class Lotus(EasyidpDataSet):
         self.metashape.dsm = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif")
         self.metashape.pcd = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz")
 
+    def load_data(self):
+        return super().load_data()
+
         
 class GDownTest(EasyidpDataSet):
 
     def __init__(self):
-        url = "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=sharing"
-        super().__init__("gdown_test", url, "0.2KB")
+        url_list = [
+            "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=sharing",
+            "https://cowtransfer.com/s/20fe3984fb9a47"
+        ]
+        super().__init__("gdown_test", url_list, "0.2KB")
         super().load_data()
 
         self.pix4d.proj = str(self.data_dir / "file1.txt")
         self.metashape.param = str(self.data_dir / "folder1")
+
+    def load_data(self):
+        return super().load_data()
 
 
 

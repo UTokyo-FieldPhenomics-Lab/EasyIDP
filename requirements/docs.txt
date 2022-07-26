@@ -3,3 +3,5 @@ sphinx_rtd_theme
 sphinx-intl
 sphinx-inline-tabs
 furo
+nbsphinx
+sphinx-gallery

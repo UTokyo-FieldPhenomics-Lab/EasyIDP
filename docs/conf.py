@@ -39,7 +39,9 @@ extensions = [
     'sphinx.ext.napoleon',   # support numpy docs string
     'sphinx.ext.todo',
     "sphinx_inline_tabs",
-    "sphinx.ext.autosummary"
+    "sphinx.ext.autosummary",
+    "nbsphinx",  # jupyte notebook
+    'sphinx_gallery.load_style',  # gallery view in notebooks
 ]
 
 # Add any paths that contain templates here, relative to this directory.

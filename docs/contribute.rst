@@ -44,6 +44,19 @@ You need to install python dependices by the following code (please activate you
 
     (venv)> pip install -r requirements/docs.txt
 
+In order to deal with jupyter notebook extensions, you will also need to install `pandoc <https://pandoc.org/installing.html>`_ into your computer.
+
+Check by below to ensure successfully installed:
+
+.. code-block:: bash
+
+    (easyidp) % pandoc --version
+    pandoc 2.18
+    Compiled with pandoc-types 1.22.2, texmath 0.12.5, skylighting 0.12.3,
+    citeproc 0.7, ipynb 0.2, hslua 2.2.0
+    Scripting engine: Lua 5.4
+    ...
+
 Build
 -----
 

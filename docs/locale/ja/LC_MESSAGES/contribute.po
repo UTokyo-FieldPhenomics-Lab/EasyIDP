@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-19 22:48+0900\n"
+"POT-Creation-Date: 2022-07-26 15:04+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.10.1\n"
+"Generated-By: Babel 2.10.3\n"
 
 #: ../../contribute.rst:5
 msgid "Contribute"
@@ -70,31 +70,42 @@ msgid ""
 "activate your virtual environment first):"
 msgstr ""
 
-#: ../../contribute.rst:48
+#: ../../contribute.rst:47
+msgid ""
+"In order to deal with jupyter notebook extensions, you will also need to "
+"install `pandoc <https://pandoc.org/installing.html>`_ into your "
+"computer."
+msgstr ""
+
+#: ../../contribute.rst:49
+msgid "Check by below to ensure successfully installed:"
+msgstr ""
+
+#: ../../contribute.rst:61
 msgid "Build"
 msgstr ""
 
-#: ../../contribute.rst:50
+#: ../../contribute.rst:63
 msgid ""
 "After cloning the EasyIDP repository, activate the virtual environment, "
 "first enter the ``docs`` folder:"
 msgstr ""
 
-#: ../../contribute.rst:58
+#: ../../contribute.rst:71
 msgid "Then you can build the documentation by:"
 msgstr "そうすれば、次のようにドキュメントを構築することができます。"
 
-#: ../../contribute.rst:64
+#: ../../contribute.rst:77
 msgid ""
 "You can open the ``_build\\html\\index.html`` to see the generated "
 "documentations"
 msgstr ""
 
-#: ../../contribute.rst:68
+#: ../../contribute.rst:81
 msgid "Translation"
 msgstr "翻訳"
 
-#: ../../contribute.rst:70
+#: ../../contribute.rst:83
 msgid ""
 "Here we using the ``sphinx-intl`` to provide services for multi-language "
 "documentation. If you want to contribute to your native lanuage "
@@ -102,38 +113,38 @@ msgid ""
 "<https://sphinx-intl.readthedocs.io/en/master/quickstart.html>`_"
 msgstr ""
 
-#: ../../contribute.rst:73
+#: ../../contribute.rst:86
 msgid "1\\. extract translatable messages"
 msgstr ""
 
-#: ../../contribute.rst:75
+#: ../../contribute.rst:88
 msgid "First, extract document’s translatable messages into pot files:"
 msgstr ""
 
-#: ../../contribute.rst:81
+#: ../../contribute.rst:94
 msgid ""
 "This invokes the sphinx gettext builder that generates ``*.pot`` files "
 "under ``_build/gettext`` directory."
 msgstr ""
 
-#: ../../contribute.rst:85
+#: ../../contribute.rst:98
 msgid ""
 "Please check the outputs carefully, to see if any warnings or errors "
 "exists. Do not run the following code until they are fixed and "
 "disappared."
 msgstr ""
 
-#: ../../contribute.rst:88
+#: ../../contribute.rst:101
 msgid "2\\. prepare translation files"
 msgstr ""
 
-#: ../../contribute.rst:90
+#: ../../contribute.rst:103
 msgid ""
 "Then, using the following code to convert previous broken sentencs to "
 "correspoinding lanuage folder ( ``_locale\\<your-lang>``)"
 msgstr ""
 
-#: ../../contribute.rst:106
+#: ../../contribute.rst:119
 msgid ""
 "The last part ``-l zh_CN -l ja`` means translate to Chinese (zh_CN) and "
 "Japanese (ja), if you need add another translation languages. Feel tree "
@@ -142,7 +153,7 @@ msgid ""
 "doc.org/en/master/usage/configuration.html#confval-language>`_"
 msgstr ""
 
-#: ../../contribute.rst:111
+#: ../../contribute.rst:124
 msgid ""
 "If you want to add the lanuage document published on the ``readthedocs`` "
 ", please translate at your local first, then make a pull request to our "
@@ -151,94 +162,95 @@ msgid ""
 "possible."
 msgstr ""
 
-#: ../../contribute.rst:114
+#: ../../contribute.rst:127
 msgid "3\\. translate"
 msgstr ""
 
-#: ../../contribute.rst:116
+#: ../../contribute.rst:129
 msgid ""
 "This is the most time-consuming step. Please pay attention carefully "
 "about which files are changed. Then check the folder ``_locale\\<your-"
 "lang>\\LC_MESSAGES``, and edit those changed files."
 msgstr ""
 
-#: ../../contribute.rst:120
+#: ../../contribute.rst:133
 msgid "The ``*.po`` files have the following formats:"
 msgstr ""
 
-#: ../../contribute.rst:128
+#: ../../contribute.rst:141
 msgid ""
 "The first line is where it appears, the second line is the original "
 "sentence, while the last line is the translation you need to type in."
 msgstr ""
 
-#: ../../contribute.rst:130
+#: ../../contribute.rst:143
 msgid "Sometims, it will appear with line of ``#, fuzzy``:"
 msgstr ""
 
-#: ../../contribute.rst:139
+#: ../../contribute.rst:152
 msgid ""
 "It means the origianl sentence have been changed, please edit the "
 "translation again."
 msgstr ""
 
-#: ../../contribute.rst:141
+#: ../../contribute.rst:154
 msgid "Please do the following things:"
 msgstr ""
 
-#: ../../contribute.rst:143
+#: ../../contribute.rst:156
 msgid "Check which files have changed in the previous outputs. And for each file"
 msgstr ""
 
-#: ../../contribute.rst:144
+#: ../../contribute.rst:157
 msgid ""
 "Press ``Ctrl`` + ``F`` in your text editor to find out if any ``#, "
 "fuzzy`` exists, change these sentences first."
 msgstr ""
 
-#: ../../contribute.rst:145
+#: ../../contribute.rst:158
 msgid ""
 "Find if any ``msgstr \"\"`` exists. You don't have to translate "
 "everything, for those words/sentence don't need to translate (e.g. "
 "EasyIDP, Python), just leave them blank."
 msgstr ""
 
-#: ../../contribute.rst:150
+#: ../../contribute.rst:163
 msgid ""
 "If the sentence is too long, feel free to connect the sentence by adding "
 "\"\" in an new line:"
 msgstr ""
 
-#: ../../contribute.rst:158
+#: ../../contribute.rst:171
 msgid "But should not have a blank line!"
 msgstr ""
 
-#: ../../contribute.rst:162
+#: ../../contribute.rst:175
 msgid "For the inline code and links, please ensure they are wrapped by spaces:"
 msgstr ""
 
-#: ../../contribute.rst:169
+#: ../../contribute.rst:182
 msgid ""
 "Otherwise this sentences will get error without notification, and the "
 "translation will not appear."
 msgstr ""
 
-#: ../../contribute.rst:173
+#: ../../contribute.rst:186
 msgid "4\\. render and preview"
 msgstr ""
 
-#: ../../contribute.rst:175
+#: ../../contribute.rst:188
 msgid ""
 "Lastly, change the language of local preview ( ``-Dlanguage='your_lang'``"
 " ), and render the document pages:"
 msgstr ""
 
-#: ../../contribute.rst:191
+#: ../../contribute.rst:204
 msgid ""
 "You can open the ``_build\\html\\index.html`` to see the generated "
 "documentations."
 msgstr ""
 
-#: ../../contribute.rst:194
+#: ../../contribute.rst:207
 msgid "Todo lists"
 msgstr "Todoリスト"
+

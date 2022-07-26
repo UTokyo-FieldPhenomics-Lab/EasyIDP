@@ -47,12 +47,21 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
       * `日本語(翻訳募集) <https://easyidp.readthedocs.io/ja/latest/>`_
 
 
+Examples
+========
+
+.. nbgallery::
+
+    notebooks/quick_start
+
+
 .. toctree::
    :hidden:
    :maxdepth: 1
    :caption: Getting started
 
    install
+   notebooks/quick_start
 
 .. toctree::
    :hidden:

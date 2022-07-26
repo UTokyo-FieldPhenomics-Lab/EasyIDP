@@ -347,27 +347,40 @@ class Pix4D(idp.reconstruct.Recons):
         return coords_b
 
 
-    def back2raw_single(self, points, distort_correct=True, ignore=None, log=False):
-        """
-        :param param: the p4d project objects
-        :param points: should be the geo coordinate - offsets
-        :param method: string
-            'exin' use external and internal parameters (seems not so accurate in some cases),
-            'pmat' use pmatrix to calculate (recommended method for common digital camera, fisheye camera not suit)
-        :param log: boolean, whether print logs in console
-        :return:
+    def back2raw_crs(self, points_xyz, distort_correct=True, ignore=None, log=False):
+        """Projs one GIS coordintates ROI (polygon) to all images
+
+        Parameters
+        ----------
+        points_hv : ndarray (nx3)
+            The 3D coordinates of polygon vertexm, in CRS coordinates
+        distortion_correct : bool, optional
+            Whether do distortion correction, by default True (back to raw image);
+            If back to software corrected images without len distortion, set it to True. 
+            Pix4D support do this operation, seems metashape not supported yet.
+        ignore : str | None, optional
+            None: strickly in image area;
+            'x': only y (vertical) in image area, x can outside image;
+            'y': only x (horizontal) in image area, y can outside image.
+        log : bool, optional
+            whether print log for debugging, by default False
+
+        Returns
+        -------
+        dict,
+            a dictionary that key = img_name and values= pixel coordinate
         """
         out_dict = {}
         sensor = self.sensors[0]
         # seems all teh calculation is based on no offset coordinate
-        points = points - self.meta["p4d_offset"]
+        points_xyz = points_xyz - self.meta["p4d_offset"]
 
         for photo_name, photo in self.photos.items():
             if log:
                 print(f'[Calculator][Judge]{photo.label}w:{photo.w}h:{photo.h}->', end='')
             #if method == 'exin':
             #    projected_coords = self._external_internal_calc(points, photo, distort_correct)
-            projected_coords = self._pmatrix_calc(points, photo, distort_correct)
+            projected_coords = self._pmatrix_calc(points_xyz, photo, distort_correct)
             coords = sensor.in_img_boundary(projected_coords, ignore=ignore, log=log)
             if coords is not None:
                 out_dict[photo.label] = coords

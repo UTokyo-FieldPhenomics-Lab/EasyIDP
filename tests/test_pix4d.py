@@ -1,5 +1,6 @@
 import os
 import pytest
+import sys
 import numpy as np
 import pyproj
 import re
@@ -211,14 +212,28 @@ def test_class_read_default_project():
         maize_part, 
         "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"))
 
-    assert p4d.dsm.file_path == gfp(
-        r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
-        r"_30m_pix4d\3_dsm_ortho\1_dsm\maize_tanashi_3NA_20190729_Ins1Rgb"
-        r"_30m_pix4d_dsm.tif")
-    assert p4d.dom.file_path == gfp(
-        r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
-        r"_30m_pix4d\3_dsm_ortho\2_mosaic\maize_tanashi_3NA_20190729_Ins1Rgb"
-        r"_30m_pix4d_transparent_mosaic_group1.tif")
+    if sys.platform.startswith("win"):
+        # on win
+        # seems get same outputs
+        assert p4d.dsm.file_path == gfp(
+            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d\3_dsm_ortho\1_dsm\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d_dsm.tif")
+        assert p4d.dom.file_path == gfp(
+            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d\3_dsm_ortho\2_mosaic\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d_transparent_mosaic_group1.tif")
+    else:
+        # on mac,
+        # /cc/cc/cc/cc/cc/cc != /cc/cc/cc\\cc\\cc\\cc  
+        assert p4d.dsm.file_path == gfp(
+            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d\3_dsm_ortho\1_dsm\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d_dsm.tif").replace("\\", r"/")
+        assert p4d.dom.file_path == gfp(
+            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d\3_dsm_ortho\2_mosaic\maize_tanashi_3NA_20190729_Ins1Rgb"
+            r"_30m_pix4d_transparent_mosaic_group1.tif").replace("\\", r"/")
 
     np.testing.assert_almost_equal(p4d.pcd.offset, p4d.meta["p4d_offset"])
 
@@ -244,7 +259,7 @@ def test_class_back2raw_single():
         [ 368020.2974959 , 3955511.61264302,      97.56272272]
     ])
 
-    out_dict = p4d.back2raw_single(plot, distort_correct=True)
+    out_dict = p4d.back2raw_crs(plot, distort_correct=True)
     assert len(out_dict) == 39
 
     px_0177 = np.array([

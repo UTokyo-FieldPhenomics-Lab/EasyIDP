@@ -55,6 +55,9 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
     #        [216, 456]])
     roi_rm_offset[roi_rm_offset[:,0] == roi_length[0], 0] -= 1
     roi_rm_offset[roi_rm_offset[:,1] == roi_length[1], 1] -= 1
+
+    # remove (160, 160, 1) such fake 3 dimention
+    imarray = np.squeeze(imarray)
     
     dim = len(imarray.shape)
     if dim == 2: 

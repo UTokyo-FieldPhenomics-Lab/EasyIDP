@@ -96,19 +96,41 @@ class Metashape(idp.reconstruct.Recons):
         return apply_transform_matrix(points_np, self.transform.matrix_inv)
 
     def _world2crs(self, points_np):
-        return convert_proj3d(
-            points_np, self.world_crs, self.crs, is_geo=False
-        )
+        return convert_proj3d(points_np, self.world_crs, self.crs)
 
     def _crs2world(self, points_np):
-        return convert_proj3d(
-            points_np, self.crs, self.world_crs, is_geo=True
-        )
+        return convert_proj3d(points_np, self.crs, self.world_crs)
 
-    def back2raw_single(self, points_np, photo_id, distortion_correct=False):
+    def _back2raw_single(self, points_np, photo_id, distortion_correct=True):
+        """Project one ROI(polygon) on one given photo
 
-        camera_i = self.photos[photo_id]
-        sensor_i = self.sensors[camera_i.sensor_id]
+        Parameters
+        ----------
+        points_np : ndarray (nx3)
+            The 3D coordinates of polygon vertexm, in local coordinates
+        photo_id : int | str | <easyidp.Photo> object
+            the photo that will project on. Can be photo id (int), photo name (str) or <Photo> object
+        distortion_correct : bool, optional
+            Whether do distortion correction, by default True (back to raw image);
+            If back to software corrected images without len distortion, set it to True. 
+            Pix4D support do this operation, seems metashape not supported yet.
+
+        Returns
+        -------
+        ndarray
+            nx2 pixel coordiante of ROI on images
+        """
+        if isinstance(photo_id, (int, str)):
+            camera_i = self.photos[photo_id]
+            sensor_i = self.sensors[camera_i.sensor_id]
+        elif isinstance(photo_id, idp.reconstruct.Photo):
+            camera_i = photo_id
+            sensor_i = photo_id.sensor
+        else:
+            raise TypeError(
+                f"Only <int> photo id or <easyidp.reconstruct.Photo> object are accepted, "
+                f"not {type(photo_id)}")
+
         t = camera_i.transform[0:3, 3]
         r = camera_i.transform[0:3, 0:3]
 
@@ -147,6 +169,51 @@ class Metashape(idp.reconstruct.Recons):
             return out[0, :]
         else:
             return out
+
+    def back2raw_crs(self, points_xyz, distortion_correct=True, ignore=None, log=False):
+        """Projs one GIS coordintates ROI (polygon) to all images
+
+        Parameters
+        ----------
+        points_hv : ndarray (nx3)
+            The 3D coordinates of polygon vertexm, in CRS coordinates
+        distortion_correct : bool, optional
+            Whether do distortion correction, by default True (back to raw image);
+            If back to software corrected images without len distortion, set it to True. 
+            Pix4D support do this operation, seems metashape not supported yet.
+        ignore : str | None, optional
+            None: strickly in image area;
+            'x': only y (vertical) in image area, x can outside image;
+            'y': only x (horizontal) in image area, y can outside image.
+        log : bool, optional
+            whether print log for debugging, by default False
+
+        Returns
+        -------
+        dict,
+            a dictionary that key = img_name and values= pixel coordinate
+        """
+        local_coord = self._world2local(self._crs2world(points_xyz))
+
+        # for each raw image in the project / flight
+        out_dict = {}
+        for photo_name, photo in self.photos.items():
+            # reverse projection to given raw images
+            projected_coord = self._back2raw_single(local_coord, photo, distortion_correct=True)
+
+            # find out those correct images
+            if log:
+                print(f'[Calculator][Judge]{photo.label}w:{photo.w}h:{photo.h}->', end='')
+
+            coords = photo.sensor.in_img_boundary(projected_coord, ignore=ignore, log=log)
+            if coords is not None:
+                out_dict[photo_name] = coords
+
+        return out_dict
+
+
+    def back2raw(self, roi, distortion_correct=True):
+        pass
 
 ###############
 # zip/xml I/O #
@@ -807,43 +874,70 @@ def apply_transform_matrix(points_xyz, matrix):
         return dot_points
 
 
-def convert_proj3d(points_np, crs_origin, crs_target, is_geo=False):
+def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
     """
     Transform a point or points from one CRS to another CRS, by pyproj.CRS.Transformer function
 
-    Attention:
-    pyproj.CRS order: (lat, lon, alt)
-    points order in this package are commonly (lon, lat, alt)
-
     Parameters
     ----------
-    points_np: np.ndarray
-           x  y  z
-        0  1  2  3
-
-        or
-
-           lon  lat  alt
-        0    1    2    3
-        1    4    5    6
-
-    crs_origin: pyproj.CRS object
-    crs_target: pyproj.CRS object
-    is_geo: bool, default false
-        whether points_np is geo coordinates
-        True: lon, lat, alt
-        False: x, y, z
+    points_np : np.ndarray
+        the nx3 3D coordinate points
+    crs_origin : pyproj.CRS object
+        the CRS of points_np
+    crs_target : pyproj.CRS object
+        the CRS of target
+    is_xyz: bool, default false
+        The format of points_np; 
+        True: x, y, z; False: lon, lat, alt
 
     Returns
     -------
+    np.ndarray
+
+    Notes
+    -----
+    ``point_np`` and ``fmt`` parameters
+
+    .. tab:: is_xyz = True
+
+        points_np in this format:
+
+        .. code-block:: text
+
+               x  y  z
+            0  1  2  3
+
+    .. tab:: is_xyz = False
+
+        points_np in this format:
+
+        .. code-block:: text
+
+                lon  lat  alt
+            0    1    2    3
+            1    4    5    6
+
+    .. caution::
+
+        pyproj.CRS order: (lat, lon, alt)
+        points order in EasyIDP are commonly (lon, lat, alt)
+
+        But if is xyz format, no need to change order
 
     """
     ts = pyproj.Transformer.from_crs(crs_origin, crs_target)
 
     points_np, is_single = _is_single_point(points_np)
 
-    # xyz order common points
-    if not is_geo:
+    # check unit to know if is (lon, lat, lat) -> degrees or (x, y, z) -> meters
+    x_unit = crs_origin.coordinate_system.axis_list[0].unit_name
+    y_unit = crs_origin.coordinate_system.axis_list[1].unit_name
+    if x_unit == "degree" and y_unit == "degree": 
+        is_xyz = False
+    else:
+        is_xyz = True
+
+    if is_xyz:
         if crs_target.is_geocentric:
             x, y, z = ts.transform(*points_np.T)
             out =  np.vstack([x, y, z]).T
@@ -852,14 +946,14 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_geo=False):
             lat, lon, alt = ts.transform(*points_np.T)
             # the pyproj output order is reversed
             out = np.vstack([lon, lat, alt]).T
-    else:
+    else:   
+        lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
+        
         if crs_target.is_geocentric:
-            lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
             x, y, z = ts.transform(lat, lon, alt)
             out = np.vstack([x, y, z]).T
 
         if crs_target.is_geographic:
-            lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
             lat, lon, alt = ts.transform(lat, lon, alt)
             out = np.vstack([lon, lat, alt]).T
 
@@ -869,6 +963,7 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_geo=False):
         return out
 
 def _is_single_point(points_np):
+    # check if only contains one point
     if points_np.shape == (3,):
         # with only single point
         return np.array([points_np]), True

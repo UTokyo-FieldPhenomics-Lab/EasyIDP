@@ -139,11 +139,11 @@ class Sensor:
         Parameters
         ----------
         polygon_hv : numpy nx2 array
-            [horizontal, vertical] points
+            [horizontal, vertical] points in pixel coordinate
         ignore : str | None, optional
-            None: strickly in image area
-            'x': only y (vertical) in image area, x can outside image
-            'y': only x (horizontal) in image area, y can outside image
+            None: strickly in image area;
+            'x': only y (vertical) in image area, x can outside image;
+            'y': only x (horizontal) in image area, y can outside image.
         log : bool, optional
             whether print log for debugging, by default False
 

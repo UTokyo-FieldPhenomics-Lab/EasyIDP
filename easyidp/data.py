@@ -52,7 +52,12 @@ def user_data_dir(file_name=""):
     # join with easyidp.data dir
     path = pathlib.Path(os_path) / "easyidp.data"
 
-    return path.expanduser() / file_name
+    add_usr = path.expanduser()
+
+    if not os.path.exists(str(add_usr)):
+        os.mkdir(str(add_usr))
+
+    return add_usr / file_name
 
 def show_data_dir():
     """open the cached data files in cross-platform system default viewer.
@@ -249,7 +254,7 @@ class EasyidpDataSet():
 
 
         def __init__(self) -> None:
-            self.proj = ""
+            self.project = ""
             self.param = ""
             self.dom = ""
             self.dsm = ""
@@ -270,7 +275,7 @@ class Lotus(EasyidpDataSet):
         self.pix4d.photo = str(self.data_dir / "20170531" / "photos")
         self.shp = str(self.data_dir / "plots.shp")
 
-        self.pix4d.proj = str(self.data_dir / "20170531")
+        self.pix4d.project = str(self.data_dir / "20170531")
         self.pix4d.param = str(self.data_dir / "20170531" / "params")
         
         self.pix4d.dom = str(
@@ -283,7 +288,7 @@ class Lotus(EasyidpDataSet):
             self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply"
         )
 
-        self.metashape.proj = str(self.data_dir / "170531.Lotus.psx")
+        self.metashape.project = str(self.data_dir / "170531.Lotus.psx")
         self.metashape.param = str(self.data_dir / "170531.Lotus.files")
         self.metashape.dom = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dom.tif")
         self.metashape.dsm = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif")

@@ -516,7 +516,7 @@ def get_header(tif_path):
     with tf.TiffFile(tif_path) as tif:
         header = {}
         # keys: 'width', 'height', 'dim', 'scale', 'tie_point',
-        #       'nodata', 'proj', 'dtype', 'band_num', 
+        #       'nodata', 'crs', 'dtype', 'band_num', 
         # for export:
         #       'tags', 'photometric', 'planarconfig', 'compression'
         page = tif.pages[0]
@@ -560,8 +560,8 @@ def get_header(tif_path):
             raise KeyError("Can not find key 'GTCitationGeoKey' or 'PCSCitationGeoKey' in Geotiff tages")
         
         try:
-            proj = pyproj.CRS.from_string(proj_str)
-            header['proj'] = proj
+            crs = pyproj.CRS.from_string(proj_str)
+            header['crs'] = crs
         except CRSError as e:
             print(f'[io][geotiff][GeoCorrd] Generation failed, because [{e}], but you can manual specify it later by \n'
                     '>>> import pyproj \n'

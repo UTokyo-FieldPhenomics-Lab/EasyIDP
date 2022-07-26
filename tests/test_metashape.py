@@ -1,3 +1,4 @@
+import chunk
 import os
 import re
 import pytest
@@ -45,14 +46,14 @@ def test_convert_proj3d():
     geo_c = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
 
     out_c = idp.metashape.convert_proj3d(
-        geodetic, geo_d, geo_c, is_geo=True
+        geodetic, geo_d, geo_c, is_xyz=True
     )
     # x: array([[-3943658.715, 3363404.132, 3704651.343]])
     # y: array([[-3943658.709, 3363404.124, 3704651.307]])
     np.testing.assert_array_almost_equal(out_c, geocentric, decimal=1)
 
     out_d = idp.metashape.convert_proj3d(
-        geocentric, geo_c, geo_d, is_geo=False
+        geocentric, geo_c, geo_d, is_xyz=False
     )
     # x: array([[139.540336,  35.737563,  96.849   ]])
     # y: array([[139.540336,  35.737564,  96.878276]])
@@ -124,9 +125,9 @@ def test_metashape_project_local_points_on_raw():
     # test for single point
     l_pos = np.array([7.960064093299587, 1.3019528769064523, -2.6697181763370965])
 
-    p_dis_out = chunk.back2raw_single(
+    p_dis_out = chunk._back2raw_single(
         l_pos, photo_id=0, distortion_correct=False)
-    p_undis_out = chunk.back2raw_single(
+    p_undis_out = chunk._back2raw_single(
         l_pos, photo_id=0, distortion_correct=True)
 
     # pro_api_out = np.asarray([2218.883386793118, 1991.4709388015149])
@@ -141,9 +142,9 @@ def test_metashape_project_local_points_on_raw():
         [7.960064093299587, 1.3019528769064523, -2.6697181763370965],
         [7.960064093299587, 1.3019528769064523, -2.6697181763370965]])
 
-    p_dis_outs = chunk.back2raw_single(
+    p_dis_outs = chunk._back2raw_single(
         l_pos_points, photo_id=0, distortion_correct=False)
-    p_undis_outs = chunk.back2raw_single(
+    p_undis_outs = chunk._back2raw_single(
         l_pos_points, photo_id=0, distortion_correct=True)
 
     my_undistort_outs = np.array([
@@ -179,8 +180,23 @@ def test_world2crs_and_on_raw_images():
     camera_label = "DJI_0057"
     camera_pix_ans = np.array([2391.7104647010146, 1481.8987733175165])
 
-    idp_cam_pix = chunk.back2raw_single(local, camera_id, distortion_correct=True)
+    idp_cam_pix = chunk._back2raw_single(local, camera_id, distortion_correct=True)
     np.testing.assert_array_almost_equal(camera_pix_ans, idp_cam_pix)
 
-    idp_cam_pix_l = chunk.back2raw_single(local, camera_label, distortion_correct=True)
+    idp_cam_pix_l = chunk._back2raw_single(local, camera_label, distortion_correct=True)
     np.testing.assert_array_almost_equal(camera_pix_ans, idp_cam_pix_l)
+
+
+def test_class_back2raw_crs():
+    lotus = idp.data.Lotus()
+
+    ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
+    roi = idp.ROI(lotus.shp, name_field=0)
+    roi.get_z_from_dsm(lotus.metashape.dsm)
+
+    poly = roi["N1W2"]
+    ms.crs = roi.crs
+
+    out = ms.back2raw_crs(poly)
+
+    assert len(out) == 21

@@ -82,8 +82,8 @@ def test_class_roi_change_crs():
     lotus_full_dom = "./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
     obj = idp.GeoTiff(lotus_full_dom)
 
-    roi.change_crs(obj.header["proj"])
-    assert roi.crs.name == obj.header["proj"].name
+    roi.change_crs(obj.header["crs"])
+    assert roi.crs.name == obj.header["crs"].name
 
 def test_class_roi_get_z_from_dsm():
     # only test whether works, not examine the value is true or not
@@ -109,17 +109,17 @@ def test_class_roi_get_z_from_dsm():
     roi_p_mean_0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
     assert roi_p_mean_0_f.crs.name == 'WGS 84 / UTM zone 54N'
     assert roi_p_mean_0_f[0].shape == (5,3)
-    assert roi_p_mean_0_f[0][0,0] == 368017.7565143015
-    assert roi_p_mean_0_f[0][0,1] == 3955511.081022765
-    assert roi_p_mean_0_f[0][0,2] == ht
+    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0,0], 368017.7565143015)
+    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0,1], 3955511.081022765)
+    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0,2], ht)
 
     roi_p_mean_0_t = roi.copy()
     roi_p_mean_0_t.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=True)
     assert roi_p_mean_0_t.crs.name == "WGS 84"
     assert roi_p_mean_0_t[0].shape == (5,3)
-    assert roi_p_mean_0_t[0][0,0] == 35.73475194328632  # latitude
-    assert roi_p_mean_0_t[0][0,1] == 139.54052962153048  # longitude
-    assert roi_p_mean_0_t[0][0,2] == ht
+    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,0], 35.73475194328632)  # latitude
+    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,1], 139.54052962153048)  # longitude
+    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,2], ht)
 
     roi_p_mean_1_f = roi.copy()
     roi_p_mean_1_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=1, keep_crs=False)
@@ -149,8 +149,14 @@ def test_class_roi_get_z_from_dsm():
     roi_f_mean_1_f = roi.copy()
     roi_f_mean_1_f.get_z_from_dsm(lotus_full_dsm, mode="face", kernel="mean", buffer=1, keep_crs=False)
     assert roi_f_mean_1_f[0].shape == (5,3)
-    assert roi_f_mean_1_f[0][0,0] == 368017.7565143015
-    assert roi_f_mean_1_f[0][0,1] == 3955511.081022765
+    np.testing.assert_almost_equal(roi_f_mean_1_f[0][0,0], 368017.7565143015)
+    np.testing.assert_almost_equal(roi_f_mean_1_f[0][0,1], 3955511.081022765)
+
+    roi_f_mean_0_f = roi.copy()
+    roi_f_mean_0_f.get_z_from_dsm(lotus_full_dsm, mode="face", kernel="mean", buffer=0, keep_crs=False)
+    assert roi_f_mean_0_f[0].shape == (5,3)
+    np.testing.assert_almost_equal(roi_f_mean_0_f[0][0,0], 368017.7565143015)
+    np.testing.assert_almost_equal(roi_f_mean_0_f[0][0,1], 3955511.081022765)
 
 def test_class_roi_get_z_from_dsm_errors():
     roi = idp.ROI(lotus_shp)

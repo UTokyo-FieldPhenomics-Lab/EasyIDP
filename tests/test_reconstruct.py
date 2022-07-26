@@ -1,4 +1,4 @@
-import enum
+import sys
 import re
 import pytest
 import numpy as np
@@ -39,9 +39,14 @@ def test_class_recons_output_io():
     dsm = "tests\data\pix4d\lotus_tanashi_full\hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
     dom = "tests\data\pix4d\lotus_tanashi_full\hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
 
-    recons.dom = dom
-    recons.dsm = dsm
-    recons.pcd = pcd
+    if sys.platform.startswith("win"):
+        recons.dom = dom
+        recons.dsm = dsm
+        recons.pcd = pcd
+    else:
+        recons.dom = dom.replace('\\', '/')
+        recons.dsm = dsm.replace('\\', '/')
+        recons.pcd = pcd.replace('\\', '/')
 
     assert isinstance(recons.dom, idp.GeoTiff)
     assert isinstance(recons.dsm, idp.GeoTiff)

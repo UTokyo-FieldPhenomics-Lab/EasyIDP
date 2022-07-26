@@ -265,11 +265,11 @@ class ROI(idp.Container):
             global_z = None
 
         # convert CRS is necessary
-        if self.crs.name != dsm.header["proj"].name and not keep_crs:
-            self.change_crs(dsm.header["proj"])
+        if self.crs.name != dsm.header["crs"].name and not keep_crs:
+            self.change_crs(dsm.header["crs"])
             poly_dict = self.id_item.copy()
         else:
-            poly_dict = idp.shp.convert_proj(self.id_item, self.crs, dsm.header["proj"])
+            poly_dict = idp.shp.convert_proj(self.id_item, self.crs, dsm.header["crs"])
 
         for key, poly in poly_dict.items():
             # only get the x and y of coords
@@ -284,9 +284,9 @@ class ROI(idp.Container):
                     if buffer != 0 or buffer != 0.0:
                         p = Polygon(poly)
                         p_buffer = p.buffer(buffer)
-                        p_buffer_np = np.array(p_buffer.exterior.coords)
+                        poly = np.array(p_buffer.exterior.coords)
 
-                    poly_z = dsm.math_polygon(p_buffer_np, is_geo=True, kernel=kernel)
+                    poly_z = dsm.math_polygon(poly, is_geo=True, kernel=kernel)
                     
                     poly3d = np.insert(self.id_item[key], obj=2, values=poly_z, axis=1)
 

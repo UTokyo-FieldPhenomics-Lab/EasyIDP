@@ -28,7 +28,7 @@ def test_def_get_header():
     assert lotus_full["height"] == 5752
     assert lotus_full["dim"] == 4
     assert lotus_full["nodata"] == 0
-    assert lotus_full["proj"].name == "WGS 84 / UTM zone 54N"
+    assert lotus_full["crs"].name == "WGS 84 / UTM zone 54N"
     assert lotus_full["scale"][0] == 0.00738
     assert lotus_full["scale"][1] == 0.00738
     assert lotus_full["tie_point"][0] == 368014.54157
@@ -39,7 +39,7 @@ def test_def_get_header():
     assert lotus_full["height"] == 5752
     assert lotus_full["dim"] == 1
     assert lotus_full["nodata"] == -10000.0
-    assert lotus_full["proj"].name == "WGS 84 / UTM zone 54N"
+    assert lotus_full["crs"].name == "WGS 84 / UTM zone 54N"
     assert lotus_full["scale"][0] == 0.00738
     assert lotus_full["scale"][1] == 0.00738
     assert lotus_full["tie_point"][0] == 368014.54157
@@ -48,7 +48,7 @@ def test_def_get_header():
     lotus_part = idp.geotiff.get_header(lotus_part_dom)
     assert lotus_part["width"] == 437
     assert lotus_part["height"] == 444
-    assert lotus_part["proj"].name == "WGS 84 / UTM zone 54N"
+    assert lotus_part["crs"].name == "WGS 84 / UTM zone 54N"
     assert lotus_part["tie_point"][0] == 368024.0839
     assert lotus_part["tie_point"][1] == 3955479.7512
 
@@ -375,7 +375,7 @@ def test_class_crop_polygon_save_geotiff():
     obj = idp.GeoTiff(lotus_full_dom)
 
     plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
-    plot_t = idp.shp.convert_proj(plot, proj, obj.header["proj"])
+    plot_t = idp.shp.convert_proj(plot, proj, obj.header["crs"])
 
     # test case 1
     #  polygon_hv = plot_t["N1W1"]

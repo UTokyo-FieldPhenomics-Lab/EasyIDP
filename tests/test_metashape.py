@@ -83,7 +83,7 @@ def test_class_init_metashape():
     assert m2.meta == {}
     assert len(m2.photos) == 259
     assert m2.photos[0].label == "DJI_0284.JPG"
-    assert m2.photos[0].enabled == False
+    assert m2.photos[0].enabled == True
     assert m2.photos[0].path == "//172.31.12.56/pgg2020a/drone/20201029/goya/DJI_0284.JPG"
     assert m2.photos[0].rotation.shape == (3, 3)
     assert m2.photos[0].sensor.width == m2.sensors[0].width

@@ -131,6 +131,9 @@ class Metashape(idp.reconstruct.Recons):
                 f"Only <int> photo id or <easyidp.reconstruct.Photo> object are accepted, "
                 f"not {type(photo_id)}")
 
+        if not camera_i.enabled:
+            return None
+
         t = camera_i.transform[0:3, 3]
         r = camera_i.transform[0:3, 0:3]
 
@@ -198,6 +201,9 @@ class Metashape(idp.reconstruct.Recons):
         # for each raw image in the project / flight
         out_dict = {}
         for photo_name, photo in self.photos.items():
+            # skip not enabled photos
+            if not photo.enabled:
+                continue
             # reverse projection to given raw images
             projected_coord = self._back2raw_one2one(local_coord, photo, distortion_correct=True)
 
@@ -664,31 +670,59 @@ def _decode_calibration_tag(xml_obj):
     ----------
     xml_obj: xml.etree.ElementTree() object
         one element of sensor_tag.findall("./calibration")
-
-        <calibration type="frame" class="adjusted">
-          <resolution width="4608" height="3456"/>
-          <f>4317.82144109411</f>
-          <cx>54.3448479006764</cx>
-          <cy>3.5478801249494</cy>
-          <k1>0.0167015604921295</k1>
-          <k2>-0.0239416622459823</k2>
-          <k3>0.0363031944008484</k3>
-          <p1>0.0035044847840485</p1>
-          <p2>0.00103698463015268</p2>
-        </calibration>
-
     Returns
     -------
     calibration: easyidp.Calibration object
+
+    Notes
+    -----
+
+    Calibration tag example 1:
+
+    .. code-block:: xml
+
+        <calibration type="frame" class="adjusted">
+            <resolution width="5472" height="3648"/>
+            <f>3648</f>
+            <k1>-0.01297256557769369</k1>
+            <k2>0.00071786332278828374</k2>
+            <k3>0.007914514308754287</k3>
+            <p1>-0.0011379213280524752</p1>
+            <p2>-0.0014457166089453365</p2>
+        </calibration>
+
+    Calibration tag example 2:
+
+    .. code-block:: xml
+
+        <calibration type="frame" class="adjusted">
+            <resolution width="4608" height="3456"/>
+            <f>4317.82144109411</f>
+            <cx>54.3448479006764</cx>
+            <cy>3.5478801249494</cy>
+            <k1>0.0167015604921295</k1>
+            <k2>-0.0239416622459823</k2>
+            <k3>0.0363031944008484</k3>
+            <p1>0.0035044847840485</p1>
+            <p2>0.00103698463015268</p2>
+        </calibration>
+
     """
     calibration = idp.reconstruct.Calibration()
 
     calibration.f = float(xml_obj.findall("./f")[0].text)
     calibration.f_unit = "px"
 
-    calibration.cx = float(xml_obj.findall("./cx")[0].text)
+    try:
+        calibration.cx = float(xml_obj.findall("./cx")[0].text)
+    except IndexError:  # example 1, no cx tag
+        calibration.cx = 0
     calibration.cx_unit = "px"
-    calibration.cy = float(xml_obj.findall("./cy")[0].text)
+
+    try:
+        calibration.cy = float(xml_obj.findall("./cy")[0].text)
+    except IndexError:  # example 1, no cx tag
+        calibration.cy = 0
     calibration.cy_unit = "px"
 
     if len(xml_obj.findall("./b1")) == 1:
@@ -724,29 +758,47 @@ def _decode_camera_tag(xml_obj):
     xml_obj: xml.etree.ElementTree() object
         one element of xml_tree.findall("./cameras/camera")
 
-        <camera id="0" sensor_id="0" label="DJI_0151">
-          <transform>
-           0.99893511, -0.04561155,  0.00694542, -5.50542042
-          -0.04604262, -0.9951647 ,  0.08676   , 13.25994938
-           0.00295458, -0.0869874 , -0.99620503,  2.15491524
-           0.        ,  0.        ,  0.        ,  1.         
-          </transform>  // 16 numbers
-          <rotation_covariance>5.9742650282250832e-04 ... 2.3538470709659123e-04</rotation_covariance>  // 9 numbers
-          <location_covariance>2.0254219245789448e-02 ... 2.6760756179895751e-02</location_covariance>  // 9 numbers
-          <orientation>1</orientation>
+    Notes
+    -----
 
-          // sometimes have following reference tag, otherwise need to look into frames.zip xml
-          <reference x="139.540561166667" y="35.73454525" z="134.765" yaw="164.1" pitch="0"
-                     roll="-0" enabled="true" rotation_enabled="false"/>
+    Camera Tag example 1:
+
+    .. code-block:: xml
+
+        <camera id="0" sensor_id="0" label="DJI_0151">
+            <transform>
+            0.99893511, -0.04561155,  0.00694542, -5.50542042
+            -0.04604262, -0.9951647 ,  0.08676   , 13.25994938
+            0.00295458, -0.0869874 , -0.99620503,  2.15491524
+            0.        ,  0.        ,  0.        ,  1.         
+            </transform>  // 16 numbers
+            <rotation_covariance>5.9742650282250832e-04 ... 2.3538470709659123e-04</rotation_covariance>  // 9 numbers
+            <location_covariance>2.0254219245789448e-02 ... 2.6760756179895751e-02</location_covariance>  // 9 numbers
+            <orientation>1</orientation>
+
+            // sometimes have following reference tag, otherwise need to look into frames.zip xml
+            <reference x="139.540561166667" y="35.73454525" z="134.765" yaw="164.1" pitch="0"
+                        roll="-0" enabled="true" rotation_enabled="false"/>
         </camera>
 
-        but some camera have empty tags:
+    Camera tag example 2:
+    
+    some camera have empty tags, also need to deal with such situation
+
+    .. code-block:: xml
 
         <camera id="254" sensor_id="0" label="DJI_0538.JPG">
           <orientation>1</orientation>
         </camera>
 
-        also need to deal with such situation
+    Camera tag example 3:
+
+    .. code-block:: xml
+
+        <camera id="62" sensor_id="0" label="DJI_0121">
+            <orientation>1</orientation>
+            <reference x="139.54051557" y="35.739036839999997" z="106.28" yaw="344.19999999999999" pitch="0" roll="-0" enabled="true" rotation_enabled="false"/>
+        </camera>
 
     Returns
     -------
@@ -757,12 +809,16 @@ def _decode_camera_tag(xml_obj):
     camera.sensor_id = int(xml_obj.attrib["sensor_id"])
     camera.label = xml_obj.attrib["label"]
     camera.orientation = int(xml_obj.findall("./orientation")[0].text)
+    #camera.enabled = bool(xml_obj.findall("./reference")[0].attrib["enabled"])
 
     # deal with camera have empty tags
     transform_tag = xml_obj.findall("./transform")
     if len(transform_tag) == 1:
         transform_str = transform_tag[0].text
         camera.transform = np.fromstring(transform_str, sep=" ", dtype=np.float).reshape((4, 4))
+    else:
+        # have no transform, can not do the reverse caluclation
+        camera.enabled = False
 
     shutter_rotation_tag = xml_obj.findall("./rolling_shutter/rotation")
     if len(shutter_rotation_tag) == 1:

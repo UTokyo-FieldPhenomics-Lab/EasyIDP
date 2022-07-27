@@ -1,4 +1,3 @@
-from curses import raw
 import os
 import pytest
 import sys

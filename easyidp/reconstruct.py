@@ -212,7 +212,7 @@ class Photo:
         self.label = ""
         self.sensor_id = 0
         self.sensor = sensor
-        self.enabled = False
+        self.enabled = True
 
         # reconstruction info in local coord
         self.cam_matrix = None # np.zeros(3,3) -> K

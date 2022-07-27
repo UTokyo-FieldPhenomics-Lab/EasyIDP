@@ -161,7 +161,7 @@ def poly2mask(image_shape, poly_coord, engine="pillow"):
     xmin, ymin = poly_coord.min(axis=0)
     xmax, ymax = poly_coord.max(axis=0)
 
-    if max(xmax-xmin, ymax-ymin) > 100:
+    if engine == "shapely" and max(xmax-xmin, ymax-ymin) > 100:
         warnings.warn("Shaply Engine can not handle size over 100 efficiently, convert using pillow engine")
         engine = "pillow"
 

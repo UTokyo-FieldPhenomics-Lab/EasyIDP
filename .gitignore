@@ -4,6 +4,7 @@ d
 *.DS_Store
 .archive/*
 .idea/*
+.ipynb_checkpoints/*
 .pytest_cache/*
 .vscode/*
 _install.md

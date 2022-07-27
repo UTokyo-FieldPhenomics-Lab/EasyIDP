@@ -101,7 +101,7 @@ class Metashape(idp.reconstruct.Recons):
     def _crs2world(self, points_np):
         return convert_proj3d(points_np, self.crs, self.world_crs)
 
-    def _back2raw_single(self, points_np, photo_id, distortion_correct=True):
+    def _back2raw_one2one(self, points_np, photo_id, distortion_correct=True):
         """Project one ROI(polygon) on one given photo
 
         Parameters
@@ -170,7 +170,7 @@ class Metashape(idp.reconstruct.Recons):
         else:
             return out
 
-    def back2raw_crs(self, points_xyz, distortion_correct=True, ignore=None, log=False):
+    def back2raw_crs(self, points_xyz, distortion_correct=True, save_folder=None, ignore=None, log=False):
         """Projs one GIS coordintates ROI (polygon) to all images
 
         Parameters
@@ -199,7 +199,7 @@ class Metashape(idp.reconstruct.Recons):
         out_dict = {}
         for photo_name, photo in self.photos.items():
             # reverse projection to given raw images
-            projected_coord = self._back2raw_single(local_coord, photo, distortion_correct=True)
+            projected_coord = self._back2raw_one2one(local_coord, photo, distortion_correct=True)
 
             # find out those correct images
             if log:
@@ -212,8 +212,38 @@ class Metashape(idp.reconstruct.Recons):
         return out_dict
 
 
-    def back2raw(self, roi, distortion_correct=True):
-        pass
+    def back2raw(self, roi, save_folder=None, **kwargs):
+        """Projects several GIS coordintates ROIs (polygons) to all images
+
+        Parameters
+        ----------
+        roi : easyidp.ROI | dict
+            the <ROI> object created by easyidp.ROI() or dictionary
+        save_folder : str, optional
+            the folder to save projected preview images and json files, by default ""
+        distortion_correct : bool, optional
+            Whether do distortion correction, by default True (back to raw image);
+            If back to software corrected images without len distortion, set it to True. 
+            Pix4D support do this operation, seems metashape not supported yet.
+        ignore : str | None, optional
+            None: strickly in image area;
+            'x': only y (vertical) in image area, x can outside image;
+            'y': only x (horizontal) in image area, y can outside image.
+        log : bool, optional
+            whether print log for debugging, by default False
+        """
+        out_dict = {}
+        for k, points_xyz in roi.items():
+            if isinstance(save_folder, str) and os.path.isdir(save_folder):
+                save_path = os.path.join(save_folder, k)
+            else:
+                save_path = None
+
+            one_roi_dict= self.back2raw_crs(points_xyz, save_folder=save_path, **kwargs)
+
+            out_dict[k] = one_roi_dict
+
+        return out_dict
 
 ###############
 # zip/xml I/O #

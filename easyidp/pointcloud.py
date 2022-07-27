@@ -246,7 +246,7 @@ class PointCloud(object):
         else:
             write_laz(self._points + self._offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self._offset)
 
-    def crop(self, roi, save_folder=""):
+    def crop(self, roi, save_folder=None):
         """Crop several ROIs by given <ROI> object with several polygons and polygon names
 
         Parameters
@@ -256,7 +256,7 @@ class PointCloud(object):
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
-            the folder to save cropped images, use ROI indices as file_names, by default "", means not save.
+            the folder to save cropped images, use ROI indices as file_names, by default None, means not save.
 
         Returns
         -------
@@ -271,7 +271,7 @@ class PointCloud(object):
 
         out_dict = {}
         for k, polygon_hv in roi.items():
-            if os.path.isdir(save_folder):
+            if isinstance(save_folder, str) and os.path.isdir(save_folder):
                 save_path = os.path.join(save_folder, k + self.file_ext)
             else:
                 save_path = None

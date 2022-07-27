@@ -125,9 +125,9 @@ def test_metashape_project_local_points_on_raw():
     # test for single point
     l_pos = np.array([7.960064093299587, 1.3019528769064523, -2.6697181763370965])
 
-    p_dis_out = chunk._back2raw_single(
+    p_dis_out = chunk._back2raw_one2one(
         l_pos, photo_id=0, distortion_correct=False)
-    p_undis_out = chunk._back2raw_single(
+    p_undis_out = chunk._back2raw_one2one(
         l_pos, photo_id=0, distortion_correct=True)
 
     # pro_api_out = np.asarray([2218.883386793118, 1991.4709388015149])
@@ -142,9 +142,9 @@ def test_metashape_project_local_points_on_raw():
         [7.960064093299587, 1.3019528769064523, -2.6697181763370965],
         [7.960064093299587, 1.3019528769064523, -2.6697181763370965]])
 
-    p_dis_outs = chunk._back2raw_single(
+    p_dis_outs = chunk._back2raw_one2one(
         l_pos_points, photo_id=0, distortion_correct=False)
-    p_undis_outs = chunk._back2raw_single(
+    p_undis_outs = chunk._back2raw_one2one(
         l_pos_points, photo_id=0, distortion_correct=True)
 
     my_undistort_outs = np.array([
@@ -180,18 +180,24 @@ def test_world2crs_and_on_raw_images():
     camera_label = "DJI_0057"
     camera_pix_ans = np.array([2391.7104647010146, 1481.8987733175165])
 
-    idp_cam_pix = chunk._back2raw_single(local, camera_id, distortion_correct=True)
+    idp_cam_pix = chunk._back2raw_one2one(local, camera_id, distortion_correct=True)
     np.testing.assert_array_almost_equal(camera_pix_ans, idp_cam_pix)
 
-    idp_cam_pix_l = chunk._back2raw_single(local, camera_label, distortion_correct=True)
+    idp_cam_pix_l = chunk._back2raw_one2one(local, camera_label, distortion_correct=True)
     np.testing.assert_array_almost_equal(camera_pix_ans, idp_cam_pix_l)
 
 
-def test_class_back2raw_crs():
+def test_class_back2raw_and_crs():
     lotus = idp.data.Lotus()
 
     ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
+
     roi = idp.ROI(lotus.shp, name_field=0)
+    # only pick 2 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N1W2"]:
+            del roi[key]
     roi.get_z_from_dsm(lotus.metashape.dsm)
 
     poly = roi["N1W2"]
@@ -200,3 +206,8 @@ def test_class_back2raw_crs():
     out = ms.back2raw_crs(poly)
 
     assert len(out) == 21
+
+    out_all = ms.back2raw(roi)
+
+    assert len(out_all) == 2
+    assert isinstance(out_all["N1W2"], dict)

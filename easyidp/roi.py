@@ -316,7 +316,7 @@ class ROI(idp.Container):
         pcd = self._get_z_input_check(pcd, mode, kernel, buffer, func="pcd")
         raise NotImplementedError("Will be implemented in the future.")
 
-    def crop(self, target, save_folder=""):
+    def crop(self, target, save_folder=None):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
         Parameters
@@ -326,7 +326,7 @@ class ROI(idp.Container):
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
-            the folder to save cropped images, use ROI indices as file_names, by default "", means not save.
+            the folder to save cropped images, use ROI indices as file_names, by default None, means not save.
 
         Returns
         -------
@@ -361,10 +361,50 @@ class ROI(idp.Container):
 
         return out
 
-    def back2raw(self, chunks):
+    def back2raw(self, recons, save_folder=None, **kwargs):
+        """Projects several GIS coordintates ROIs (polygons) to all images
+
+        Parameters
+        ----------
+        roi : easyidp.ROI | dict
+            the <ROI> object created by easyidp.ROI() or dictionary
+        save_folder : str, optional
+            the folder to save projected preview images and json files, by default ""
+        distortion_correct : bool, optional
+            Whether do distortion correction, by default True (back to raw image with lens distortion);
+            If back to software corrected images without len distortion, set it to False. 
+            (Pix4D support do this operation, seems metashape not supported yet.)
+        ignore : str | None, optional
+            None: strickly in image area;
+            'x': only y (vertical) in image area, x can outside image;
+            'y': only x (horizontal) in image area, y can outside image.
+        log : bool, optional
+            whether print log for debugging, by default False
+
+        See also
+        --------
+        easyidp.pix4d.back2raw, easyidp.metashape.back2raw
+        """
         # call related function
         # need check alt exists, the alt is changing for different dsm?
-        pass
+        if not self.is_geo():
+            raise TypeError("Could not operate without CRS specified")
+
+        # if is one chunk
+        if isinstance(recons, (idp.Pix4D, idp.Metashape)):
+            out_dict = recons.back2raw(self, **kwargs)
+        # several chunks
+        if isinstance(recons, idp.ProjectPool):
+            out_dict = {}
+            for chunk in recons:
+                if isinstance(save_folder, str) and os.path.isdir(save_folder):
+                    save_path = os.path.join(save_folder, chunk.label)
+                else:
+                    save_path = None
+
+                out_dict[chunk.label] = chunk.back2raw(self, save_folder=save_path, **kwargs)
+
+        return out_dict
 
     def copy(self):
         """make a deep copy of current file

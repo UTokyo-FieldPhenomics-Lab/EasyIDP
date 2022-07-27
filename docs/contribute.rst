@@ -57,6 +57,13 @@ Check by below to ensure successfully installed:
     Scripting engine: Lua 5.4
     ...
 
+Then please download all datasets, this may take a long time.
+
+.. code-block:: python
+
+    >>> import easyidp as idp
+    >>> idp.data.dowload_all()
+
 Build
 -----
 

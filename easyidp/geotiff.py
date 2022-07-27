@@ -125,13 +125,13 @@ class GeoTiff(object):
             else:
                 return point_query(page, points_hv)
 
-    def crop(self, roi, is_geo=True, save_folder=""):
+    def crop(self, roi, is_geo=True, save_folder=None):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
         Parameters
         ----------
         roi : easyidp.ROI | dict
-            the <ROI> object created by easyidp.ROI()
+            the <ROI> object created by easyidp.ROI(), or dictionary
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
@@ -149,7 +149,7 @@ class GeoTiff(object):
 
         out_dict = {}
         for k, polygon_hv in roi.items():
-            if os.path.isdir(save_folder):
+            if isinstance(save_folder, str) and os.path.isdir(save_folder):
                 save_path = os.path.join(save_folder, k + ".tif")
             else:
                 save_path = None
@@ -170,7 +170,7 @@ class GeoTiff(object):
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_path : str, optional
-            if given, will save the cropped as \*.tif file to path
+            if given, will save the cropped as \*.tif file to path, by default None
 
         Returns
         -------

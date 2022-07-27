@@ -1,3 +1,4 @@
+from curses import raw
 import os
 import pytest
 import sys
@@ -277,3 +278,22 @@ def test_class_back2raw_single():
     idp.visualize.draw_polygon_on_img(
         img_name, photo.path, out_dict[img_name], show=False, 
         save_as="./tests/out/visual_test/p4d_back2raw_single_view.png")
+
+def test_class_back2raw():
+    lotus = idp.data.Lotus()
+
+    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+                    raw_img_folder=lotus.photo,
+                    param_folder=lotus.pix4d.param)
+
+    roi = idp.ROI(lotus.shp, name_field=0)
+    # only pick 2 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N1W2"]:
+            del roi[key]
+    roi.get_z_from_dsm(lotus.pix4d.dsm)
+
+    out_all = p4d.back2raw(roi)
+
+    assert len(out_all) == 2

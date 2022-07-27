@@ -108,6 +108,13 @@ def url_checker(url):
         return False
 
 
+def download_all():
+    """download all datasets
+    """
+    lotus = Lotus()
+    gd = GDownTest()
+
+
 class EasyidpDataSet():
 
     def __init__(self, name="", url_list=[], size="",):
@@ -272,7 +279,7 @@ class Lotus(EasyidpDataSet):
 
         super().load_data()
 
-        self.pix4d.photo = str(self.data_dir / "20170531" / "photos")
+        self.photo = str(self.data_dir / "20170531" / "photos")
         self.shp = str(self.data_dir / "plots.shp")
 
         self.pix4d.project = str(self.data_dir / "20170531")

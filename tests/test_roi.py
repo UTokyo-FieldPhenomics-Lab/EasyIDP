@@ -227,3 +227,30 @@ def test_class_roi_crop_error():
         "Only file path <str> or <easyidp.GeoTiff> object or <easyidp.PointCloud>"
         " object are accepted, not <class 'str'>")):
         roi.crop("aaa")
+
+
+def test_class_roi_back2raw():
+    # single chunk:
+    lotus = idp.data.Lotus()
+
+    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+                    raw_img_folder=lotus.photo,
+                    param_folder=lotus.pix4d.param)
+
+    ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
+
+    roi = idp.ROI(lotus.shp, name_field=0)
+    # only pick 2 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N1W2"]:
+            del roi[key]
+    roi.get_z_from_dsm(lotus.pix4d.dsm)
+
+    ms.crs = roi.crs
+
+    out_p4d = roi.back2raw(p4d)
+    out_ms = roi.back2raw(ms)
+
+    assert len(out_p4d) == 2
+    assert len(out_ms) == 2

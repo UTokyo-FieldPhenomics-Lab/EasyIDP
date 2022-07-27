@@ -2,6 +2,7 @@
 Point Cloud
 ===========
 
+.. currentmodule:: easyidp.pointcloud
 
 Class
 =====
@@ -9,16 +10,9 @@ Class
 A summary of class ``PointCloud``
 
 .. autosummary::
+    :toctree: autodoc
 
-    easyidp.PointCloud.has_colors
-    easyidp.PointCloud.has_points
-    easyidp.PointCloud.has_normals
-    easyidp.PointCloud.crop_point_cloud
-
-
-.. autoclass:: easyidp.PointCloud
-    :members:
-    :noindex:
+    PointCloud
 
 
 Functions
@@ -31,5 +25,5 @@ Functions
 .. autosummary::
     :toctree: autodoc
 
-    easyidp.pointcloud.write_ply
-    easyidp.pointcloud.read_las
+    write_ply
+    read_las

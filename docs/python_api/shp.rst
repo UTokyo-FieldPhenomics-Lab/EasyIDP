@@ -4,6 +4,7 @@
 • shapefile
 ================
 
+.. currentmodule:: easyidp.shp
 
 Functions
 =========
@@ -15,7 +16,7 @@ Functions
 .. autosummary::
     :toctree: autodoc
 
-    easyidp.shp.read_proj
-    easyidp.shp.show_shp_fields
-    easyidp.shp.read_shp
-    easyidp.shp.convert_proj
+    read_proj
+    show_shp_fields
+    read_shp
+    convert_proj

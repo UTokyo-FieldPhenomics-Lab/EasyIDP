@@ -2,6 +2,7 @@
 Data
 ============
 
+.. currentmodule:: easyidp.data
 
 Dataset
 =======
@@ -27,8 +28,7 @@ Dataset
 
 All the dataset is in the following format:
 
-.. autoclass:: easyidp.data.EasyidpDataSet
-   :members: 
+.. autoclass:: EasyidpDataSet
    :special-members: __init__
 
 
@@ -58,6 +58,6 @@ Functions
 .. autosummary:: 
     :toctree: autodoc
 
-    easyidp.data.user_data_dir
-    easyidp.data.show_data_dir
-    easyidp.data.url_checker
+    user_data_dir
+    show_data_dir
+    url_checker

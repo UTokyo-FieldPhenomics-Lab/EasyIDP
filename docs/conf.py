@@ -77,5 +77,7 @@ todo_include_todos = True
 napoleon_google_docstring = False
 napoleon_use_admonition_for_references = True
 
-autodoc_default_flags = ['members']
+# deprecated
+# autodoc_default_flags = ['members']
+autodoc_default_options = {'members': True,}
 autosummary_generate = True

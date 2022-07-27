@@ -4,6 +4,8 @@
 • jsonfile
 ===============
 
+.. currentmodule:: easyidp.jsonfile
+
 
 Functions
 =========
@@ -15,7 +17,7 @@ Functions
 .. autosummary::
     :toctree: autodoc
 
-    easyidp.jsonfile.read_json
-    easyidp.jsonfile.save_json
-    easyidp.jsonfile.write_json
-    easyidp.jsonfile.dict2json
+    read_json
+    dict2json
+    write_json
+    save_json

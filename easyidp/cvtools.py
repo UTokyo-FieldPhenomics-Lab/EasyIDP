@@ -111,11 +111,6 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
 
 def poly2mask(image_shape, poly_coord, engine="pillow"):
     """convert vector polygon to raster masks, aim to avoid using skimage package
-    
-    Notes
-    -----
-    This code is inspired from here:
-    https://stackoverflow.com/questions/62280398/checking-if-a-point-is-contained-in-a-polygon-multipolygon-for-many-points
 
     Parameters
     ----------
@@ -139,6 +134,12 @@ def poly2mask(image_shape, poly_coord, engine="pillow"):
     -------
     mask : numpy.ndarray
         the generated binary mask
+        
+    Notes
+    -----
+    This code is inspired from here:
+    https://stackoverflow.com/questions/62280398/checking-if-a-point-is-contained-in-a-polygon-multipolygon-for-many-points
+
     """
 
     # check the type of input

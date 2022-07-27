@@ -6,6 +6,9 @@ The EasyIDP package have the following modules:
 
 - :doc:`Point cloud Module <./pointcloud>` : read, write, check and crop opertation.
 - :doc:`GeoTiff Module <./geotiff>` : read, write, crop, and statistics opertation.
+  
+  - :doc:`cvtools Submodule <./cvtools>` : processing ndarray images without install scikit-image.
+
 - :doc:`ROI Module <./roi>` : read region of interest from shp and txt file.
   
   - :doc:`shp Submodule <./shp>`: read shape (\*.shp) file.
@@ -31,3 +34,9 @@ But it is more recommended use the advanced wrapper in most application cases:
     >>> header = geo.header
 
 Although it may seem like more code, advanced wrappers have more convenient functions to use without caring about specific data structure details. Most of our example cases are using the advanced class wrapper.
+
+.. caution:: 
+
+    The :class:`easyidp.Container` object, its child objects, and objects contains this object, like :class:`easyidp.roi.ROI` , ``ProjectPool`` , ``Recons`` , ``Pix4D`` , ``Metashape``, can not be saved by pickle. 
+    
+    Please check this link for more details `What can be pickled and unpickled <https://docs.python.org/3/library/pickle.html#what-can-be-pickled-and-unpickled>`_ .

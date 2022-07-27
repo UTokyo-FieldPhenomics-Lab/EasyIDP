@@ -2,6 +2,7 @@
 GeoTiff
 =======
 
+.. currentmodule:: easyidp.geotiff
 
 Class
 =====
@@ -9,20 +10,10 @@ Class
 A summary of class ``GeoTiff``
 
 .. autosummary::
+    :toctree: autodoc
 
-    easyidp.GeoTiff.read_geotiff
-    easyidp.GeoTiff.has_data
-    easyidp.GeoTiff.point_query
-    .. easyidp.GeoTiff.crop
-    easyidp.GeoTiff.crop_polygon
-    easyidp.GeoTiff.save_geotiff
-    easyidp.GeoTiff.math_polygon
-    .. easyidp.GeoTiff.create_grid
-
-.. autoclass:: easyidp.GeoTiff
-    :members:
-    :noindex:
-
+    GeoTiff
+    
 
 Functions
 =========
@@ -34,8 +25,8 @@ Functions
 .. autosummary::
     :toctree: autodoc
 
-    easyidp.geotiff.get_header
-    easyidp.geotiff.get_imarray
-    easyidp.geotiff.geo2pixel
-    easyidp.geotiff.pixel2geo
-    easyidp.geotiff.tifffile_crop
+    get_header
+    get_imarray
+    geo2pixel
+    pixel2geo
+    tifffile_crop

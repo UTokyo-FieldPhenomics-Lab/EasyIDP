@@ -2,22 +2,18 @@
 ROI
 ===
 
+.. currentmodule:: easyidp.roi
+
 Class
 =====
 
 A summary of class ``ROI``
 
 .. autosummary::
+    :toctree: autodoc
 
-    easyidp.ROI.is_geo
-    easyidp.ROI.get_z_from_dsm
-    easyidp.ROI.open
-    easyidp.ROI.copy
+    ROI
 
-
-.. autoclass:: easyidp.ROI
-    :members:
-    :noindex:
 
 Functions
 =========
@@ -29,4 +25,4 @@ Functions
 .. autosummary::
     :toctree: autodoc
 
-    easyidp.roi.read_cc_txt
+    read_cc_txt

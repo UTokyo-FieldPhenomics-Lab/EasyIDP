@@ -8,12 +8,16 @@ import warnings
 ##############
 
 class Container(dict):
-    """Self designed dictionary like classto contain items like {"id": item.label}
-    but enable using both [item.id] and [item.label] to fetch items
+    """Self designed dictionary class to fetch items by id or label
+
+    Caution
+    -------
+    This object can not be saved by ``pickle``, it will cause problem when loading
+    
+    References
+    ----------
     https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
     """
-    # 
-
     def __init__(self):
         super().__init__()
         self.id_item = {}   # {0: item1, 1: item2}

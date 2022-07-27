@@ -237,7 +237,7 @@ class ROI(idp.Container):
 
         If mode is "face", will buffer the polygon and then calculate the height inside the buffered polygon
 
-        .. image:: ../_static/images/python_api/roi_crop_mode.png
+        .. image:: ../../_static/images/python_api/roi_crop_mode.png
             :alt: roi_crop_mode.png
 
 

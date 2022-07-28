@@ -2,7 +2,7 @@
 
 <p>
    <!-- <a align="left" href="https://ultralytics.com/yolov5" target="_blank"> -->
-   <img width="850" src="docs/_static/images/header_v2.0.png"></a>
+   <img width="850" src="https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/raw/v2.0/docs/_static/images/header_v2.0.png"></a>
 </p>
 
 <p align="center">
@@ -166,17 +166,32 @@ DOI = {10.3390/rs13132622}
 
 We also thanks the benefits from the following open source projects:
 
-* numpy: [https://numpy.org/](https://numpy.org/)
-* matplotlib:[https://matplotlib.org/](https://matplotlib.org/)
-* pillow: [https://github.com/python-pillow/Pillow](https://github.com/python-pillow/Pillow)
-* pyproj: [https://github.com/pyproj4/pyproj](https://github.com/pyproj4/pyproj)
-* tifffile: [https://github.com/cgohlke/tifffile](https://github.com/cgohlke/tifffile)
-* shapely: [https://github.com/shapely/shapely](https://github.com/shapely/shapely)
-* laspy/lasrs/lasio: [https://github.com/laspy/laspy](https://github.com/laspy/laspy)
-* plyfile: [https://github.com/dranjan/python-plyfile](https://github.com/dranjan/python-plyfile)
-* pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
-* tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
-* tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)
+* package main (**for users**)
+  * numpy: [https://numpy.org/](https://numpy.org/)
+  * matplotlib:[https://matplotlib.org/](https://matplotlib.org/)
+  * pillow: [https://github.com/python-pillow/Pillow](https://github.com/python-pillow/Pillow)
+  * pyproj: [https://github.com/pyproj4/pyproj](https://github.com/pyproj4/pyproj)
+  * tifffile: [https://github.com/cgohlke/tifffile](https://github.com/cgohlke/tifffile)
+  * imagecodecs: [https://github.com/cgohlke/imagecodecs](https://github.com/cgohlke/imagecodecs)
+  * shapely: [https://github.com/shapely/shapely](https://github.com/shapely/shapely)
+  * laspy/lasrs/lasio: [https://github.com/laspy/laspy](https://github.com/laspy/laspy)
+  * plyfile: [https://github.com/dranjan/python-plyfile](https://github.com/dranjan/python-plyfile)
+  * pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
+  * tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
+  * tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)
+  * gdown: [https://github.com/wkentaro/gdown](https://github.com/wkentaro/gdown)
+* package documentation (**for developers**)
+  * sphinx: [https://github.com/sphinx-doc/sphinx](https://github.com/sphinx-doc/sphinx)
+  * nbsphinx: [https://github.com/spatialaudio/nbsphinx](https://github.com/spatialaudio/nbsphinx)
+  * sphinx-gallery: [https://github.com/sphinx-gallery/sphinx-gallery](https://github.com/sphinx-gallery/sphinx-gallery)
+  * sphinx-inline-tabs: [https://github.com/pradyunsg/sphinx-inline-tabs](https://github.com/pradyunsg/sphinx-inline-tabs)
+  * sphinx-intl: [https://github.com/sphinx-doc/sphinx-intl](https://github.com/sphinx-doc/sphinx-intl)
+  * sphinx-rtc-theme: [https://github.com/readthedocs/sphinx_rtd_theme](https://github.com/readthedocs/sphinx_rtd_theme)
+  * furo: [https://github.com/pradyunsg/furo](https://github.com/pradyunsg/furo)
+* package testing and releasing (**for developers**)
+  * pytest: [https://github.com/pytest-dev/pytest](https://github.com/pytest-dev/pytest)
+  * packaging: [https://github.com/pypa/packaging](https://github.com/pypa/packaging)
+  * wheel: [https://github.com/pypa/wheel](https://github.com/pypa/wheel)
 
 This project was partially funded by:
 

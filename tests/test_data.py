@@ -21,3 +21,10 @@ def test_gdown():
 
     assert gd.pix4d.proj == os.path.join(str(gd.data_dir), "file1.txt")
     assert gd.metashape.param == os.path.join(str(gd.data_dir), "folder1")
+
+    # test remove and reload
+    gd.remove_data()
+    assert not os.path.exists(gd.data_dir)
+
+    gd.reload_data()
+    assert os.path.exists(gd.data_dir)

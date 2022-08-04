@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import pathlib
 import zipfile
 import gdown
@@ -113,6 +114,7 @@ def download_all():
     """
     lotus = Lotus()
     gd = GDownTest()
+    test = TestData()
 
 
 class EasyidpDataSet():
@@ -214,13 +216,27 @@ class EasyidpDataSet():
             out = self._download_data()
 
             if os.path.exists(self.zip_file):
+                print("Successfully downloaded, start unzipping ...")
                 self._unzip_data()
+                print("Successfully unzipped, the cache zip file has been removed.")
             else:
                 raise FileNotFoundError(
                     f"Could not find the downloaded file [{self.zip_file}], "
                     f"please call ().load_data() to download again.\n"
                     f"Tips: ensure you can access Google Drive url."
                 )
+
+    def reload_data(self):
+        """remove local data and redownload again
+        """
+        self.remove_data()
+        self.load_data()
+
+    def remove_data(self):
+        """remove local cached data file
+        """
+        if os.path.exists(self.data_dir):
+            shutil.rmtree(self.data_dir)
         
     def _download_data(self):
         """using gdown to download dataset from Google Drive to user AppData folder
@@ -256,6 +272,7 @@ class EasyidpDataSet():
             os.remove(self.zip_file)
         else:
             raise FileNotFoundError("Seems fail to unzip, please check whether the zip file is fully downloaded.")
+
 
     class ReconsProj():
 
@@ -323,5 +340,18 @@ class GDownTest(EasyidpDataSet):
 
 
 
+class TestData(EasyidpDataSet):
 
-    
+    def __init__(self):
+        url_list = [
+            "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=sharing",
+            "https://cowtransfer.com/s/9d60d394cbd448"
+        ]
+
+        self.name = "data_for_tests"
+        self.url_list = url_list
+        self.size = "344MB"
+        self.data_dir = user_data_dir(self.name)
+        self.zip_file = user_data_dir(self.name + ".zip")
+
+        super().load_data()

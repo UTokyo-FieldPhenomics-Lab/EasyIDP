@@ -1,12 +1,11 @@
 import chunk
-import os
 import re
 import pytest
 import pyproj
 import numpy as np
 import easyidp as idp
 
-ms_path = "tests/data/metashape"
+test_data = idp.data.TestData()
 
 #########################
 # test math calculation #
@@ -69,14 +68,12 @@ def test_class_init_metashape():
     assert m1.software == "metashape"
 
     # load with project_path
-    m2 = idp.Metashape(project_path=os.path.join(ms_path, "goya_test.psx"))
+    m2 = idp.Metashape(project_path=test_data.metashape.goya_psx)
     assert m2.project_name == "goya_test"
     assert m2.label == ''
 
     # load with project_path + chunk_id
-    m2 = idp.Metashape(
-        project_path=os.path.join(ms_path, "goya_test.psx"), chunk_id=0
-    )
+    m2 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id=0)
     assert m2.project_name == "goya_test"
     ## check values
     assert m2.label == 'Chunk 1'
@@ -89,9 +86,7 @@ def test_class_init_metashape():
     assert m2.photos[0].sensor.width == m2.sensors[0].width
 
     # error init with chunk_id without project_path
-    with pytest.raises(
-        LookupError, 
-        match=re.escape("Could not load chunk_id ")):
+    with pytest.raises(LookupError, match=re.escape("Could not load chunk_id ")):
         m3 = idp.Metashape(chunk_id=0)
 
 
@@ -118,9 +113,7 @@ def test_local2world2local():
 
 
 def test_metashape_project_local_points_on_raw():
-    test_project_folder = os.path.join(ms_path, "goya_test.psx")
-
-    chunk = idp.Metashape(test_project_folder, chunk_id=0)
+    chunk = idp.Metashape(test_data.metashape.goya_psx, chunk_id=0)
 
     # test for single point
     l_pos = np.array([7.960064093299587, 1.3019528769064523, -2.6697181763370965])
@@ -159,8 +152,7 @@ def test_metashape_project_local_points_on_raw():
 
 
 def test_world2crs_and_on_raw_images():
-    test_project_folder = os.path.join(ms_path, "wheat_tanashi.psx")
-    chunk = idp.Metashape(test_project_folder, chunk_id=0)
+    chunk = idp.Metashape(test_data.metashape.wheat_psx, chunk_id=0)
 
     local = np.array(
         [11.870130675203006, 0.858098777517136, -12.987136541275])
@@ -188,17 +180,15 @@ def test_world2crs_and_on_raw_images():
 
 
 def test_class_back2raw_and_crs():
-    lotus = idp.data.Lotus()
+    ms = idp.Metashape(project_path=test_data.metashape.lotus_psx, chunk_id=0)
 
-    ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
-
-    roi = idp.ROI(lotus.shp, name_field=0)
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
     # only pick 2 plots as testing data
     key_list = list(roi.keys())
     for key in key_list:
         if key not in ["N1W1", "N1W2"]:
             del roi[key]
-    roi.get_z_from_dsm(lotus.metashape.dsm)
+    roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
     poly = roi["N1W2"]
     ms.crs = roi.crs

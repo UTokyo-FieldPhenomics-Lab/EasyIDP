@@ -1,21 +1,15 @@
 import os
 import pytest
-import sys
 import numpy as np
 import pyproj
 import re
+from pathlib import Path
 import easyidp as idp
 
-from easyidp import get_full_path as gfp
-
-data_path =  "./tests/data/pix4d"
-
-lotus_full = os.path.join(data_path, "lotus_tanashi_full")
-lotus_part = os.path.join(data_path, "lotus_tanashi")
-maize_part = os.path.join(data_path, "maize_tanashi")
+test_data = idp.data.TestData()
 
 def test_hidden_match_suffix():
-    test_folder = os.path.join(maize_part, "maize_tanashi_raname_empty_test/2_densification/point_cloud")
+    test_folder = test_data.pix4d.maize_empty / "2_densification" / "point_cloud"
 
     out1 = idp.pix4d._match_suffix(test_folder, "xyz")
     assert out1 is None
@@ -35,54 +29,35 @@ def test_hidden_match_suffix():
 
 def test_parse_p4d_project_structure():
     # normal cases
-    test_folder1 = os.path.join(maize_part, "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d")
+    test_folder1 = test_data.pix4d.maize_folder
     proj_name1 = "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
 
     p4d1 = idp.pix4d.parse_p4d_project(test_folder1)
     assert p4d1["project_name"] == proj_name1
     assert p4d1["param"]["project_name"] == proj_name1
-    assert gfp(p4d1["pcd"]) == gfp(
-        os.path.join(
-            test_folder1, 
-            f"2_densification/point_cloud/{proj_name1}"
-            "_group1_densified_point_cloud.ply"
-        )
-    )
-    assert gfp(p4d1["dsm"]) == gfp(
-        os.path.join(test_folder1, 
-            f"3_dsm_ortho/1_dsm/{proj_name1}_dsm.tif"
-        )
-    )
-    assert gfp(p4d1["dom"]) == gfp(
-        os.path.join(
-            test_folder1, 
-            f"3_dsm_ortho/2_mosaic/{proj_name1}"
-            "_transparent_mosaic_group1.tif"
-        )
-    )
+    assert Path(p4d1["pcd"]).resolve() == \
+        (test_folder1 / "2_densification" / "point_cloud" / f"{proj_name1}_group1_densified_point_cloud.ply").resolve()
+    assert Path(p4d1["dsm"]).resolve() == \
+        (test_folder1 / "3_dsm_ortho" / "1_dsm" / f"{proj_name1}_dsm.tif").resolve()
+    assert Path(p4d1["dom"]).resolve() == \
+        (test_folder1 / "3_dsm_ortho" / "2_mosaic" / f"{proj_name1}_transparent_mosaic_group1.tif").resolve()
 
     # test pix4d folder with wrong output name
-    test_folder2 = os.path.join(maize_part, "maize_tanashi_raname_empty_test")
+    test_folder2 = test_data.pix4d.maize_empty
 
     # wrong project_name force to find outputs by file format
-    p4d4 = idp.pix4d.parse_p4d_project(test_folder2)
-    assert gfp(p4d4["pcd"]) == gfp(
-        os.path.join(
-            test_folder2, 
-            f"2_densification/point_cloud/aaa_empty.ply"
-        )
-    )
-    assert gfp(p4d4["dsm"]) == gfp(
-        os.path.join(test_folder2, f"3_dsm_ortho/1_dsm/bbb_dsm.tif")
-    )
-    assert gfp(p4d4["dom"]) == gfp(
-        os.path.join(test_folder2, f"3_dsm_ortho/2_mosaic/ccc_dom.tif")
-    )
+    p4d4 = idp.pix4d.parse_p4d_project(str(test_folder2))   # test string as input
+    assert Path(p4d4["pcd"]).resolve() == \
+        (test_folder2 / "2_densification" / "point_cloud" / "aaa_empty.ply").resolve()
+    assert Path(p4d4["dsm"]).resolve() == \
+        (test_folder2 / "3_dsm_ortho" / "1_dsm" / "bbb_dsm.tif").resolve()
+    assert Path(p4d4["dom"]).resolve() == \
+        (test_folder2 / "3_dsm_ortho" / "2_mosaic" / "ccc_dom.tif").resolve()
 
 
 def test_parse_p4d_project_warning():
     # can not find output file
-    test_folder = os.path.join(maize_part, "maize_tanashi_raname_no_outputs")
+    test_folder = str(test_data.pix4d.maize_noout)
     
     with pytest.warns(UserWarning, 
         match=re.escape("Unable to find any")
@@ -92,7 +67,6 @@ def test_parse_p4d_project_warning():
 
 def test_parse_p4d_project_structure_error():
     # folder without 1_init
-    test_folder1 = lotus_part
     proj_name1 = "hasu_tanashi_20170525_Ins1RGB_30m"
 
     with pytest.raises(FileNotFoundError, 
@@ -101,23 +75,19 @@ def test_parse_p4d_project_structure_error():
         )
     ):
         p4d = idp.pix4d.parse_p4d_project(
-            test_folder1, proj_name1
+            test_data.pix4d.lotus_folder, proj_name1
         )
 
     # no paramter folder
-    test_folder2 = os.path.join(maize_part, "maize_tanashi_no_param")
     with pytest.raises(FileNotFoundError, 
         match=re.escape(f"Can not find pix4d parameter in given project folder")
     ):
-        p4d = idp.pix4d.parse_p4d_project(test_folder2)
+        p4d = idp.pix4d.parse_p4d_project(test_data.pix4d.maize_noparam)
 
 ################
 # parse params #
 ################
-param_folder = os.path.join(
-    maize_part, 
-    "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/1_initial/params"
-)
+param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
 
 def test_parse_p4d_param_folder():
     param = idp.pix4d.parse_p4d_param_folder(param_folder)
@@ -179,9 +149,9 @@ def test_read_params():
 def test_class_read_renamed_project():
     p4d = idp.Pix4D()
 
-    param_folder = os.path.join(lotus_full, "params")
-    image_folder = os.path.join(lotus_full, "photos")
-    p4d.open_project(lotus_full, raw_img_folder=image_folder, param_folder=param_folder)
+    param_folder = test_data.pix4d.lotus_param
+    image_folder = test_data.pix4d.lotus_photos
+    p4d.open_project(test_data.pix4d.lotus_folder, raw_img_folder=image_folder, param_folder=param_folder)
 
     assert p4d.software == "pix4d"
     assert p4d.label == "hasu_tanashi_20170525_Ins1RGB_30m"
@@ -199,7 +169,7 @@ def test_class_read_renamed_project():
 
     assert p4d.photos[0].label == "DJI_0151.JPG"
     assert p4d.photos[0].path == ''
-    assert "photos" in p4d.photos["DJI_0174.JPG"].path
+    assert "photos" in str(p4d.photos["DJI_0174.JPG"].path)
     assert p4d.photos["DJI_0174.JPG"].cam_matrix.shape == (3,3)
     assert p4d.photos["DJI_0174.JPG"].rotation.shape == (3,3)
     assert p4d.photos["DJI_0174.JPG"].location.shape == (3,)
@@ -208,32 +178,7 @@ def test_class_read_renamed_project():
 
 def test_class_read_default_project():
     p4d = idp.Pix4D()
-    p4d.open_project(os.path.join(
-        maize_part, 
-        "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"))
-
-    if sys.platform.startswith("win"):
-        # on win
-        # seems get same outputs
-        assert p4d.dsm.file_path == gfp(
-            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d\3_dsm_ortho\1_dsm\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d_dsm.tif")
-        assert p4d.dom.file_path == gfp(
-            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d\3_dsm_ortho\2_mosaic\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d_transparent_mosaic_group1.tif")
-    else:
-        # on mac,
-        # /cc/cc/cc/cc/cc/cc != /cc/cc/cc\\cc\\cc\\cc  
-        assert p4d.dsm.file_path == gfp(
-            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d\3_dsm_ortho\1_dsm\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d_dsm.tif").replace("\\", r"/")
-        assert p4d.dom.file_path == gfp(
-            r"tests\data\pix4d\maize_tanashi\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d\3_dsm_ortho\2_mosaic\maize_tanashi_3NA_20190729_Ins1Rgb"
-            r"_30m_pix4d_transparent_mosaic_group1.tif").replace("\\", r"/")
+    p4d.open_project(test_data.pix4d.maize_folder)
 
     np.testing.assert_almost_equal(p4d.pcd.offset, p4d.meta["p4d_offset"])
 
@@ -245,9 +190,9 @@ def test_class_read_default_project():
 def test_class_back2raw_single():
     # lotus example
     p4d = idp.Pix4D()
-    param_folder = os.path.join(lotus_full, "params")
-    image_folder = os.path.join(lotus_full, "photos")
-    p4d.open_project(lotus_full, raw_img_folder=image_folder, param_folder=param_folder)
+    param_folder = test_data.pix4d.lotus_param
+    image_folder = test_data.pix4d.lotus_photos
+    p4d.open_project(test_data.pix4d.lotus_folder, raw_img_folder=image_folder, param_folder=param_folder)
     
     #plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
     #plot_t = idp.shp.convert_proj(plot, proj, p4d.crs)

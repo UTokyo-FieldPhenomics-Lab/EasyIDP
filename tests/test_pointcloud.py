@@ -1,29 +1,18 @@
-import os
 import re
-import sys
 import numpy as np
 import pytest
 import shutil
 
 import easyidp as idp
 
-####################
-# global variables #
-####################
-data_path =  "./tests/data/pcd_test"
-
-out_path = "./tests/out/pcd_test"
-if not os.path.exists(out_path):
-    os.makedirs(out_path)
+test_data = idp.data.TestData()
 
 ##########################
 # test read point clouds #
 ##########################
 
 def test_def_read_ply_binary():
-    ply_binary_path = os.path.join(data_path, "hasu_tanashi_binary.ply")
-
-    points, colors, normals = idp.pointcloud.read_ply(ply_binary_path)
+    points, colors, normals = idp.pointcloud.read_ply(test_data.pcd.lotus_ply_bin)
 
     # comare results
     np.testing.assert_array_almost_equal(
@@ -44,9 +33,7 @@ def test_def_read_ply_binary():
     )
 
 def test_def_read_ply_ascii():
-    ply_ascii_path = os.path.join(data_path, "hasu_tanashi_ascii.ply")
-
-    points, colors, normals = idp.pointcloud.read_ply(ply_ascii_path)
+    points, colors, normals = idp.pointcloud.read_ply(test_data.pcd.lotus_ply_asc)
 
     # compare results
     np.testing.assert_array_almost_equal(
@@ -67,9 +54,7 @@ def test_def_read_ply_ascii():
     )
 
 def test_def_read_las():
-    las_path = os.path.join(data_path, "hasu_tanashi.las")
-
-    points, colors, normals = idp.pointcloud.read_las(las_path)
+    points, colors, normals = idp.pointcloud.read_las(test_data.pcd.lotus_las)
 
     # compare results
     assert points.max() == 0.8320407999999999
@@ -79,9 +64,7 @@ def test_def_read_las():
     assert colors.min() == 15
 
 def test_def_read_laz():
-    laz_path = os.path.join(data_path, "hasu_tanashi.laz")
-
-    points, colors, normals = idp.pointcloud.read_laz(laz_path)
+    points, colors, normals = idp.pointcloud.read_laz(test_data.pcd.lotus_laz)
 
     # compare results
     assert points.max() == 0.8320407999999999
@@ -91,9 +74,7 @@ def test_def_read_laz():
     assert colors.min() == 15
 
 def test_def_read_las_13ver():
-    las_path = os.path.join(data_path, "hasu_tanashi_1.3.las")
-
-    points, colors, normals = idp.pointcloud.read_las(las_path)
+    points, colors, normals = idp.pointcloud.read_las(test_data.pcd.lotus_las13)
 
     # compare results
     assert points.max() == 0.8320407
@@ -103,9 +84,7 @@ def test_def_read_las_13ver():
     assert colors.min() == 15
 
 def test_def_read_laz_13ver():
-    laz_path = os.path.join(data_path, "hasu_tanashi_1.3.laz")
-
-    points, colors, normals = idp.pointcloud.read_laz(laz_path)
+    points, colors, normals = idp.pointcloud.read_laz(test_data.pcd.lotus_laz13)
 
     # compare results
     assert points.max() == 0.8320407
@@ -115,21 +94,17 @@ def test_def_read_laz_13ver():
     assert colors.min() == 15
 
 def test_read_ply_with_normals():
-    ply_path = os.path.join(data_path, "maize3na_20210614_15m_utm.ply")
-
-    points, colors, normals = idp.pointcloud.read_ply(ply_path)
+    points, colors, normals = idp.pointcloud.read_ply(test_data.pcd.maize_ply)
 
     assert normals.shape == (49658, 3)
 
 def test_read_las_with_normals():
-    las_path = os.path.join(data_path, "maize3na_20210614_15m_utm.las")
-    points, colors, normals = idp.pointcloud.read_las(las_path)
+    points, colors, normals = idp.pointcloud.read_las(test_data.pcd.maize_las)
 
     assert normals.shape == (49658, 3)
 
 def test_read_laz_with_normals():
-    laz_path = os.path.join(data_path, "maize3na_20210614_15m_utm.laz")
-    points, colors, normals = idp.pointcloud.read_laz(laz_path)
+    points, colors, normals = idp.pointcloud.read_laz(test_data.pcd.maize_laz)
 
     assert normals.shape == (49658, 3)
 
@@ -158,22 +133,22 @@ write_normals = np.asarray([[-0.03287353,  0.36604664,  0.9300157 ],
 
 def test_def_write_ply():
     # without normals
-    out_path_bin = os.path.join(out_path, "test_def_write_ply_bin.ply")
-    out_path_asc = os.path.join(out_path, "test_def_write_ply_asc.ply")
+    out_path_bin  = test_data.pcd.out / "test_def_write_ply_bin.ply"
+    out_path_asc  = test_data.pcd.out / "test_def_write_ply_asc.ply"
     # with normals
-    out_npath_bin = os.path.join(out_path, "test_def_write_nply_bin.ply")
-    out_npath_asc = os.path.join(out_path, "test_def_write_nply_asc.ply")
+    out_npath_bin = test_data.pcd.out / "test_def_write_nply_bin.ply"
+    out_npath_asc = test_data.pcd.out / "test_def_write_nply_asc.ply"
 
     # without normals
-    if os.path.exists(out_path_bin):
-        os.remove(out_path_bin)
-    if os.path.exists(out_path_asc):
-        os.remove(out_path_asc)
+    if out_path_bin.exists():
+        out_path_bin.unlink()
+    if out_path_asc.exists():
+        out_path_asc.unlink()
     # with normals
-    if os.path.exists(out_npath_bin):
-        os.remove(out_npath_bin)
-    if os.path.exists(out_npath_asc):
-        os.remove(out_npath_asc)
+    if out_npath_bin.exists():
+        out_npath_bin.unlink()
+    if out_npath_asc.exists():
+        out_npath_asc.unlink()
     
     # without normals
     idp.pointcloud.write_ply(write_points, write_colors, out_path_bin, binary=True)
@@ -183,11 +158,11 @@ def test_def_write_ply():
     idp.pointcloud.write_ply(write_points, write_colors, out_npath_asc, normals=write_normals, binary=False)
 
     # test if file created
-    assert os.path.exists(out_path_bin)
-    assert os.path.exists(out_path_asc)
+    assert out_path_bin.exists()
+    assert out_path_asc.exists()
 
-    assert os.path.exists(out_npath_bin)
-    assert os.path.exists(out_npath_asc)
+    assert out_npath_bin.exists()
+    assert out_npath_asc.exists()
 
     # test value if same
     p, c, n = idp.pointcloud.read_ply(out_path_bin)
@@ -213,16 +188,16 @@ def test_def_write_ply():
 
 def test_def_write_las():
     # without normals
-    out_path_las = os.path.join(out_path, "test_def_write_las.las")
+    out_path_las = test_data.pcd.out / "test_def_write_las.las"
     # with normals
-    out_npath_las = os.path.join(out_path, "test_def_write_nlas.las")
+    out_npath_las = test_data.pcd.out /  "test_def_write_nlas.las"
     
     # without normals
-    if os.path.exists(out_path_las):
-        os.remove(out_path_las)
+    if out_path_las.exists():
+        out_path_las.unlink()
     # with normals
-    if os.path.exists(out_npath_las):
-        os.remove(out_npath_las)
+    if out_npath_las.exists():
+        out_npath_las.unlink()
 
     # without normals
     idp.pointcloud.write_las(write_points, write_colors, out_path_las)
@@ -230,8 +205,8 @@ def test_def_write_las():
     idp.pointcloud.write_las(write_points, write_colors, out_npath_las, normals=write_normals)
 
     # test if file created
-    assert os.path.exists(out_path_las)
-    assert os.path.exists(out_npath_las)
+    assert out_path_las.exists()
+    assert out_npath_las.exists()
 
     p, c, n = idp.pointcloud.read_las(out_path_las)
     # where will be a precision loss, wait for the feedback of https://github.com/laspy/laspy/issues/222
@@ -247,16 +222,16 @@ def test_def_write_las():
 
 def test_def_write_laz():
     # without normals
-    out_path_laz = os.path.join(out_path, "test_def_write_laz.laz")
+    out_path_laz = test_data.pcd.out / "test_def_write_laz.laz"
     # with normals
-    out_npath_laz = os.path.join(out_path, "test_def_write_nlaz.laz")
+    out_npath_laz = test_data.pcd.out /  "test_def_write_nlaz.laz"
 
     # without normals
-    if os.path.exists(out_path_laz):
-        os.remove(out_path_laz)
+    if out_path_laz.exists():
+        out_path_laz.unlink()
     # with normals
-    if os.path.exists(out_npath_laz):
-        os.remove(out_npath_laz)
+    if out_npath_laz.exists():
+        out_npath_laz.unlink()
 
     # without normals
     idp.pointcloud.write_laz(write_points, write_colors, out_path_laz)
@@ -264,8 +239,8 @@ def test_def_write_laz():
     idp.pointcloud.write_laz(write_points, write_colors, out_npath_laz, normals=write_normals)
 
     # test if file created
-    assert os.path.exists(out_path_laz)
-    assert os.path.exists(out_npath_laz)
+    assert out_path_laz.exists()
+    assert out_npath_laz.exists()
 
     p, c, n = idp.pointcloud.read_laz(out_path_laz)
     # where will be a precision loss, wait for the feedback of https://github.com/laspy/laspy/issues/222
@@ -315,7 +290,7 @@ def test_class_pointcloud_print():
     # long table
     expected_str_l = '             x        y        z  r    g    b        nx      ny      nz\n    0  -18.908  -15.778   -0.779  123  103  79   nodata  nodata  nodata\n    1  -18.908  -15.777   -0.78   124  104  81   nodata  nodata  nodata\n    2  -18.907  -15.775   -0.802  123  103  80   nodata  nodata  nodata\n  ...  ...      ...      ...      ...  ...  ...     ...     ...     ...\n42451  -15.789  -17.961   -0.847  116  98   80   nodata  nodata  nodata\n42452  -15.789  -17.939   -0.84   113  95   76   nodata  nodata  nodata\n42453  -15.786  -17.937   -0.833  115  97   78   nodata  nodata  nodata'
 
-    pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
+    pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
 
     assert pcd._btf_print.replace(' ', '') ==  expected_str_l.replace(' ', '')
 
@@ -389,7 +364,7 @@ def test_class_pointcloud_offset_set_value():
 
 def test_class_pointcloud_def_read_point_cloud_no_offset():
     # read pcd without offset
-    pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
+    pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
 
     assert pcd.points is not None
     np.testing.assert_array_almost_equal(
@@ -423,7 +398,7 @@ def test_class_pointcloud_def_read_point_cloud_no_offset():
 
 def test_class_pointcloud_def_read_point_cloud_with_offsets():
     # read pcd with large offset (e.g. xyz in UTM Geo coordinates)
-    pcd = idp.PointCloud(os.path.join(data_path, "maize3na_20210614_15m_utm.las"))
+    pcd = idp.PointCloud(test_data.pcd.maize_las)
 
     np.testing.assert_almost_equal(pcd._offset, np.array([ 367900., 3955800., 0.]))
     np.testing.assert_almost_equal(pcd._points[0,:], np.array([ 93.0206,  65.095 ,  57.9707]))
@@ -441,33 +416,33 @@ def test_class_pointcloud_def_read_point_cloud_with_offsets():
 
 
 def test_class_pointcloud_def_write_point_cloud():
-    pcd = idp.PointCloud(os.path.join(data_path, "maize3na_20210614_15m_utm.las"))
+    pcd = idp.PointCloud(test_data.pcd.maize_las)
     
     # test default ext same as input
-    expected_file = os.path.join(out_path, "test_class_write_pcd.las")
-    if os.path.exists(expected_file):
-        os.remove(expected_file)
+    expected_file = test_data.pcd.out / "test_class_write_pcd.las"
+    if expected_file.exists():
+        expected_file.unlink()
 
     with pytest.warns(UserWarning, match=re.escape("It seems file")):
-        save_path = os.path.join(out_path, "test_class_write_pcd")
+        save_path = test_data.pcd.out / "test_class_write_pcd"
         pcd.write_point_cloud(save_path)
-        assert os.path.exists(expected_file)
+        assert expected_file.exists()
 
     # test specify another ext
-    expected_file = os.path.join(out_path, "test_class_write_pcd.ply")
-    if os.path.exists(expected_file):
-        os.remove(expected_file)
+    expected_file = test_data.pcd.out / "test_class_write_pcd.ply"
+    if expected_file.exists():
+        expected_file.unlink()
 
     pcd.write_point_cloud(expected_file)
-    assert os.path.exists(expected_file)
+    assert expected_file.exists()
 
     # test raise error if format not in 3 specified formats
     with pytest.raises(IOError, match=re.escape("Only support point cloud file format")):
-        error_file = os.path.join(out_path, "test_class_write_pcd.pcd")
+        error_file = test_data.pcd.out / "test_class_write_pcd.pcd"
         pcd.write_point_cloud(error_file)
 
 def test_class_pointcloud_clear():
-    pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
+    pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
 
     pcd.clear()
 
@@ -485,7 +460,7 @@ def test_class_pointcloud_clear():
     assert pcd.shape == (0, 3)
 
 def test_class_point_cloud_crop():
-    pcd = idp.PointCloud(os.path.join(data_path, "hasu_tanashi_binary.ply"))
+    pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
 
     polygon = np.array([
         [-18.42576599, -16.10819054],
@@ -519,10 +494,7 @@ def test_class_point_cloud_crop():
         assert cropped is None
 
 def test_class_crop():
-    lotus_full_dsm = r"./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
-    lotus_full_pcd = r"./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply"
-
-    roi = idp.ROI(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0)
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
 
     # only pick 3 plots as testing data
     key_list = list(roi.keys())
@@ -530,26 +502,26 @@ def test_class_crop():
         if key not in ["N1W1", "N2E2", "S1W1"]:
             del roi[key]
 
-    roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+    roi.get_z_from_dsm(test_data.pix4d.lotus_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
 
     p4d = idp.Pix4D(
-        project_path=r"./tests/data/pix4d/lotus_tanashi_full/",
-        param_folder=r"./tests/data/pix4d/lotus_tanashi_full/params/"
+        project_path=test_data.pix4d.lotus_folder,
+        param_folder=test_data.pix4d.lotus_param
     )
-    p4d.load_pcd(lotus_full_pcd)
+    p4d.load_pcd(test_data.pix4d.lotus_pcd)
 
-    tif_out_folder = r"./tests/out/pcd_test/class_crop/"
+    tif_out_folder = test_data.pcd.out / "class_crop"
     # clear temp output folder
-    if os.path.exists(tif_out_folder):
+    if tif_out_folder.exists():
         shutil.rmtree(tif_out_folder)
-    os.makedirs(tif_out_folder)
+    tif_out_folder.mkdir()
 
     out = p4d.pcd.crop(roi, save_folder=tif_out_folder)
 
     assert len(out) == 3
     assert len(out["N1W1"]) == 15226
 
-    assert os.path.exists(os.path.join(tif_out_folder, "N1W1.ply"))
+    assert (tif_out_folder / "N1W1.ply").exists()
 
     # also need check the offsets and points values
     # should belong to -> test_class_point_cloud_crop()

@@ -4,6 +4,7 @@ import shapefile
 import numpy as np
 from tabulate import tabulate
 from tqdm import tqdm
+from pathlib import Path
 
 import easyidp as idp
 
@@ -19,7 +20,7 @@ def read_proj(prj_path):
     -------
     proj : the pyproj object
     """
-    with open(prj_path, 'r') as f:
+    with open(str(prj_path), 'r') as f:
         wkt_string = f.readline()
 
     proj = pyproj.CRS.from_wkt(wkt_string)
@@ -30,7 +31,7 @@ def read_proj(prj_path):
     return proj
 
 
-def show_shp_fields(shp_path, encoding="utf-8", show_num=5):
+def show_shp_fields(shp_path, encoding="utf-8"):
     """
     Read shp field data to pandas.DataFrame, for further json metadata usage
     
@@ -41,32 +42,35 @@ def show_shp_fields(shp_path, encoding="utf-8", show_num=5):
     encoding : str
         default is 'utf-8', however, or some chinese characters, 'gbk' is required
     """
-    shp = shapefile.Reader(shp_path, encoding=encoding)
+    shp = shapefile.Reader(str(shp_path), encoding=encoding)
 
     # read shp file fields
     shp_fields = _get_field_key(shp)
 
-    header_str_list = [f"[{v}] {k}" for k, v in shp_fields.items()]
+    head = ["[-1]"] + [f"[{v}] {k}" for k, v in shp_fields.items()]
+    data = []
 
-    content_str_list = []
-    if len(shp.records()) > show_num * 2:
-        # first {show_num} rows
-        for i in range(0, show_num):
-            content_str_list.append(list(shp.records()[i]))
+    row_num = len(shp.records())
+    col_num = len(shp.records()[0])
 
-        # omitted row
-        omit_list = ['...'] * len(shp.records()[i])
-        content_str_list.append(omit_list)
+    col_align = ["right"] + ["center"] * col_num
 
-        # last {show_num} rows
-        for i in range(-show_num, 0):
-            content_str_list.append(list(shp.records()[i]))
+    if row_num > 6:
+        show_idx = [0, 1, 2, -3, -2, -1]
     else:
-        # print all rows without omit
-        for i in shp.records():
-            content_str_list.append(list(i))
+        # print all without omit
+        show_idx = list(range(row_num))
 
-    table_str = tabulate(content_str_list, header_str_list, tablefmt="github")
+    for i in show_idx:
+        if i >= 0:
+            data.append([i] + list(shp.records()[i]))
+        else:
+            data.append([row_num + i] + list(shp.records()[i]))
+
+    if row_num > 6:
+        data.insert(3, ['...'] * (col_num + 1))
+
+    table_str = tabulate(data, headers=head, tablefmt='simple', colalign=col_align)
     print(table_str)
 
 
@@ -180,13 +184,14 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     # check projection coordinate first #
     #####################################
     if shp_proj is None:
-        prj_path = shp_path[:-4] + '.prj'
-        if os.path.exists(prj_path):
+        prj_path = Path(shp_path).with_suffix('.prj')
+
+        if Path(prj_path).exists():
             shp_proj = read_proj(prj_path)
         else:
             raise ValueError(f"Unable to find the proj coordinate info [{prj_path}], please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`")
     # or give a prj file path
-    elif isinstance(shp_proj, str) and shp_proj[-4:]=='.prj' and os.path.exists(shp_proj):
+    elif isinstance(shp_proj, (Path, str)) and str(shp_proj)[-4:]=='.prj' and Path(shp_proj).exists:
         shp_proj = read_proj(shp_proj)
     # or give a CRS projection object
     elif isinstance(shp_proj, pyproj.CRS):
@@ -194,10 +199,10 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     else:
         raise ValueError(f"Unable to find the projection coordinate, please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`")
 
-    print(f'[shp][proj] Use projection [{shp_proj.name}] for loaded shapefile [{os.path.basename(shp_path)}]')
+    print(f'[shp][proj] Use projection [{shp_proj.name}] for loaded shapefile [{Path(shp_path).name}]')
 
     # read shapefile
-    shp = shapefile.Reader(shp_path, encoding=encoding)
+    shp = shapefile.Reader(str(shp_path), encoding=encoding)
     
     # read shp file fields (headers)
     shp_fields = _get_field_key(shp)

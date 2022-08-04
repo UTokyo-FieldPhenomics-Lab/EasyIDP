@@ -1,6 +1,7 @@
 import os
 import pyproj
 import numpy as np
+from pathlib import Path
 
 import easyidp as idp
 
@@ -61,8 +62,8 @@ class Recons(object):
 
     @dom.setter
     def dom(self, p):
-        if isinstance(p, str):
-            if os.path.exists(p):
+        if isinstance(p, (Path, str)):
+            if Path(p).exists():
                 self._dom.read_geotiff(p)
             else:
                 raise FileNotFoundError(f"Given DOM file [{p}] does not exists")
@@ -80,8 +81,8 @@ class Recons(object):
 
     @dsm.setter
     def dsm(self, p):
-        if isinstance(p, str):
-            if os.path.exists(p):
+        if isinstance(p, (Path, str)):
+            if Path(p).exists():
                 self._dsm.read_geotiff(p)
             else:
                 raise FileNotFoundError(f"Given DSM file [{p}] does not exists")
@@ -99,8 +100,8 @@ class Recons(object):
 
     @pcd.setter
     def pcd(self, p):
-        if isinstance(p, str):
-            if os.path.exists(p):
+        if isinstance(p, (Path, str)):
+            if Path(p).exists():
                 self._pcd.read_point_cloud(p)
             else:
                 raise FileNotFoundError(f"Given pointcloud file [{p}] does not exists")

@@ -4,6 +4,8 @@ import pytest
 import numpy as np
 import easyidp as idp
 
+test_data = idp.data.TestData()
+
 def test_class_recons_output_io():
     # init return None
     recons = idp.reconstruct.Recons()
@@ -35,18 +37,13 @@ def test_class_recons_output_io():
         recons.pcd = "tests/not_exist.ply"
 
     # pass if give correct file
-    pcd = "tests\data\pix4d\lotus_tanashi_full\hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply"
-    dsm = "tests\data\pix4d\lotus_tanashi_full\hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
-    dom = "tests\data\pix4d\lotus_tanashi_full\hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
+    pcd = test_data.pix4d.lotus_pcd
+    dsm = test_data.pix4d.lotus_dsm
+    dom = test_data.pix4d.lotus_dom
 
-    if sys.platform.startswith("win"):
-        recons.dom = dom
-        recons.dsm = dsm
-        recons.pcd = pcd
-    else:
-        recons.dom = dom.replace('\\', '/')
-        recons.dsm = dsm.replace('\\', '/')
-        recons.pcd = pcd.replace('\\', '/')
+    recons.dom = dom
+    recons.dsm = dsm
+    recons.pcd = pcd
 
     assert isinstance(recons.dom, idp.GeoTiff)
     assert isinstance(recons.dsm, idp.GeoTiff)

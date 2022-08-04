@@ -3,6 +3,7 @@ import pyproj
 import numpy as np
 import tifffile as tf
 import warnings
+from pathlib import Path
 from pyproj.exceptions import CRSError
 
 import easyidp as idp
@@ -12,11 +13,11 @@ class GeoTiff(object):
     """A GeoTiff class, consisted by header information and file path to raw file.
     """
 
-    def __init__(self, tif_path="") -> None:
+    def __init__(self, tif_path=""):
         self.file_path = os.path.abspath(tif_path)
         self.header = None
 
-        if len(tif_path) > 0:
+        if tif_path != "":
             self.read_geotiff(tif_path)
             
     def read_geotiff(self, tif_path):
@@ -24,12 +25,13 @@ class GeoTiff(object):
 
         Parameters
         ----------
-        tif_path : str
+        tif_path : str | pathlib.Path
             the path to geotiff file
         """
-        if os.path.exists(tif_path):
-            self.file_path = os.path.abspath(tif_path)
-            self.header = get_header(tif_path)
+        tif_path = Path(tif_path)
+        if tif_path.exists():
+            self.file_path = tif_path
+            self.header = get_header(str(tif_path))
         else:
             warnings.warn(f"Can not find file [{tif_path}], skip loading")
 
@@ -149,8 +151,8 @@ class GeoTiff(object):
 
         out_dict = {}
         for k, polygon_hv in roi.items():
-            if isinstance(save_folder, str) and os.path.isdir(save_folder):
-                save_path = os.path.join(save_folder, k + ".tif")
+            if save_folder is not None and Path(save_folder).exists():
+                save_path = Path(save_folder) / (k + ".tif")
             else:
                 save_path = None
 
@@ -440,7 +442,7 @@ class GeoTiff(object):
         """
         self._not_empty()
 
-        if polygon_hv == "all":
+        if isinstance(polygon_hv, str):  # == full_map
             imarray = get_imarray(self.file_path)
         else:
             imarray = self.crop_polygon(polygon_hv, is_geo)

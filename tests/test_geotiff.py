@@ -1,29 +1,19 @@
-import os
 import pytest
 import pyproj
 import re
 import tifffile as tf
 import numpy as np
-import warnings
 import random
 import shutil
+from pathlib import Path
 
 import easyidp as idp
 
-data_path =  "./tests/data/tiff_test"
-
-lotus_full_dom = "./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
-lotus_full_dsm = "./tests/data/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
-
-lotus_part_dom = "./tests/data/pix4d/lotus_tanashi/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
-lotus_part_dsm = "./tests/data/pix4d/lotus_tanashi/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
-
-maize_part_dom = "./tests/data/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/3_dsm_ortho/2_mosaic/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_transparent_mosaic_group1.tif"
-maize_part_dsm = "./tests/data/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/3_dsm_ortho/1_dsm/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_dsm.tif"
+test_data = idp.data.TestData()
 
 
 def test_def_get_header():
-    lotus_full = idp.geotiff.get_header(lotus_full_dom)
+    lotus_full = idp.geotiff.get_header(test_data.pix4d.lotus_dom)
     assert lotus_full["width"] == 5490
     assert lotus_full["height"] == 5752
     assert lotus_full["dim"] == 4
@@ -34,7 +24,7 @@ def test_def_get_header():
     assert lotus_full["tie_point"][0] == 368014.54157
     assert lotus_full["tie_point"][1] == 3955518.2747700005
 
-    lotus_full = idp.geotiff.get_header(lotus_full_dsm)
+    lotus_full = idp.geotiff.get_header(test_data.pix4d.lotus_dsm)
     assert lotus_full["width"] == 5490
     assert lotus_full["height"] == 5752
     assert lotus_full["dim"] == 1
@@ -45,7 +35,7 @@ def test_def_get_header():
     assert lotus_full["tie_point"][0] == 368014.54157
     assert lotus_full["tie_point"][1] == 3955518.2747700005
 
-    lotus_part = idp.geotiff.get_header(lotus_part_dom)
+    lotus_part = idp.geotiff.get_header(test_data.pix4d.lotus_dom_part)
     assert lotus_part["width"] == 437
     assert lotus_part["height"] == 444
     assert lotus_part["crs"].name == "WGS 84 / UTM zone 54N"
@@ -54,11 +44,11 @@ def test_def_get_header():
 
 
 def test_def_get_imarray():
-    maize_part_np = idp.geotiff.get_imarray(maize_part_dom)
+    maize_part_np = idp.geotiff.get_imarray(test_data.pix4d.maize_dom)
     assert maize_part_np.shape == (722, 836, 4)
 
-    lh = idp.geotiff.get_header(lotus_part_dom)
-    lotus_part_np = idp.geotiff.get_imarray(lotus_part_dom)
+    lh = idp.geotiff.get_header(test_data.pix4d.lotus_dom_part)
+    lotus_part_np = idp.geotiff.get_imarray(test_data.pix4d.lotus_dom_part)
     assert lotus_part_np.shape == (lh["height"], lh["width"], lh["dim"])
 
 
@@ -118,9 +108,9 @@ def test_def_geo2pixel2geo():
 
 
 def test_def_tifffile_crop():
-    maize_part_np = idp.geotiff.get_imarray(maize_part_dom)
+    maize_part_np = idp.geotiff.get_imarray(test_data.pix4d.maize_dom)
     # untiled tiff but 2 row as a patch
-    with tf.TiffFile(maize_part_dom) as tif:
+    with tf.TiffFile(test_data.pix4d.maize_dom) as tif:
         page = tif.pages[0]
 
         # even start + even line number
@@ -168,8 +158,8 @@ def test_def_tifffile_crop():
         np.testing.assert_equal(maize_np_crop_odd2, maize_tf_crop_odd2)
 
 
-    lotus_part_np = idp.geotiff.get_imarray(lotus_part_dom)
-    with tf.TiffFile(lotus_part_dom) as tif:
+    lotus_part_np = idp.geotiff.get_imarray(test_data.pix4d.lotus_dom_part)
+    with tf.TiffFile(test_data.pix4d.lotus_dom_part) as tif:
         page = tif.pages[0]
 
         top = 30
@@ -183,8 +173,8 @@ def test_def_tifffile_crop():
 
 
     # read dsm
-    lotus_part_np = idp.geotiff.get_imarray(lotus_part_dsm)
-    with tf.TiffFile(lotus_part_dsm) as tif:
+    lotus_part_np = idp.geotiff.get_imarray(test_data.pix4d.lotus_dsm_part)
+    with tf.TiffFile(test_data.pix4d.lotus_dsm_part) as tif:
         page = tif.pages[0]
 
         top = 30
@@ -209,8 +199,8 @@ def test_def_point_query():
     # query several points by numpy
     point4 = np.array(point3)
 
-    header = idp.geotiff.get_header(lotus_full_dsm)
-    with tf.TiffFile(lotus_full_dsm) as tif:
+    header = idp.geotiff.get_header(test_data.pix4d.lotus_dsm)
+    with tf.TiffFile(test_data.pix4d.lotus_dsm) as tif:
         page = tif.pages[0]
 
         # point 1
@@ -233,7 +223,7 @@ def test_def_point_query():
 
 
 def test_def_point_query_raise_error():
-    with tf.TiffFile(lotus_full_dsm) as tif:
+    with tf.TiffFile(test_data.pix4d.lotus_dsm) as tif:
         page = tif.pages[0]
 
         # raise type error
@@ -278,7 +268,7 @@ def test_def_point_query_raise_error():
 def test_def_point_query_raise_warn():
     # warn without given header
     point = (3023.004, 3500.669)
-    with tf.TiffFile(lotus_full_dsm) as tif:
+    with tf.TiffFile(test_data.pix4d.lotus_dsm) as tif:
         page = tif.pages[0]
 
         with pytest.warns(UserWarning, match=re.escape("The given pixel coordinates is not integer")):
@@ -286,14 +276,14 @@ def test_def_point_query_raise_warn():
 
 # ==================================================================
 
-# from lotus_full_dsm
+# from test_data.pix4d.lotus_dsm
 lotus_header_dsm = {'height': 5752, 'width': 5490, 'dim': 1, 
                     'nodata': -10000.0, 'dtype': np.float32, 
                     'scale': [0.00738, 0.00738], 
                     'tie_point': [368014.54157, 3955518.2747700005],
                     'proj': pyproj.CRS.from_epsg(32654)}
 
-# from lotus_full_dom
+# from test_data.pix4d.lotus_dom
 lotus_header_dom = {'height': 5752, 'width': 5490, 'dim': 4, 
                     'nodata': 0, 'dtype': np.uint8, 
                     'scale': [0.00738, 0.00738], 
@@ -346,35 +336,35 @@ def test_class_check_hasfile_decorator():
     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
         obj.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
-    obj2 = idp.GeoTiff(lotus_full_dom)
+    obj2 = idp.GeoTiff(test_data.pix4d.lotus_dom)
     obj2.file_path = f"not/exists/path"
     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
         obj2.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
-    obj3 = idp.GeoTiff(lotus_full_dom)
+    obj3 = idp.GeoTiff(test_data.pix4d.lotus_dom)
     obj3.header = None
     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
         obj3.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
 def test_class_init_with_path():
-    obj = idp.GeoTiff(lotus_full_dom)
+    obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
     # convert rel path to abs path, ideally it should longer
-    assert len(obj.file_path) >= len(lotus_full_dom)
+    assert Path(obj.file_path).resolve() == test_data.pix4d.lotus_dom.resolve()
     assert obj.header is not None
 
 
 def test_class_read_geotiff():
     obj = idp.GeoTiff()
-    obj.read_geotiff(lotus_full_dom)
+    obj.read_geotiff(test_data.pix4d.lotus_dom)
 
-    assert len(obj.file_path) >= len(lotus_full_dom)
+    assert Path(obj.file_path).resolve() == test_data.pix4d.lotus_dom.resolve()
     assert obj.header is not None
 
 def test_class_crop_polygon_save_geotiff():
-    obj = idp.GeoTiff(lotus_full_dom)
+    obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
-    plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
+    plot, proj = idp.shp.read_shp(test_data.shp.lotus_shp, name_field=0, return_proj=True)
     plot_t = idp.shp.convert_proj(plot, proj, obj.header["crs"])
 
     # test case 1
@@ -382,12 +372,12 @@ def test_class_crop_polygon_save_geotiff():
     # then do random choose
     plot_id, polygon_hv = random.choice(list(plot_t.items()))
 
-    save_tiff = r"./tests/out/tiff_test/crop_polygon.tif"
-    if os.path.exists(save_tiff):
-        os.remove(save_tiff)
+    save_tiff = test_data.tiff.out / "crop_polygon.tif"
+    if save_tiff.exists():
+        save_tiff.unlink()
     imarray = obj.crop_polygon(polygon_hv, is_geo=True, save_path=save_tiff)
 
-    assert os.path.exists(save_tiff)
+    assert save_tiff.exists()
     #assert imarray.shape == (320, 319, 4)  # N1W1
     assert len(imarray.shape) == 3  # like (m, n, d)
     assert imarray.shape[2] == 4  # d = 4
@@ -430,7 +420,7 @@ def test_class_crop_polygon_save_geotiff():
 
 
 def test_crop_rectange_save_geotiff():
-    obj = idp.GeoTiff(lotus_full_dom)
+    obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
     out1 = obj.crop_rectangle(left=434, top=918, w=320, h=321, is_geo=False)
 
@@ -457,7 +447,7 @@ def test_crop_rectange_save_geotiff():
 
 def test_class_math_polygon():
     # test dsm results
-    dsm = idp.GeoTiff(lotus_full_dsm)
+    dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
     # plot_t["N1W1"] -> 
     poly_geo = np.array([
@@ -484,7 +474,7 @@ def test_class_math_polygon():
     assert 97 < dsm_pmax10 and dsm_pmax10 < 98
 
     # test dom results
-    dom = idp.GeoTiff(lotus_full_dom)
+    dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
     dom_mean   = dom.math_polygon(poly_geo, is_geo=True, kernel="mean")
     dom_min    = dom.math_polygon(poly_geo, is_geo=True, kernel="min")
@@ -511,7 +501,7 @@ def test_class_math_polygon():
     assert dom_pmax10[3] == 255.0
 
 def test_class_point_query():
-    obj = idp.GeoTiff(lotus_full_dsm)
+    obj = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
     # plot_t["N1W1"] -> 
     poly_geo = np.array([
@@ -527,9 +517,9 @@ def test_class_point_query():
     assert np.all(97 < pt) and np.all(pt < 98)
 
 def test_class_crop():
-    obj = idp.GeoTiff(lotus_full_dom)
+    obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
-    roi = idp.ROI(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0)
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
 
     # only pick 3 plots as testing data
     key_list = list(roi.keys())
@@ -537,15 +527,15 @@ def test_class_crop():
         if key not in ["N1W1", "N2E2", "S1W1"]:
             del roi[key]
 
-    roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+    roi.get_z_from_dsm(test_data.pix4d.lotus_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
 
-    tif_out_folder = "./tests/out/tiff_test/class_crop"
-    if os.path.exists(tif_out_folder):
+    tif_out_folder = test_data.tiff.out / "class_crop"
+    if tif_out_folder.exists():
         shutil.rmtree(tif_out_folder)
-    os.makedirs(tif_out_folder)
+    tif_out_folder.mkdir()
 
     out_dict = obj.crop(roi, save_folder=tif_out_folder)
 
     assert len(out_dict) == 3
-    assert os.path.exists(tif_out_folder + r"/N1W1.tif")
+    assert (tif_out_folder / "N1W1.tif").exists()
     assert out_dict["N2E2"].shape == (320, 320, 4)

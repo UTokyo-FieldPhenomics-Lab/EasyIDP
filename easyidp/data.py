@@ -1,12 +1,12 @@
 import os
 import sys
 import shutil
-import pathlib
 import zipfile
 import gdown
 import requests
 import subprocess
 import webbrowser
+from pathlib import Path
 
 def user_data_dir(file_name=""):
     r"""Get OS specific data directory path for EasyIDP.
@@ -51,7 +51,7 @@ def user_data_dir(file_name=""):
         os_path = os.getenv("XDG_DATA_HOME", "~/.local/share")
 
     # join with easyidp.data dir
-    path = pathlib.Path(os_path) / "easyidp.data"
+    path = Path(os_path) / "easyidp.data"
 
     add_usr = path.expanduser()
 
@@ -296,27 +296,21 @@ class Lotus(EasyidpDataSet):
 
         super().load_data()
 
-        self.photo = str(self.data_dir / "20170531" / "photos")
-        self.shp = str(self.data_dir / "plots.shp")
+        self.photo = self.data_dir / "20170531" / "photos"
+        self.shp = self.data_dir / "plots.shp"
 
-        self.pix4d.project = str(self.data_dir / "20170531")
-        self.pix4d.param = str(self.data_dir / "20170531" / "params")
+        self.pix4d.project = self.data_dir / "20170531"
+        self.pix4d.param = self.data_dir / "20170531" / "params"
         
-        self.pix4d.dom = str(
-            self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif"
-        )
-        self.pix4d.dsm = str(
-            self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif"
-        )
-        self.pix4d.pcd = str(
-            self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply"
-        )
+        self.pix4d.dom = self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif"
+        self.pix4d.dsm = self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif"
+        self.pix4d.pcd = self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply"
 
-        self.metashape.project = str(self.data_dir / "170531.Lotus.psx")
-        self.metashape.param = str(self.data_dir / "170531.Lotus.files")
-        self.metashape.dom = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dom.tif")
-        self.metashape.dsm = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif")
-        self.metashape.pcd = str(self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz")
+        self.metashape.project = self.data_dir / "170531.Lotus.psx"
+        self.metashape.param = self.data_dir / "170531.Lotus.files"
+        self.metashape.dom = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
+        self.metashape.dsm = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif"
+        self.metashape.pcd = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz"
 
     def load_data(self):
         return super().load_data()
@@ -332,8 +326,8 @@ class GDownTest(EasyidpDataSet):
         super().__init__("gdown_test", url_list, "0.2KB")
         super().load_data()
 
-        self.pix4d.proj = str(self.data_dir / "file1.txt")
-        self.metashape.param = str(self.data_dir / "folder1")
+        self.pix4d.proj = self.data_dir / "file1.txt"
+        self.metashape.param = self.data_dir / "folder1"
 
     def load_data(self):
         return super().load_data()
@@ -342,7 +336,7 @@ class GDownTest(EasyidpDataSet):
 
 class TestData(EasyidpDataSet):
 
-    def __init__(self):
+    def __init__(self, test_out="./tests/out"):
         url_list = [
             "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=sharing",
             "https://cowtransfer.com/s/9d60d394cbd448"
@@ -355,3 +349,185 @@ class TestData(EasyidpDataSet):
         self.zip_file = user_data_dir(self.name + ".zip")
 
         super().load_data()
+
+        self.json = self.JsonDataset(self.data_dir, test_out)
+        self.metashape = self.MetashapeDataset(self.data_dir, test_out)
+        self.pix4d = self.Pix4Dataset(self.data_dir)
+        self.shp = self.ShapefileDataset(self.data_dir, test_out)
+        self.pcd = self.PointCloudDataset(self.data_dir, test_out)
+        self.roi = self.ROIDataset(self.data_dir)
+        self.tiff = self.TiffDataSet(self.data_dir, test_out)
+
+        self.cv = self.CVDataset(self.data_dir, test_out)
+        self.vis = self.VisualDataset(self.data_dir, test_out)
+
+
+    class MetashapeDataset():
+
+        def __init__(self, data_dir, test_out):
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+
+            self.goya_psx    = data_dir / "metashape" / "goya_test.psx"
+            self.goya_param  = data_dir / "metashape" / "goya_test.files"
+
+            self.lotus_psx   = data_dir / "metashape" / "Lotus.psx"
+            self.lotus_param = data_dir / "metashape" / "Lotus.files"
+            self.lotus_dsm   = data_dir / "metashape" / "Lotus.files" / "170531.Lotus_dsm.tif"
+
+            self.wheat_psx   = data_dir / "metashape" / "wheat_tanashi.psx"
+            self.wheat_param = data_dir / "metashape" / "wheat_tanashi.files"
+
+
+    class Pix4Dataset():
+
+        def __init__(self, data_dir):
+
+            # here is reorgainzed pix4d project
+            self.lotus_folder   = data_dir / "pix4d" / "lotus_tanashi_full"
+            self.lotus_param    = self.lotus_folder / "params"
+            self.lotus_photos   = self.lotus_folder / "photos"
+            self.lotus_dom      = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
+            self.lotus_dsm      = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
+            self.lotus_pcd      = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply"
+            self.lotus_dom_part = self.lotus_folder / "plot_dom.tif"
+            self.lotus_dsm_part = self.lotus_folder / "plot_dsm.tif"
+            self.lotus_pcd_part = self.lotus_folder / "plot_pcd.ply"
+
+            # here is standard pix4d project
+            self.maize_folder  = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
+            self.maize_dom = self.maize_folder / "3_dsm_ortho" / "2_mosaic" / \
+                "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_transparent_mosaic_group1.tif"
+            self.maize_dsm = self.maize_folder / "3_dsm_ortho" / "1_dsm" / \
+                "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_dsm.tif"
+
+            self.maize_noparam = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_no_param"
+            self.maize_empty   = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_raname_empty_test"
+            self.maize_noout   = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_raname_no_outputs"
+
+    class JsonDataset():
+
+        def __init__(self, data_dir, test_out):
+            self.data_dir = data_dir
+            self.for_read_json = data_dir / "json_test" / "for_read_json.json"
+            self.labelme_demo  = data_dir / "json_test" / "labelme_demo_img.json"
+            self.labelme_warn  = data_dir / "json_test" / "labelme_warn_img.json"
+            self.labelme_err   = data_dir / "json_test" / "for_read_json.json"
+
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+            self.out = test_out / "json_test"
+
+        def __truediv__(self, other):
+            return self.data_dir / "json_test" / other
+
+
+    class ShapefileDataset():
+
+        def __init__(self, data_dir, test_out):
+
+            self.data_dir = data_dir
+            self.lotus_shp = data_dir / "shp_test" / "lotus_plots.shp"
+            self.lotus_prj = data_dir / "shp_test" / "lotus_plots.prj"
+
+            self.complex_shp = data_dir / "shp_test" / "complex_shp_review.shp"
+            self.complex_prj = data_dir / "shp_test" / "complex_shp_review.prj"
+
+            self.lonlat_shp = data_dir / "shp_test" / "lon_lat.shp"
+
+            self.utm53n_shp = data_dir / "shp_test" / "lon_lat_utm53n.shp"
+            self.utm53n_prj = data_dir / "shp_test" / "lon_lat_utm53n.prj"
+
+            self.rice_shp = data_dir / "shp_test" / "rice_ind_duplicate.shp"
+            self.rice_prj = data_dir / "shp_test" / "rice_ind_duplicate.prj"
+
+            self.roi_shp = data_dir / "shp_test" / "roi.shp"
+            self.roi_prj = data_dir / "shp_test" / "roi.prj"
+
+            self.testutm_shp = data_dir / "shp_test" / "test_utm.shp"
+            self.testutm_prj = data_dir / "shp_test" / "test_utm.prj"
+
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+            self.out = test_out / "shp_test"
+
+        def __truediv__(self, other):
+            return self.data_dir / "shp_test" / other
+
+
+    class PointCloudDataset():
+
+        def __init__(self, data_dir, test_out):
+            self.data_dir = data_dir
+
+            self.lotus_las = data_dir / "pcd_test" / "hasu_tanashi.las"
+            self.lotus_laz = data_dir / "pcd_test" / "hasu_tanashi.laz"
+            self.lotus_pcd = data_dir / "pcd_test" / "hasu_tanashi.pcd"
+
+            self.lotus_las13 = data_dir / "pcd_test" / "hasu_tanashi_1.3.las"
+            self.lotus_laz13 = data_dir / "pcd_test" / "hasu_tanashi_1.3.laz"
+
+            self.lotus_ply_asc = data_dir / "pcd_test" / "hasu_tanashi_ascii.ply"
+            self.lotus_ply_bin = data_dir / "pcd_test" / "hasu_tanashi_binary.ply"
+
+            self.maize_las = data_dir / "pcd_test" / "maize3na_20210614_15m_utm.las"
+            self.maize_laz = data_dir / "pcd_test" / "maize3na_20210614_15m_utm.laz"
+            self.maize_ply = data_dir / "pcd_test" / "maize3na_20210614_15m_utm.ply"
+
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+            self.out = test_out / "pcd_test"
+
+        def __truediv__(self, other):
+            return self.data_dir / "pcd_test" / other
+
+
+    class ROIDataset():
+
+        def __init__(self, data_dir):
+            self.data_dir = data_dir
+
+            self.dxf  = data_dir / "roi_test" / "hasu_tanashi_ccroi.dxf"
+            self.lxyz_txt = data_dir / "roi_test" / "hasu_tanashi_lxyz.txt"
+            self.xyz_txt  = data_dir / "roi_test" / "hasu_tanashi_xyz.txt"
+
+
+    class TiffDataSet():
+
+        def __init__(self, data_dir, test_out):
+            self.data_dir = data_dir
+
+            self.soyweed_part = data_dir / "tiff_test" / "2_12.tif"
+
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+            self.out = test_out / "tiff_test"
+
+        def __truediv__(self, other):
+            return self.data_dir / "tiff_test" / other
+
+
+    class CVDataset():
+
+        def __init__(self, data_dir, test_out):
+            self.data_dir = data_dir
+
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+            self.out = test_out / "cv_test"
+
+        def __truediv__(self, other):
+            return self.data_dir / "cv_test" / other
+
+
+    class VisualDataset():
+
+        def __init__(self, data_dir, test_out):
+            self.data_dir = data_dir
+
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+            self.out = test_out / "visual_test"
+
+        def __truediv__(self, other):
+            return self.data_dir / "visual_test" / other

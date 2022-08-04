@@ -1,10 +1,11 @@
-import os
 import re
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
 import easyidp as idp
+
+test_data = idp.data.TestData()
 
 def test_poly2mask_type_int():
     x=[1,7,4,1]   # horizontal coord
@@ -106,7 +107,7 @@ def test_poly2mask_wrong_type():
 
 
 def test_imarray_clip_2d_rgb_rgba():
-    photo_path = r"./tests/data/pix4d/lotus_tanashi_full/photos/DJI_0174.JPG"
+    photo_path = test_data.pix4d.lotus_photos / "DJI_0174.JPG"
     roi = np.asarray([
         [2251, 1223], 
         [2270, 1270], 
@@ -141,7 +142,7 @@ def test_imarray_clip_2d_rgb_rgba():
     ax[2].imshow(im_out_rgba)
     ax[2].set_title('rgba')
 
-    plt.savefig(r"./tests/out/cv_test/imarray_clip_test.png")
+    plt.savefig(test_data.cv.out / "imarray_clip_test.png")
 
     # then check the results
     expected_offsets = np.array([2227, 1223])

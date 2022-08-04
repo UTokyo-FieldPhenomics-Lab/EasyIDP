@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 from copy import copy as ccopy
 from shapely.geometry import Point, Polygon
+from pathlib import Path
 
 import easyidp as idp
 
@@ -171,7 +172,10 @@ class ROI(idp.Container):
             )
 
         # convert input objects
-        if isinstance(obj, str) and os.path.exists(obj):
+        if isinstance(obj, (Path, str)):
+            if not Path(obj).exists():
+                raise FileNotFoundError(f"Could not find file {obj}.")
+
             if func == "dsm":
                 return idp.GeoTiff(obj)
             else:
@@ -260,7 +264,7 @@ class ROI(idp.Container):
 
         # using the full map to calculate
         if buffer == -1 or buffer == -1.0:
-            global_z = dsm.math_polygon(polygon_hv="all", kernel=kernel)
+            global_z = dsm.math_polygon(polygon_hv="full_map", kernel=kernel)
         else:
             global_z = None
 
@@ -340,12 +344,14 @@ class ROI(idp.Container):
         if not self.is_geo():
             raise TypeError("Could not operate without CRS specified")
             
-        if isinstance(target, str) and os.path.exists(target):
-            ext = os.path.splitext(target)[-1]
+        if isinstance(target, (Path, str)) and Path(target).exists():
+            ext = Path(target).suffix
             if ext == ".tif":
                 target = idp.GeoTiff(target)
             elif ext in [".ply", ".laz", ".las"]:
                 target = idp.PointCloud(target)
+            else:
+                raise TypeError(f"Only [.tif, .ply, .laz, .las] are supported, not [{ext}]")
         elif isinstance(target, (idp.GeoTiff, idp.PointCloud)):
             pass
         else:

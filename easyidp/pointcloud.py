@@ -2,6 +2,7 @@ import os
 import warnings
 from datetime import datetime
 from tabulate import tabulate
+from pathlib import Path
 
 import numpy as np
 import numpy.lib.recfunctions as rfn
@@ -31,7 +32,7 @@ class PointCloud(object):
         self.offset = self._offset_type_check(offset)
         self._btf_print = '<Empty easyidp.PointCloud object>'
 
-        if len(pcd_path) > 0:
+        if pcd_path != "":
             self.read_point_cloud(pcd_path)
 
     def __str__(self) -> str:
@@ -200,9 +201,9 @@ class PointCloud(object):
             warnings.warn(f"Can not find file [{pcd_path}], skip loading")
             return
 
-        if pcd_path[-4:] == ".ply":
+        if Path(pcd_path).suffix == ".ply":
             points, colors, normals = read_ply(pcd_path)
-        elif pcd_path[-4:] == ".laz" or pcd_path[-4:] == ".las":
+        elif Path(pcd_path).suffix in [".laz", ".las"]:
             points, colors, normals = read_laz(pcd_path)
         else:
             raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
@@ -229,22 +230,31 @@ class PointCloud(object):
     def write_point_cloud(self, pcd_path):
         # if ply -> self.points + self.offsets
         # if las -> self.points & offset = self.offsets
-        split_ext = os.path.splitext(pcd_path)
-        file_name = split_ext[0]
-        file_ext = split_ext[-1]
+        pcd_path = Path(pcd_path)
+        file_ext = pcd_path.suffix
 
-        if '.' in file_ext:  # means has "*.ext" as suffix
+        if file_ext == "":
+            warnings.warn(f"It seems file name [{pcd_path}] has no file suffix, using default suffix [{self.file_ext}] instead")
+            out_path = pcd_path.with_name(f"{pcd_path.name}{self.file_ext}")
+        else:
             if file_ext not in ['.ply', '.las', '.laz']:
                 raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
-        else:
-            warnings.warn(f"It seems file name [{pcd_path}] has no file suffix, using default suffix [{self.file_ext}] instead")
-            file_name = pcd_path
-            file_ext = self.file_ext
+
+            out_path = pcd_path
 
         if file_ext == ".ply":
-            write_ply(self._points + self._offset, self.colors, ply_path=file_name+file_ext, normals=self.normals)
+            write_ply(
+                self._points + self._offset, 
+                self.colors, 
+                ply_path=out_path, 
+                normals=self.normals)
         else:
-            write_laz(self._points + self._offset, self.colors, laz_path=file_name+file_ext, normals=self.normals, offset=self._offset)
+            write_laz(
+                self._points + self._offset, 
+                self.colors, 
+                laz_path=out_path, 
+                normals=self.normals, 
+                offset=self._offset)
 
     def crop(self, roi, save_folder=None):
         """Crop several ROIs by given <ROI> object with several polygons and polygon names
@@ -271,8 +281,8 @@ class PointCloud(object):
 
         out_dict = {}
         for k, polygon_hv in roi.items():
-            if isinstance(save_folder, str) and os.path.isdir(save_folder):
-                save_path = os.path.join(save_folder, k + self.file_ext)
+            if save_folder is not None and Path(save_folder).exists():
+                save_path = Path(save_folder) / (k + self.file_ext)
             else:
                 save_path = None
 

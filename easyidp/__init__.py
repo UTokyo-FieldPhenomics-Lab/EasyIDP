@@ -2,6 +2,7 @@ __version__ = "2.0.0.dev2"
 
 import os
 import warnings
+from pathlib import Path
 
 ##############
 # dict tools #
@@ -121,7 +122,9 @@ def _find_key(mydict, value):
 
 def get_full_path(short_path):
     if isinstance(short_path, str):
-        return os.path.abspath(os.path.normpath(short_path))
+        return Path(short_path)
+    elif isinstance(short_path, Path):
+        return short_path
     else:
         return None
 

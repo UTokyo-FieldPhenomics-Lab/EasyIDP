@@ -1,6 +1,5 @@
-import os
 import shutil
-import pytest
+from pathlib import Path
 
 import easyidp as idp
 
@@ -11,20 +10,20 @@ def test_usr_data_dir():
 def test_gdown():
     gd_dir = idp.data.user_data_dir("gdown_test")
     
-    if os.path.exists(gd_dir):
+    if gd_dir.exists():
         shutil.rmtree(gd_dir)
     
     gd = idp.data.GDownTest()
 
-    assert os.path.exists(gd.data_dir)
-    assert os.path.exists(gd.data_dir / "file1.txt")
+    assert gd.data_dir.exists()
+    assert (gd.data_dir / "file1.txt").exists()
 
-    assert gd.pix4d.proj == os.path.join(str(gd.data_dir), "file1.txt")
-    assert gd.metashape.param == os.path.join(str(gd.data_dir), "folder1")
+    assert Path(gd.pix4d.proj).resolve() == (gd.data_dir / "file1.txt").resolve()
+    assert Path(gd.metashape.param).resolve() == (gd.data_dir / "folder1").resolve()
 
     # test remove and reload
     gd.remove_data()
-    assert not os.path.exists(gd.data_dir)
+    assert not gd.data_dir.exists()
 
     gd.reload_data()
-    assert os.path.exists(gd.data_dir)
+    assert gd.data_dir.exists()

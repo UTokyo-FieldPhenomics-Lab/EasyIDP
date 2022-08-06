@@ -306,14 +306,22 @@ def convert_proj(shp_dict, origin_proj, target_proj):
     transformer = pyproj.Transformer.from_proj(origin_proj, target_proj)
     trans_dict = {}
     for k, coord_np in shp_dict.items():
-        transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
+        if len(coord_np.shape) == 1:
+            transformed = transformer.transform(coord_np[0], coord_np[1])
+        elif len(coord_np.shape) == 2:
+            transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
+        else:
+            raise IndexError(
+                f"The input coord should be either [x, y, z] -> shape=(3,) "
+                f"or [[x,y,z], [x,y,z], ...] -> shape=(n, 3)"
+                f"not current {coord_np.shape}")
         coord_np = np.asarray(transformed).T
 
         # judge if has inf value, means convert fail
         if True in np.isinf(coord_np):
             raise ValueError(
                 f'Fail to convert points from "{origin_proj.name}" to '
-                f'"{target_proj.name}"(dsm projection), '
+                f'"{target_proj.name}", '
                 f'this may caused by the uncertainty of .prj file strings, '
                 f'please check the coordinate manually via QGIS Layer Infomation, '
                 f'get the EPGS code, and specify the function argument'

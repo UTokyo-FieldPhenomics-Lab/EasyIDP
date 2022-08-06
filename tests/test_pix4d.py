@@ -1,4 +1,3 @@
-import os
 import pytest
 import numpy as np
 import pyproj
@@ -93,7 +92,7 @@ def test_parse_p4d_param_folder():
     param = idp.pix4d.parse_p4d_param_folder(param_folder)
 
     assert param["project_name"] == "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
-    assert os.path.basename(param["xyz"]) == "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_offset.xyz"
+    assert Path(param["xyz"]).name == "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_offset.xyz"
 
 
 def test_read_params():

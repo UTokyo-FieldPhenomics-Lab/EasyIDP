@@ -1027,22 +1027,23 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
         if crs_target.is_geocentric:
             x, y, z = ts.transform(*points_np.T)
             out =  np.vstack([x, y, z]).T
-
-        if crs_target.is_geographic:
+        elif crs_target.is_geographic:
             lat, lon, alt = ts.transform(*points_np.T)
             # the pyproj output order is reversed
             out = np.vstack([lon, lat, alt]).T
+        else:
+            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")
     else:   
         lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
         
         if crs_target.is_geocentric:
             x, y, z = ts.transform(lat, lon, alt)
             out = np.vstack([x, y, z]).T
-
-        if crs_target.is_geographic:
+        elif crs_target.is_geographic:
             lat, lon, alt = ts.transform(lat, lon, alt)
             out = np.vstack([lon, lat, alt]).T
-
+        else:
+            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")
     if is_single:
         return out[0, :]
     else:

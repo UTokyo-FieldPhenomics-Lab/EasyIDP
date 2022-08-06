@@ -201,3 +201,27 @@ def test_class_back2raw_and_crs():
 
     assert len(out_all) == 2
     assert isinstance(out_all["N1W2"], dict)
+
+
+def test_debug_discussion_12():
+    ms = idp.Metashape()
+
+    pos = np.array([-3943837.80419438,  3363533.48603071,  3704402.1784295 ])
+    ms.crs = pyproj.CRS.from_epsg(32654)
+
+    '''
+    The following code will raise the following error:
+
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+      File "D:\OneDrive\Program\GitHub\EasyIDP\easyidp\metashape.py", line 99, in _world2crs
+        return convert_proj3d(points_np, self.world_crs, self.crs)
+      File "D:\OneDrive\Program\GitHub\EasyIDP\easyidp\metashape.py", line 1047, in convert_proj3d
+        return out[0, :]
+    raise UnboundLocalError: local variable 'out' referenced before assignment
+
+    Reasons:
+    is_xyz = True -> crs_target(epsg32654) neither is_geocentric nor is_geographic
+    '''
+    with pytest.raises(TypeError, match=re.escape("Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")):
+        out = ms._world2crs(pos)

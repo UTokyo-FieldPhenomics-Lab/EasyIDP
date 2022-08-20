@@ -154,3 +154,14 @@ def test_imarray_clip_2d_rgb_rgba():
 
     assert im_out_2d[20,20] == 144.8887
     np.testing.assert_equal(im_out_rgb[20,20,:], np.array([163, 138, 133, 255], dtype=np.uint8))
+
+def test_roi_smaller_than_one_pixel_error():   # disucssion #39
+    one_dim_imarray = np.array([255,255,255])
+    polygon_hv = np.array([[1, 1], [2, 2], [1, 3], [1, 1]])
+    with pytest.raises(
+        ValueError, 
+        match=re.escape(
+            "Only image dimention=2 (mxn) or 3(mxnxd) are accepted, not current"
+        )
+    ):
+        idp.cvtools.imarray_crop(one_dim_imarray, polygon_hv)

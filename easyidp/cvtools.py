@@ -105,6 +105,11 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
             imarray_out = np.dstack([roi_clipped[:,:, 0:3], merged_mask]).astype(np.uint8)
         else:
             raise TypeError(f'Unable to solve the layer number {layer_num}')
+    else:
+        raise ValueError(
+            f"Only image dimention=2 (mxn) or 3(mxnxd) are accepted, not current"
+            f"[shape={imarray.shape} dim={dim}], please check whether your ROI "
+            f"is smaller than on pixel.")
 
     return imarray_out, roi_top_left_offset
 

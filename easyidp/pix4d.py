@@ -150,9 +150,9 @@ class Pix4D(idp.reconstruct.Recons):
                 "[{raw_img_folder}]"
             )
 
-        ######################
-        # info for seelf.CRS #
-        ######################
+        #####################
+        # info for self.CRS #
+        #####################
         self.crs = idp.shp.read_proj(p4d_dict["param"]["crs"])
 
         ################################

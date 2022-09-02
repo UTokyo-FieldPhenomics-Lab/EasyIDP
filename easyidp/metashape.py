@@ -5,6 +5,7 @@ import numpy as np
 import warnings
 from xml.etree import ElementTree
 import xml.dom.minidom as minidom
+from copy import copy as ccopy
 
 import easyidp as idp
 
@@ -21,6 +22,8 @@ class Metashape(idp.reconstruct.Recons):
         self.project_folder = None
         self.project_name = None
         self.project_chunks_dict = None
+        self.crs = None
+        self.reference_crs = pyproj.CRS.from_epsg(4326)
 
         if project_path is not None:
             self._open_whole_project(project_path)
@@ -80,7 +83,7 @@ class Metashape(idp.reconstruct.Recons):
         self.transform = chunk_dict["transform"]
         self.sensors = chunk_dict["sensors"]
         self.photos = chunk_dict["photos"]
-        self.crs = chunk_dict["crs"]
+        self.reference_crs = chunk_dict["crs"]
 
     
     #######################
@@ -97,10 +100,16 @@ class Metashape(idp.reconstruct.Recons):
         return apply_transform_matrix(points_np, self.transform.matrix_inv)
 
     def _world2crs(self, points_np):
-        return convert_proj3d(points_np, self.world_crs, self.crs)
+        if self.crs is None:
+            return convert_proj3d(points_np, self.world_crs, self.reference_crs)
+        else:
+            return convert_proj3d(points_np, self.world_crs, self.crs)
 
     def _crs2world(self, points_np):
-        return convert_proj3d(points_np, self.crs, self.world_crs)
+        if self.crs is None:
+            return convert_proj3d(points_np, self.reference_crs, self.world_crs)
+        else:
+            return convert_proj3d(points_np, self.crs, self.world_crs)
 
     def _back2raw_one2one(self, points_np, photo_id, distortion_correct=True):
         """Project one ROI(polygon) on one given photo
@@ -240,6 +249,7 @@ class Metashape(idp.reconstruct.Recons):
             whether print log for debugging, by default False
         """
         out_dict = {}
+        self.crs = ccopy(roi.crs)
         for k, points_xyz in roi.items():
             if isinstance(save_folder, str) and os.path.isdir(save_folder):
                 save_path = os.path.join(save_folder, k)
@@ -1062,8 +1072,11 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
             lat, lon, alt = ts.transform(*points_np.T)
             # the pyproj output order is reversed
             out = np.vstack([lon, lat, alt]).T
+        elif crs_target.is_projected:
+            lat_m, lon_m, alt_m = ts.transform(*points_np.T)
+            out = np.vstack([lat_m, lon_m, alt_m]).T
         else:
-            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")
+            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`")
     else:   
         lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
         
@@ -1073,8 +1086,11 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
         elif crs_target.is_geographic:
             lat, lon, alt = ts.transform(lat, lon, alt)
             out = np.vstack([lon, lat, alt]).T
+        elif crs_target.is_projected and crs_target.is_derived:
+            lat_m, lon_m, alt_m = ts.transform(lat, lon, alt)
+            out = np.vstack([lat_m, lon_m, alt_m]).T
         else:
-            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")
+            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`")
     if is_single:
         return out[0, :]
     else:

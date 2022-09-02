@@ -223,10 +223,35 @@ def test_debug_discussion_12():
     raise UnboundLocalError: local variable 'out' referenced before assignment
 
     Reasons:
-    is_xyz = True -> crs_target(epsg32654) neither is_geocentric nor is_geographic
+    is_xyz = True -> crs_target(epsg32654) neither is_geocentric nor is_geographic, it is `is_projected`
+
+    <Derived Projected CRS: EPSG:32654>
+    Name: WGS 84 / UTM zone 54N
+    Axis Info [cartesian]:
+    - E[east]: Easting (metre)
+    - N[north]: Northing (metre)
+    Area of Use:
+    - name: Between 138°E and 144°E, northern hemisphere between equator and 84°N, onshore and offshore. Japan. Russian Federation.
+    - bounds: (138.0, 0.0, 144.0, 84.0)
+    Coordinate Operation:
+    - name: UTM zone 54N
+    - method: Transverse Mercator
+    Datum: World Geodetic System 1984 ensemble
+    - Ellipsoid: WGS 84
+    - Prime Meridian: Greenwich
     '''
-    with pytest.raises(TypeError, match=re.escape("Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")):
-        out = ms._world2crs(pos)
+    #with pytest.raises(TypeError, match=re.escape("Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")):
+    
+    out = ms._world2crs(pos)
+    np.testing.assert_almost_equal(out, np.array([ 368017.73174354, 3955492.19259721,     130.09433649]))
+
+    back = ms._crs2world(out)
+    np.testing.assert_almost_equal(back, pos)
+
+    ms.crs = None
+
+    out = ms._world2crs(pos)
+    np.testing.assert_almost_equal(out, np.array([139.54053245,  35.73458169, 130.09433649]))
 
 def test_debug_calibration_tag_error():
     # test ishii san's <calibration> out of index error (has one sensor tag without <calibration>)

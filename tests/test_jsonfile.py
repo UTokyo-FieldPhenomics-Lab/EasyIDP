@@ -24,7 +24,7 @@ def test_dict2json():
     out_json4 = test_data.json.out / "json_indient4.json"
 
     idp.jsonfile.dict2json(a, out_json4, indent=4)
-    assert out_json.exists
+    assert out_json.exists()
 
     with open(out_json4, 'r') as f:
         js_str4 = f.read()

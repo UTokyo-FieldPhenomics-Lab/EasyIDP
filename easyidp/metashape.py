@@ -4,6 +4,7 @@ import zipfile
 import numpy as np
 import warnings
 from xml.etree import ElementTree
+import xml.dom.minidom as minidom
 
 import easyidp as idp
 
@@ -376,8 +377,16 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
 
     sensors = idp.Container()
     for sensor_tag in xml_tree.findall("./sensors/sensor"):
-        sensor = _decode_sensor_tag(sensor_tag)
-        sensor.calibration.software = "metashape"
+        debug_meta = {
+            "project_folder": project_folder, 
+            "project_name"  : project_name,
+            "chunk_id": chunk_id,
+            "chunk_path": frame_zip_file
+        }
+
+        sensor = _decode_sensor_tag(sensor_tag, debug_meta)
+        if sensor.calibration is not None:
+            sensor.calibration.software = "metashape"
         sensors[sensor.id] = sensor
     chunk_dict["sensors"] = sensors
 
@@ -608,7 +617,7 @@ def _decode_chunk_reference_tag(xml_obj):
         return crs_obj
 
 
-def _decode_sensor_tag(xml_obj):
+def _decode_sensor_tag(xml_obj, debug_meta={}):
     """
     Parameters
     ----------
@@ -658,8 +667,27 @@ def _decode_sensor_tag(xml_obj):
     sensor.pixel_height_unit = "mm"
     sensor.focal_length = float(xml_obj.findall("./property/[@name='focal_length']")[0].attrib["value"])
 
-    sensor.calibration = _decode_calibration_tag(xml_obj.findall("./calibration")[0])
-    sensor.calibration.sensor = sensor
+    calib_tag = xml_obj.findall("./calibration")
+    if len(calib_tag) != 1:
+        # load the debug info
+        if len(debug_meta) == 0:  # not specify input
+            debug_meta = {
+                "project_folder": 'project_folder', 
+                "project_name"  : 'project_name',
+                "chunk_id": 'chunk_id',
+                "chunk_path": 'chunk_id/chunk.zip'
+            }
+
+        xml_str = minidom.parseString(ElementTree.tostring(xml_obj)).toprettyxml(indent="  ")
+        # remove the first line <?xml version="1.0" ?> and empty lines
+        xml_str = os.linesep.join([s for s in xml_str.splitlines() if s.strip() and '?xml version=' not in s])
+        warnings.warn(f"The sensor tag in [{debug_meta['chunk_path']}] has {len(calib_tag)} <calibration> tags, but expected 1\n"
+                      f"\n{xml_str}\n\nThis may cause by importing photos but delete them before align processing in metashape, "
+                      f"and leave the 'ghost' empty sensor tag, this is just a warning and should have no effect to you")
+        sensor.calibration = None
+    else:
+        sensor.calibration = _decode_calibration_tag(xml_obj.findall("./calibration")[0])
+        sensor.calibration.sensor = sensor
 
     return sensor
 

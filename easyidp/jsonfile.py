@@ -70,6 +70,7 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
     --------
     easyidp.jsonfile.write_json, easyidp.jsonfile.save_json
     """
+    json_path = str(json_path)
     if isinstance(json_path, str) and json_path[-5:] == '.json':
         with open(json_path, 'w', encoding=encoding) as result_file:
             json.dump(data_dict, result_file, ensure_ascii=False, cls=MyEncoder, indent=indent)

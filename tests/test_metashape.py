@@ -1,9 +1,11 @@
-import chunk
 import re
 import pytest
 import pyproj
 import numpy as np
+import xml.etree.ElementTree as ET
+
 import easyidp as idp
+
 
 test_data = idp.data.TestData()
 
@@ -225,3 +227,76 @@ def test_debug_discussion_12():
     '''
     with pytest.raises(TypeError, match=re.escape("Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic`")):
         out = ms._world2crs(pos)
+
+def test_debug_calibration_tag_error():
+    # test ishii san's <calibration> out of index error (has one sensor tag without <calibration>)
+    wrong_sensor = """
+    <sensors next_id="2">
+        <sensor id="0" label="Test_Pro (10.26mm)" type="frame">
+            <resolution width="5472" height="3648"/>
+            <property name="pixel_width" value="0.0024107142857142856"/>
+            <property name="pixel_height" value="0.0024107142857142856"/>
+            <property name="focal_length" value="10.26"/>
+            <property name="layer_index" value="0"/>
+            <bands>
+                <band label="Red"/>
+                <band label="Green"/>
+                <band label="Blue"/>
+            </bands>
+            <data_type>uint8</data_type>
+            <meta>
+                <property name="Exif/BodySerialNumber" value="0K8TGAM0125288"/>
+                <property name="Exif/Make" value="DJI"/>
+                <property name="Exif/Model" value="Test_Pro"/>
+                <property name="Exif/Software" value="10.00.11.04"/>
+            </meta>
+        </sensor>
+        <sensor id="1" label="Test_Pro (10.26mm)" type="frame">
+            <resolution width="5472" height="3648"/>
+            <property name="pixel_width" value="0.0024107142857142856"/>
+            <property name="pixel_height" value="0.0024107142857142856"/>
+            <property name="focal_length" value="10.26"/>
+            <property name="layer_index" value="0"/>
+            <bands>
+                <band label="Red"/>
+                <band label="Green"/>
+                <band label="Blue"/>
+            </bands>
+            <data_type>uint8</data_type>
+            <calibration type="frame" class="adjusted">
+                <resolution width="5472" height="3648"/>
+                <f>3239.2350850187408</f>
+                <cx>-17.266617222361305</cx>
+                <cy>51.627079230267093</cy>
+                <k1>-0.0061748904544724733</k1>
+                <k2>0.0085312948846406767</k2>
+                <k3>-0.0059426077261182687</k3>
+                <p1>0.0038636434570336977</p1>
+                <p2>0.00036559169480901107</p2>
+            </calibration>
+            <covariance>
+                <params>f cx cy k1 k2 k3 p1 p2</params>
+                <coeffs>1.3198921426619455e+02 -3.6441406803097598e-01 -8.8691870942484619e-01 -4.8035808438808746e-04 1.3837494678605588e-03 -1.4478477773082513e-03 1.6448496189504767e-04 1.9359169816499220e-05 -3.6441406803097598e-01 8.8492784732170038e-01 -1.8406731551178616e-02 4.5636954299254024e-06 -9.8824939561102722e-06 9.7826072595011059e-06 7.4748795744222678e-07 2.2077354984627524e-07 -8.8691870942484619e-01 -1.8406731551178616e-02 1.1190160084598506e+00 4.4433944809015497e-06 -1.4316737176840743e-05 1.3926778019564493e-05 -1.6128351018434475e-06 3.4438887312607803e-06 -4.8035808438808746e-04 4.5636954299254024e-06 4.4433944809015497e-06 3.2480428480148513e-09 -6.0445335360342845e-09 5.8919283699049205e-09 -5.4758330566968659e-10 -6.0991623945693416e-11 1.3837494678605588e-03 -9.8824939561102722e-06 -1.4316737176840743e-05 -6.0445335360342845e-09 1.7024280489663090e-08 -1.6861506240264254e-08 1.7186999180350537e-09 1.5819520020961357e-10 -1.4478477773082513e-03 9.7826072595011059e-06 1.3926778019564493e-05 5.8919283699049205e-09 -1.6861506240264254e-08 1.7046680052661823e-08 -1.7854037432768406e-09 -1.7316458740206863e-10 1.6448496189504767e-04 7.4748795744222678e-07 -1.6128351018434475e-06 -5.4758330566968659e-10 1.7186999180350537e-09 -1.7854037432768406e-09 7.4263922628734573e-10 2.0456928859553929e-11 1.9359169816499220e-05 2.2077354984627524e-07 3.4438887312607803e-06 -6.0991623945693416e-11 1.5819520020961357e-10 -1.7316458740206863e-10 2.0456928859553929e-11 5.5219741883705303e-10</coeffs>
+            </covariance>
+            <meta>
+                <property name="Exif/BodySerialNumber" value="0K8TGAM0125288"/>
+                <property name="Exif/Make" value="DJI"/>
+                <property name="Exif/Model" value="Test_Pro"/>
+                <property name="Exif/Software" value="10.00.11.04"/>
+            </meta>
+        </sensor>
+    </sensors>
+    """
+
+    xml_tree = ET.ElementTree(ET.fromstring(wrong_sensor))
+    for i, sensor_tag in enumerate(xml_tree.findall("./sensors/sensor")):
+
+        if i == 0:
+            with pytest.warns(UserWarning, match=re.escape("The sensor tag in [chunk_id/chunk.zip] has 0 <calibration> tags")):
+                sensor = idp.metashape._decode_sensor_tag(sensor_tag)
+
+            assert sensor.calibration is None
+        else:
+            sensor = idp.metashape._decode_sensor_tag(sensor_tag)
+
+            assert sensor.calibration.f == 3239.2350850187408

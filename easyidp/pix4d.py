@@ -112,6 +112,13 @@ class Pix4D(idp.reconstruct.Recons):
         ####################
         pmat = read_pmat(p4d_dict["param"]["pmat"])
 
+        if raw_img_folder is not None:
+            img_list = os.listdir(raw_img_folder)
+            missing_photo = []
+        else:
+            img_list = []
+            missing_photo = []
+
         for i, img_label in enumerate(pmat.keys()):
             img = idp.reconstruct.Photo(self.sensors[0])
             img.id = i
@@ -120,16 +127,12 @@ class Pix4D(idp.reconstruct.Recons):
             img.enabled = True
 
             # find raw image path
-            if raw_img_folder is not None:
-                img_list = os.listdir(raw_img_folder)
+            if len(img_list) > 0:
                 if img_label in img_list:
                     img_full_path = os.path.join(raw_img_folder, img_label)
                     img.path = idp.get_full_path(img_full_path)
                 else:
-                    warnings.warn(
-                        f"Could not find [{img_label}] in given raw_img_folder"
-                        "[{raw_img_folder}]"
-                    )
+                    missing_photo.append(img_label)
 
             # pix4d reverse calculation only need pmatrix
             img.transform = pmat[img_label]  # pmatrix
@@ -140,6 +143,12 @@ class Pix4D(idp.reconstruct.Recons):
             img.rotation = ccp[img_label]["cam_rot"]   # R
 
             self.photos[i] = img
+
+        if len(missing_photo) > 0:
+            warnings.warn(
+                f"Could not find {missing_photo} in given raw_img_folder"
+                "[{raw_img_folder}]"
+            )
 
         ######################
         # info for seelf.CRS #

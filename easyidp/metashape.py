@@ -410,9 +410,12 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
             # here need to resolve absolute path
             # <photo path="../../../../source/220613_G_M600pro/DSC06035.JPG">
             # this is the root to 220613_G_M600pro.files\0\0\frame.zip"
-            chunk_dict["photos"][camera_idx].path = idp.parse_relative_path(
-                frame_zip_file, camera_path
-            )  
+            if "../../../" in camera_path:
+                chunk_dict["photos"][camera_idx].path = idp.parse_relative_path(
+                    frame_zip_file, camera_path
+                )
+            else:
+                chunk_dict["photos"][camera_idx].path = camera_path
 
     chunk_dict["crs"] = _decode_chunk_reference_tag(xml_tree.findall("./reference"))
 

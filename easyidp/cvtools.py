@@ -109,7 +109,7 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
         raise ValueError(
             f"Only image dimention=2 (mxn) or 3(mxnxd) are accepted, not current"
             f"[shape={imarray.shape} dim={dim}], please check whether your ROI "
-            f"is smaller than on pixel.")
+            f"is smaller than one pixel.")
 
     return imarray_out, roi_top_left_offset
 

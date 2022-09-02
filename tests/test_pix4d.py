@@ -240,3 +240,23 @@ def test_class_back2raw():
     out_all = p4d.back2raw(roi)
 
     assert len(out_all) == 2
+
+
+def test_class_get_photo_position():
+    lotus = idp.data.Lotus()
+
+    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+                    raw_img_folder=lotus.photo,
+                    param_folder=lotus.pix4d.param)
+
+    out = p4d.get_photo_position()
+
+    assert len(out) == 151
+    assert "DJI_0430.JPG" in out.keys()
+    np.testing.assert_almost_equal(out['DJI_0430.JPG'], np.array([ 368020.07181613, 3955477.75605109,     136.75217778]))
+
+    # convert to another proj?
+    out_lonlat = p4d.get_photo_position(to_crs=pyproj.CRS.from_epsg(4326))
+    assert len(out_lonlat) == 151
+    assert "DJI_0430.JPG" in out_lonlat.keys()
+    np.testing.assert_almost_equal(out_lonlat['DJI_0430.JPG'], np.array(np.array([139.5405607 ,  35.73445188, 136.75217778])))

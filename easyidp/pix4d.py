@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import warnings
+import pyproj
 from pathlib import Path
 
 import easyidp as idp
@@ -440,6 +441,31 @@ class Pix4D(idp.reconstruct.Recons):
 
         return out_dict
 
+    def get_photo_position(self, to_crs=None):
+        """Get all photos' center geo position (on given CRS)
+
+        Parameters
+        ----------
+        to_crs : pyproj.CRS, optional
+            Transformed to another geo coordinate, by default None, the project.crs
+
+        Returns
+        -------
+        dict
+            The dictionary contains "photo.label": [x, y, z] coordinates
+        """
+        out = {}
+        for p in self.photos:
+            if p.enabled:
+                pos = p.location + self.meta["p4d_offset"]
+
+                if isinstance(to_crs, pyproj.CRS):
+                    if not self.crs.equals(to_crs):
+                        pos = idp.metashape.convert_proj3d(pos, self.crs, to_crs)
+
+                out[p.label] = pos
+
+        return out
 
 ####################
 # code for file IO #

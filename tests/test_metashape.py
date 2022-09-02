@@ -205,6 +205,21 @@ def test_class_back2raw_and_crs():
     assert isinstance(out_all["N1W2"], dict)
 
 
+def test_metashape_get_photo_position():
+    lotus = idp.data.Lotus()
+    ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
+
+    out = ms.get_photo_position()
+
+    assert len(out) == 151
+    assert "DJI_0430" in out.keys()
+    np.testing.assert_almost_equal(out["DJI_0430"], np.array([139.5405732 ,  35.73445975, 128.96422715]))
+    
+    # convert to another proj
+    out_utm = ms.get_photo_position(pyproj.CRS.from_epsg(32654))
+    np.testing.assert_almost_equal(out_utm['DJI_0430'], np.array([ 368021.21565782, 3955478.61203427,     128.96422715]))
+
+
 def test_debug_discussion_12():
     ms = idp.Metashape()
 

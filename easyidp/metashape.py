@@ -262,6 +262,35 @@ class Metashape(idp.reconstruct.Recons):
 
         return out_dict
 
+    def get_photo_position(self, to_crs=None):
+        """Get all photos' center geo position (on given CRS)
+
+        Parameters
+        ----------
+        to_crs : pyproj.CRS, optional
+            Transformed to another geo coordinate, by default None, the project.crs
+
+        Returns
+        -------
+        dict
+            The dictionary contains "photo.label": [x, y, z] coordinates
+        """
+
+        # change the out crs
+        before_crs = ccopy(self.crs)
+        if isinstance(to_crs, pyproj.CRS) and not to_crs.equals(self.crs):
+            self.crs = ccopy(to_crs)
+
+        out = {}
+        for p in self.photos:
+            if p.enabled:
+                pos = self._world2crs(self._local2world(p.transform[0:3, 3]))
+                out[p.label] = pos
+
+        self.crs = before_crs
+
+        return out
+
 ###############
 # zip/xml I/O #
 ###############

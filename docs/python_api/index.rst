@@ -4,8 +4,8 @@ API Summary
 
 The EasyIDP package have the following modules:
 
-- :doc:`Point cloud Module <./pointcloud>` : read, write, check and crop opertation.
-- :doc:`GeoTiff Module <./geotiff>` : read, write, crop, and statistics opertation.
+- :doc:`Point cloud Module <./pointcloud>` : read, write, check and crop operation.
+- :doc:`GeoTiff Module <./geotiff>` : read, write, crop, and statistics operation.
   
   - :doc:`cvtools Submodule <./cvtools>` : processing ndarray images without install scikit-image.
 

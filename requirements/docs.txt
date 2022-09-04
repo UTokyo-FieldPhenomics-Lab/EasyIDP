@@ -1,7 +1,7 @@
-sphinx
-sphinx_rtd_theme
-sphinx-intl
-sphinx-inline-tabs
-furo
-nbsphinx
-sphinx-gallery
+sphinx==5.1.1
+sphinx_rtd_theme==1.0.0
+sphinx-intl==2.0.0
+sphinx-inline-tabs==2022.1.2b11
+furo==2022.6.21
+nbsphinx==0.8.9
+sphinx-gallery==0.10.1

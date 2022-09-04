@@ -50,9 +50,6 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
 Examples
 ========
 
-.. nbgallery::
-   jupyter/quick_start
-
 .. toctree::
    :hidden:
    :maxdepth: 1
@@ -70,6 +67,11 @@ Examples
    backgrounds/roi_marking
    backgrounds/geotiff_transparency
 
+.. nbgallery::
+   :glob:
+   :caption: Examples
+
+   jupyter/quick_start
 
 .. toctree::
    :hidden:

@@ -249,6 +249,8 @@ class Metashape(idp.reconstruct.Recons):
             whether print log for debugging, by default False
         """
         out_dict = {}
+
+        before_crs = ccopy(self.crs)
         self.crs = ccopy(roi.crs)
         for k, points_xyz in roi.items():
             if isinstance(save_folder, str) and os.path.isdir(save_folder):
@@ -260,6 +262,7 @@ class Metashape(idp.reconstruct.Recons):
 
             out_dict[k] = one_roi_dict
 
+        self.crs = before_crs
         return out_dict
 
     def get_photo_position(self, to_crs=None):
@@ -286,6 +289,7 @@ class Metashape(idp.reconstruct.Recons):
             if p.enabled:
                 pos = self._world2crs(self._local2world(p.transform[0:3, 3]))
                 out[p.label] = pos
+                p.position = pos
 
         self.crs = before_crs
 

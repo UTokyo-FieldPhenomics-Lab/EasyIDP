@@ -10,6 +10,7 @@ d
 _install.md
 build/*
 docs/_build/*
+docs/jupyter/.ipynb_checkpoints/*
 dist/*
 easyidp.egg-info/*
 dev.notes/*

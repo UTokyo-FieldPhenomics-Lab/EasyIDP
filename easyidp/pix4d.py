@@ -464,6 +464,7 @@ class Pix4D(idp.reconstruct.Recons):
                         pos = idp.metashape.convert_proj3d(pos, self.crs, to_crs)
 
                 out[p.label] = pos
+                p.position = pos
 
         return out
 

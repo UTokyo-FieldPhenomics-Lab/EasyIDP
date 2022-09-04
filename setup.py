@@ -4,6 +4,8 @@ from setuptools import setup, find_packages
 here = pathlib.Path(__file__).parent.resolve()
 long_description = (here / "README.md").read_text(encoding="utf-8")
 
+long_description = long_description.replace('<a href="README_CN.md">中文</a>\n\n', "")
+
 with open('easyidp/__init__.py', encoding='utf-8') as fid:
     for line in fid:
         if line.startswith('__version__'):

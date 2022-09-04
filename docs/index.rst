@@ -50,6 +50,8 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
 Examples
 ========
 
+.. nbgallery::
+   jupyter/quick_start
 
 .. toctree::
    :hidden:

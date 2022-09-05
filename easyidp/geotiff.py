@@ -551,15 +551,18 @@ def get_header(tif_path):
         # pix4d:
         #    page.geotiff_tags
         #    -> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        if "GTCitationGeoKey" in page.geotiff_tags.keys():
-            proj_str = page.geotiff_tags["GTCitationGeoKey"]
         # metashape:
-        #     page.geotiff_tags
-        #     -> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        elif "PCSCitationGeoKey" in page.geotiff_tags.keys():
-            proj_str = page.geotiff_tags["PCSCitationGeoKey"]
+        #    page.geotiff_tags
+        #    -> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
+        # metashape: wgs 84
+        #    page.geotiff_tags
+        #    -> 'GeogCitationGeoKey': 'WGS 84'
+        for k, v in page.geotiff_tags.items():
+            if "CitationGeoKey" in k:
+                proj_str = v
+                break
         else:
-            raise KeyError("Can not find key 'GTCitationGeoKey' or 'PCSCitationGeoKey' in Geotiff tages")
+            raise KeyError(f"Can not find key '**CitationGeoKey' in Geotiff tages {page.geotiff_tags}")
         
         try:
             crs = pyproj.CRS.from_string(proj_str)

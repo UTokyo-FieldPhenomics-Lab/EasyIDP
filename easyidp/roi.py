@@ -268,7 +268,7 @@ class ROI(idp.Container):
         else:
             global_z = None
 
-        # convert CRS is necessary
+        # convert CRS if necessary
         if self.crs.name != dsm.header["crs"].name and not keep_crs:
             self.change_crs(dsm.header["crs"])
             poly_dict = self.id_item.copy()

@@ -52,7 +52,7 @@ def test_def_get_imarray():
     assert lotus_part_np.shape == (lh["height"], lh["width"], lh["dim"])
 
 
-def test_def_geo2pixel2geo():
+def test_def_geo2pixel2geo_UTM():
     gis_coord = np.asarray([
         [ 484593.67474654, 3862259.42413431],
         [ 484593.41064743, 3862259.92582402],
@@ -69,7 +69,7 @@ def test_def_geo2pixel2geo():
     header = {'width': 19436, 'height': 31255, 'dim':4, 
               'scale': [0.001, 0.001], 'nodata': None,
               'tie_point': [484576.70205, 3862285.5109300003], 
-              'proj': pyproj.CRS.from_string("WGS 84 / UTM zone 53N")}
+              'crs': pyproj.CRS.from_string("WGS 84 / UTM zone 53N")}
 
     expected_pixel_idx = np.array([
         [16972, 26086],
@@ -105,6 +105,38 @@ def test_def_geo2pixel2geo():
     # but seems still have some preoblem
     gis_revert_flt = idp.geotiff.pixel2geo(pixel_coord_idx, header)
     np.testing.assert_almost_equal(gis_revert_flt, gis_coord, decimal=3)
+
+
+def test_def_geo2pixel2geo_lonlat():
+    # using the source: https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions/44
+    gis_latlon_coord = np.array([
+        [ 25.78354364, -80.83957435],
+        [ 25.78354364, -80.83947435],
+        [ 25.78344364, -80.83947435],
+        [ 25.78344364, -80.83957435],
+        [ 25.78354364, -80.83957435]])
+
+    header = {
+        'height': 8748, 'width': 7941, 'dim': 1, 'nodata': -32767.0, 
+        'scale': [3.49222000000852e-07, 3.1617399999982425e-07], 
+        'tie_point': [-80.84039234705898, 25.784493471936425], 
+        'crs': pyproj.CRS.from_epsg(4326)
+    }
+
+    expected_pixel = np.array([
+        [2342.34114395, 3004.14308711],
+        [2628.6919466 , 3004.14308711],
+        [2628.6919466 , 3320.42462829],
+        [2342.34114395, 3320.42462829],
+        [2342.34114395, 3004.14308711]])
+
+    out = idp.geotiff.geo2pixel(gis_latlon_coord, header)
+
+    np.testing.assert_almost_equal(out, expected_pixel)
+
+    back = idp.geotiff.pixel2geo(out, header)
+
+    np.testing.assert_almost_equal(back, gis_latlon_coord, decimal=3)
 
 
 def test_def_tifffile_crop():

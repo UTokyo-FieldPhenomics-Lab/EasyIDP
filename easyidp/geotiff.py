@@ -616,7 +616,7 @@ def geo2pixel(points_hv, header, return_index=False):
 
     Notes
     -----
-    Please note: gis coordinate, horizontal is x axis, vertical is y axis, origin at left upper.
+    Please note: gis UTM coordinate, horizontal is x axis, vertical is y axis, origin at left upper.
 
     To crop image ndarray:
 
@@ -652,17 +652,25 @@ def geo2pixel(points_hv, header, return_index=False):
                [16972, 26086]])
 
     """
+    if header['crs'].is_geographic:  # [lat, lon] -> vertical, horizontal -> y, x
+        # but the tie point and scale is [lon, lat] by tifffile.
+        gis_ph = points_hv[:, 1]
+        gis_pv = points_hv[:, 0]
+    else:   # is_projected or is_geocentric seems x,y,z order are correct, please refer metashape.convert_proj3d()
+        gis_ph = points_hv[:, 0]
+        gis_pv = points_hv[:, 1]
+
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
 
-    gis_ph = points_hv[:, 0]
-    gis_pv = points_hv[:, 1]
+    scale_x = header['scale'][0]
+    scale_y = header['scale'][1]
 
     # get float coordinate on pixels
     # - numpy_axis1 = x
-    np_ax_h = (gis_ph - gis_xmin) / header['scale'][0]
+    np_ax_h = (gis_ph - gis_xmin) / scale_x
     # - numpy_axis0 = y
-    np_ax_v = (gis_ymax - gis_pv) / header['scale'][1]
+    np_ax_v = (gis_ymax - gis_pv) / scale_y
 
     # get the pixel index (int)
     if return_index:  
@@ -692,8 +700,19 @@ def pixel2geo(points_hv, header):
     --------
     easyidp.geotiff.get_header
     """
+    if header['crs'].is_geographic:  # [lat, lon] -> vertical, horizontal -> y, x
+        # but the tie point and scale is [lon, lat] by tifffile.
+        gis_ph = points_hv[:, 1]
+        gis_pv = points_hv[:, 0]
+    else:   # is_projected or is_geocentric seems x,y,z order are correct, please refer metashape.convert_proj3d()
+        gis_ph = points_hv[:, 0]
+        gis_pv = points_hv[:, 1]
+
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
+
+    scale_x = header['scale'][0]
+    scale_y = header['scale'][1]
 
     # the px is numpy axis0 (vertical, h)
     # py is numpy axis1 (horizontal, w)
@@ -702,21 +721,29 @@ def pixel2geo(points_hv, header):
         #    rather than specific coordinates
         # +0.5 to get the pixel center rather than edge
         # but in QGIS, this will cause 0.5 pixel shift
-        pix_ph = points_hv[:, 0]  # + 0.5
-        pix_pv = points_hv[:, 1]  # + 0.5
+        # pix_ph = points_hv[:, 0]  # + 0.5
+        # pix_pv = points_hv[:, 1]  # + 0.5
+        pass
     elif np.issubdtype(points_hv.dtype, np.floating):
         # all floats possible means it is the pixel coordinates
         #    rather than pixel index
         # no need to +0.5 as image center
-        pix_ph = points_hv[:, 0]
-        pix_pv = points_hv[:, 1]
+        # pix_ph = points_hv[:, 0]
+        # pix_pv = points_hv[:, 1]
+        pass
     else:
         raise TypeError(f"The `points_hv` only accept numpy ndarray integer and float types")
 
-    gis_px = gis_xmin + pix_ph * header['scale'][0]
-    gis_py = gis_ymax - pix_pv * header['scale'][1]
+    pix_ph = points_hv[:, 0]
+    pix_pv = points_hv[:, 1]
 
-    gis_geo = np.vstack([gis_px, gis_py]).T
+    gis_px = gis_xmin + pix_ph * scale_x
+    gis_py = gis_ymax - pix_pv * scale_y
+
+    if header['crs'].is_geographic:  # [lat, lon] -> vertical, horizontal -> y, x
+        gis_geo = np.vstack([gis_py, gis_px]).T
+    else:
+        gis_geo = np.vstack([gis_px, gis_py]).T
 
     return gis_geo
 

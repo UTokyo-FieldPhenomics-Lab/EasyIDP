@@ -3,6 +3,7 @@ import warnings
 from datetime import datetime
 from tabulate import tabulate
 from pathlib import Path
+from tqdm import tqdm
 
 import numpy as np
 import numpy.lib.recfunctions as rfn
@@ -121,7 +122,7 @@ class PointCloud(object):
         if self._points is not None:
             self._update_btf_print()
 
-    def set_offset(self, o):
+    def set_offset(self, o, show_warn=True):
         # the point values not change
         # --------------------------------
         # points =  _point + offset
@@ -132,7 +133,8 @@ class PointCloud(object):
         if self._points is not None:
             self._points = self._points + self._offset - o
             self._offset = o
-            warnings.warn("This will not change the value of point xyz values, if you want to just change offset value, please operate `pcd._offset = offset; pcd._update_btf_print()` directly")
+            if show_warn:
+                warnings.warn("This will not change the value of point xyz values, if you want to just change offset value, please operate `pcd._offset = offset; pcd._update_btf_print()` directly")
             self._update_btf_print()
         else:
             self._offset = o
@@ -280,7 +282,8 @@ class PointCloud(object):
             raise TypeError(f"Only <dict> and <easyidp.ROI> are accepted, not {type(roi)}")
 
         out_dict = {}
-        for k, polygon_hv in roi.items():
+        pbar = tqdm(roi.items(), desc=f"Crop roi from point cloud [{os.path.basename(self.file_path)}]")
+        for k, polygon_hv in pbar:
             if save_folder is not None and Path(save_folder).exists():
                 save_path = Path(save_folder) / (k + self.file_ext)
             else:
@@ -347,7 +350,7 @@ class PointCloud(object):
             # create new Point Cloud object
             crop_pcd = PointCloud()
             crop_pcd.points = self.points[pick_idx, :]
-            crop_pcd.set_offset(self.offset)
+            crop_pcd.set_offset(self.offset, show_warn=False)
             if self.has_colors():
                 crop_pcd.colors = self.colors[pick_idx, :]
             if self.has_normals():

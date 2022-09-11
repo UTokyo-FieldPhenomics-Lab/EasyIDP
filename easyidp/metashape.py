@@ -219,7 +219,7 @@ class Metashape(idp.reconstruct.Recons):
 
             # find out those correct images
             if log:
-                print(f'[Calculator][Judge]{photo.label}w:{photo.w}h:{photo.h}->', end='')
+                print(f'[Calculator][Judge]{photo.label}w:{photo.sensor.width}h:{photo.sensor.height}->', end='')
 
             coords = photo.sensor.in_img_boundary(projected_coord, ignore=ignore, log=log)
             if coords is not None:
@@ -294,6 +294,29 @@ class Metashape(idp.reconstruct.Recons):
         self.crs = before_crs
 
         return out
+
+
+    def sort_img_by_distance(self, img_dict_all, roi, distance_thresh=None, num=None):
+        """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
+
+        Parameters
+        ----------
+        img_dict_all : dict
+            All output dict of roi.back2raw(...)
+            e.g. img_dict = roi.back2raw(...) -> img_dict
+        roi: idp.ROI
+            Your roi variable
+        num : None or int
+            Keep the closest {x} images
+        distance_thresh : None or float
+            Keep the images closer than this distance to ROI.
+
+        Returns
+        -------
+        dict
+            the same structure as output of roi.back2raw(...)
+        """
+        return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)
 
 ###############
 # zip/xml I/O #
@@ -1102,9 +1125,9 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
             x, y, z = ts.transform(*points_np.T)
             out =  np.vstack([x, y, z]).T
         elif crs_target.is_geographic:
-            lat, lon, alt = ts.transform(*points_np.T)
+            lon, lat, alt = ts.transform(*points_np.T)
             # the pyproj output order is reversed
-            out = np.vstack([lon, lat, alt]).T
+            out = np.vstack([lat, lon, alt]).T
         elif crs_target.is_projected:
             lat_m, lon_m, alt_m = ts.transform(*points_np.T)
             out = np.vstack([lat_m, lon_m, alt_m]).T
@@ -1121,9 +1144,10 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
             out = np.vstack([lon, lat, alt]).T
         elif crs_target.is_projected and crs_target.is_derived:
             lat_m, lon_m, alt_m = ts.transform(lat, lon, alt)
-            out = np.vstack([lat_m, lon_m, alt_m]).T
+            out = np.vstack([lon_m, lat_m, alt_m]).T
         else:
             raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`")
+    
     if is_single:
         return out[0, :]
     else:

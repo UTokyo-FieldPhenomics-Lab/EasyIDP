@@ -110,11 +110,11 @@ def test_def_geo2pixel2geo_UTM():
 def test_def_geo2pixel2geo_lonlat():
     # using the source: https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions/44
     gis_latlon_coord = np.array([
-        [ 25.78354364, -80.83957435],
-        [ 25.78354364, -80.83947435],
-        [ 25.78344364, -80.83947435],
-        [ 25.78344364, -80.83957435],
-        [ 25.78354364, -80.83957435]])
+        [-80.83957435, 25.78354364],
+        [-80.83947435, 25.78354364],
+        [-80.83947435, 25.78344364],
+        [-80.83957435, 25.78344364],
+        [-80.83957435, 25.78354364]])
 
     header = {
         'height': 8748, 'width': 7941, 'dim': 1, 'nodata': -32767.0, 

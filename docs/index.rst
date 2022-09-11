@@ -47,6 +47,13 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
       * `日本語(翻訳募集) <https://easyidp.readthedocs.io/ja/latest/>`_
 
 
+
+Coordinates Order
+=================
+
+In the EasyIDP, we use the (horizontal, vertical, dim) order as the coords order. When it applies to the GIS coordintes, is (longitude, latitude, altitude)
+
+
 Examples
 ========
 

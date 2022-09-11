@@ -83,12 +83,11 @@ def test_read_shp_without_target():
 
     # continue if shp_proj is given
     lonlat_shp = idp.shp.read_shp(shp_path, shp_proj=pyproj.CRS.from_epsg(4326))
-    # flipped for pyproj which input is (lat, lon)
-    wanted_np = np.asarray([[34.90284972, 134.8312376],
-                            [34.90285097, 134.8312399],
-                            [34.90285516, 134.8312371],
-                            [34.90285426, 134.8312349],
-                            [34.90284972, 134.8312376]])
+    wanted_np = np.asarray([[134.8312376, 34.90284972],
+                            [134.8312399, 34.90285097],
+                            [134.8312371, 34.90285516],
+                            [134.8312349, 34.90285426],
+                            [134.8312376, 34.90284972]])
 
     np.testing.assert_almost_equal(lonlat_shp['0'], wanted_np)
 

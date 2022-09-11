@@ -2,6 +2,7 @@ import os
 import pyproj
 import warnings
 import numpy as np
+from tqdm import tqdm
 from copy import copy as ccopy
 from shapely.geometry import Point, Polygon
 from pathlib import Path
@@ -269,13 +270,16 @@ class ROI(idp.Container):
             global_z = None
 
         # convert CRS if necessary
-        if self.crs.name != dsm.header["crs"].name and not keep_crs:
+        if self.crs.name == dsm.header["crs"].name:
+            poly_dict = self.id_item.copy()
+        elif self.crs.name != dsm.header["crs"].name and not keep_crs:
             self.change_crs(dsm.header["crs"])
             poly_dict = self.id_item.copy()
         else:
             poly_dict = idp.shp.convert_proj(self.id_item, self.crs, dsm.header["crs"])
 
-        for key, poly in poly_dict.items():
+        pbar = tqdm(poly_dict.items(), desc=f"Read z values of roi from DSM [{dsm.file_path.name}]")
+        for key, poly in pbar:
             # only get the x and y of coords
             poly = poly[:, 0:2]
 

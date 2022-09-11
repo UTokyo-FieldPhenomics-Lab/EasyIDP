@@ -218,7 +218,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     else:
         field_id = _find_name_related_int_id(shp_fields, name_field)
 
-    pbar = tqdm(shp.shapes(), desc=f"[shp] read shp [{os.path.basename(shp_path)}]")
+    pbar = tqdm(shp.shapes(), desc=f"Read shapefile [{os.path.basename(shp_path)}]")
     for i, shape in enumerate(pbar):
         # convert dict_key name string by given name_field
         if isinstance(field_id, list):
@@ -255,27 +255,6 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
             # otherwise duplicate first point to last point to fit the polygon definition
             coord_np = np.append(coord_np, coord_np[0,:][None,:], axis = 0)
 
-        # if unit is degrees, exchange x and y
-        x_unit = shp_proj.coordinate_system.axis_list[0].unit_name
-        y_unit = shp_proj.coordinate_system.axis_list[1].unit_name
-        if x_unit == "degree" and y_unit == "degree": 
-            coord_np = np.flip(coord_np, axis=1)
-        # ----------- Notes --------------
-        # when shp unit is (degrees) latitiude and longitude
-        #     the default order is (lon, lat) --> (y, x)
-        # in easyidp, numpy, and pyproj coordiate system, needs (lat, lon), so need to revert
-        #   
-        #   ↑                 y         
-        #   N   O------------->  
-        #       |  ________      
-        #       | |        |     
-        #       | |  img   |     
-        #       | |________|     
-        #     x v                
-        #
-        # however, if unit is meter (e.g. UTM Zone), the order doesn't need to be changed
-        # ---------------------------------
-
         # check if has duplicated key, otherwise will cause override
         if plot_name in shp_dict.keys():
             raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {shp_fields} or simple leave it blank `name_field=None`")
@@ -306,10 +285,11 @@ def convert_proj(shp_dict, origin_proj, target_proj):
     transformer = pyproj.Transformer.from_proj(origin_proj, target_proj)
     trans_dict = {}
     for k, coord_np in shp_dict.items():
+        # by default, the coord_np is (lon, lat), but transform needs (lat, lon)
         if len(coord_np.shape) == 1:
-            transformed = transformer.transform(coord_np[0], coord_np[1])
+            transformed = transformer.transform(coord_np[1], coord_np[0])
         elif len(coord_np.shape) == 2:
-            transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
+            transformed = transformer.transform(coord_np[:, 1], coord_np[:, 0])
         else:
             raise IndexError(
                 f"The input coord should be either [x, y, z] -> shape=(3,) "

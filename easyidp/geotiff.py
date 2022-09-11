@@ -3,6 +3,7 @@ import pyproj
 import numpy as np
 import tifffile as tf
 import warnings
+from tqdm import tqdm
 from pathlib import Path
 from pyproj.exceptions import CRSError
 
@@ -149,8 +150,9 @@ class GeoTiff(object):
         if not isinstance(roi, (dict, idp.ROI)):
             raise TypeError(f"Only <dict> and <easyidp.ROI> are accepted, not {type(roi)}")
 
+        pbar = tqdm(roi.items(), desc=f"Crop roi from geotiff [{os.path.basename(self.file_path)}]")
         out_dict = {}
-        for k, polygon_hv in roi.items():
+        for k, polygon_hv in pbar:
             if save_folder is not None and Path(save_folder).exists():
                 save_path = Path(save_folder) / (k + ".tif")
             else:
@@ -548,21 +550,28 @@ def get_header(tif_path):
         # -> 'ModelTiepoint': [0.0, 0.0, 0.0, 419509.89816000004, 3987344.8286, 0.0]
         header["tie_point"] = page.geotiff_tags["ModelTiepoint"][3:5]
         
-        # pix4d:
+        # pix4d UTM CRS:
         #    page.geotiff_tags
         #    -> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        # metashape:
-        #    page.geotiff_tags
-        #    -> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        # metashape: wgs 84
-        #    page.geotiff_tags
-        #    -> 'GeogCitationGeoKey': 'WGS 84'
-        for k, v in page.geotiff_tags.items():
-            if "CitationGeoKey" in k:
-                proj_str = v
-                break
+        if "GTCitationGeoKey" in page.geotiff_tags.keys():
+            proj_str = page.geotiff_tags["GTCitationGeoKey"]
+        # metashape UTM CRS:
+        #     page.geotiff_tags
+        #     -> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
+        #     -> 'GeogCitationGeoKey': 'WGS 84'
+        elif "PCSCitationGeoKey" in page.geotiff_tags.keys():
+            proj_str = page.geotiff_tags["PCSCitationGeoKey"]
         else:
-            raise KeyError(f"Can not find key '**CitationGeoKey' in Geotiff tages {page.geotiff_tags}")
+            # metashape: wgs 84
+            #    page.geotiff_tags
+            #    -> 'GeogCitationGeoKey': 'WGS 84'
+            for k, v in page.geotiff_tags.items():
+                if "CitationGeoKey" in k:
+                    proj_str = v
+                    print(f"Could not find prefered [GTCitationGeoKey, PCSCItationGeoKey], but find [{k}]={v} instead for Coordinate Reference System (CRS)")
+                    break
+            else:
+                raise KeyError(f"Can not find Coordinate Reference System (CRS) keys '**CitationGeoKey' in Geotiff tages {page.geotiff_tags}")
         
         try:
             crs = pyproj.CRS.from_string(proj_str)
@@ -652,13 +661,8 @@ def geo2pixel(points_hv, header, return_index=False):
                [16972, 26086]])
 
     """
-    if header['crs'].is_geographic:  # [lat, lon] -> vertical, horizontal -> y, x
-        # but the tie point and scale is [lon, lat] by tifffile.
-        gis_ph = points_hv[:, 1]
-        gis_pv = points_hv[:, 0]
-    else:   # is_projected or is_geocentric seems x,y,z order are correct, please refer metashape.convert_proj3d()
-        gis_ph = points_hv[:, 0]
-        gis_pv = points_hv[:, 1]
+    gis_ph = points_hv[:, 0]
+    gis_pv = points_hv[:, 1]
 
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
@@ -700,13 +704,8 @@ def pixel2geo(points_hv, header):
     --------
     easyidp.geotiff.get_header
     """
-    if header['crs'].is_geographic:  # [lat, lon] -> vertical, horizontal -> y, x
-        # but the tie point and scale is [lon, lat] by tifffile.
-        gis_ph = points_hv[:, 1]
-        gis_pv = points_hv[:, 0]
-    else:   # is_projected or is_geocentric seems x,y,z order are correct, please refer metashape.convert_proj3d()
-        gis_ph = points_hv[:, 0]
-        gis_pv = points_hv[:, 1]
+    gis_ph = points_hv[:, 0]
+    gis_pv = points_hv[:, 1]
 
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
@@ -740,10 +739,7 @@ def pixel2geo(points_hv, header):
     gis_px = gis_xmin + pix_ph * scale_x
     gis_py = gis_ymax - pix_pv * scale_y
 
-    if header['crs'].is_geographic:  # [lat, lon] -> vertical, horizontal -> y, x
-        gis_geo = np.vstack([gis_py, gis_px]).T
-    else:
-        gis_geo = np.vstack([gis_px, gis_py]).T
+    gis_geo = np.vstack([gis_px, gis_py]).T
 
     return gis_geo
 

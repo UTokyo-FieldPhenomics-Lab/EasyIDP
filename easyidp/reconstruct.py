@@ -2,6 +2,7 @@ import os
 import pyproj
 import numpy as np
 from pathlib import Path
+from tqdm import tqdm
 
 import easyidp as idp
 
@@ -416,41 +417,45 @@ class ChunkTransform:
         self.matrix_inv = None
 
 
-def filter_closest_img(p4d, img_dict, plot_geo, dist_thresh=None, num=None):
-    """[summary]
+def _sort_img_by_distance_one_roi(recons, img_dict, plot_geo, cam_pos, distance_thresh=None, num=None):
+    """Sort the back2raw img_dict results by distance from photo to roi
 
     Parameters
     ----------
+    recons: idp.Metashape or idp.Pix4D
+        The reconsturction project class
     img_dict : dict
-        The outputs dict of geo2raw.get_img_coords_dict()
+        One ROI output dict of roi.back2raw()
+        e.g. img_dict = roi.back2raw(ms) -> img_dict["N1W1"]
     plot_geo : nx3 ndarray
         The plot boundary polygon vertex coordinates
     num : None or int
         Keep the closest {x} images
-    dist_thresh : None or float
+    distance_thresh : None or float
         If given, filter the images smaller than this distance first
 
     Returns
     -------
     dict
-        the same structure as output of geo2raw.get_img_coords_dict()
+        the same structure as output of roi.back2raw()
     """
     dist_geo = []
     dist_name = []
-    
-    img_dict_sort = {}
-    for img_name, img_coord in img_dict.items():
 
+    img_dict_sort = {}
+
+    for img_name in img_dict.keys():
         xmin_geo, ymin_geo = plot_geo[:,0:2].min(axis=0)
         xmax_geo, ymax_geo = plot_geo[:,0:2].max(axis=0)
+
         xctr_geo = (xmax_geo + xmin_geo) / 2
         yctr_geo = (ymax_geo + ymin_geo) / 2
 
-        ximg_geo, yimg_geo, _ = p4d.img[img_name].cam_pos
+        ximg_geo, yimg_geo, _ = cam_pos[img_name]
 
         image_plot_dist = np.sqrt((ximg_geo-xctr_geo) ** 2 + (yimg_geo - yctr_geo) ** 2)
 
-        if dist_thresh is not None and image_plot_dist > dist_thresh:
+        if distance_thresh is not None and image_plot_dist > distance_thresh:
             # skip those image-plot geo distance greater than threshold
             continue
         else:
@@ -466,5 +471,41 @@ def filter_closest_img(p4d, img_dict, plot_geo, dist_thresh=None, num=None):
 
     dist_geo_idx = np.asarray(dist_geo).argsort()[:num]
     img_dict_sort = {dist_name[idx]:img_dict[dist_name[idx]] for idx in dist_geo_idx}
-    
+
     return img_dict_sort
+
+
+def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=None):
+    """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
+
+    Parameters
+    ----------
+    recons: idp.Metashape or idp.Pix4D
+        The reconsturction project class
+    img_dict_all : dict
+        All output dict of roi.back2raw(...)
+        e.g. img_dict = roi.back2raw(...) -> img_dict
+    roi: idp.ROI
+        Your roi variable
+    num : None or int
+        Keep the closest {x} images
+    distance_thresh : None or float
+        Keep the images closer than this distance to ROI.
+
+    Returns
+    -------
+    dict
+        the same structure as output of roi.back2raw()
+    """
+    cam_pos = recons.get_photo_position(to_crs=roi.crs)
+
+    img_dict_sort_all = {}
+    pbar = tqdm(roi.keys(), desc=f"Filter by distance to ROI")
+    for roi_name in pbar:
+        sort_dict = _sort_img_by_distance_one_roi(
+            recons, img_dict_all[roi_name], roi[roi_name], 
+            cam_pos, distance_thresh, num
+        )
+        img_dict_sort_all[roi_name] = sort_dict
+
+    return img_dict_sort_all

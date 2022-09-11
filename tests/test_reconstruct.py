@@ -220,5 +220,76 @@ def test_class_container_photo():
     assert a[1] == p1
     assert a["bbb.jpg"] == p2
 
-def test_func_filter_cloest_img():
-    pass
+def test_func_sort_img_by_distance_ms():
+    # =================
+    # metashape outputs
+    # =================
+    ms = idp.Metashape(project_path=test_data.metashape.lotus_psx, chunk_id=0)
+
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+    # only pick 2 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N1W2"]:
+            del roi[key]
+    roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
+
+    poly = roi["N1W2"]
+    ms.crs = roi.crs
+
+    out_all = ms.back2raw(roi)
+
+    # test one roi
+    cam_pos = ms.get_photo_position()
+    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi["N1W2"], cam_pos, num=3)
+    assert len(filter_3) == 3
+
+    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi["N1W2"], cam_pos, distance_thresh=0.1, num=3)
+    assert len(filter_3_dis_01) == 0
+
+    # test all roi
+    filter_3_all = idp.reconstruct.sort_img_by_distance(ms, out_all, roi, num=3)
+    assert len(filter_3_all) == 2
+    for v in filter_3_all.values():
+        assert len(v) == 3
+
+    # on self
+    filter_3_all_self = ms.sort_img_by_distance(out_all, roi, num=3)
+    assert len(filter_3_all_self) == 2
+
+def test_func_sort_img_by_distance_p4d():
+    # =============
+    # pix4d outputs
+    # =============
+    lotus = idp.data.Lotus()
+
+    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+                    raw_img_folder=lotus.photo,
+                    param_folder=lotus.pix4d.param)
+
+    roi = idp.ROI(lotus.shp, name_field=0)
+    # only pick 2 plots as testing data
+    key_list = list(roi.keys())
+    for key in key_list:
+        if key not in ["N1W1", "N1W2"]:
+            del roi[key]
+    roi.get_z_from_dsm(lotus.pix4d.dsm)
+
+    out_all = p4d.back2raw(roi)
+
+    cam_pos = p4d.get_photo_position()
+    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W2"], roi["N1W2"], cam_pos, num=3)
+    assert len(filter_3) == 3
+
+    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W2"], roi["N1W2"], cam_pos, distance_thresh=0.1, num=3)
+    assert len(filter_3_dis_01) == 0
+
+    # test all roi
+    filter_3_all = idp.reconstruct.sort_img_by_distance(p4d, out_all, roi, num=3)
+    assert len(filter_3_all) == 2
+    for v in filter_3_all.values():
+        assert len(v) == 3
+
+    # on self
+    filter_3_all_self = p4d.sort_img_by_distance(out_all, roi, num=3)
+    assert len(filter_3_all_self) == 2

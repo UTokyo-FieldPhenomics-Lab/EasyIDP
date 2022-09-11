@@ -111,8 +111,8 @@ def test_class_roi_get_z_from_dsm():
     roi_p_mean_0_t.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=True)
     assert roi_p_mean_0_t.crs.name == "WGS 84"
     assert roi_p_mean_0_t[0].shape == (5,3)
-    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,0], 35.73475194328632)  # latitude
-    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,1], 139.54052962153048)  # longitude
+    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,0], 139.54052962153048)  # longitude
+    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,1], 35.73475194328632)  # latitude
     np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,2], ht)
 
     roi_p_mean_1_f = roi.copy()

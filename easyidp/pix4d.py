@@ -468,6 +468,28 @@ class Pix4D(idp.reconstruct.Recons):
 
         return out
 
+    def sort_img_by_distance(self, img_dict_all, roi, distance_thresh=None, num=None):
+        """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
+
+        Parameters
+        ----------
+        img_dict_all : dict
+            All output dict of roi.back2raw(...)
+            e.g. img_dict = roi.back2raw(...) -> img_dict
+        roi: idp.ROI
+            Your roi variable
+        num : None or int
+            Keep the closest {x} images
+        distance_thresh : None or float
+            Keep the images closer than this distance to ROI.
+
+        Returns
+        -------
+        dict
+            the same structure as output of roi.back2raw(...)
+        """
+        return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)
+
 ####################
 # code for file IO #
 ####################

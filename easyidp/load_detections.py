@@ -1,6 +1,5 @@
 # Load detections for backwards projection 
 import pandas as pd
-import numpy as np
 
 def load_detections(path):
     """Load a csv file of bounding box detections
@@ -16,7 +15,5 @@ def load_detections(path):
     boxes = pd.read_csv(path)
     if not all([x in ["image_path","xmin","ymin","xmax","ymax","image_path","label"] for x in boxes.columns]):
         raise IOError("{} is expected to be a .csv with columns, xmin, ymin, xmax, ymax, image_path, label for each detection")
-    
-    boxes.to_dict()
-    
+        
     return boxes

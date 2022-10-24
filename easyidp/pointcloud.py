@@ -122,7 +122,7 @@ class PointCloud(object):
         if self._points is not None:
             self._update_btf_print()
 
-    def set_offset(self, o, show_warn=True):
+    def set_offset_value(self, o, show_warn=True):
         # the point values not change
         # --------------------------------
         # points =  _point + offset
@@ -350,7 +350,7 @@ class PointCloud(object):
             # create new Point Cloud object
             crop_pcd = PointCloud()
             crop_pcd.points = self.points[pick_idx, :]
-            crop_pcd.set_offset(self.offset, show_warn=False)
+            crop_pcd.set_offset_value(self.offset, show_warn=False)
             if self.has_colors():
                 crop_pcd.colors = self.colors[pick_idx, :]
             if self.has_normals():

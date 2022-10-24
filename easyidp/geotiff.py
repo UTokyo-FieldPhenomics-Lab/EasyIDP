@@ -134,7 +134,8 @@ class GeoTiff(object):
         Parameters
         ----------
         roi : easyidp.ROI | dict
-            the <ROI> object created by easyidp.ROI(), or dictionary
+            the <ROI> object created by easyidp.ROI(), or dictionary with multiple polygons.
+            If you just need crop single polygon with ndarray coordinates, please use GeoTiff.crop_polygon() instead.
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
@@ -148,7 +149,7 @@ class GeoTiff(object):
         self._not_empty()
         
         if not isinstance(roi, (dict, idp.ROI)):
-            raise TypeError(f"Only <dict> and <easyidp.ROI> are accepted, not {type(roi)}")
+            raise TypeError(f"Only <dict> and <easyidp.ROI> with multiple polygons are accepted, not {type(roi)}. If it is 2D ndarray coordiante for just one polygon, please use `GeoTiff.crop_polygon()` instead.")
 
         pbar = tqdm(roi.items(), desc=f"Crop roi from geotiff [{os.path.basename(self.file_path)}]")
         out_dict = {}

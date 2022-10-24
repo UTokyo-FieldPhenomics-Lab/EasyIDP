@@ -30,7 +30,7 @@ This project tried to use packges based on pure-python, instead of installing so
 Please check [Official Documents](https://easyidp.readthedocs.io/en/latest/) for full documentations. And please also use the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) when you meet any problems.
 
 
-## <div align="center">Quick Start Examples (Processing)</div>
+## <div align="center">Quick Start Examples (In processing)</div>
 
 You can install the packages by PyPi:
 
@@ -48,7 +48,7 @@ import easyidp as idp
 
 Before doing the following example, please understand the basic pipeline for image 3D reconstruction by Pix4D or Metashape. And know how to export the DOM, DSM (\*.tiff), and Point cloud (\*.ply). Also require some basic knowledge about GIS shapefile format (\*.shp).
 
-> Please note, if you see this sentence, it means the following examples are not suppported yet.
+> Please note, **if you see this sentence**, it means the following examples are not **fully suppported** yet.
 
 <details close>
 <summary>1. Read ROI</summary>

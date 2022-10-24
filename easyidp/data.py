@@ -176,7 +176,7 @@ class EasyidpDataSet():
         Caution
         -------
         For users in China mainland, please either find a way to access google drive,
-        or download from `CowTransfer Link <https://cowtransfer.com/s/4cc3d3f199824b>`_ 
+        or download from `CowTransfer Link <https://fieldphenomics.cowtransfer.com/s/25f92eb0585b4d>`_ 
 
         Save and extract all \*.zip file to folder ``idp.data.show_data_dir()``.
 
@@ -290,7 +290,7 @@ class Lotus(EasyidpDataSet):
     def __init__(self):
         url_list = [
             "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing",
-            "https://cowtransfer.com/s/03355b0b684442"
+            "https://fieldphenomics.cowtransfer.com/s/9a87698f8d3242"
         ]
         super().__init__(name="2017_tanashi_lotus", url_list=url_list, size="3.6GB")
 
@@ -321,7 +321,7 @@ class GDownTest(EasyidpDataSet):
     def __init__(self):
         url_list = [
             "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=sharing",
-            "https://cowtransfer.com/s/20fe3984fb9a47"
+            "https://fieldphenomics.cowtransfer.com/s/b5a469fab5dc48"
         ]
         super().__init__("gdown_test", url_list, "0.2KB")
         super().load_data()
@@ -339,7 +339,7 @@ class TestData(EasyidpDataSet):
     def __init__(self, test_out="./tests/out"):
         url_list = [
             "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=sharing",
-            "https://cowtransfer.com/s/9d60d394cbd448"
+            "https://fieldphenomics.cowtransfer.com/s/edaf0826b02548"
         ]
 
         self.name = "data_for_tests"

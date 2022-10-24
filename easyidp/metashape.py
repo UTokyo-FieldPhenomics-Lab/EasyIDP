@@ -5,6 +5,7 @@ import numpy as np
 import warnings
 from xml.etree import ElementTree
 import xml.dom.minidom as minidom
+from tqdm import tqdm
 from copy import copy as ccopy
 
 import easyidp as idp
@@ -252,7 +253,9 @@ class Metashape(idp.reconstruct.Recons):
 
         before_crs = ccopy(self.crs)
         self.crs = ccopy(roi.crs)
-        for k, points_xyz in roi.items():
+
+        pbar = tqdm(roi.items(), desc=f"Backward roi to raw images")
+        for k, points_xyz in pbar:
             if isinstance(save_folder, str) and os.path.isdir(save_folder):
                 save_path = os.path.join(save_folder, k)
             else:

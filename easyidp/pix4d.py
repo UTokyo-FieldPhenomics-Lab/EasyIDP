@@ -3,6 +3,7 @@ import numpy as np
 import warnings
 import pyproj
 from pathlib import Path
+from tqdm import tqdm
 
 import easyidp as idp
 
@@ -429,7 +430,9 @@ class Pix4D(idp.reconstruct.Recons):
             whether print log for debugging, by default False
         """
         out_dict = {}
-        for k, points_xyz in roi.items():
+
+        pbar = tqdm(roi.items(), desc=f"Backward roi to raw images")
+        for k, points_xyz in pbar:
             if isinstance(save_folder, str) and os.path.isdir(save_folder):
                 save_path = os.path.join(save_folder, k)
             else:

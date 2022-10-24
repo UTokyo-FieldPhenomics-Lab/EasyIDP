@@ -27,7 +27,7 @@ This project tried to use packges based on pure-python, instead of installing so
 
 ## <div align="center">Documentation</div>
 
-Please check [Official Documents](https://easyidp.readthedocs.io/en/latest/) ( [中文](https://easyidp.readthedocs.io/zh_CN/latest/") | [日本語(翻訳募集)]("https://easyidp.readthedocs.io/ja/latest/") ) for full documentations. And please also use the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) when you meet any problems.
+Please check [Official Documents](https://easyidp.readthedocs.io/en/latest/) ( [中文](https://easyidp.readthedocs.io/zh_CN/latest/) | [日本語(翻訳募集)](https://easyidp.readthedocs.io/ja/latest/) ) for full documentations. And please also use the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) when you meet any problems.
 
 
 ## <div align="center">References</div>

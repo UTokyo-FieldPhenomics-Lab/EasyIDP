@@ -1,0 +1,248 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022, Haozhou Wang
+# This file is distributed under the same license as the EasyIDP package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: EasyIDP \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-10-24 20:37+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.1\n"
+
+#: ../../jupyter/crop_and_backward.ipynb:9
+msgid "Crop and backward projection"
+msgstr "切块与逆投影"
+
+#: ../../jupyter/crop_and_backward.ipynb:21
+msgid "Package and Data Prepare"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:23
+msgid "The most common way to import easyidp package is:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:44
+msgid "And then using the Lotus dataset as example"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:46
+msgid ""
+"It will download 3.3GB from Google Drive for the first time, please "
+"ensure your have enough disk space (>10GB) in your system cache disk."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:48
+msgid "You can using the following code to check where it downloads to:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:54
+msgid "It will call your system default file manager to show the folder."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:75
+msgid ""
+"If you run for the first time, it will download dataset automatically "
+"from google drive:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:85
+msgid "Then the used file path can be obtained by:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:96
+msgid "Please check ``Python API > Data`` for more details."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:108
+msgid "Read ROI from Shapefile"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:110
+msgid ""
+"Then open the shapefile ``plot.shp``, the shp file looks like (red "
+"polygons):"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:-1
+msgid "lotus_shp"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:124
+msgid "First, need to check which column of shapefile should be used as key:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:193
+msgid ""
+"We can see, it only contains one column (-1 is the index), here we pass "
+"``0`` or ``\"plot_id\"`` to ``name_field`` param to set it as index."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:264
+msgid "Then check if it loads as expected:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:357
+msgid "Or you can also reference it by index:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:415
+msgid "Then get the height value from DSM"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:500
+msgid ""
+"We can notice, the roi x and y values also changed. Because the ROI shp "
+"geo-coord is EPSG::4326 while the DSM is EPSG::32654"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:502
+msgid "if you want keep the x and y value, you can:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:514
+msgid ""
+"But it is highly recommended to use the same CRS with the DOM/DSM, "
+"otherwise will raise ValueErrors in the later use."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:545
+msgid "Read and crop DOM"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:566
+msgid "Check the values:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:684
+msgid "Crop the DOM by ROI:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:757
+msgid "It has the same key as the ROI."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:759
+msgid "And to visualize the cropped results:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:858
+msgid ""
+"It you want to save the cropped GeoTiff, please pass the ``save_folder`` "
+"parameter when cropping"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:864
+msgid ""
+"It will save all cropped sections to GeoTiff files with geo-offset (you "
+"can overlap the cropped DOM perfectly on the original DOM)"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:866
+msgid ""
+"However, you can not save the outputs ``dom_parts[\"N1W1\"]`` with geo-"
+"offset, it can only be save as a common image via ``plt.imsave()``."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:878
+msgid "Read and crop point cloud"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:880
+msgid ""
+"Crop the PCD by ROI: (will cost a half minuts to operate on the large "
+"point cloud)"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1074
+msgid ""
+"Similarly, you can pass the ``save_folder`` parameter to save the cropped"
+" point cloud"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1090
+msgid "Read SfM project and backward projection"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1102
+msgid "For Metashape"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1455
+msgid "Preview the results:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1501
+msgid "For Pix4D"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1847
+msgid "Check the results:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1893
+msgid "Find the best backword image"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1895
+msgid ""
+"You can notice that for each ROI, it will backword projected to several "
+"raw images:"
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:1941
+msgid ""
+"How to find the best 3 or 5 images? Here you can calculate the distance "
+"from the image to the ROI, here we assume the shorter the better (idealy,"
+" UAV image just above the ROI region, the ROI is in the image center)."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:2068
+msgid ""
+"Here is the best 3 image that match “distance from ROI to image” < 10m, "
+"and the first one is the closest."
+msgstr ""
+
+#: ../../jupyter/crop_and_backward.ipynb:2070
+msgid "Check the result:"
+msgstr ""
+
+#: ../../jupyter/raw2dom.ipynb:9
+msgid "Forward ROI from raw to DOM"
+msgstr ""
+
+#: ../../jupyter/raw2dom.ipynb:11
+msgid ""
+"It is a often case that the DOM has lower quality than the original raw "
+"images. And then we want link the image analysis resutls on the good "
+"quality raw image back to the bad quality DOM. This example demonstrats "
+"how this can be done by EasyIDP."
+msgstr ""
+
+#: ../../jupyter/raw2dom.ipynb:13
+msgid "Firstly, import the package and using our lotus dataset"
+msgstr ""
+
+#: ../../jupyter/raw2dom.ipynb:36
+msgid "Then load the DOM and metashape project into EasyIDP objects"
+msgstr ""
+
+#: ../../jupyter/raw2dom.ipynb:60
+msgid "Split dom to several grids with buffer"
+msgstr ""
+
+#: ../../jupyter/raw2dom.ipynb:62
+msgid ""
+"Instead of forward projecting the results from raw to DOM directly. Here "
+"we do the backwad projection from DOM to raw, and calculate the "
+"transformation matrix of current grid, then calculate the inverse matrix "
+"to get results from raw to DOM."
+msgstr ""
+

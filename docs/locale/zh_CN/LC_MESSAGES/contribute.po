@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-26 15:04+0900\n"
+"POT-Creation-Date: 2022-10-24 20:37+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.10.3\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../contribute.rst:5
 msgid "Contribute"
@@ -88,31 +88,35 @@ msgstr "为了处理jupyter笔记本，需要在电脑上安装 `pandoc <https:/
 msgid "Check by below to ensure successfully installed:"
 msgstr "用下面的命令来确认是否安装成功："
 
-#: ../../contribute.rst:61
+#: ../../contribute.rst:60
+msgid "Then please download all datasets, this may take a long time."
+msgstr ""
+
+#: ../../contribute.rst:68
 msgid "Build"
 msgstr "编译"
 
-#: ../../contribute.rst:63
+#: ../../contribute.rst:70
 msgid ""
 "After cloning the EasyIDP repository, activate the virtual environment, "
 "first enter the ``docs`` folder:"
 msgstr "在克隆了EasyIDP仓库后，激活虚拟环境然后进入 ``docs`` 文件夹"
 
-#: ../../contribute.rst:71
+#: ../../contribute.rst:78
 msgid "Then you can build the documentation by:"
 msgstr "然后你可以通过下面的方法来构建文档："
 
-#: ../../contribute.rst:77
+#: ../../contribute.rst:84
 msgid ""
 "You can open the ``_build\\html\\index.html`` to see the generated "
 "documentations"
 msgstr "你可以打开 ``_build\\html\\index.html`` 文件来查看生成的文档"
 
-#: ../../contribute.rst:81
+#: ../../contribute.rst:88
 msgid "Translation"
 msgstr "翻译文档"
 
-#: ../../contribute.rst:83
+#: ../../contribute.rst:90
 msgid ""
 "Here we using the ``sphinx-intl`` to provide services for multi-language "
 "documentation. If you want to contribute to your native lanuage "
@@ -122,38 +126,38 @@ msgstr ""
 "我们在这里使用 ``sphinx-intl`` 来提供多语言文档。如果你想帮助翻译你的母语，请遵循下面的指引或者参考 `官方文档 <https"
 "://sphinx-intl.readthedocs.io/en/master/quickstart.html>`_ :"
 
-#: ../../contribute.rst:86
+#: ../../contribute.rst:93
 msgid "1\\. extract translatable messages"
 msgstr "1\\. 提取可翻译的句子"
 
-#: ../../contribute.rst:88
+#: ../../contribute.rst:95
 msgid "First, extract document’s translatable messages into pot files:"
 msgstr "首先，把文档中的可翻译句子提取到pot文件里："
 
-#: ../../contribute.rst:94
+#: ../../contribute.rst:101
 msgid ""
 "This invokes the sphinx gettext builder that generates ``*.pot`` files "
 "under ``_build/gettext`` directory."
 msgstr "它会调用sphinx编译器，在 ``_build/gettext`` 文件夹下生成 ``*.pot`` 文件"
 
-#: ../../contribute.rst:98
+#: ../../contribute.rst:105
 msgid ""
 "Please check the outputs carefully, to see if any warnings or errors "
 "exists. Do not run the following code until they are fixed and "
 "disappared."
 msgstr "请仔细的检查这边的输出，是否有任何的警告或报错。直到他们被修复并不在出现前，不要运行下面的代码"
 
-#: ../../contribute.rst:101
+#: ../../contribute.rst:108
 msgid "2\\. prepare translation files"
 msgstr "2\\. 准备翻译文件"
 
-#: ../../contribute.rst:103
+#: ../../contribute.rst:110
 msgid ""
 "Then, using the following code to convert previous broken sentencs to "
 "correspoinding lanuage folder ( ``_locale\\<your-lang>``)"
 msgstr "然后，使用下面的代码来把之前的断句转换成对应的语言文件夹( ``_locale\\<your-lang>`` )下的翻译文件"
 
-#: ../../contribute.rst:119
+#: ../../contribute.rst:126
 msgid ""
 "The last part ``-l zh_CN -l ja`` means translate to Chinese (zh_CN) and "
 "Japanese (ja), if you need add another translation languages. Feel tree "
@@ -165,7 +169,7 @@ msgstr ""
 "``-l xxx`` ， 语言代码 ``xxx`` 可以从 `这里 <https://www.sphinx-"
 "doc.org/en/master/usage/configuration.html#confval-language>`_ 找到"
 
-#: ../../contribute.rst:124
+#: ../../contribute.rst:131
 msgid ""
 "If you want to add the lanuage document published on the ``readthedocs`` "
 ", please translate at your local first, then make a pull request to our "
@@ -177,11 +181,11 @@ msgstr ""
 "只需要提交 ``docs\\locale\\<your-lang>\\LC_MESSAGES`` "
 "文件夹。当它通过了我们的审核，我们会尽快开放对应的链接。"
 
-#: ../../contribute.rst:127
+#: ../../contribute.rst:134
 msgid "3\\. translate"
 msgstr "3\\. 翻译"
 
-#: ../../contribute.rst:129
+#: ../../contribute.rst:136
 msgid ""
 "This is the most time-consuming step. Please pay attention carefully "
 "about which files are changed. Then check the folder ``_locale\\<your-"
@@ -190,84 +194,84 @@ msgstr ""
 "这是最耗时的步骤。请先仔细检查上面步骤的输出，有哪些文件改变了。然后检查 ``_locale\\<your-"
 "lang>\\LC_MESSAGES`` 文件夹并编辑修改了的文件。"
 
-#: ../../contribute.rst:133
+#: ../../contribute.rst:140
 msgid "The ``*.po`` files have the following formats:"
 msgstr " ``*.po`` 文件有下面的格式："
 
-#: ../../contribute.rst:141
+#: ../../contribute.rst:148
 msgid ""
 "The first line is where it appears, the second line is the original "
 "sentence, while the last line is the translation you need to type in."
 msgstr "第一行说明它出现的地点，第二行展示了原文，第三行是你需要输入的翻译"
 
-#: ../../contribute.rst:143
+#: ../../contribute.rst:150
 msgid "Sometims, it will appear with line of ``#, fuzzy``:"
 msgstr "有时候，它会出现一行  ``#, fuzzy`` :"
 
-#: ../../contribute.rst:152
+#: ../../contribute.rst:159
 msgid ""
 "It means the origianl sentence have been changed, please edit the "
 "translation again."
 msgstr "这表示原文产生了改变，请再次检查翻译。"
 
-#: ../../contribute.rst:154
+#: ../../contribute.rst:161
 msgid "Please do the following things:"
 msgstr "请做下面的几步："
 
-#: ../../contribute.rst:156
+#: ../../contribute.rst:163
 msgid "Check which files have changed in the previous outputs. And for each file"
 msgstr "检查之前的输出中提及哪些文件改变了，然后对于每一个改变的文件"
 
-#: ../../contribute.rst:157
+#: ../../contribute.rst:164
 msgid ""
 "Press ``Ctrl`` + ``F`` in your text editor to find out if any ``#, "
 "fuzzy`` exists, change these sentences first."
 msgstr "在代码编辑器中按 ``Ctrl`` + ``F`` 来查找是否有 ``#, fuzzy`` 存在，先修改这些语句"
 
-#: ../../contribute.rst:158
+#: ../../contribute.rst:165
 msgid ""
 "Find if any ``msgstr \"\"`` exists. You don't have to translate "
 "everything, for those words/sentence don't need to translate (e.g. "
 "EasyIDP, Python), just leave them blank."
 msgstr "如果有任何 ``msgstr \"\"`` 语句存在的话，不一定都需要翻译。比如EasyIDP, Python这样的就不需要翻译，直接留空就行。"
 
-#: ../../contribute.rst:163
+#: ../../contribute.rst:170
 msgid ""
 "If the sentence is too long, feel free to connect the sentence by adding "
 "\"\" in an new line:"
 msgstr "如果句子太长，通过在新的一行添加 \"\" 即可连接句子"
 
-#: ../../contribute.rst:171
+#: ../../contribute.rst:178
 msgid "But should not have a blank line!"
 msgstr "但是不应该有任何空行"
 
-#: ../../contribute.rst:175
+#: ../../contribute.rst:182
 msgid "For the inline code and links, please ensure they are wrapped by spaces:"
 msgstr "对于行内代码和链接，请确保他们前后有空格存在"
 
-#: ../../contribute.rst:182
+#: ../../contribute.rst:189
 msgid ""
 "Otherwise this sentences will get error without notification, and the "
 "translation will not appear."
 msgstr "否则这些句子会报错但没有任何提示，你的翻译也不会出现"
 
-#: ../../contribute.rst:186
+#: ../../contribute.rst:193
 msgid "4\\. render and preview"
 msgstr "4\\. 渲染并预览"
 
-#: ../../contribute.rst:188
+#: ../../contribute.rst:195
 msgid ""
 "Lastly, change the language of local preview ( ``-Dlanguage='your_lang'``"
 " ), and render the document pages:"
 msgstr "最后，改变渲染和本地预览的语言( ``-Dlanguage='your_lang'`` )，然后生成文档："
 
-#: ../../contribute.rst:204
+#: ../../contribute.rst:211
 msgid ""
 "You can open the ``_build\\html\\index.html`` to see the generated "
 "documentations."
 msgstr "可以直接打开生成的 ``_build\\html\\index.html`` 文件来查看。"
 
-#: ../../contribute.rst:207
+#: ../../contribute.rst:214
 msgid "Todo lists"
 msgstr "代办列表"
 

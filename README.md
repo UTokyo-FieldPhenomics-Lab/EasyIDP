@@ -13,7 +13,7 @@
   <img alt="GitHub Downloads" src="https://img.shields.io/pypi/dm/easyidp?color=%233775A9&label=pypi%20downloads&style=plastic">
 </p>
 
-<a href="README_CN.md">中文</a>
+<a href="https://easyidp.readthedocs.io/zh_CN/latest/" target="_blank">中文</a> | <a href="https://easyidp.readthedocs.io/ja/latest/" target="_blank">日本語(翻訳募集)</a> 
 
 </div>
 
@@ -29,122 +29,6 @@ This project tried to use packges based on pure-python, instead of installing so
 
 Please check [Official Documents](https://easyidp.readthedocs.io/en/latest/) for full documentations. And please also use the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) when you meet any problems.
 
-
-## <div align="center">Quick Start Examples (In processing)</div>
-
-You can install the packages by PyPi:
-
-```bash
-pip install easyidp
-```
-
-And import the packages in your python code:
-
-```python
-import easyidp as idp
-```
-
----
-
-Before doing the following example, please understand the basic pipeline for image 3D reconstruction by Pix4D or Metashape. And know how to export the DOM, DSM (\*.tiff), and Point cloud (\*.ply). Also require some basic knowledge about GIS shapefile format (\*.shp).
-
-> **Warning**    
-> Please note, **if you see this sentence**, it means the following examples are not **fully suppported** yet.
-
-<details close>
-<summary>1. Read ROI</summary>
-
-```python
-roi = idp.ROI("xxxx.shp")  # lon and lat 2D info
-  
-# get z values from DSM
-roi.get_z_from_dsm("xxxx_dsm.tiff")  # add height 3D info
-```
-
-The 2D roi can be used to crop the DOM, DSM, and point cloud (`2.crop by ROI`). While the 3D roi can be used for Backward projection (`4. Backward projection`)
-</details>
-
-<details close>
-<summary>2. Crop by ROI</summary>
-
-Read the DOM and DSM Geotiff Maps
-```python
-dom = idp.GeoTiff("xxx_dom.tif")
-dsm = idp.GeoTiff("xxx_dsm.tif")
-```
-  
-Read point cloud data
-```python
-ply = idp.PointCloud("xxx_pcd.ply")
-```
-  
-crop the region of interest from ROI:
-```python
-dom_parts = roi.crop(dom)
-dsm_parts = roi.crop(dsm)
-pcd_parts = roi.crop(ply)
-```
-
-If you want to save these crops to given folder:
-```python
-dom_parts = roi.crop(dom, save_folder="./crop_dom")
-dsm_parts = roi.crop(dsm, save_folder="./crop_dsm")
-pcd_parts = roi.crop(ply, save_folder="./crop_pcd")
-```
-
-  
-</details>
-
-<details close>
-<summary>3. Read Reconstruction projects</summary>
-
-Add the reconstruction projects to processing pools (different flight time for the same field):
-  
-```python
-proj = idp.ProjectPool()
-proj.add_pix4d(["date1.p4d", "date2.p4d", ...])
-proj.add_metashape(["date1.psx", "date2.psx", ...])
-```
-
-Then you can specify each chunk by:
-
-```python
-p1 = proj[0]
-# or
-p1 = proj["chunk_or_project_name"]
-```
-
-</details>
-
-<details close>
-<summary>4. Backward Projection</summary>
-  
-```python
->>> img_dict = roi.back2raw(chunk1)
-```
-  
-Then check the results:
-```python
-# find the raw image name list
->>> img_dict.keys()   
-dict_keys(['DJI_0177.JPG', 'DJI_0178.JPG', 'DJI_0179.JPG', 'DJI_0180.JPG', ... ]
-
-# the roi pixel coordinate on that image
->>> img_dict['DJI_0177.JPG'] 
-array([[ 779,  902],
-       [1043,  846],
-       [1099, 1110],
-       [ 834, 1166],
-       [ 779,  902]])
-```
-
-Save backward projected images
-
-```python
-img_dict = roi.back2raw(chunk1, save_folder="folder/to/put/results/")
-```
-
-</details>
 
 ## <div align="center">References</div>
 

@@ -169,41 +169,6 @@ def test_class_calibration_calibrate_error():
         c4.calibrate(1,2)
 
 
-def test_class_container():
-    # for i in c, 
-    # for i in c.keys, 
-    # for i in c.values, 
-    # for i, j in c.items()
-    ctn = idp.Container()
-
-    k = [str(_) for _ in range(5)]
-
-    v = []
-    for _ in range(6, 11):
-        p = idp.reconstruct.Photo()
-        p.label = _
-        v.append(p)
-
-    val = {}
-    for i, j in zip(k,v):
-        ctn[i] = j
-        val[int(i)] = j
-    
-    assert ctn.id_item == val
-
-    # test object iteration
-    for idx, value in enumerate(ctn):
-        assert value == v[idx]
-
-    for idx, value in ctn.items():
-        assert value in v
-
-    for key in ctn.keys():  # [6,7,8,9,10]
-        assert key in [6,7,8,9,10]
-
-    for value in ctn.values():
-        assert value in v
-
 def test_class_container_photo():
     p1 = idp.reconstruct.Photo()
     p2 = idp.reconstruct.Photo()

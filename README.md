@@ -48,6 +48,7 @@ import easyidp as idp
 
 Before doing the following example, please understand the basic pipeline for image 3D reconstruction by Pix4D or Metashape. And know how to export the DOM, DSM (\*.tiff), and Point cloud (\*.ply). Also require some basic knowledge about GIS shapefile format (\*.shp).
 
+> **Warning**    
 > Please note, **if you see this sentence**, it means the following examples are not **fully suppported** yet.
 
 <details close>

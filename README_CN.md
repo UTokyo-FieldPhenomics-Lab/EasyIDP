@@ -47,6 +47,7 @@ import easyidp as idp
 
 在执行下面的示例代码前，请确保基本理解了Metashape或Pix4D的图像三维重建的工作流程，并且知道如何导出地图(DOM和DSM的tiff文件格式)和点云(ply文件格式)。并且知道一些基本的GIS矢量文件(shp)的格式与制作方法。
 
+> **Warning**    
 > 请注意，如果你看到了这句话，说明下面的这些功能还没有完成
 
 <details close>

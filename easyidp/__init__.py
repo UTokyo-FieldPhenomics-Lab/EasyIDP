@@ -14,7 +14,7 @@ class Container(dict):
     Caution
     -------
     This object can not be saved by ``pickle``, it will cause problem when loading
-    
+
     References
     ----------
     https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
@@ -46,15 +46,19 @@ class Container(dict):
                 else:  # act as common dictionary
                     self.item_label[key] = idx
         else:
-            raise KeyError(f"Key should be 'int', 'str', 'slice', not {key}")
+            raise KeyError(f"Key should be 'int', 'str', not {key}")
 
     def __getitem__(self, key):
         if isinstance(key, int):  # index by photo order
             return self.id_item[key]
         elif isinstance(key, str):  # index by photo name
             return self.id_item[self.item_label[key]]
-        # elif isinstance(key, slice):
-        #     return list(self.id_item.values())[key]
+        elif isinstance(key, slice):
+            idx_list = list(self.id_item.keys())[key]
+            out = Container()
+            out.id_item = {k:v for k, v in self.id_item.items() if k in idx_list}
+            out.item_label = {k:v for k, v in self.item_label.items() if v in idx_list}
+            return out
         else:
             raise KeyError(f"Key should be 'int', 'str', 'slice', not {key}")
 

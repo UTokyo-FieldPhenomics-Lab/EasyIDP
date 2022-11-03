@@ -2,6 +2,7 @@ import os
 import pyproj
 import shapefile
 import numpy as np
+import warnings
 from tabulate import tabulate
 from tqdm import tqdm
 from pathlib import Path
@@ -377,6 +378,9 @@ def _find_name_related_int_id(shp_fields, name_field):
     """
     if name_field is None:
         field_id = None
+        warnings.warn(
+            "Not specifying parameter 'name_field', will using the row id (from 0 to end) as the index for each polygon."\
+            "Please using idp.shp.show_shp_field(shp_path) to display the full available indexs")
     elif isinstance(name_field, int):
         if name_field >= len(shp_fields):
             raise IndexError(f'Int key [{name_field}] is outside the number of fields {shp_fields}')

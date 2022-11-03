@@ -108,8 +108,10 @@ def test_read_shp_proj_success_print(capfd):
 def test_read_shp_key_names():
     shp_path = test_data.shp.utm53n_shp
 
-    str_no_name_field_title_false = idp.shp.read_shp(shp_path)
-    assert "1" in str_no_name_field_title_false.keys()
+    # show warning if not specifying 'name_field'
+    with pytest.warns(UserWarning, match=re.escape("Not specifying parameter 'name_field', will using the row id ")):
+        str_no_name_field_title_false = idp.shp.read_shp(shp_path)
+        assert "1" in str_no_name_field_title_false.keys()
 
     str_no_name_field_title_true= idp.shp.read_shp(shp_path, include_title=True)
     assert "line_1" in str_no_name_field_title_true.keys()

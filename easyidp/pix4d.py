@@ -17,6 +17,9 @@ class Pix4D(idp.reconstruct.Recons):
             self.open_project(project_path, raw_img_folder, param_folder)
 
     def open_project(self, project_path, raw_img_folder=None, param_folder=None):
+        # check if project_path = xxxx.p4d
+        if ".p4d" == project_path[-4:]:
+            project_path = project_path[:-4]
 
         p4d_dict = parse_p4d_project(str(project_path), param_folder)
 
@@ -25,6 +28,7 @@ class Pix4D(idp.reconstruct.Recons):
 
         # pix4d point cloud offset?
         self.meta["p4d_offset"] = read_xyz(p4d_dict["param"]["xyz"])
+        self.offset_np = self.meta["p4d_offset"]
 
         #####################
         # info for Sensor() #

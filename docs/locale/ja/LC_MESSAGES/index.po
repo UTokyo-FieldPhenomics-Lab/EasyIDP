@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-12-06 19:34+0900\n"
+"POT-Creation-Date: 2022-12-06 19:51+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -191,7 +191,7 @@ msgid ""
 msgstr ""
 
 #: ../../index.rst
-msgid "ROI种类"
+msgid "ROI types"
 msgstr ""
 
 #: ../../index.rst:114
@@ -309,8 +309,8 @@ msgstr ""
 
 #: ../../index.rst:262
 msgid ""
-"Then using the following code to forward project from raw img to DOM (raw"
-" forward dom -> raw4dom):"
+"Please using the following code to forward project from raw img to DOM "
+"(``raw forward dom`` -> ``raw4dom``):"
 msgstr ""
 
 #: ../../index.rst:272
@@ -550,5 +550,14 @@ msgstr ""
 #~ "images back to the DOM, as well"
 #~ " as replaceing corresponding region of "
 #~ "images by raw images."
+#~ msgstr ""
+
+#~ msgid "ROI种类"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Then using the following code to "
+#~ "forward project from raw img to "
+#~ "DOM (raw forward dom -> raw4dom):"
 #~ msgstr ""
 

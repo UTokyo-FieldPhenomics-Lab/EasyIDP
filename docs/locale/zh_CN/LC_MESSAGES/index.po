@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-12-06 19:34+0900\n"
+"POT-Creation-Date: 2022-12-06 19:51+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -191,8 +191,8 @@ msgid ""
 msgstr "可接受的ROI类型仅为多边形类型(网格是一种多边形的特殊形式)，并且每个多边形ROI的尺寸应该可以被完整的包含进单张原始照片(推荐最佳大小约为原始图片的1/4)"
 
 #: ../../index.rst
-msgid "ROI种类"
-msgstr ""
+msgid "ROI types"
+msgstr "ROI类型"
 
 #: ../../index.rst:114
 msgid ""
@@ -305,9 +305,8 @@ msgid "Save backward projected images"
 msgstr "保存反投影的图片结果："
 
 #: ../../index.rst:257
-#, fuzzy
 msgid "5. Forward Projection"
-msgstr "4. 逆投影"
+msgstr "5. 正投影"
 
 #: ../../index.rst:259
 msgid ""
@@ -318,9 +317,9 @@ msgstr "这个功能支持使用对应的原始图片来优化低质量的正射
 
 #: ../../index.rst:262
 msgid ""
-"Please using the following code to forward project from raw img to DOM (``raw"
-" forward dom`` -> ``raw4dom`` ):"
-msgstr "请使用下面的代码来把原始图正投影到正射影像DOM上（ ``raw forward dom`` ，缩减为 ``raw4dom`` ）"
+"Please using the following code to forward project from raw img to DOM "
+"(``raw forward dom`` -> ``raw4dom``):"
+msgstr "请使用下面的代码来把原始图正投影到正射影像DOM上（ ``raw forward dom`` 缩减为 ``raw4dom`` ）"
 
 #: ../../index.rst:272
 msgid ""
@@ -350,7 +349,7 @@ msgstr "保存单个ROI为单个GeoTiff文件"
 
 #: ../../index.rst:327
 msgid "Batch save single geotiff of each ROI:"
-msgstr 批量保存每个ROI为单个GeoTiff文件""
+msgstr "批量保存每个ROI为单个GeoTiff文件"
 
 #: ../../index.rst:333
 msgid "Refine DOM by raw images:"

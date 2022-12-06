@@ -73,6 +73,7 @@ Then install the package by:
 
         > pip install easyidp -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+.. _using-from-source-code:
 
 Using from source code
 ======================
@@ -89,11 +90,11 @@ If you need to make some changes to the source code (e.g. fix bugs) and want it 
     and need to restart python to make changes taking effects.
 
 
-Assuming the source package was downloaded in ``C:\path\to\source\code`` and the ``code`` folder has the following files:
+Assuming the source package was downloaded in ``C:\path\to\source\code\EasyIDP`` and the ``code`` folder has the following files:
 
 .. code-block:: text
 
-    C:\path\to\source\code
+    C:\path\to\source\code\EasyIDP
     ├─ docs/
     ├─ easyidp/
     ├─ tests/

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-17 08:40+0900\n"
+"POT-Creation-Date: 2022-12-06 19:18+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -110,35 +110,46 @@ msgid ""
 "accelerate the download speed:"
 msgstr ""
 
-#: ../../install.rst:78
+#: ../../install.rst:79
 msgid "Using from source code"
 msgstr ""
 
-#: ../../install.rst:80
+#: ../../install.rst:81
 msgid ""
 "If you need to make some changes to the source code (e.g. fix bugs) and "
 "want it work immediately (rather than waiting for offical fix). You can "
 "also using from the source code directly."
 msgstr ""
 
-#: ../../install.rst:83
+#: ../../install.rst:84
 msgid ""
 "Please ensure you have uninstalled the pypi easyidp in your current "
 "environment:"
 msgstr ""
 
-#: ../../install.rst:89
+#: ../../install.rst:90
 msgid "and need to restart python to make changes taking effects."
 msgstr ""
 
-#: ../../install.rst:92
+#: ../../install.rst:93
 msgid ""
 "Assuming the source package was downloaded in "
-"``C:\\path\\to\\source\\code`` and the ``code`` folder has the following "
-"files:"
+"``C:\\path\\to\\source\\code\\EasyIDP`` and the ``code`` folder has the "
+"following files:"
 msgstr ""
 
-#: ../../install.rst:104
+#: ../../install.rst:105
 msgid "Then you can used the following code to manual import easyidp package:"
 msgstr ""
+
+#: ../../install.rst:114
+msgid "Or install to your virtual environment by:"
+msgstr ""
+
+#~ msgid ""
+#~ "Assuming the source package was "
+#~ "downloaded in ``C:\\path\\to\\source\\code`` and "
+#~ "the ``code`` folder has the following"
+#~ " files:"
+#~ msgstr ""
 

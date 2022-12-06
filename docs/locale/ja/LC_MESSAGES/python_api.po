@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-24 20:37+0900\n"
+"POT-Creation-Date: 2022-12-06 19:18+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.9.1\n"
+"Generated-By: Babel 2.10.1\n"
 
 #: ../../python_api/autodoc/easyidp.cvtools.imarray_crop.rst:2
 msgid "easyidp.cvtools.imarray\\_crop"
@@ -131,12 +131,13 @@ msgstr ""
 
 #: easyidp.cvtools.poly2mask:14 of
 msgid ""
-"\"pillow\" or \"shapely\" pillow is slight different than "
-"skimage.polygon2mask shapely is almost the same with "
-"skiamge.polygon2mask, but effiency is very slow, not recommended"
+"\"skimage\" or \"pillow\" or \"shapely\" skimage.draw.polygon2mask, the "
+"default method pillow is slight different than skimage.draw.polygon2mask,"
+" deprecated shapely is almost the same with skiamge.draw.polygon2mask, "
+"but effiency is very slow, not recommended"
 msgstr ""
 
-#: easyidp.cvtools.poly2mask:19 of
+#: easyidp.cvtools.poly2mask:20 of
 msgid "**mask** -- the generated binary mask"
 msgstr ""
 
@@ -156,16 +157,16 @@ msgstr ""
 msgid "返回类型"
 msgstr ""
 
-#: easyidp.cvtools.poly2mask:23 easyidp.data.user_data_dir:10
+#: easyidp.cvtools.poly2mask:24 easyidp.data.user_data_dir:10
 #: easyidp.geotiff.GeoTiff.math_polygon:11 easyidp.geotiff.geo2pixel:15
 #: easyidp.geotiff.tifffile_crop:39 easyidp.jsonfile.dict2json:14
 #: easyidp.jsonfile.save_json:14 easyidp.jsonfile.write_json:14
 #: easyidp.pointcloud.write_ply:17 easyidp.roi.ROI.get_z_from_dsm:22
 #: easyidp.roi.ROI.open:7 easyidp.roi.ROI.read_shp:17 of
-msgid "提示"
+msgid "备注"
 msgstr ""
 
-#: easyidp.cvtools.poly2mask:24 of
+#: easyidp.cvtools.poly2mask:25 of
 msgid ""
 "This code is inspired from here: "
 "https://stackoverflow.com/questions/62280398/checking-if-a-point-is-"
@@ -368,6 +369,10 @@ msgid "Open and get the meta information (header) from geotiff"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.crop:1:<autosummary>:1 of
+msgid ":py:obj:`save <easyidp.geotiff.GeoTiff.save>`\\ \\(\\)"
+msgstr ""
+
+#: easyidp.geotiff.GeoTiff.crop:1:<autosummary>:1 of
 msgid ""
 ":py:obj:`save_geotiff <easyidp.geotiff.GeoTiff.save_geotiff>`\\ "
 "\\(imarray\\, left\\_top\\_corner\\, save\\_path\\)"
@@ -451,7 +456,7 @@ msgstr ""
 #: easyidp.geotiff.GeoTiff.point_query:12 easyidp.geotiff.geo2pixel:28
 #: easyidp.geotiff.tifffile_crop:49 easyidp.roi.ROI.get_z_from_dsm:49
 #: easyidp.shp.read_shp:27 of
-msgid "实际案例"
+msgid "示例"
 msgstr ""
 
 #: easyidp.geotiff.GeoTiff.crop_rectangle:43 easyidp.geotiff.tifffile_crop:58
@@ -2296,5 +2301,19 @@ msgstr ""
 #~ msgid ""
 #~ ":py:obj:`easyidp.shp.convert_proj <easyidp.shp.convert_proj>`\\"
 #~ " \\(shp\\_dict\\, ...\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "\"pillow\" or \"shapely\" pillow is "
+#~ "slight different than skimage.polygon2mask "
+#~ "shapely is almost the same with "
+#~ "skiamge.polygon2mask, but effiency is very "
+#~ "slow, not recommended"
+#~ msgstr ""
+
+#~ msgid "提示"
+#~ msgstr ""
+
+#~ msgid "实际案例"
 #~ msgstr ""
 

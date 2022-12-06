@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EasyIDP \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-17 08:40+0900\n"
+"POT-Creation-Date: 2022-12-06 19:18+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -115,37 +115,42 @@ msgid ""
 "accelerate the download speed:"
 msgstr "对于中国的用户，推荐使用清华源来加速下载速度："
 
-#: ../../install.rst:78
+#: ../../install.rst:79
 msgid "Using from source code"
 msgstr "使用源码"
 
-#: ../../install.rst:80
+#: ../../install.rst:81
 msgid ""
 "If you need to make some changes to the source code (e.g. fix bugs) and "
 "want it work immediately (rather than waiting for offical fix). You can "
 "also using from the source code directly."
 msgstr "如果你对源代码进行一些修改(如修复bug)并且想让它立即生效(而不是等待easyidp官方修复)。这种情况下可以直接使用源码"
 
-#: ../../install.rst:83
+#: ../../install.rst:84
 msgid ""
 "Please ensure you have uninstalled the pypi easyidp in your current "
 "environment:"
 msgstr "请确保从PyPI安装的easyidp已经从环境中移除："
 
-#: ../../install.rst:89
+#: ../../install.rst:90
 msgid "and need to restart python to make changes taking effects."
 msgstr "并且需要重启python来让改变生效"
 
-#: ../../install.rst:92
+#: ../../install.rst:93
+#, fuzzy
 msgid ""
 "Assuming the source package was downloaded in "
-"``C:\\path\\to\\source\\code`` and the ``code`` folder has the following "
-"files:"
+"``C:\\path\\to\\source\\code\\EasyIDP`` and the ``code`` folder has the "
+"following files:"
 msgstr "假设源代码已经被下载到 ``C:\\path\\to\\source\\code`` 文件夹内，并且 ``code`` 文件夹有着如下的文件结构："
 
-#: ../../install.rst:104
+#: ../../install.rst:105
 msgid "Then you can used the following code to manual import easyidp package:"
 msgstr "然后可以用下面的代码来手动导入easyidp的包："
+
+#: ../../install.rst:114
+msgid "Or install to your virtual environment by:"
+msgstr "或安装到虚拟环境："
 
 #~ msgid "Install"
 #~ msgstr "安装"

@@ -64,6 +64,11 @@ You can install the packages by PyPi:
     pip install easyidp
 
 
+.. note::
+
+    If you meet bugs in the pypi version, please consider using the latest source code. The tutorial can be found here: :ref:`using-from-source-code`.
+
+
 And import the packages in your python code:
 
 .. code-block:: python
@@ -91,7 +96,22 @@ And import the packages in your python code:
 
 The 2D roi can be used to crop the DOM, DSM, and point cloud ( `2. Crop by ROI`_ ). While the 3D roi can be used for Backward projection ( `4. Backward Projection`_ )
 
+.. caution::
 
+    It is highly recommended to ensure the shapefile and geotiff share the same coordinate reference systems (CRS), the built-in conversion algorithm in EasyIDP may suffer accuracy loss.
+
+    - It is recommended to use Coordinate reference systems for "UTM" (WGS 84 / UTM grid system), the unit for x and y are in meters and have been tested by EasyIDP developers.
+
+    - The traditional (longitude, latitude) coordinates like ``epsg::4326`` also supported, but not recommended if you need calculate "distences" hence its unit is degree.
+
+    - The local country commonly used coordinates like BJZ54 (北京54), CGCS2000 (2000国家大地坐标系), JDG2011 (日本測地系2011), and etc., have not been tested and hard to guarantee workable in EasyIDP. Please convert to UTM by GIS software if you meet any problem.
+
+    The acceptable ROI types are only polygons (grids are a special type of polygon), and the size of each polygon should be fittable into the raw images (around the 1/4 size of one raw image should be the best).
+
+    .. figure:: _static/images/roi_types.png
+        :alt: ROI types
+
+        The fourth one may too large to be fitted into each raw image, recommend to make smaller polygons.
 
 2. Crop by ROI
 --------------
@@ -231,6 +251,90 @@ Save backward projected images
     .. code-block:: python
 
         img_dict = roi.back2raw(p4d, save_folder="folder/to/put/results/")
+
+
+5. Forward Projection
+---------------------
+
+This function support refineing the bad quality DOM regions by corresponding raw images, at the mean time, if provided, converting the polygons on raw images back to the DOM with geo-coordinates.
+
+        
+Please using the following code to forward project from raw img to DOM (``raw forward dom`` -> ``raw4dom``):
+
+.. todo::
+
+    This feather has not supported yet.
+
+    .. code-block:: python
+
+        imarray_dict = roi.raw4dom(ms)
+
+    This is a dict contains the image ndarray of each ROI as keys, which projecting the part of raw image onto DOM.
+
+    .. code-block:: python
+
+        >>> geotif = imarray_dict['roi_111']
+        >>> geotif
+        <class 'easyidp.geotiff.GeoTiff'>
+        >>> geotif.imarray
+        array([[[103, 136, 126, 255],
+                ...,
+                [145, 208, 137, 255]],
+                ...,
+               [[246, 246, 242, 255],
+                ...,
+                [125, 176, 109, 255]]], dtype=uint8)
+                
+
+You can also do the forward projecting with detected results, the polygon are in the geo coordinate. Before doing that, please prepare the detected results (by detection or segmentation, polygons in raw image pixel coordinates).
+
+.. todo::
+
+    This feather has not supported yet.
+
+
+    .. code-block:: python
+
+        result_on_raw = idp.roi.load_results_on_raw_img(r"C:/path/to/detected/results/folder/IMG_2345.txt")
+
+    Then forward projecting by giving both to the function:
+
+    .. code-block:: python
+
+        >>> imarray_dict, coord_dict = roi.raw4dom(ms, result_on_raw)
+        >>> coord_dict['roi_111']
+        {0: array([[139.54052962,  35.73475194],
+                   ...,
+                   [139.54052962,  35.73475194]]), 
+         ...,
+         1: array([[139.54053488,  35.73473289],
+                   ...,
+                   [139.54053488,  35.73473289]]),
+
+And save the image results to files:
+
+.. todo::
+
+    This feather has not supported yet.
+
+    Save single geotiff of one ROI:
+
+    .. code-block:: python
+
+        >>> geotif = imarray_dict['roi_111']
+        >>> geotif.save(r"/file/path/to/save/geotif_roi_111.tif")
+
+    Batch save single geotiff of each ROI:
+
+    .. code-block:: python
+
+        >>> imarray_dict = roi.raw4dom(ms, save_folder="/path/to/save/folder")
+
+    Refine DOM by raw images:
+
+    .. code-block:: python
+
+        >>> imarray_dict = roi.raw4dom(ms, save_refined="/path/to/save/dom_refined.tif")
 
 
 Examples

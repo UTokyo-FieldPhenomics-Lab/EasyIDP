@@ -3,7 +3,8 @@
 ##################
 numpy>=1.18.1
 matplotlib >= 3.2.2
-pillow >= 9.0.0
+# pillow >= 9.0.0
+scikit-image >= 0.19.2
 
 # replace pandas to show table in command 
 tabulate >= 0.8.9

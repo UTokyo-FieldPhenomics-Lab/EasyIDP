@@ -1,5 +1,5 @@
 import numpy as np
-from PIL import Image, ImageDraw
+from skimage.draw import polygon2mask
 from shapely.geometry import MultiPoint, Polygon
 
 # ignore the warning of shapely convert coordiante
@@ -114,7 +114,7 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
     return imarray_out, roi_top_left_offset
 
 
-def poly2mask(image_shape, poly_coord, engine="pillow"):
+def poly2mask(image_shape, poly_coord, engine="skimage"):
     """convert vector polygon to raster masks, aim to avoid using skimage package
 
     Parameters
@@ -130,10 +130,11 @@ def poly2mask(image_shape, poly_coord, engine="pillow"):
             Will + 0.5 to coords (pixel center) as judge point
         if dtype is float -> view coords as real coord
             (0,0) will be the left upper corner of pixel square
-    engine : str, default "pillow"
-        "pillow" or "shapely"
-        pillow is slight different than skimage.polygon2mask
-        shapely is almost the same with skiamge.polygon2mask, but effiency is very slow, not recommended
+    engine : str, default "skimage"
+        "skimage" or "pillow" or "shapely"
+        skimage.draw.polygon2mask, the default method
+        pillow is slight different than skimage.draw.polygon2mask, deprecated
+        shapely is almost the same with skiamge.draw.polygon2mask, but effiency is very slow, not recommended
 
     Returns
     -------
@@ -168,7 +169,7 @@ def poly2mask(image_shape, poly_coord, engine="pillow"):
 
     if engine == "shapely" and max(xmax-xmin, ymax-ymin) > 100:
         warnings.warn("Shaply Engine can not handle size over 100 efficiently, convert using pillow engine")
-        engine = "pillow"
+        engine = "skimage"
 
     if xmin < 0 or ymin < 0 or xmax >= w or ymax >= h:
         raise ValueError(f"The polygon coords ({xmin}, {ymin}, {xmax}, {ymax}) is out of mask boundary [0, 0, {w}, {h}]")
@@ -176,7 +177,9 @@ def poly2mask(image_shape, poly_coord, engine="pillow"):
     if engine == "shapely":
         mask = _shapely_poly2mask(h, w, poly_coord)
     else:   # using pillow
-        mask = _pillow_poly2mask(h, w, poly_coord)
+        # mask = _pillow_poly2mask(h, w, poly_coord)
+        # the coordinate of xy is reversed with skimage
+        mask = polygon2mask((w, h), poly_coord).T
 
     return mask
 
@@ -218,17 +221,18 @@ def _shapely_poly2mask(h, w, poly_coord):
 
     return mask
 
-def _pillow_poly2mask(h, w, poly_coord):
-    mask = Image.new('1', (w, h), color=0)
-    draw = ImageDraw.Draw(mask)
+# def _pillow_poly2mask(h, w, poly_coord):
+#     # deprecated
+#     mask = Image.new('1', (w, h), color=0)
+#     draw = ImageDraw.Draw(mask)
 
-    xy_pil = [tuple(i) for i in poly_coord]
+#     xy_pil = [tuple(i) for i in poly_coord]
     
-    draw.polygon(xy_pil, fill=1, outline=1)
+#     draw.polygon(xy_pil, fill=1, outline=1)
 
-    mask = np.array(mask, dtype=bool)
+#     mask = np.array(mask, dtype=bool)
 
-    return mask
+#     return mask
 
 
 def rgb2gray(rgb):

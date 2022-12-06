@@ -106,6 +106,13 @@ Then you can used the following code to manual import easyidp package:
 .. code-block:: python
 
     import sys
-    sys.path.insert(0, f'C:/path/to/source/code')
+    sys.path.insert(0, r'C:/path/to/source/code/EasyIDP')
 
     import easyidp as idp
+
+Or install to your virtual environment by:
+
+.. code-block:: bash
+
+    > cd "C:/path/to/source/code/EasyIDP"   # contains setup.py
+    > pip install -e .

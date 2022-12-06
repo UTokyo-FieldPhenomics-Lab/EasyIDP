@@ -17,9 +17,9 @@ def test_poly2mask_type_int():
     height = 10
 
     mask_shp = idp.cvtools.poly2mask((width, height), xy, engine='shapely')
-    mask_pil = idp.cvtools.poly2mask((width, height), xy)
+    mask_skm = idp.cvtools.poly2mask((width, height), xy, engine='skimage')
 
-    # the same results from skinage.polygon > 0.18.3
+    # the same results from skimage.polygon > 0.18.3
     wanted_shp = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
@@ -44,7 +44,8 @@ def test_poly2mask_type_int():
                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
 
     np.testing.assert_equal(mask_shp, wanted_shp)
-    np.testing.assert_equal(mask_pil, wanted_pil)
+    # np.testing.assert_equal(mask_pil, wanted_pil)
+    np.testing.assert_equal(mask_skm, wanted_shp)
 
 
 def test_poly2mask_type_float():
@@ -52,32 +53,47 @@ def test_poly2mask_type_float():
     y=[1,2,8,1]   # vertical coord
     xy = np.array([x,y], dtype=np.float16).T   # get float type
 
-    mask_shp = idp.cvtools.poly2mask((10, 10), xy, engine="shapely")
-    mask_pil = idp.cvtools.poly2mask((10, 10), xy)
+    width = 11
+    height = 10
 
-    wanted_shp = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+    mask_shp = idp.cvtools.poly2mask((width, height), xy, engine='shapely')
+    mask_skm = idp.cvtools.poly2mask((width, height), xy, engine='skimage')
 
-    wanted_pil = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 1, 1, 1, 1, 1, 1, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
+    wanted_shp = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                           [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                           [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
+
+    wanted_pil = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
+
+    wanted_skm = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                           [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
 
     np.testing.assert_equal(mask_shp, wanted_shp)
+    np.testing.assert_equal(mask_skm, wanted_skm)
 
 def test_poly2mask_out_of_bound():
     x=[1,7,4,1]   # horizontal coord

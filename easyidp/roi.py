@@ -460,7 +460,6 @@ def read_cc_txt(txt_path):
 
 
 # Load detections for backwards projection 
-import pandas as pd
 
 def load_detections(path):
     """Load a csv file of bounding box detections
@@ -473,8 +472,8 @@ def load_detections(path):
         boxes: a pandas dataframe of detections
     """
     
-    boxes = pd.read_csv(path)
+    # boxes = pd.read_csv(path)
     if not all([x in ["image_path","xmin","ymin","xmax","ymax","image_path","label"] for x in boxes.columns]):
         raise IOError("{} is expected to be a .csv with columns, xmin, ymin, xmax, ymax, image_path, label for each detection")
         
-    return boxes
+    return None

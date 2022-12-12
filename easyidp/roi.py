@@ -3,7 +3,6 @@ import pyproj
 import warnings
 import numpy as np
 from tqdm import tqdm
-from copy import copy as ccopy
 from shapely.geometry import Point, Polygon
 from pathlib import Path
 
@@ -391,6 +390,25 @@ class ROI(idp.Container):
         log : bool, optional
             whether print log for debugging, by default False
 
+        Returns
+        -------
+        out_dict : dict
+            The 2-layer dictionary, the first layer is the roi id, the second layer is the image names contains each roi ( ``out_dict['roi_id']['image_name']`` )
+
+            .. code-block:: python
+
+                >>> out_dict = roi.back2raw(...)
+                # find all available images with specified roi (plot), e.g. roi named 'N1W1':
+                >>> one_roi_dict = out_dict['N1W1']  # roi id
+                {'IMG_3457': ..., 'IMG_3458': ..., ...}
+                # find the sepecific roi on specific image, e.g. roi named 'N1W1' on image 'IMG_3457':
+                >>> one_roi_one_img_coord = out_dict["N1W1']['IMG_3457']
+                array([[  43.9388228 , 1247.0474214 ],
+                       [  69.04076173,  972.90860296],
+                       [ 353.26968458,  993.31308291],
+                       [ 328.12327606, 1267.41006845],
+                       [  43.9388228 , 1247.0474214 ]])
+
         See also
         --------
         easyidp.pix4d.back2raw, easyidp.metashape.back2raw
@@ -415,21 +433,6 @@ class ROI(idp.Container):
                 out_dict[chunk.label] = chunk.back2raw(self, save_folder=save_path, **kwargs)
 
         return out_dict
-
-    def copy(self):
-        """make a deep copy of current file
-
-        Returns
-        -------
-        easyidp.ROI
-        """
-        ctn = ROI()
-        ctn.id_item = self.id_item.copy()
-        ctn.item_label = self.item_label.copy()
-        ctn.crs = ccopy(self.crs)
-        ctn.source = ccopy(self.source)
-
-        return ctn
 
 
 def read_cc_txt(txt_path):

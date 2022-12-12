@@ -423,7 +423,7 @@ We also thanks the benefits from the following open source projects:
 
   * numpy: `https://numpy.org/ <https://numpy.org/>`_ 
   * matplotlib: `https://matplotlib.org/ <https://matplotlib.org/>`_ 
-  * pillow: `https://github.com/python-pillow/Pillow <https://github.com/python-pillow/Pillow>`_ 
+  * scikit-image: `https://github.com/scikit-image/scikit-image <https://github.com/scikit-image/scikit-image>`_ 
   * pyproj: `https://github.com/pyproj4/pyproj <https://github.com/pyproj4/pyproj>`_ 
   * tifffile: `https://github.com/cgohlke/tifffile <https://github.com/cgohlke/tifffile>`_ 
   * imagecodecs: `https://github.com/cgohlke/imagecodecs <https://github.com/cgohlke/imagecodecs>`_ 

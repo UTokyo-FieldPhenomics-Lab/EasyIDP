@@ -22,6 +22,7 @@
       ~GeoTiff.math_polygon
       ~GeoTiff.point_query
       ~GeoTiff.read_geotiff
+      ~GeoTiff.save
       ~GeoTiff.save_geotiff
    
    

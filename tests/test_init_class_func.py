@@ -38,6 +38,12 @@ def test_class_container():
     for value in ctn.values():
         assert value in v
 
+    # test copy itself
+    ctn_copy = ctn.copy()
+    assert len(ctn_copy) == 5
+    for key in ctn_copy.keys():  # [6,7,8,9,10]
+        assert key in ['6','7','8','9','10']
+
     # test get order by slicing
     slice_test = ctn[0:3]
 

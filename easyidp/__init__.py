@@ -4,6 +4,8 @@ import os
 import warnings
 from pathlib import Path
 
+from copy import deepcopy
+
 ##############
 # dict tools #
 ##############
@@ -55,9 +57,11 @@ class Container(dict):
             return self.id_item[self.item_label[key]]
         elif isinstance(key, slice):
             idx_list = list(self.id_item.keys())[key]
-            out = Container()
+
+            out = self.copy()
             out.id_item = {k:v for k, v in self.id_item.items() if k in idx_list}
             out.item_label = {k:v for k, v in self.item_label.items() if v in idx_list}
+            
             return out
         else:
             raise KeyError(f"Key should be 'int', 'str', 'slice', not {key}")
@@ -107,6 +111,9 @@ class Container(dict):
         for k, idx in self.item_label.items():
             out_dict[k] = self.id_item[idx]
         return out_dict.items()
+
+    def copy(self):
+        return deepcopy(self)
 
 
 def _find_key(mydict, value):

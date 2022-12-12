@@ -36,6 +36,36 @@ def test_class_roi_init():
     assert len(roi) == 1
     assert "ddfge" in roi.item_label.keys()
 
+def test_class_roi_slice():
+    # solve the issue 58
+    roi = idp.ROI()
+
+    roi.read_shp(test_data.shp.roi_shp, name_field=0)
+
+    assert len(roi) == 3
+
+    roi = roi[0:2]
+
+    assert len(roi) == 2
+
+    for func_name in ["crop", "back2raw", "get_z_from_dsm"]:
+        assert func_name in dir(roi)
+
+def test_class_roi_copy():
+    roi = idp.ROI()
+
+    roi.read_shp(test_data.shp.roi_shp, name_field=0)
+
+    roi_copy = roi.copy()
+
+    roi_copy[0][0, 0] = 368000
+
+    assert roi_copy[0][0, 0] == 368000
+    assert roi[0][0, 0] == 368101.05641086295
+
+    assert roi.crs == roi_copy.crs
+    assert roi.source == roi_copy.source
+
 def test_class_roi_read_shp():
     roi = idp.ROI()
 

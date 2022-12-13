@@ -17,8 +17,8 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
     polygon_hv : ndarray
         pixel position of boundary point, (horizontal, vertical) which reverted the imarray axis 0 to 1
     outside_value: int | float
-        specify exact value outside the polgyon, default 0
-        But for some DSM geotiff, it can be -10000.0
+        specify exact value outside the polgyon, default 0.
+        But for some DSM geotiff, it could be -10000.0, depends on the geotiff meta infomation
 
     returns
     -------
@@ -120,18 +120,24 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
     Parameters
     ----------
     image_shape : tuple with 2 element
+        .. caution::
+            it is reversed with numpy index order 
+
         (horizontal, vertical) = (width, height)
-        !!! it is reversed with numpy index order !!!
+
     poly_coord : np.ndarray -> dtype = int or float
+        .. caution::
+            it is reversed with numpy index order
+
         (horizontal, vertical) = (width, height)
-        !!! it is reversed with numpy index order !!!
 
         If dtype is int -> view coord as pixel index number
             Will + 0.5 to coords (pixel center) as judge point
         if dtype is float -> view coords as real coord
             (0,0) will be the left upper corner of pixel square
+            
     engine : str, default "skimage"
-        "skimage" or "pillow" or "shapely"
+        "skimage" or "shapely"; the "pillow" has been deprecated
         skimage.draw.polygon2mask, the default method
         pillow is slight different than skimage.draw.polygon2mask, deprecated
         shapely is almost the same with skiamge.draw.polygon2mask, but effiency is very slow, not recommended
@@ -236,6 +242,21 @@ def _shapely_poly2mask(h, w, poly_coord):
 
 
 def rgb2gray(rgb):
-    # https://stackoverflow.com/questions/12201577/how-can-i-convert-an-rgb-image-into-grayscale-in-python
-    # how matplotlib did the transform
+    """Transform the RGB image to gray image
+
+    Parameters
+    ----------
+    rgb : mxnx3 ndarray
+        The RGB ndarray image need to be converted
+
+    Returns
+    -------
+    gray : mxn ndarray
+        The output 2D ndarray after convension
+
+    Notes
+    -----
+    Using the same formular that matplotlib did for the transformation
+    https://stackoverflow.com/questions/12201577/how-can-i-convert-an-rgb-image-into-grayscale-in-python
+    """
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])

@@ -453,7 +453,9 @@ def write_ply(points, colors, ply_path, normals=None, binary=True):
 
     Notes
     -----
-    Need to convert to structured arrays [1]_ then save 
+    (For developers)
+
+    The ``plyfile`` packages requires to convert the outputs to numpy structured arrays [1]_ then save 
     the point cloud structure looks like this:
 
     .. code-block:: python

@@ -409,6 +409,29 @@ class ROI(idp.Container):
                        [ 328.12327606, 1267.41006845],
                        [  43.9388228 , 1247.0474214 ]])
 
+            .. caution::
+                It is recommended to use dict.items() for iteration.
+
+                .. code-block:: python
+                
+                    for roi_id, img_dict in out_dict.items():
+                        # roi_id = 'N1W1'
+                        # img_dict = out_dict[roi_id]
+                        for img_name, coords in img_dict.items():
+                            # img_name = "IMG_3457"
+                            # coords = out_dict[roi_id][img_name]
+                            print(coords)
+
+                Not recommended to use in this way:
+
+                .. code-block:: python
+                
+                    for roi_id in out_dict.keys()
+                        img_dict = out_dict[roi_id]
+                        for img_name in img_dict.keys():
+                            coords = out_dict[roi_id][img_name]
+                            print(coords)
+                
         See also
         --------
         easyidp.pix4d.back2raw, easyidp.metashape.back2raw

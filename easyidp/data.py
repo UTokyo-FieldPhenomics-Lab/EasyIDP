@@ -63,6 +63,8 @@ def user_data_dir(file_name=""):
 def show_data_dir():
     """open the cached data files in cross-platform system default viewer.
 
+    Notes
+    -----
     It modified from this [1]_ webpage.
 
     References
@@ -118,6 +120,8 @@ def download_all():
 
 
 class EasyidpDataSet():
+    """The base class for Dataset
+    """
 
     def __init__(self, name="", url_list=[], size="",):
         """The dataset has the following properties (almost in string type)
@@ -286,8 +290,51 @@ class EasyidpDataSet():
 
 
 class Lotus(EasyidpDataSet):
+    """The dataset for lotus plot in Tanashi, Tokyo.
+
+    .. image:: ../../_static/images/data/2017_tanashi_lotus.png 
+        :width: 600
+        :alt: 2017_tanashi_lotus.png 
+
+    - **Crop** : lotus
+    - **Location** : Tanashi, Nishi-Tokyo, Japan
+    - **Flight date** : May 31, 2017
+    - **UAV model** : DJI Inspire 1
+    - **Flight height** : 30m
+    - **Image number** :142
+    - **Image size** : 4608 x 3456
+    - **Software** : Pix4D, Metashape
+    - **Outputs** : DOM, DSM, PCD
+    """
 
     def __init__(self):
+        """
+        Containts the following arguments, you can access by:
+
+        .. code-block:: python
+
+            >>> lotus = idp.data.Lotus()
+            >>> lotus.photo
+            'C:\\Users\\<user>\\AppData\\Local\\easyidp.data\\2017_tanashi_lotus\\20170531\\photos'
+
+        - ``.photo`` : the folder containts raw images
+        - ``.shp`` : the plot roi shapefile
+        - ``.pix4d.project`` : the pix4d project folder
+        - ``.pix4d.param`` : the pix4d project parameter folder
+        - ``.pix4d.dom`` : the pix4d produced orthomosaic
+        - ``.pix4d.dsm`` : the pix4d produced digial surface moodel
+        - ``.pix4d.pcd`` : the pix4d produced point cloud
+        - ``.metashape.project`` : the metashape project file
+        - ``.metashape.param`` : the metashape project folder
+        - ``.metashape.dom`` : the metashape produced orthomosaic
+        - ``.metashape.pcd`` : the metashape produced point cloud
+        - ``.metashape.dsm`` : the metashape produced digial surface moodel
+
+        See also
+        --------
+        EasyidpDataSet
+        """
+
         url_list = [
             "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing",
             "https://fieldphenomics.cowtransfer.com/s/9a87698f8d3242"
@@ -312,9 +359,6 @@ class Lotus(EasyidpDataSet):
         self.metashape.dsm = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif"
         self.metashape.pcd = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz"
 
-    def load_data(self):
-        return super().load_data()
-
         
 class GDownTest(EasyidpDataSet):
 
@@ -329,14 +373,109 @@ class GDownTest(EasyidpDataSet):
         self.pix4d.proj = self.data_dir / "file1.txt"
         self.metashape.param = self.data_dir / "folder1"
 
-    def load_data(self):
-        return super().load_data()
-
 
 
 class TestData(EasyidpDataSet):
+    """The data for developer and package testing.
+    """
 
     def __init__(self, test_out="./tests/out"):
+        """
+        Containts the following arguments, you can access by:
+        
+        **json test module** 
+
+        * ``.json.for_read_json``
+        * ``.json.labelme_demo``
+        * ``.json.labelme_warn``
+        * ``.json.labelme_err``
+
+        **shp test module** 
+
+        * ``.shp.lotus_shp`` 
+        * ``.shp.lotus_prj`` 
+        * ``.shp.complex_shp``
+        * ``.shp.complex_prj``
+        * ``.shp.lonlat_shp``
+        * ``.shp.utm53n_shp``
+        * ``.shp.utm53n_prj``
+        * ``.shp.rice_shp``
+        * ``.shp.rice_prj``
+        * ``.shp.roi_shp``
+        * ``.shp.roi_prj``
+        * ``.shp.testutm_shp``
+        * ``.shp.testutm_prj``
+
+        **pcd test module** 
+
+        * ``.pcd.lotus_las``
+        * ``.pcd.lotus_laz``
+        * ``.pcd.lotus_pcd``
+        * ``.pcd.lotus_las13``
+        * ``.pcd.lotus_laz13``
+        * ``.pcd.lotus_ply_asc``
+        * ``.pcd.lotus_ply_bin``
+        * ``.pcd.maize_las``
+        * ``.pcd.maize_laz``
+        * ``.pcd.maize_ply``
+
+        **roi test module** 
+
+        * ``.roi.dxf``
+        * ``.roi.lxyz_txt``
+        * ``.roi.xyz_txt``
+
+        **geotiff test module**
+
+        * ``.tiff.soyweed_part``
+        * ``.tiff.out``
+
+        **metashape test module** 
+
+        * ``.metashape.goya_psx``
+        * ``.metashape.goya_param``
+        * ``.metashape.lotus_psx``
+        * ``.metashape.lotus_param``
+        * ``.metashape.lotus_dsm``
+        * ``.metashape.wheat_psx``
+        * ``.metashape.wheat_param``
+
+        **pix4d test module** 
+
+        * ``.pix4d.lotus_folder``
+        * ``.pix4d.lotus_param``
+        * ``.pix4d.lotus_photos``
+        * ``.pix4d.lotus_dom``
+        * ``.pix4d.lotus_dsm``
+        * ``.pix4d.lotus_pcd``
+        * ``.pix4d.lotus_dom_part``
+        * ``.pix4d.lotus_dsm_part``
+        * ``.pix4d.lotus_pcd_part``
+        * ``.pix4d.maize_folder``
+        * ``.pix4d.maize_dom``
+        * ``.pix4d.maize_dsm``
+        * ``.pix4d.maize_noparam``
+        * ``.pix4d.maize_empty``
+        * ``.pix4d.maize_noout``
+
+        **cvtools test module** 
+
+        * ``.cv.out``
+        
+        **visualize test module** 
+
+        * ``.vis.out``
+
+
+        Parameters
+        ----------
+        test_out : str, optional
+            The folder for saving temporary outputs, by default "./tests/out"
+
+        See also
+        --------
+        EasyidpDataSet
+        """
         url_list = [
             "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=sharing",
             "https://fieldphenomics.cowtransfer.com/s/edaf0826b02548"

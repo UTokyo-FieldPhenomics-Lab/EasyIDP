@@ -17,3 +17,4 @@ Functions
 
     imarray_crop
     poly2mask
+    rgb2gray

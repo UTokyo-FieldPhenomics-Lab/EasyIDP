@@ -7,17 +7,14 @@ Data
 Dataset
 =======
 
-
-Here have the following dataset: 
+The datasets are as follows (**for user**):
 
 .. autosummary::
     :toctree: autodoc
 
-    EasyidpDataSet
-    TestData
     Lotus
 
-Dataset use examples:
+Use example:
 
 .. code-block:: python
 
@@ -35,6 +32,15 @@ Dataset use examples:
     'C:\\Users\\<user>\\AppData\\Local\\easyidp.data\\2017_tanashi_lotus\\20170531\\photos'
     >>> lotus.pix4d.param
     'C:\\Users\\<user>\\AppData\\Local\\easyidp.data\\2017_tanashi_lotus\\20170531\\params'
+
+
+The dataset base class and testing class (**for developers**): 
+
+.. autosummary::
+    :toctree: autodoc
+
+    EasyidpDataSet
+    TestData
 
 
 Functions

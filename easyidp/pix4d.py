@@ -196,8 +196,8 @@ class Pix4D(idp.reconstruct.Recons):
             # correct
             >>> pcd = idp.PointCloud(lotus_full_pcd, offset=p4d.meta['p4d_offset'])
 
-        Examples
-        --------
+        Example
+        -------
 
         .. code-block:: python
 
@@ -222,8 +222,8 @@ class Pix4D(idp.reconstruct.Recons):
         geotiff_path : str
             The path to DOM file
 
-        Examples
-        --------
+        Example
+        -------
 
         .. code-block:: python
 
@@ -248,8 +248,8 @@ class Pix4D(idp.reconstruct.Recons):
         geotiff_path : str
             The path to DSM file
 
-        Examples
-        --------
+        Example
+        -------
 
         .. code-block:: python
 

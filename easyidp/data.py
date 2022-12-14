@@ -322,13 +322,13 @@ class Lotus(EasyidpDataSet):
         - ``.pix4d.project`` : the pix4d project folder
         - ``.pix4d.param`` : the pix4d project parameter folder
         - ``.pix4d.dom`` : the pix4d produced orthomosaic
-        - ``.pix4d.dsm`` : the pix4d produced digial surface moodel
+        - ``.pix4d.dsm`` : the pix4d produced digial surface del
         - ``.pix4d.pcd`` : the pix4d produced point cloud
         - ``.metashape.project`` : the metashape project file
         - ``.metashape.param`` : the metashape project folder
         - ``.metashape.dom`` : the metashape produced orthomosaic
         - ``.metashape.pcd`` : the metashape produced point cloud
-        - ``.metashape.dsm`` : the metashape produced digial surface moodel
+        - ``.metashape.dsm`` : the metashape produced digial surface model
 
         See also
         --------

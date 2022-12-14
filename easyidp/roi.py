@@ -76,9 +76,9 @@ class ROI(idp.Container):
         shp_path : str
             the file path of \*.shp
         shp_proj : str | pyproj object
-            by default None, will read automatically from prj file with the same name of shp filename, 
-            or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or 
-            ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)`` 
+            | by default None, will read automatically from prj file with the same name of shp filename, 
+            | or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or 
+            | ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)`` 
         name_field : str or int or list[ str|int ], optional
             by default None, the id or name of shp file fields as output dictionary keys
         include_title : bool, optional
@@ -93,6 +93,7 @@ class ROI(idp.Container):
         See also
         --------
         easyidp.shp.read_shp
+
         """
         # if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
         # shp.convert_proj()
@@ -108,6 +109,29 @@ class ROI(idp.Container):
             self[k] = v
 
     def read_labelme_json(self, json_path):
+        """read roi from labelme marked json file
+
+        Parameters
+        ----------
+        json_path : str
+            the path to labelme json file.
+
+        Example
+        -------
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+            >>> json_path = test_data.json.labelme_demo
+            PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/json_test/labelme_demo_img.json')
+            >>> roi = idp.ROI(json_path)
+            >>> roi
+            {0: array([[2447.2392638 , 1369.32515337],
+                       [2469.93865031, 1628.2208589 ],
+                       [2730.06134969, 1605.52147239],
+                       [2703.06748466, 1348.46625767]])}
+
+        """
         js_dict = idp.jsonfile.read_json(json_path)
 
         # check if is labelme json
@@ -131,6 +155,104 @@ class ROI(idp.Container):
             raise TypeError(f"It seems [{json_path}] is not a Labelme json file.")
 
     def change_crs(self, target_crs):
+        """Change the geo coordinates of roi to another crs.
+
+        Parameters
+        ----------
+        target_crs : pyproj.CRS
+            the CRS want convert to.
+
+        Example
+        -------
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+        Read roi with lon and lat CRS (WGS84)
+
+        .. code-block:: python
+
+            >>> roi = idp.ROI(test_data.shp.lotus_shp)
+            [shp][proj] Use projection [WGS 84] for loaded shapefile [lotus_plots.shp]
+            >>> roi.crs
+            <Geographic 2D CRS: EPSG:4326>
+            Name: WGS 84
+            Axis Info [ellipsoidal]:
+            - Lat[north]: Geodetic latitude (degree)
+            - Lon[east]: Geodetic longitude (degree)
+            Area of Use:
+            - name: World.
+            - bounds: (-180.0, -90.0, 180.0, 90.0)
+            Datum: World Geodetic System 1984 ensemble
+            - Ellipsoid: WGS 84
+            - Prime Meridian: Greenwich
+
+        Check the roi coordinates
+
+        .. code-block:: python
+
+            >>> roi[0]
+            array([[139.54052962,  35.73475194],
+                   [139.54055106,  35.73475596],
+                   [139.54055592,  35.73473843],
+                   [139.54053438,  35.73473446],
+                   [139.54052962,  35.73475194]])
+
+        Read a geotiff with different CRS (UTM 54N)
+
+        .. code-block:: python
+
+            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            >>> target_crs = dom.header["crs"]
+            >>> target_crs
+            <Derived Projected CRS: EPSG:32654>
+            Name: WGS 84 / UTM zone 54N
+            Axis Info [cartesian]:
+            - E[east]: Easting (metre)
+            - N[north]: Northing (metre)
+            Area of Use:
+            - name: Between 138°E and 144°E, northern hemisphere between equator and 84°N, onshore and offshore. Japan. Russian Federation.
+            - bounds: (138.0, 0.0, 144.0, 84.0)
+            Coordinate Operation:
+            - name: UTM zone 54N
+            - method: Transverse Mercator
+            Datum: World Geodetic System 1984 ensemble
+            - Ellipsoid: WGS 84
+            - Prime Meridian: Greenwich
+
+        Change the roi crs (coordiante) from WGS84 to UTM 54N
+
+        .. code-block:: python
+
+            >>> roi.change_crs(target_crs)
+            >>> roi.crs
+            <Derived Projected CRS: EPSG:32654>
+            Name: WGS 84 / UTM zone 54N
+            Axis Info [cartesian]:
+            - E[east]: Easting (metre)
+            - N[north]: Northing (metre)
+            Area of Use:
+            - name: Between 138°E and 144°E, northern hemisphere between equator and 84°N, onshore and offshore. Japan. Russian Federation.
+            - bounds: (138.0, 0.0, 144.0, 84.0)
+            Coordinate Operation:
+            - name: UTM zone 54N
+            - method: Transverse Mercator
+            Datum: World Geodetic System 1984 ensemble
+            - Ellipsoid: WGS 84
+            - Prime Meridian: Greenwich
+
+        Check the converted coordiante values
+
+        .. code-block:: python
+
+            >>> roi[0]
+            array([[ 368017.7565143 , 3955511.08102276],
+                   [ 368019.70190232, 3955511.49811902],
+                   [ 368020.11263046, 3955509.54636219],
+                   [ 368018.15769062, 3955509.13563382],
+                   [ 368017.7565143 , 3955511.08102276]])
+        """
         if self.crs is None:
             raise FileNotFoundError(
                 "Current ROI does not have CRS, can not convert "
@@ -201,20 +323,20 @@ class ROI(idp.Container):
         dsm : str | <GeoTiff> object
             the path of dsm, or the GeoTiff object from idp.GeoTiff()
         mode : str, optional
-            the mode to calculate z values, option in "point" and "face"
-            **point**: get height on each vertex, result in different values for each vertex
-            **face**: get height on polygon face, result in the same value for each vertex
+            | the mode to calculate z values, option in "point" and "face"
+            | **point**: get height on each vertex, result in different values for each vertex
+            | **face**: get height on polygon face, result in the same value for each vertex
         kernal : str, optional
-            The math kernal to calculate the z value.
-            ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"], by default 'mean'
+            | The math kernal to calculate the z value.
+            | ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"], by default 'mean'
         buffer : float, optional
-            the buffer of ROI, by default 0 (no buffer),
-            can be positive values or -1 (using all map), 
-            please check the Notes section for more details
+            | the buffer of ROI, by default 0 (no buffer),
+            | can be positive values or -1 (using all map), 
+            | please check the Notes section for more details
         keep_crs : bool, optional
-            When the crs is not the save with DSM crs, where change the ROI crs to fit DSM.
-            **False** (default): change ROI's CRS;
-            **True**: not change ROI's CRS, only attach the z value to current coordinate. 
+            | When the crs is not the save with DSM crs, where change the ROI crs to fit DSM.
+            | **False** (default): change ROI's CRS;
+            | **True**: not change ROI's CRS, only attach the z value to current coordinate. 
 
         Notes
         -----
@@ -229,7 +351,9 @@ class ROI(idp.Container):
         - "pmax5": 95th *percentile mean* inside polygon
         - "pmax10": 90th *percentile mean* inside polygon
 
-        percentile mean: the mean value of all pixels over/under xth percentile threshold
+        .. note::
+        
+            percentile mean: the mean value of all pixels over/under xth percentile threshold
 
         **Option details for** ``buffer`` **parameter**
 
@@ -245,14 +369,15 @@ class ROI(idp.Container):
             :alt: roi_crop_mode.png
 
 
-        Examples
-        --------
+        Example
+        -------
 
-        Combine 
+        To be continued
 
         See also
         --------
-        easyidp.GeoTiff.math_polygon
+        :func:`easyidp.GeoTiff.mathpolygon <easyidp.geotiff.GeoTiff.math_polygon>`
+
         """
         dsm = self._get_z_input_check(dsm, mode, kernel, buffer, func="dsm")
 
@@ -343,6 +468,7 @@ class ROI(idp.Container):
         See also
         --------
         easyidp.GeoTiff.crop
+
         """
         if not self.is_geo():
             raise TypeError("Could not operate without CRS specified")
@@ -380,13 +506,13 @@ class ROI(idp.Container):
         save_folder : str, optional
             the folder to save projected preview images and json files, by default ""
         distortion_correct : bool, optional
-            Whether do distortion correction, by default True (back to raw image with lens distortion);
-            If back to software corrected images without len distortion, set it to False. 
-            (Pix4D support do this operation, seems metashape not supported yet.)
+            | Whether do distortion correction, by default True (back to raw image with lens distortion);
+            | If back to software corrected images without len distortion, set it to False. 
+            | (Pix4D support do this operation, seems metashape not supported yet.)
         ignore : str | None, optional
-            None: strickly in image area;
-            'x': only y (vertical) in image area, x can outside image;
-            'y': only x (horizontal) in image area, y can outside image.
+            | None: strickly in image area;
+            | 'x': only y (vertical) in image area, x can outside image;
+            | 'y': only x (horizontal) in image area, y can outside image.
         log : bool, optional
             whether print log for debugging, by default False
 
@@ -413,7 +539,7 @@ class ROI(idp.Container):
                 It is recommended to use dict.items() for iteration.
 
                 .. code-block:: python
-                
+
                     for roi_id, img_dict in out_dict.items():
                         # roi_id = 'N1W1'
                         # img_dict = out_dict[roi_id]
@@ -435,6 +561,7 @@ class ROI(idp.Container):
         See also
         --------
         easyidp.pix4d.back2raw, easyidp.metashape.back2raw
+
         """
         # call related function
         # need check alt exists, the alt is changing for different dsm?

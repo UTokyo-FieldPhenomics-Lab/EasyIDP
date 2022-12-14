@@ -69,6 +69,7 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
     See also
     --------
     easyidp.jsonfile.write_json, easyidp.jsonfile.save_json
+    
     """
     json_path = str(json_path)
     if isinstance(json_path, str) and json_path[-5:] == '.json':

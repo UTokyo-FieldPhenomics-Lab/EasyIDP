@@ -107,8 +107,8 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     pyproj.CRS, optional
         once set return_proj=True
 
-    Examples
-    --------
+    Example
+    -------
 
     The example shp file has the following columns:
 
@@ -143,7 +143,8 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     .. code-block:: python
 
         >>> import easyidp as idp
-        >>> data_path = "./tests/data/shp_test/complex_shp_review.shp"
+        >>> testdata = idp.data.TestData()
+        >>> data_path = testdata.shp.complex_shp
 
     Then using the second column ``MASSIFID`` as shape keys:
 
@@ -279,9 +280,10 @@ def convert_proj(shp_dict, origin_proj, target_proj):
     shp_proj : pyproj object
         the hidden output of read_shp(..., return_proj=True)
     target_proj : str | pyproj object
-        Examples:
-        [1] pyproj.CRS.from_epsg(4326)  
-        [2] r'path/to/{shp_name}.prj',
+        | Examples:
+        | ``target_proj = pyproj.CRS.from_epsg(4326)``
+        | ``target_proj = r'path/to/{shp_name}.prj'``
+
     """
     transformer = pyproj.Transformer.from_proj(origin_proj, target_proj)
     trans_dict = {}

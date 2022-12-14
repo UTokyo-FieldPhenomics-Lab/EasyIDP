@@ -455,7 +455,7 @@ def write_ply(points, colors, ply_path, normals=None, binary=True):
     -----
     (For developers)
 
-    The ``plyfile`` packages requires to convert the outputs to numpy structured arrays [1]_ then save 
+    The ``plyfile`` packages requires to convert the ndarray outputs to numpy structured arrays [1]_ , then save 
     the point cloud structure looks like this:
 
     .. code-block:: python
@@ -467,7 +467,8 @@ def write_ply(points, colors, ply_path, normals=None, binary=True):
              PlyProperty('z', 'float'), 
              PlyProperty('red', 'uchar'), 
              PlyProperty('green', 'uchar'), 
-             PlyProperty('blue', 'uchar')), count=42454, comments=[]),)
+             PlyProperty('blue', 'uchar')
+        ), count=42454, comments=[]),)
     
     convert ndarray to strucutred array [2]_ and method to merge to structured arrays [3]_
 

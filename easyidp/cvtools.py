@@ -17,8 +17,8 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
     polygon_hv : ndarray
         pixel position of boundary point, (horizontal, vertical) which reverted the imarray axis 0 to 1
     outside_value: int | float
-        specify exact value outside the polgyon, default 0.
-        But for some DSM geotiff, it could be -10000.0, depends on the geotiff meta infomation
+        | specify exact value outside the polgyon, default 0.
+        | But for some DSM geotiff, it could be -10000.0, depends on the geotiff meta infomation
 
     returns
     -------
@@ -137,10 +137,10 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
             (0,0) will be the left upper corner of pixel square
             
     engine : str, default "skimage"
-        "skimage" or "shapely"; the "pillow" has been deprecated
-        skimage.draw.polygon2mask, the default method
-        pillow is slight different than skimage.draw.polygon2mask, deprecated
-        shapely is almost the same with skiamge.draw.polygon2mask, but effiency is very slow, not recommended
+        | "skimage" or "shapely"; the "pillow" has been deprecated;
+        | skimage - ``skimage.draw.polygon2mask``, the default method;
+        | pillow is slight different than "skimage", deprecated;
+        | shapely is almost the same with "skiamge", but effiency is very slow, not recommended.
 
     Returns
     -------
@@ -149,8 +149,11 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
         
     Notes
     -----
-    This code is inspired from here:
-    https://stackoverflow.com/questions/62280398/checking-if-a-point-is-contained-in-a-polygon-multipolygon-for-many-points
+    This code is inspired from [1]_ :
+
+    References
+    ----------
+    .. [1] https://stackoverflow.com/questions/62280398/checking-if-a-point-is-contained-in-a-polygon-multipolygon-for-many-points
 
     """
 
@@ -256,7 +259,10 @@ def rgb2gray(rgb):
 
     Notes
     -----
-    Using the same formular that matplotlib did for the transformation
-    https://stackoverflow.com/questions/12201577/how-can-i-convert-an-rgb-image-into-grayscale-in-python
+    Using the same formular that matplotlib did [1]_ for the transformation.
+
+    References
+    ----------
+    .. [1] https://stackoverflow.com/questions/12201577/how-can-i-convert-an-rgb-image-into-grayscale-in-python
     """
     return np.dot(rgb[...,:3], [0.2989, 0.5870, 0.1140])

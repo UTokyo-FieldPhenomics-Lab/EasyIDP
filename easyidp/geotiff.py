@@ -17,6 +17,7 @@ class GeoTiff(object):
     def __init__(self, tif_path=""):
         self.file_path = os.path.abspath(tif_path)
         self.header = None
+        self.imarray = None
 
         if tif_path != "":
             self.read_geotiff(tif_path)
@@ -69,8 +70,8 @@ class GeoTiff(object):
         ndarray
             the obtained pixel value (RGB or height) 
 
-        Examples
-        --------
+        Example
+        -------
         Prequirements
 
         .. code-block:: python
@@ -264,26 +265,28 @@ class GeoTiff(object):
         ndarray
             Extracted crop.
 
-        See also
-        --------
-        easyidp.geotiff.tifffile_crop
-
-        Examples
-        --------
+        Example
+        -------
 
         .. code-block:: python
 
             obj = idp.GeoTiff(lotus_full_dom)
             out1 = obj.crop_rectangle(left=434, top=918, w=320, h=321, is_geo=False)
 
-        .. caution::
+        .. note::
             It is not recommended to use without specifying parameters like this:
             
             ``crop_rectiange(434, 918, 320, 321)``
 
             It is hard to know the exactly order
 
-            PS: subfunction ``tifffile_crop`` has the order ``(top, left, h, w)`` which is too heavy to change it.
+        .. caution::
+
+            subfunction :func:`easyidp.geotiff.tifffile_crop` has the order ``(top, left, h, w)`` which is too heavy to change it.
+
+        See also
+        --------
+        easyidp.geotiff.tifffile_crop
         """
 
         self._not_empty()
@@ -340,6 +343,9 @@ class GeoTiff(object):
             self.save_geotiff(out, np.array([left, top]), save_path)
 
         return out
+
+    def save(self, ):
+        pass
 
 
     def save_geotiff(self, imarray, left_top_corner, save_path):
@@ -637,8 +643,8 @@ def geo2pixel(points_hv, header, return_index=False):
         
     This function has already do this reverse, so that you can use the output directly.
 
-    Examples
-    --------
+    Example
+    -------
     .. code-block:: python
 
         # manual specify header just as example (no need to open geotiff)
@@ -794,8 +800,8 @@ def tifffile_crop(page, top, left, h, w):
     ----------
     .. [1] https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
 
-    Examples
-    --------
+    Example
+    -------
 
     .. code-block:: python
 
@@ -813,7 +819,7 @@ def tifffile_crop(page, top, left, h, w):
 
     See also
     --------
-    :class:`easyidp.Geotiff.crop_rectange`
+    :func:`easyidp.GeoTiff.crop_rectangle <easyidp.geotiff.GeoTiff.crop_rectangle>`
     """
     if page.is_tiled:
         out = _get_tiled_crop(page, top, left, h, w)

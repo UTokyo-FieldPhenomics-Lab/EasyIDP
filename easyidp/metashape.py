@@ -288,7 +288,8 @@ class Metashape(idp.reconstruct.Recons):
             self.crs = ccopy(to_crs)
 
         out = {}
-        for p in self.photos:
+        pbar = tqdm(self.photos, desc=f"Getting photo positions")
+        for p in pbar:
             if p.enabled:
                 pos = self._world2crs(self._local2world(p.transform[0:3, 3]))
                 out[p.label] = pos

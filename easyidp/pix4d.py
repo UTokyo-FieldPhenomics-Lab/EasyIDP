@@ -296,8 +296,9 @@ class Pix4D(idp.reconstruct.Recons):
 
         Returns
         -------
-        coords_b
-            2d ndarray, 'lower-left' coordiantes
+        coords_b : 2d ndarray
+            'lower-left' coordiantes
+
         """
         photo = self._check_photo_type(photo)
         T = photo.location   # v1.0: T = param.img[image_name].cam_pos
@@ -344,8 +345,8 @@ class Pix4D(idp.reconstruct.Recons):
 
         Returns
         -------
-        coords_b
-            2d ndarray, 'lower-left' coordiantes
+        coords_b : 2d ndarray, 
+            'lower-left' coordiantes
         """
         photo = self._check_photo_type(photo)
 
@@ -463,7 +464,8 @@ class Pix4D(idp.reconstruct.Recons):
             The dictionary contains "photo.label": [x, y, z] coordinates
         """
         out = {}
-        for p in self.photos:
+        pbar = tqdm(self.photos, desc=f"Getting photo positions")
+        for p in pbar:
             if p.enabled:
                 pos = p.location + self.meta["p4d_offset"]
 

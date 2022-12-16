@@ -29,8 +29,19 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
 
     """
     # check if the polygon_hv is float or int, or in proper shape
-    
+    # fix the roi is float cause indexing error: github issue #61
+    if not isinstance(polygon_hv, np.ndarray):
+        raise TypeError(f"Only the numpy 2d array is accepted, not {type(polygon_hv)}")
+    if len(polygon_hv.shape) != 2 or polygon_hv.shape[1] !=2:
+        raise AttributeError(f"Only the 2d array (xy) is accepted, expected shape like (n, 2),  not current {polygon_hv.shape}")
 
+    if np.issubdtype(polygon_hv.dtype, np.integer):
+        pass
+    elif np.issubdtype(polygon_hv.dtype, np.floating):
+        polygon_hv = polygon_hv.astype(np.uint32)
+    else:
+        raise TypeError(f"Only polygon coordinates with [np.interger] and [np.floating]"
+                        f" are accepted, not dtype('{polygon_hv.dtype}')")
 
     # (horizontal, vertical) remember to revert in all the following codes
     roi_top_left_offset = polygon_hv.min(axis=0)
@@ -82,7 +93,9 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
     elif dim == 3: 
         # has 3 dimensions
         # e.g. DOM with RGB or RGBA band, other value outside changed alpha layer to 0
-        roi_clipped = imarray[roi_top_left_offset[1]:roi_max[1], roi_top_left_offset[0]:roi_max[0], :]
+        # coordinate xy reverted between easyidp and numpy
+        roi_clipped = imarray[roi_top_left_offset[1]:roi_max[1], 
+                              roi_top_left_offset[0]:roi_max[0]]
 
         rh = roi_clipped.shape[0]
         rw = roi_clipped.shape[1]
@@ -129,16 +142,11 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
 
         (horizontal, vertical) = (width, height)
 
-    poly_coord : np.ndarray -> dtype = int or float
+    poly_coord : (n, 2) np.ndarray -> dtype = int or float
         .. caution::
-            it is reversed with numpy index order
+            The xy is reversed with numpy index order
 
-        (horizontal, vertical) = (width, height)
-
-        If dtype is int -> view coord as pixel index number
-            Will + 0.5 to coords (pixel center) as judge point
-        if dtype is float -> view coords as real coord
-            (0,0) will be the left upper corner of pixel square
+            (horizontal, vertical) = (width, height)
             
     engine : str, default "skimage"
         | "skimage" or "shapely"; the "pillow" has been deprecated;
@@ -153,7 +161,14 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
         
     Notes
     -----
-    This code is inspired from [1]_ :
+    This code is inspired from [1]_ .
+
+    And for the poly_coord, if using **shapely** engine, it will following this logic for int and float:
+
+    If dtype is int -> view coord as pixel index number
+        Will + 0.5 to coords (pixel center) as judge point
+    if dtype is float -> view coords as real coord
+        (0,0) will be the left upper corner of pixel square
 
     References
     ----------
@@ -171,7 +186,7 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
             ):
         raise TypeError(f"The `poly_coord` only accept numpy ndarray integer and float types")
 
-    if len(poly_coord.shape)!=2 or poly_coord.shape[1] != 2:
+    if len(poly_coord.shape) != 2 or poly_coord.shape[1] != 2:
         raise AttributeError(f"Only nx2 ndarray are accepted, not {poly_coord.shape}")
 
     w, h = image_shape
@@ -189,7 +204,7 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
 
     if engine == "shapely":
         mask = _shapely_poly2mask(h, w, poly_coord)
-    else:   # using pillow
+    else:   # using pillow -> skimage
         # mask = _pillow_poly2mask(h, w, poly_coord)
         # the coordinate of xy is reversed with skimage
         mask = polygon2mask((w, h), poly_coord).T

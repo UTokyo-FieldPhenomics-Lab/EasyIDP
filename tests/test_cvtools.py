@@ -185,7 +185,59 @@ def test_imarray_crop_handle_polygon_hv_with_float():
 
     imarray, offsets = idp.cvtools.imarray_crop(img_np, img_coord)
 
-    assert 1 == 1
+    assert imarray.shape == (1789, 1811, 4)
+    assert imarray.dtype == np.uint8
+    assert offsets[0] == 6090
+    assert offsets[1] == 1952
+    assert offsets.dtype == np.uint32
+
+    # test polygon_hv with error dtypes
+    with pytest.raises(
+        TypeError, 
+        match=re.escape(
+            "Only the numpy 2d array is accepted, not <class 'list'>"
+        )
+    ):
+        img_coord = [[0, 0], [1, 0], [1, 3]]
+        imarray, offsets = idp.cvtools.imarray_crop(img_np, img_coord)
+
+    with pytest.raises(
+        TypeError, 
+        match=re.escape(
+            "Only the numpy 2d array is accepted, not <class 'tuple'>"
+        )
+    ):
+        img_coord = (0, 0)
+        imarray, offsets = idp.cvtools.imarray_crop(img_np, img_coord)
+
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Only the 2d array (xy) is accepted, expected shape like (n, 2),  not current (3, 3)"
+        )
+    ):
+        img_coord = np.asarray([[0, 0, 1], [1, 0, 2], [1, 3, 4]])
+        imarray, offsets = idp.cvtools.imarray_crop(img_np, img_coord)
+
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Only the 2d array (xy) is accepted, expected shape like (n, 2),  not current (2, 3, 3)"
+        )
+    ):
+        img_coord = np.asarray([[[0, 0, 1], [1, 0, 2], [1, 3, 4]], [[0, 0, 1], [1, 0, 2], [1, 3, 4]]])
+        imarray, offsets = idp.cvtools.imarray_crop(img_np, img_coord)
+
+    with pytest.raises(
+        TypeError, 
+        match=re.escape(
+            "Only polygon coordinates with [np.interger] and [np.floating] are accepted, not dtype('<U21')"
+        )
+    ):
+        img_coord = np.asarray([[0, 0], [1, 0], [1, 3]]).astype(str)
+        imarray, offsets = idp.cvtools.imarray_crop(img_np, img_coord)
+    
+
 
 def test_roi_smaller_than_one_pixel_error():   # disucssion #39
     one_dim_imarray = np.array([255,255,255])

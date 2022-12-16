@@ -171,6 +171,22 @@ def test_imarray_clip_2d_rgb_rgba():
     assert im_out_2d[20,20] == 144.8887
     np.testing.assert_equal(im_out_rgb[20,20,:], np.array([163, 138, 133, 255], dtype=np.uint8))
 
+def test_imarray_crop_handle_polygon_hv_with_float():
+    # fix issue #61
+    img_coord = \
+    np.asarray([[7214.31561958, 3741.17729258],
+                [6090.04392943, 3062.91735589],
+                [6770.00648193, 1952.53149042],
+                [7901.26625814, 2624.35137412],
+                [7214.31561958, 3741.17729258]])
+
+    np.random.seed(0)
+    img_np = np.random.randint(low=0, high=255, size=(10000,10000,3), dtype=np.uint8)
+
+    imarray, offsets = idp.cvtools.imarray_crop(img_np, img_coord)
+
+    assert 1 == 1
+
 def test_roi_smaller_than_one_pixel_error():   # disucssion #39
     one_dim_imarray = np.array([255,255,255])
     polygon_hv = np.array([[1, 1], [2, 2], [1, 3], [1, 1]])

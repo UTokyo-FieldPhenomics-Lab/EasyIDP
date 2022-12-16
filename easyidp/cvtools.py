@@ -28,6 +28,10 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
         the (h, v) pixel index that represent the polygon bbox left top corner
 
     """
+    # check if the polygon_hv is float or int, or in proper shape
+    
+
+
     # (horizontal, vertical) remember to revert in all the following codes
     roi_top_left_offset = polygon_hv.min(axis=0)
     roi_max = polygon_hv.max(axis=0)

@@ -3,7 +3,6 @@
 ##################
 numpy>=1.18.1
 matplotlib >= 3.2.2
-# pillow >= 9.0.0
 scikit-image >= 0.19.2
 
 # replace pandas to show table in command 
@@ -14,8 +13,15 @@ tabulate >= 0.8.9
 tqdm >= 4.64.0
 
 # transform between CRS projections
-# pyproj==2.6.1.post1
-pyproj >= 3.2.0
+## fix python 3.10 can not run pytest debug
+## related links:
+## [1] AttributeError: module 'posixpath' has no attribute 'sep' 
+##     https://github.com/pallets/jinja/issues/1697
+## [2] Error when running debugging using pytest in IDE with geopandas
+##     https://github.com/pytest-dev/pytest/issues/9791
+## [3] path.sep goes missing when importing in a debugger in Python 3.10
+##     https://github.com/pyproj4/pyproj/issues/1028
+pyproj >= 3.4.0  
 
 # read geotiff file
 tifffile>=2020.09.03

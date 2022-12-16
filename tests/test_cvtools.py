@@ -2,6 +2,7 @@ import re
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
+from skimage.util import img_as_float, img_as_ubyte
 
 import easyidp as idp
 
@@ -122,7 +123,7 @@ def test_poly2mask_wrong_type():
         mask = idp.cvtools.poly2mask((6, 6), xy)
 
 
-def test_imarray_clip_2d_rgb_rgba():
+def test_imarray_crop_2d_rgb_rgba():
     photo_path = test_data.pix4d.lotus_photos / "DJI_0174.JPG"
     roi = np.asarray([
         [2251, 1223], 
@@ -130,33 +131,69 @@ def test_imarray_clip_2d_rgb_rgba():
         [2227, 1263], 
         [2251, 1223]])
 
-    fig, ax = plt.subplots(1,3, figsize=(12,4))
+    fig, ax = plt.subplots(2,3, figsize=(12,8))
     # -----------------------------------------------
-    # 3d rgb
-    imarray_rgb = plt.imread(photo_path)
+    # 3d rgb with int type
+    imarray_rgb_int = plt.imread(photo_path)
     # imarray_rgb.shape == (3456, 4608, 3)
-    im_out_rgb, offsets_rgb = idp.cvtools.imarray_crop(imarray_rgb, roi)
+    img_out_rgb_int, offsets_rgb = idp.cvtools.imarray_crop(imarray_rgb_int, roi)
 
-    ax[1].imshow(im_out_rgb)
-    ax[1].set_title('rgb')
+    ax[0, 1].imshow(img_out_rgb_int)
+    ax[0, 1].set_title('rgb(int)')
+
+    assert img_out_rgb_int.dtype == np.uint8
+    np.testing.assert_almost_equal(img_out_rgb_int[0,0,:], np.asarray([145, 124, 103,   0]))
+
+    # 3d rgb with float type
+    imarray_rgb_float = img_as_float(imarray_rgb_int)
+    img_out_rgb_float, offsets_rgbf = idp.cvtools.imarray_crop(imarray_rgb_float, roi)
+
+    ax[1, 1].imshow(img_out_rgb_float)
+    ax[1, 1].set_title('rgb(float)')
+
+    assert img_out_rgb_float.max() <= 1
+    assert img_out_rgb_float.dtype == np.float64
+    np.testing.assert_almost_equal(img_out_rgb_float[0,0,:], np.asarray([0.56862745, 0.48627451, 0.40392157, 0.        ]))
 
     # -----------------------------------------------
     # 2d
-    imarray_2d = idp.cvtools.rgb2gray(imarray_rgb)
+    imarray_2d_float255 = idp.cvtools.rgb2gray(imarray_rgb_int)
 
-    im_out_2d, offsets_2d = idp.cvtools.imarray_crop(imarray_2d, roi)
+    im_out_2d_float255, offsets_2d = idp.cvtools.imarray_crop(imarray_2d_float255, roi)
 
-    ax[0].imshow(im_out_2d, cmap='gray')
-    ax[0].set_title('gray')
+    ax[1, 0].imshow(im_out_2d_float255, cmap='gray')
+    ax[1, 0].set_title('gray(float255)')
 
+    assert im_out_2d_float255.dtype == np.float64
+
+    imarray_2d_int255 = imarray_2d_float255.astype(np.uint8)
+    im_out_2d_int255, offsets_2d = idp.cvtools.imarray_crop(imarray_2d_int255, roi)
+
+    ax[0, 0].imshow(im_out_2d_int255, cmap='gray')
+    ax[0, 0].set_title('gray(int)')
+
+    assert im_out_2d_int255.dtype == np.uint8
+    assert im_out_2d_int255[20, 20] == 144
     # -----------------------------------------------
     # rgba
-    imarray_rgba = np.dstack((imarray_rgb, np.ones((3456, 4608)) * 255))
+    imarray_rgba_int = np.dstack((imarray_rgb_int, np.ones((3456, 4608)) * 255)).astype(np.uint8)
     # imarray_rgba.shape == (3456, 4608, 4)
 
-    im_out_rgba, offsets_rgba = idp.cvtools.imarray_crop(imarray_rgba, roi)
-    ax[2].imshow(im_out_rgba)
-    ax[2].set_title('rgba')
+    im_out_rgba_int, offsets_rgba = idp.cvtools.imarray_crop(imarray_rgba_int, roi)
+    ax[0, 2].imshow(im_out_rgba_int)
+    ax[0, 2].set_title('rgba(int)')
+
+    assert im_out_rgba_int.dtype == np.uint8
+    np.testing.assert_almost_equal(im_out_rgba_int[20, 20, :], np.asarray([163, 138, 133,  255]))
+
+    imarray_rgba_float = img_as_float(imarray_rgba_int)
+
+    im_out_rgba_float, offsets_rgba = idp.cvtools.imarray_crop(imarray_rgba_float, roi)
+    ax[1, 2].imshow(im_out_rgba_float)
+    ax[1, 2].set_title('rgba(float)')
+
+    assert im_out_rgba_float.dtype == np.float64
+    np.testing.assert_almost_equal(im_out_rgba_float[20,20,:], np.asarray([0.63921569, 0.54117647, 0.52156863, 1.        ]))
 
     plt.savefig(test_data.cv.out / "imarray_clip_test.png")
 
@@ -166,10 +203,109 @@ def test_imarray_clip_2d_rgb_rgba():
     np.testing.assert_equal(offsets_rgb, expected_offsets)
     np.testing.assert_equal(offsets_rgba, expected_offsets)
 
-    assert np.all(im_out_rgb == im_out_rgba)
+    assert np.all(img_out_rgb_int == im_out_rgba_int)
 
-    assert im_out_2d[20,20] == 144.8887
-    np.testing.assert_equal(im_out_rgb[20,20,:], np.array([163, 138, 133, 255], dtype=np.uint8))
+    assert im_out_2d_float255[20,20] == 144.8887
+    np.testing.assert_equal(img_out_rgb_int[20,20,:], np.array([163, 138, 133, 255], dtype=np.uint8))
+
+def test_imarray_crop_2d_rgb_rgba_error():
+    np.random.seed(0)
+    imarray_init= np.random.randint(0,255,(10,10,4), dtype=np.uint8)
+
+    str_imarray   = imarray_init.astype(str)
+    int_over_255  = imarray_init.astype(np.uint16)  + 255
+    int_below_0   = imarray_init.astype(np.int16)   - 128
+    float_over_1  = imarray_init.astype(np.float32) / 255 + 1
+    float_below_0 = imarray_init.astype(np.float32) / 255 - 0.5
+
+    img_coord = np.asarray([[0,0],[1,1],[4,4]])
+
+    # str type error
+    with pytest.raises(
+        TypeError, 
+        match=re.escape(
+            "The `imarray` only accept numpy ndarray integer and float types"
+        )
+    ):
+        imarray, offsets = idp.cvtools.imarray_crop(str_imarray, img_coord)
+
+
+    # int >255 error
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (260 - 497) with dtype='uint16', "
+        )
+    ):
+        # dim = 4
+        imarray, offsets = idp.cvtools.imarray_crop(int_over_255, img_coord)
+
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (260 - 497) with dtype='uint16', "
+        )
+    ):
+        # dim = 3
+        imarray, offsets = idp.cvtools.imarray_crop(int_over_255[:,:,0:3], img_coord)
+
+    # int < 0 error
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (-123 - 114) with dtype='int16', "
+        )
+    ):
+        # dim = 4
+        imarray, offsets = idp.cvtools.imarray_crop(int_below_0, img_coord)
+
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (-123 - 114) with dtype='int16', "
+        )
+    ):
+        # dim = 3
+        imarray, offsets = idp.cvtools.imarray_crop(int_below_0[:,:,0:3], img_coord)
+
+    # float > 1 error
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (1.0196079015731812 - 1.9490196704864502) with dtype='float32', "
+        )
+    ):
+        # dim = 4
+        imarray, offsets = idp.cvtools.imarray_crop(float_over_1, img_coord)
+
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (1.0196079015731812 - 1.9490196704864502) with dtype='float32', "
+        )
+    ):
+        # dim = 3
+        imarray, offsets = idp.cvtools.imarray_crop(float_over_1[:,:,0:3], img_coord)
+
+    # float < 0 error
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (-0.4803921580314636 - 0.4490196108818054) with dtype='float32', "
+        )
+    ):
+        # dim = 4
+        imarray, offsets = idp.cvtools.imarray_crop(float_below_0, img_coord)
+
+    with pytest.raises(
+        AttributeError, 
+        match=re.escape(
+            "Can not handle RGB imarray ranges (-0.4803921580314636 - 0.4490196108818054) with dtype='float32', "
+        )
+    ):
+        # dim = 3
+        imarray, offsets = idp.cvtools.imarray_crop(float_below_0[:,:,0:3], img_coord)
+
 
 def test_imarray_crop_handle_polygon_hv_with_float():
     # fix issue #61

@@ -13,9 +13,43 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
     Parameters
     ----------
     imarray : ndarray
-        the image data, shape = (height,width)
-    polygon_hv : ndarray
-        pixel position of boundary point, (horizontal, vertical) which reverted the imarray axis 0 to 1
+        | the image data in numpy ndarray
+        | if the shape is (height, width), view it as DSM data, the data type should be float.
+        | if the shape is (height, width, dimen), view it as RGB DOM data (dimen=3 means RGB and dimen=4 means RGBA).
+        |     the data type for this case should be either 0-1 float, or 0-255 int.
+
+        .. caution::
+
+            Currently, the EasyIDP package does not have the ability to handle multi-spectral image data directly.
+            If you really want to use this function to crop multi-spectral image with multiple layers, please send each layer one by one.
+
+            For example, you have a multi-spectral imarray with 6 bands:
+
+            .. code-block:: python
+
+                >>> multi_spect_imarray.shape
+                (1028, 800, 6)
+
+            Then using the following for loops to iteratively process each band 
+            (please modify it by yourself, can not guarantee it works directly)
+
+            .. code-block:: python
+
+                >>> band_container = []
+                >>> for i in range(0, 6):
+                >>>     band = multi_spect_imarray[:,:,i]
+                >>>     out, offset = idp.cvtools.imarray_crop(band, polygon_hv, outside_value=your_geotiff.header['nodata'])
+                >>>     band_container.append(out)
+                >>> final_out = np.dstack(band_container)
+
+    polygon_hv : 2D ndarray
+        | pixel position of boundary point, the order is (horizontal, vertical)
+        
+        .. caution::
+
+            it is reverted to the numpy imarray axis. 
+            horzontal = numpy axis 1, vertical = numpy axis 0.
+
     outside_value: int | float
         | specify exact value outside the polgyon, default 0.
         | But for some DSM geotiff, it could be -10000.0, depends on the geotiff meta infomation
@@ -28,6 +62,16 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
         the (h, v) pixel index that represent the polygon bbox left top corner
 
     """
+    # check if the imarray is correct imarray
+    if not isinstance(imarray, np.ndarray) or \
+        not (
+            np.issubdtype(imarray.dtype, np.integer) \
+                or \
+            np.issubdtype(imarray.dtype, np.floating)
+            ):
+        raise TypeError(f"The `imarray` only accept numpy ndarray integer and float types")
+
+
     # check if the polygon_hv is float or int, or in proper shape
     # fix the roi is float cause indexing error: github issue #61
     if not isinstance(polygon_hv, np.ndarray):
@@ -81,47 +125,72 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
         
         # here need to reverse 
         # imarray.shape -> (h, w), but poly2mask need <- (w, h)
-        roi_clipped = imarray[roi_top_left_offset[1]:roi_max[1], 
+        roi_cropped = imarray[roi_top_left_offset[1]:roi_max[1], 
                               roi_top_left_offset[0]:roi_max[0]]
-        rh = roi_clipped.shape[0]
-        rw = roi_clipped.shape[1]
+        rh = roi_cropped.shape[0]
+        rw = roi_cropped.shape[1]
         mask = poly2mask((rw, rh), roi_rm_offset)
 
-        roi_clipped[~mask] = outside_value
-        imarray_out = roi_clipped
+        roi_cropped[~mask] = outside_value
+        imarray_out = roi_cropped
 
     elif dim == 3: 
         # has 3 dimensions
         # e.g. DOM with RGB or RGBA band, other value outside changed alpha layer to 0
         # coordinate xy reverted between easyidp and numpy
-        roi_clipped = imarray[roi_top_left_offset[1]:roi_max[1], 
+        roi_cropped = imarray[roi_top_left_offset[1]:roi_max[1], 
                               roi_top_left_offset[0]:roi_max[0]]
 
-        rh = roi_clipped.shape[0]
-        rw = roi_clipped.shape[1]
-        layer_num = roi_clipped.shape[2]
+        rh = roi_cropped.shape[0]
+        rw = roi_cropped.shape[1]
+        layer_num = roi_cropped.shape[2]
 
         # here need to reverse 
         # imarray.shape -> (h, w), but poly2mask need <- (w, h)
         mask = poly2mask((rw, rh), roi_rm_offset)
 
         if layer_num == 3:  
-            # DOM without alpha layer
-            # but output add mask as alpha layer directly
-            mask = mask.astype(np.uint8) * 255
+            # DOM without alpha layer - RGB
+            # but easyidp will add masked alpha layer to output.
 
-            imarray_out = np.concatenate([roi_clipped, mask[:, :, None]], axis=2).astype(np.uint8)
+            # change mask data type to fit with the image data type
+            if np.issubdtype(roi_cropped.dtype, np.integer) and roi_cropped.min() >= 0 and roi_cropped.max() <= 255:
+                # the image is 0-255 & int type
+                roi_cropped = roi_cropped.astype(np.uint8)
+                mask = mask.astype(np.uint8) * 255
+            elif np.issubdtype(roi_cropped.dtype, np.floating) and roi_cropped.min() >= 0 and roi_cropped.max() <= 1:
+                # the image is 0-1 & float type
+                mask = mask.astype(roi_cropped.dtype)
+            else:
+                raise AttributeError(f"Can not handle RGB imarray ranges ({roi_cropped.min()} - {roi_cropped.max()}) with dtype='{roi_cropped.dtype}', "
+                                    f"expected (0-1) with dtype='float' or (0-255) with dtype='int'")
+
+            # merge alpha mask with cropped images
+            imarray_out = np.concatenate([roi_cropped, mask[:, :, None]], axis=2)
 
         elif layer_num == 4:  
-            # DOM with alpha layer
-            mask = mask.astype(int)
+            # DOM with alpha layer - RGBA
 
-            original_mask = roi_clipped[:, :, 3].copy()
-            merged_mask = original_mask * mask
+            # merge orginal mask with polygon_hv mask
+            original_mask = roi_cropped[:, :, 3].copy()
+            original_mask = original_mask > 0    # change type to bool
+            merged_mask = original_mask * mask   # bool = bool * bool
 
-            imarray_out = np.dstack([roi_clipped[:,:, 0:3], merged_mask]).astype(np.uint8)
+            # change mask data type to fit with the image data type
+            if np.issubdtype(roi_cropped.dtype, np.integer) and roi_cropped.min() >= 0 and roi_cropped.max() <= 255:
+                # the image is 0-255 & int type
+                roi_cropped = roi_cropped.astype(np.uint8)
+                merged_mask = merged_mask.astype(np.uint8) * 255
+            elif np.issubdtype(roi_cropped.dtype, np.floating) and roi_cropped.min() >= 0 and roi_cropped.max() <= 1:
+                # the image is 0-1 & float type
+                merged_mask = merged_mask.astype(roi_cropped.dtype)
+            else:
+                raise AttributeError(f"Can not handle RGB imarray ranges ({roi_cropped.min()} - {roi_cropped.max()}) with dtype='{roi_cropped.dtype}', "
+                                    f"expected (0-1) with dtype='float' or (0-255) with dtype='int'")
+
+            imarray_out = np.dstack([roi_cropped[:,:, 0:3], merged_mask])
         else:
-            raise TypeError(f'Unable to solve the layer number {layer_num}')
+            raise TypeError(f'Unable to solve the layer/band number {layer_num}, only one band DSM or 3|4 band RGB|RGBA DOM are acceptable')
     else:
         raise ValueError(
             f"Only image dimention=2 (mxn) or 3(mxnxd) are accepted, not current"

@@ -357,26 +357,62 @@ def test_def_is_empty_imarray_error():
     with pytest.raises(IndexError, match=re.escape("The imarray dimention [4] does not match with header dimention [3]")):
         idp.geotiff._is_empty_imarray(wrong_header2, np.zeros((4,4,4)))
 
+def test_def_save_geotiff_and_extratag():
+    dom_test = idp.GeoTiff(test_data.tiff.soyweed_part)
+    dom_imarray = idp.geotiff.get_imarray(test_data.tiff.soyweed_part)
+
+    left_top_corner = [200, 200]
+
+    extratags = idp.geotiff._offset_geotiff_extratags(dom_test.header, left_top_corner)
+
+    for t in extratags:
+        if t[0] == 33922:
+            # the key of above function is calculate the correct 
+            # <tifffile.TiffTag 33922 ModelTiepointTag @190>
+            assert t[3] == (0, 0, 0, 484593.61105, 3862259.86493, 0)
+
+    # test file type error
+    with pytest.raises(TypeError, match=re.escape("only *.tif file name is supported")):
+        idp.geotiff.save_geotiff(dom_test.header, dom_imarray, left_top_corner, "random_name.tifx")
+
+    # test whether correctly saved
+    save_tiff = test_data.tiff.out / "def_save_geotiff_test.tif"
+    if save_tiff.exists():
+        save_tiff.unlink()
+
+    idp.geotiff.save_geotiff(dom_test.header, dom_imarray, left_top_corner, save_tiff)
+
+    assert save_tiff.exists()
+
+    # check if successfully offseted 20x20 pixels
+    # visually check the output and input DOM in QGIS no problem
+    # here use code to check
+    saved_dom = idp.GeoTiff(save_tiff)
+
+    assert saved_dom.header['tie_point'] == [484593.61105, 3862259.86493]
+    assert dom_test.header['tie_point'] == [484593.41105, 3862260.0649300003]
+
 
 # ==============
 # GeoTiff Class
 # ==============
 
-def test_class_check_hasfile_decorator():
-    obj = idp.GeoTiff()
+# This should be activated after geotiff.save_geotiff() function totally finished
+# def test_class_check_hasfile_decorator():
+#     obj = idp.GeoTiff()
 
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
-        obj.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+#     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
+#         obj.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
-    obj2 = idp.GeoTiff(test_data.pix4d.lotus_dom)
-    obj2.file_path = f"not/exists/path"
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
-        obj2.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+#     obj2 = idp.GeoTiff(test_data.pix4d.lotus_dom)
+#     obj2.file_path = f"not/exists/path"
+#     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
+#         obj2.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
-    obj3 = idp.GeoTiff(test_data.pix4d.lotus_dom)
-    obj3.header = None
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
-        obj3.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
+#     obj3 = idp.GeoTiff(test_data.pix4d.lotus_dom)
+#     obj3.header = None
+#     with pytest.raises(FileNotFoundError, match=re.escape("Could not operate if not specify correct geotiff file")):
+#         obj3.save_geotiff(np.ones((3,3)), np.ones((1,2)), "wrong_path")
 
 def test_class_init_with_path():
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
@@ -477,7 +513,7 @@ def test_crop_rectange_save_geotiff():
         is_geo=False)
 
 
-def test_class_math_polygon():
+def test_class_polygon_math():
     # test dsm results
     dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
@@ -489,13 +525,13 @@ def test_class_math_polygon():
         [ 368018.15769062, 3955509.13563382],
         [ 368017.7565143 , 3955511.08102277]])
 
-    dsm_mean   = dsm.math_polygon(poly_geo, is_geo=True, kernel="mean")
-    dsm_min    = dsm.math_polygon(poly_geo, is_geo=True, kernel="min")
-    dsm_max    = dsm.math_polygon(poly_geo, is_geo=True, kernel="max")
-    dsm_pmin5  = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmin5")
-    dsm_pmin10 = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmin10")
-    dsm_pmax5  = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmax5")
-    dsm_pmax10 = dsm.math_polygon(poly_geo, is_geo=True, kernel="pmax10")
+    dsm_mean   = dsm.polygon_math(poly_geo, is_geo=True, kernel="mean")
+    dsm_min    = dsm.polygon_math(poly_geo, is_geo=True, kernel="min")
+    dsm_max    = dsm.polygon_math(poly_geo, is_geo=True, kernel="max")
+    dsm_pmin5  = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmin5")
+    dsm_pmin10 = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmin10")
+    dsm_pmax5  = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmax5")
+    dsm_pmax10 = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmax10")
 
     assert 97 < dsm_mean   and dsm_mean   < 98
     assert 97 < dsm_min    and dsm_min    < 98
@@ -508,13 +544,13 @@ def test_class_math_polygon():
     # test dom results
     dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
-    dom_mean   = dom.math_polygon(poly_geo, is_geo=True, kernel="mean")
-    dom_min    = dom.math_polygon(poly_geo, is_geo=True, kernel="min")
-    dom_max    = dom.math_polygon(poly_geo, is_geo=True, kernel="max")
-    dom_pmin5  = dom.math_polygon(poly_geo, is_geo=True, kernel="pmin5")
-    dom_pmin10 = dom.math_polygon(poly_geo, is_geo=True, kernel="pmin10")
-    dom_pmax5  = dom.math_polygon(poly_geo, is_geo=True, kernel="pmax5")
-    dom_pmax10 = dom.math_polygon(poly_geo, is_geo=True, kernel="pmax10")
+    dom_mean   = dom.polygon_math(poly_geo, is_geo=True, kernel="mean")
+    dom_min    = dom.polygon_math(poly_geo, is_geo=True, kernel="min")
+    dom_max    = dom.polygon_math(poly_geo, is_geo=True, kernel="max")
+    dom_pmin5  = dom.polygon_math(poly_geo, is_geo=True, kernel="pmin5")
+    dom_pmin10 = dom.polygon_math(poly_geo, is_geo=True, kernel="pmin10")
+    dom_pmax5  = dom.polygon_math(poly_geo, is_geo=True, kernel="pmax5")
+    dom_pmax10 = dom.polygon_math(poly_geo, is_geo=True, kernel="pmax10")
 
     assert dom_mean  .shape == (4, )
     assert dom_min   .shape == (4, )
@@ -548,7 +584,7 @@ def test_class_point_query():
     assert pt.shape == (5,)
     assert np.all(97 < pt) and np.all(pt < 98)
 
-def test_class_crop():
+def test_class_crop_rois():
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
     roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
@@ -566,8 +602,22 @@ def test_class_crop():
         shutil.rmtree(tif_out_folder)
     tif_out_folder.mkdir()
 
-    out_dict = obj.crop(roi, save_folder=tif_out_folder)
+    out_dict = obj.crop_rois(roi, save_folder=tif_out_folder)
 
     assert len(out_dict) == 3
     assert (tif_out_folder / "N1W1.tif").exists()
     assert out_dict["N2E2"].shape == (320, 320, 4)
+
+def test_class_geo2pixel2geo_executable():
+
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+    dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+    roi.change_crs(dom.header['crs'])
+
+    roi_test = roi[111]
+
+    roi_test_pixel = dom.geo2pixel(roi_test)
+
+    roi_test_back = dom.pixel2geo(roi_test_pixel)
+
+    np.testing.assert_almost_equal(roi_test, roi_test_back, decimal=5)

@@ -381,7 +381,7 @@ msgstr ""
 #: easyidp.geotiff.GeoTiff.crop:1:<autosummary>:1
 #: easyidp.geotiff.GeoTiff.save_geotiff:1 of
 msgid "Save cropped region to geotiff file"
-msgstr "Geotiff文件的保存路径"
+msgstr "保存切块的区域为Geotiff文件"
 
 #: easyidp.geotiff.GeoTiff.crop:3 of
 msgid ""
@@ -924,7 +924,7 @@ msgstr "读取las文件"
 
 #: easyidp.pointcloud.read_las:3 of
 msgid "The path to las file"
-msgstr "Geotiff文件的路径"
+msgstr "Las文件的路径"
 
 #: easyidp.pointcloud.read_las:6 of
 msgid "points, colors, normals of given point cloud data"

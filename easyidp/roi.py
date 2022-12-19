@@ -389,7 +389,7 @@ class ROI(idp.Container):
 
         # using the full map to calculate
         if buffer == -1 or buffer == -1.0:
-            global_z = dsm.math_polygon(polygon_hv="full_map", kernel=kernel)
+            global_z = dsm.polygon_math(polygon_hv="full_map", kernel=kernel)
         else:
             global_z = None
 
@@ -418,7 +418,7 @@ class ROI(idp.Container):
                         p_buffer = p.buffer(buffer)
                         poly = np.array(p_buffer.exterior.coords)
 
-                    poly_z = dsm.math_polygon(poly, is_geo=True, kernel=kernel)
+                    poly_z = dsm.polygon_math(poly, is_geo=True, kernel=kernel)
                     
                     poly3d = np.insert(self.id_item[key], obj=2, values=poly_z, axis=1)
 
@@ -430,7 +430,7 @@ class ROI(idp.Container):
                             p_buffer = p.buffer(buffer)
                             p_buffer_np = np.array(p_buffer.exterior.coords)
 
-                            poly_z = dsm.math_polygon(p_buffer_np, is_geo=True, kernel=kernel)
+                            poly_z = dsm.polygon_math(p_buffer_np, is_geo=True, kernel=kernel)
                             z_values.append(poly_z)
 
                         z_values = np.array(z_values)
@@ -490,7 +490,7 @@ class ROI(idp.Container):
             )
 
         if isinstance(target, idp.GeoTiff):
-            out = target.crop(self, is_geo=True, save_folder=save_folder)
+            out = target.crop_rois(self, is_geo=True, save_folder=save_folder)
         elif isinstance(target, idp.PointCloud):
             out = target.crop(self, save_folder=save_folder)
 

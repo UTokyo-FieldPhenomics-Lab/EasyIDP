@@ -201,7 +201,7 @@ def imarray_crop(imarray, polygon_hv, outside_value=0):
 
 
 def poly2mask(image_shape, poly_coord, engine="skimage"):
-    """convert vector polygon to raster masks, aim to avoid using skimage package
+    """convert vector polygon to raster masks
 
     Parameters
     ----------

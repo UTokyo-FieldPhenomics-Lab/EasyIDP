@@ -14,16 +14,15 @@
    .. autosummary::
    
       ~GeoTiff.__init__
-      ~GeoTiff.create_grid
-      ~GeoTiff.crop
       ~GeoTiff.crop_polygon
       ~GeoTiff.crop_rectangle
+      ~GeoTiff.crop_rois
+      ~GeoTiff.geo2pixel
       ~GeoTiff.has_data
-      ~GeoTiff.math_polygon
+      ~GeoTiff.pixel2geo
       ~GeoTiff.point_query
+      ~GeoTiff.polygon_math
       ~GeoTiff.read_geotiff
-      ~GeoTiff.save
-      ~GeoTiff.save_geotiff
    
    
 

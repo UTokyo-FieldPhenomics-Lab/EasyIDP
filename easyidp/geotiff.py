@@ -143,7 +143,7 @@ class GeoTiff(object):
 
 
     def point_query(self, points_hv, is_geo=True):
-        """get the pixel value of given point(s)
+        """Get the pixel value of given point(s)
 
         Parameters
         ----------
@@ -312,7 +312,7 @@ class GeoTiff(object):
 
 
     def crop_polygon(self, polygon_hv, is_geo=True, save_path=None):
-        """crop a given polygon from geotiff
+        """Crop a given polygon from geotiff
 
         Parameters
         ----------
@@ -537,7 +537,7 @@ class GeoTiff(object):
 
 
     def geo2pixel(self, polygon_hv):
-        """convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
+        """Convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
 
         Parameters
         ----------
@@ -587,7 +587,7 @@ class GeoTiff(object):
 
 
     def pixel2geo(self, polygon_hv):
-        """convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
+        """Convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
 
         Parameters
         ----------
@@ -920,7 +920,7 @@ def get_imarray(tif_path):
 
 
 def geo2pixel(points_hv, header, return_index=False):
-    """convert point cloud xyz coordinate to geotiff pixel coordinate (horizontal, vertical)
+    """Convert point cloud xyz coordinate to geotiff pixel coordinate (horizontal, vertical)
 
     Parameters
     ----------
@@ -1005,7 +1005,7 @@ def geo2pixel(points_hv, header, return_index=False):
 
 
 def pixel2geo(points_hv, header):
-    """convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
+    """Convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
 
     Parameters
     ----------
@@ -1084,8 +1084,7 @@ def pixel2geo(points_hv, header):
 
 
 def tifffile_crop(page, top, left, h, w):  
-    """
-    Extract a crop from a TIFF image file directory (IFD) by partial loading.
+    """Extract a crop from a TIFF image file directory (IFD) by partial loading.
 
     Only the tiles englobing the crop area are loaded and not the whole page.
 
@@ -1162,8 +1161,7 @@ def tifffile_crop(page, top, left, h, w):
 
 
 def _get_tiled_crop(page, i0, j0, h, w):
-    """
-    The submodule of self.get_crop() for those tiled geotiff
+    """The submodule of self.get_crop() for those tiled geotiff
 
     Copied from: 
     https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
@@ -1220,8 +1218,7 @@ def _get_tiled_crop(page, i0, j0, h, w):
     return out[0, im_i0: im_i0 + h, im_j0: im_j0 + w, :]
 
 def _get_untiled_crop(page, i0, j0, h, w):
-    """
-    The submodule of self.get_crop(), for those untiled geotiff
+    """The submodule of self.get_crop(), for those untiled geotiff
 
     Copied from: 
     https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
@@ -1338,7 +1335,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
 
 
 def point_query(page, points_hv, header=None):
-    """get the pixel value of given point(s)
+    """Get the pixel value of given point(s)
 
     Parameters
     ----------
@@ -1452,8 +1449,7 @@ def point_query(page, points_hv, header=None):
     return np.array(values_list)
 
 def _make_empty_imarray(header, h, w, layer_num=None):
-    """
-    Produce a empty image, suit the requirement for nodata
+    """Produce a empty image, suit the requirement for nodata
     """
     # possible dsm with only one band
     if header["dim"] == 1:
@@ -1482,11 +1478,10 @@ def _make_empty_imarray(header, h, w, layer_num=None):
     return empty_template
 
 def _is_empty_imarray(header, imarray):
-    """
-    Judge if current img_array is empty grids
-        e.g. dsm=-10000, # (page.nodata)
-             rgb=[255,255,255], [0,0,0] # pure white and black
-             or RGBA with full empty alpha layer  # alpha all=0
+    """Judge if current img_array is empty grids
+    e.g. dsm=-10000, # (page.nodata)
+            rgb=[255,255,255], [0,0,0] # pure white and black
+            or RGBA with full empty alpha layer  # alpha all=0
     
     Parameters
     ----------
@@ -1565,7 +1560,7 @@ def save_geotiff(header, imarray, left_top_corner, save_path):
         >>> save_tiff = "path/to/save/output.tif"
         >>> idp.geotiff.save_geotiff(dom_test.header, dom_imarray, left_top_corner, save_tiff)
     
-    Then using the QGIS to check two outputs:
+    Then using the QGIS to compare between input and output:
 
     .. image:: ../../_static/images/python_api/save_geotiff_offset.png
         :alt: save_geotiff_offset.png

@@ -151,11 +151,11 @@ def test_def_write_ply():
         out_npath_asc.unlink()
     
     # without normals
-    idp.pointcloud.write_ply(write_points, write_colors, out_path_bin, binary=True)
-    idp.pointcloud.write_ply(write_points, write_colors, out_path_asc, binary=False)
+    idp.pointcloud.write_ply(out_path_bin,  write_points, write_colors, binary=True)
+    idp.pointcloud.write_ply(out_path_asc,  write_points, write_colors, binary=False)
     # with normals
-    idp.pointcloud.write_ply(write_points, write_colors, out_npath_bin, normals=write_normals, binary=True)
-    idp.pointcloud.write_ply(write_points, write_colors, out_npath_asc, normals=write_normals, binary=False)
+    idp.pointcloud.write_ply(out_npath_bin, write_points, write_colors, normals=write_normals, binary=True)
+    idp.pointcloud.write_ply(out_npath_asc, write_points, write_colors, normals=write_normals, binary=False)
 
     # test if file created
     assert out_path_bin.exists()
@@ -200,9 +200,9 @@ def test_def_write_las():
         out_npath_las.unlink()
 
     # without normals
-    idp.pointcloud.write_las(write_points, write_colors, out_path_las)
+    idp.pointcloud.write_las(out_path_las,  write_points, write_colors)
     # with normals
-    idp.pointcloud.write_las(write_points, write_colors, out_npath_las, normals=write_normals)
+    idp.pointcloud.write_las(out_npath_las, write_points, write_colors, normals=write_normals)
 
     # test if file created
     assert out_path_las.exists()
@@ -234,9 +234,9 @@ def test_def_write_laz():
         out_npath_laz.unlink()
 
     # without normals
-    idp.pointcloud.write_laz(write_points, write_colors, out_path_laz)
+    idp.pointcloud.write_laz(out_path_laz,  write_points, write_colors)
     # with normals
-    idp.pointcloud.write_laz(write_points, write_colors, out_npath_laz, normals=write_normals)
+    idp.pointcloud.write_laz(out_npath_laz, write_points, write_colors, normals=write_normals)
 
     # test if file created
     assert out_path_laz.exists()
@@ -516,7 +516,7 @@ def test_class_crop():
         shutil.rmtree(tif_out_folder)
     tif_out_folder.mkdir()
 
-    out = p4d.pcd.crop(roi, save_folder=tif_out_folder)
+    out = p4d.pcd.crop_rois(roi, save_folder=tif_out_folder)
 
     assert len(out) == 3
     assert len(out["N1W1"]) == 15226

@@ -15,8 +15,8 @@
    
       ~PointCloud.__init__
       ~PointCloud.clear
-      ~PointCloud.crop
       ~PointCloud.crop_point_cloud
+      ~PointCloud.crop_rois
       ~PointCloud.has_colors
       ~PointCloud.has_normals
       ~PointCloud.has_points

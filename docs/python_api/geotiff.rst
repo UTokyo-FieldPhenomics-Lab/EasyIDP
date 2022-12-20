@@ -7,7 +7,7 @@ GeoTiff
 Class
 =====
 
-A summary of class ``GeoTiff``
+A summary of class ``easyidp.pointcloud.GeoTiff``, can be simple accessed by ``easyidp.GeoTiff``
 
 .. autosummary::
     :toctree: autodoc

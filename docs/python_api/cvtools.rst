@@ -7,7 +7,7 @@
 This is a package for simple imarray operations. 
 Mainly about creating binary masks and cropping image parts from given polygon coordinates.
 
-It is a submodule for the ``GeoTiff`` class.
+It can be viewed as a submodule for the :class:`easyidp.GeoTiff <easyidp.geotiff.GeoTiff>` class.
 
 Functions
 =========

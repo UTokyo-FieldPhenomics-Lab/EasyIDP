@@ -17,7 +17,7 @@ import easyidp as idp
 
 class PointCloud(object):
 
-    """PointCloud class. A point cloud consists of point coordinates, and optionally point colors and point normals.
+    """EasyIDP defined PointCloud class, consists by point coordinates, and optionally point colors and point normals.
     """
 
     def __init__(self, pcd_path="", offset=[0.,0.,0.]) -> None:
@@ -246,25 +246,26 @@ class PointCloud(object):
 
         if file_ext == ".ply":
             write_ply(
-                self._points + self._offset, 
-                self.colors, 
+                points=self._points + self._offset, 
+                colors=self.colors, 
                 ply_path=out_path, 
                 normals=self.normals)
         else:
             write_laz(
-                self._points + self._offset, 
-                self.colors, 
+                points=self._points + self._offset, 
+                colors=self.colors, 
                 laz_path=out_path, 
                 normals=self.normals, 
                 offset=self._offset)
 
-    def crop(self, roi, save_folder=None):
+    def crop_rois(self, roi, save_folder=None):
         """Crop several ROIs by given <ROI> object with several polygons and polygon names
 
         Parameters
         ----------
         roi : easyidp.ROI | dict
-            the <ROI> object created by easyidp.ROI()
+            | the <ROI> object created by easyidp.ROI()
+            | or dict object with key as roi name and value as coordinates
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
@@ -273,7 +274,7 @@ class PointCloud(object):
         Returns
         -------
         dict,
-            The dictionary with key=id and value=<idp.PointCloud>
+            The dictionary with key as roi name and value as <idp.PointCloud> object
         """
         if not self.has_points():
             raise ValueError("Could not operate when PointCloud has no points")
@@ -364,6 +365,48 @@ class PointCloud(object):
 
 
 def read_ply(ply_path):
+    """Read the ply file
+
+    Parameters
+    ----------
+    ply_path : str
+        The path to las file
+
+    Returns
+    -------
+    ndarray, ndarray, ndarray
+        points, colors, normals of given point cloud data
+
+    Example
+    -------
+    .. code-block:: python
+    
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> test_data.pcd.lotus_ply_asc
+        WindowsPath('C:/Users/<User>/AppData/Local/easyidp.data/data_for_tests/pcd_test/hasu_tanashi_ascii.ply')
+        >>> points, colors, normals = idp.pointcloud.read_ply(test_data.pcd.lotus_ply_asc)
+
+        >>> points
+        array([[-18.908312, -15.777558,  -0.77878 ],
+               [-18.90828 , -15.777274,  -0.78026 ],
+               [-18.907196, -15.774829,  -0.801748],
+               ...,
+               [-15.78929 , -17.96126 ,  -0.846867],
+               [-15.788581, -17.939104,  -0.839632],
+               [-15.786219, -17.936579,  -0.832714]], dtype=float32)
+        >>> colors
+        array([[123, 103,  79],
+               [124, 104,  81],
+               [123, 103,  80],
+               ...,
+               [116,  98,  80],
+               [113,  95,  76],
+               [115,  97,  78]], dtype=uint8)
+
+    """
+
     cloud_data = PlyData.read(ply_path).elements[0].data
     ply_names = cloud_data.dtype.names
 
@@ -390,7 +433,7 @@ def read_ply(ply_path):
 
 
 def read_las(las_path):
-    """Read the las file
+    """Read the las file, the function wrapper for :func:`read_laz`
 
     Parameters
     ----------
@@ -401,10 +444,81 @@ def read_las(las_path):
     -------
     ndarray, ndarray, ndarray
         points, colors, normals of given point cloud data
+
+    Example
+    -------
+    .. code-block:: python
+    
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> test_data.pcd.lotus_ply_asc
+        WindowsPath('C:/Users/<User>/AppData/Local/easyidp.data/data_for_tests/pcd_test/hasu_tanashi.las')
+        >>> points, colors, normals = idp.pointcloud.read_las(test_data.pcd.lotus_las)
+
+        >>> points
+        array([[-18.908312, -15.777558,  -0.77878 ],
+               [-18.90828 , -15.777274,  -0.78026 ],
+               [-18.907196, -15.774829,  -0.801748],
+               ...,
+               [-15.78929 , -17.96126 ,  -0.846867],
+               [-15.788581, -17.939104,  -0.839632],
+               [-15.786219, -17.936579,  -0.832714]], dtype=float32)
+        >>> colors
+        array([[123, 103,  79],
+               [124, 104,  81],
+               [123, 103,  80],
+               ...,
+               [116,  98,  80],
+               [113,  95,  76],
+               [115,  97,  78]], dtype=uint8)
+
     """
     return read_laz(las_path)
 
+
 def read_laz(laz_path):
+    """Read the laz file
+
+    Parameters
+    ----------
+    laz_path : str
+        The path to las file
+
+    Returns
+    -------
+    ndarray, ndarray, ndarray
+        points, colors, normals of given point cloud data
+
+    Example
+    -------
+    .. code-block:: python
+    
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> test_data.pcd.lotus_ply_asc
+        WindowsPath('C:/Users/<User>/AppData/Local/easyidp.data/data_for_tests/pcd_test/hasu_tanashi.laz')
+        >>> points, colors, normals = idp.pointcloud.read_laz(test_data.pcd.lotus_laz)
+
+        >>> points
+        array([[-18.908312, -15.777558,  -0.77878 ],
+               [-18.90828 , -15.777274,  -0.78026 ],
+               [-18.907196, -15.774829,  -0.801748],
+               ...,
+               [-15.78929 , -17.96126 ,  -0.846867],
+               [-15.788581, -17.939104,  -0.839632],
+               [-15.786219, -17.936579,  -0.832714]], dtype=float32)
+        >>> colors
+        array([[123, 103,  79],
+               [124, 104,  81],
+               [123, 103,  80],
+               ...,
+               [116,  98,  80],
+               [113,  95,  76],
+               [115,  97,  78]], dtype=uint8)
+
+    """
     las = laspy.read(laz_path)
 
     points = np.vstack([las.x, las.y, las.z]).T
@@ -433,23 +547,57 @@ def read_laz(laz_path):
 
     return points, colors, normals
 
-def write_ply(points, colors, ply_path, normals=None, binary=True):
+def write_ply(ply_path, points, colors, normals=None, binary=True):
     """Save point cloud to ply format
 
     Parameters
     ----------
+    ply_path : str
+        the output point cloud file.
     points : ndarray
         the nx3 numpy ndarray of point XYZ info
     colors : ndarray
         the nx3 numpy ndarray of point RGB info, dtype=np.uint8
-    ply_path : str
-        the output point cloud file, including ext.
     normals :ndarray, optional
         the nx3 numpy ndarray of point normal info, by default None
     binary : bool, optional
         whether save the binary file.
         True: save BINARY ply file (by default)
         False: save ASCII ply file.
+
+    Example
+    -------
+    Prepare data:
+
+    .. code-block:: python
+    
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> write_points = np.asarray([[-1.9083118, -1.7775583,  -0.77878  ],
+        ...                            [-1.9082794, -1.7772741,  -0.7802601],
+        ...                            [-1.907196 , -1.7748289,  -0.8017483],
+        ...                            [-1.7892904, -1.9612598,  -0.8468666],
+        ...                            [-1.7885809, -1.9391041,  -0.839632 ],
+        ...                            [-1.7862186, -1.9365788,  -0.8327141]], dtype=np.float64)
+        >>> write_colors = np.asarray([[  0,   0,   0],
+        ...                            [  0,   0,   0],
+        ...                            [  0,   0,   0],
+        ...                            [192,  64, 128],
+        ...                            [ 92,  88,  83],
+        ...                            [ 64,  64,  64]], dtype=np.uint8)
+        >>> write_normals = np.asarray([[-0.03287353,  0.36604664,  0.9300157 ],
+        ...                             [ 0.08860216,  0.07439037,  0.9932853 ],
+        ...                             [-0.01135951,  0.2693031 ,  0.9629885 ],
+        ...                             [ 0.4548034 , -0.15576138,  0.876865  ],
+        ...                             [ 0.4550802 , -0.29450312,  0.8403392 ],
+        ...                             [ 0.32758632,  0.27255052,  0.9046565 ]], dtype=np.float64)
+
+    Use this function:
+
+    .. code-block:: python
+
+        >>> idp.pointcloud.write_ply(r"path/to/point_cloud.ply",  write_points, write_colors, binary=True)
 
     Notes
     -----
@@ -461,14 +609,21 @@ def write_ply(points, colors, ply_path, normals=None, binary=True):
     .. code-block:: python
 
         >>> cloud_data.elements
-        (PlyElement('vertex', 
-            (PlyProperty('x', 'float'), 
-             PlyProperty('y', 'float'), 
-             PlyProperty('z', 'float'), 
-             PlyProperty('red', 'uchar'), 
-             PlyProperty('green', 'uchar'), 
-             PlyProperty('blue', 'uchar')
-        ), count=42454, comments=[]),)
+        (
+            PlyElement(
+                'vertex', 
+                (
+                    PlyProperty('x', 'float'), 
+                    PlyProperty('y', 'float'), 
+                    PlyProperty('z', 'float'), 
+                    PlyProperty('red', 'uchar'), 
+                    PlyProperty('green', 'uchar'), 
+                    PlyProperty('blue', 'uchar')
+                ), 
+                count=42454, 
+                comments=[]),
+            )
+        )
     
     convert ndarray to strucutred array [2]_ and method to merge to structured arrays [3]_
 
@@ -505,7 +660,65 @@ def write_ply(points, colors, ply_path, normals=None, binary=True):
     else:
         PlyData([el], text=True).write(ply_path)
 
-def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
+def write_laz(laz_path, points, colors, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
+    """Save point cloud to laz format
+
+    Parameters
+    ----------
+    laz_path : str
+        the output point cloud file.
+    points : ndarray
+        the nx3 numpy ndarray of point XYZ info
+    colors : ndarray
+        the nx3 numpy ndarray of point RGB info, dtype=np.uint8
+    normals :ndarray, optional
+        the nx3 numpy ndarray of point normal info, by default None
+    offset : 3x1 ndarray, optional
+        The offset value defined in the laz file header, by default np.array([0., 0., 0.])
+    decimal : int, optional
+        The decimal for the point value precision, by default 5
+
+    Example
+    -------
+    Prepare data:
+
+    .. code-block:: python
+    
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> write_points = np.asarray([[-1.9083118, -1.7775583,  -0.77878  ],
+        ...                            [-1.9082794, -1.7772741,  -0.7802601],
+        ...                            [-1.907196 , -1.7748289,  -0.8017483],
+        ...                            [-1.7892904, -1.9612598,  -0.8468666],
+        ...                            [-1.7885809, -1.9391041,  -0.839632 ],
+        ...                            [-1.7862186, -1.9365788,  -0.8327141]], dtype=np.float64)
+        >>> write_colors = np.asarray([[  0,   0,   0],
+        ...                            [  0,   0,   0],
+        ...                            [  0,   0,   0],
+        ...                            [192,  64, 128],
+        ...                            [ 92,  88,  83],
+        ...                            [ 64,  64,  64]], dtype=np.uint8)
+        >>> write_normals = np.asarray([[-0.03287353,  0.36604664,  0.9300157 ],
+        ...                             [ 0.08860216,  0.07439037,  0.9932853 ],
+        ...                             [-0.01135951,  0.2693031 ,  0.9629885 ],
+        ...                             [ 0.4548034 , -0.15576138,  0.876865  ],
+        ...                             [ 0.4550802 , -0.29450312,  0.8403392 ],
+        ...                             [ 0.32758632,  0.27255052,  0.9046565 ]], dtype=np.float64)
+
+    Use this function:
+
+    .. code-block:: python
+
+        >>> idp.pointcloud.write_laz(r"path/to/point_cloud.laz", write_points, write_colors, write_normals)
+
+    Notes
+    -----
+    .. caution::
+
+        The EasyIDP saved the las file with Las version=1.2
+
+    """
     # create header
     header = laspy.LasHeader(point_format=2, version="1.2") 
     if normals is not None:
@@ -536,5 +749,63 @@ def write_laz(points, colors, laz_path, normals=None, offset=np.array([0., 0., 0
 
     las.write(laz_path)
 
-def write_las(points, colors, las_path, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
-    write_laz(points, colors, las_path, normals, offset, decimal)
+def write_las(las_path, points, colors, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
+    """Save point cloud to las format, the function wrapper for :func:`write_laz`
+
+    Parameters
+    ----------
+    las_path : str
+        the output point cloud file.
+    points : ndarray
+        the nx3 numpy ndarray of point XYZ info
+    colors : ndarray
+        the nx3 numpy ndarray of point RGB info, dtype=np.uint8
+    normals :ndarray, optional
+        the nx3 numpy ndarray of point normal info, by default None
+    offset : 3x1 ndarray, optional
+        The offset value defined in the laz file header, by default np.array([0., 0., 0.])
+    decimal : int, optional
+        The decimal for the point value precision, by default 5
+
+    Example
+    -------
+    Prepare data:
+
+    .. code-block:: python
+    
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> write_points = np.asarray([[-1.9083118, -1.7775583,  -0.77878  ],
+        ...                            [-1.9082794, -1.7772741,  -0.7802601],
+        ...                            [-1.907196 , -1.7748289,  -0.8017483],
+        ...                            [-1.7892904, -1.9612598,  -0.8468666],
+        ...                            [-1.7885809, -1.9391041,  -0.839632 ],
+        ...                            [-1.7862186, -1.9365788,  -0.8327141]], dtype=np.float64)
+        >>> write_colors = np.asarray([[  0,   0,   0],
+        ...                            [  0,   0,   0],
+        ...                            [  0,   0,   0],
+        ...                            [192,  64, 128],
+        ...                            [ 92,  88,  83],
+        ...                            [ 64,  64,  64]], dtype=np.uint8)
+        >>> write_normals = np.asarray([[-0.03287353,  0.36604664,  0.9300157 ],
+        ...                             [ 0.08860216,  0.07439037,  0.9932853 ],
+        ...                             [-0.01135951,  0.2693031 ,  0.9629885 ],
+        ...                             [ 0.4548034 , -0.15576138,  0.876865  ],
+        ...                             [ 0.4550802 , -0.29450312,  0.8403392 ],
+        ...                             [ 0.32758632,  0.27255052,  0.9046565 ]], dtype=np.float64)
+
+    Use this function:
+
+    .. code-block:: python
+
+        >>> idp.pointcloud.write_las(r"path/to/point_cloud.las", write_points, write_colors, write_normals)
+
+    Notes
+    -----
+    .. caution::
+
+        The EasyIDP saved the las file with Las version=1.2
+
+    """
+    write_laz(las_path, points, colors, normals, offset, decimal)

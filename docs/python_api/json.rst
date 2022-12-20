@@ -6,6 +6,10 @@
 
 .. currentmodule:: easyidp.jsonfile
 
+This is a package for simple json file operations. 
+Mainly about reading and writting json files from python dict object.
+
+It can be viewed as a submodule for the :class:`easyidp.ROI <easyidp.roi.ROI>` class.
 
 Functions
 =========

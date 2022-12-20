@@ -7,7 +7,7 @@ Point Cloud
 Class
 =====
 
-A summary of class ``PointCloud``
+A summary of class ``easyidp.pointcloud.PointCloud``, can be simple accessed by ``easyidp.PointCloud``
 
 .. autosummary::
     :toctree: autodoc
@@ -18,6 +18,8 @@ A summary of class ``PointCloud``
 Functions
 =========
 
+This module (``easyidp.pointcloud``) also contains the following standard-alone functions for preocessing PointCloud file (ply, las, laz) directly.
+
 .. caution::
     
     The :class:`easyidp.PointCloud <easyidp.pointcloud.PointCloud>` class is an advanced wrapper around the following functions, which is generally sufficient for most simple application cases, please don't use the following functions unless you really need to.
@@ -25,5 +27,10 @@ Functions
 .. autosummary::
     :toctree: autodoc
 
-    write_ply
     read_las
+    read_laz
+    read_ply
+    write_las
+    write_laz
+    write_ply
+    

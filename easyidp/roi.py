@@ -492,7 +492,7 @@ class ROI(idp.Container):
         if isinstance(target, idp.GeoTiff):
             out = target.crop_rois(self, is_geo=True, save_folder=save_folder)
         elif isinstance(target, idp.PointCloud):
-            out = target.crop(self, save_folder=save_folder)
+            out = target.crop_rois(self, save_folder=save_folder)
 
         return out
 

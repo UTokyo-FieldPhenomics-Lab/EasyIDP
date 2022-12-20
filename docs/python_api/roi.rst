@@ -7,7 +7,7 @@ ROI
 Class
 =====
 
-A summary of class ``ROI``
+A summary of class ``easyidp.pointcloud.ROI``, can be simple accessed by ``easyidp.ROI``
 
 .. autosummary::
     :toctree: autodoc

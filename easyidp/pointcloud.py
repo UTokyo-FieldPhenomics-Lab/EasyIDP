@@ -15,22 +15,184 @@ from matplotlib.patches import Polygon
 
 import easyidp as idp
 
+
 class PointCloud(object):
 
     """EasyIDP defined PointCloud class, consists by point coordinates, and optionally point colors and point normals.
     """
 
-    def __init__(self, pcd_path="", offset=[0.,0.,0.]) -> None:
+    def __init__(self, pcd_path="", offset=[0.,0.,0.]):
+        """The method to initialize the PointCloud class
+
+        Parameters
+        ----------
+        pcd_path : str, optional
+            The point cloud file path for loading/reading, by default "", means create an empty point cloud class
+        offset : list, optional
+            This parameter is used to specify your own offsets rather than the automatically calculated one.
+            
+            .. note::
+            
+                When the point cloud xyz value is too large, need to deduct duplicate values (minus offsets) to save the memory cost and increase the precision.
+            
+            .. caution::
+            
+                For some Pix4D produced pointcloud, the point cloud itself has been offseted, need manually add the offset value back.
+
+        Example
+        -------
+
+        **Prepare**
+
+        Cancel the numpy scientific counting method display:
+
+        .. code-block:: python
+
+            >>> import numpy as np
+            >>> np.set_printoptions(suppress=True)
+
+        Package loading:
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+        **Read large xyz point cloud**
+
+        Most point cloud use the CRS (GPS) coordianate as xyz values directly.
+
+        .. code-block:: python
+
+            >>> pcd = idp.PointCloud(test_data.pcd.maize_las)
+            >>> pcd.points
+            array([[ 367993.0206, 3955865.095 ,      57.9707],
+                   [ 367993.146 , 3955865.3131,      57.9703],
+                   [ 367992.6317, 3955867.2979,      57.9822],
+                   ...,
+                   [ 368014.7912, 3955879.4943,      58.0219],
+                   [ 368014.1528, 3955883.5785,      58.0321],
+                   [ 368016.7278, 3955874.1188,      57.9668]])
+        
+        If store these values directly, will cost a lot of memeory with precision loss. But with offsets, the data can be stored more neatly in the EasyIDP:
+
+        .. code-block:: python
+
+            >>> pcd.offset
+            array([ 367900., 3955800.,       0.])
+            >>> pcd._points
+            array([[ 93.0206,  65.095 ,  57.9707],
+                   [ 93.146 ,  65.3131,  57.9703],
+                   [ 92.6317,  67.2979,  57.9822],
+                   ...,
+                   [114.7912,  79.4943,  58.0219],
+                   [114.1528,  83.5785,  58.0321],
+                   [116.7278,  74.1188,  57.9668]])
+
+        **Manually specify offset**
+
+        The previous offset is calculated automatically by EasyIDP, you can also manually specify the offset values:
+
+        .. code-block:: python
+
+            >>> pcd = idp.PointCloud(test_data.pcd.maize_las, offset=[367800, 3955700, 50])
+            >>> pcd.offset
+            array([ 367800., 3955700.,       50.])
+            >>> pcd._points
+            array([[193.0206, 165.095 ,   7.9707],
+                   [193.146 , 165.3131,   7.9703],
+                   [192.6317, 167.2979,   7.9822],
+                   ...,
+                   [214.7912, 179.4943,   8.0219],
+                   [214.1528, 183.5785,   8.0321],
+                   [216.7278, 174.1188,   7.9668]])
+
+        Though the inner stored values changed, it does not affect the final point valus:
+
+        .. code-block:: python
+        
+            >>> pcd.points
+            array([[ 367993.0206, 3955865.095 ,      57.9707],
+                   [ 367993.146 , 3955865.3131,      57.9703],
+                   [ 367992.6317, 3955867.2979,      57.9822],
+                   ...,
+                   [ 368014.7912, 3955879.4943,      58.0219],
+                   [ 368014.1528, 3955883.5785,      58.0321],
+                   [ 368016.7278, 3955874.1188,      57.9668]])
+
+        **Read Pix4D offseted point cloud and add offset back**
+
+        If you read the Pix4D produced point cloud directly:
+
+        .. code-block:: python
+
+            >>> pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
+            >>> pcd
+                         x        y        z  r    g    b        nx      ny      nz
+                0  -18.908  -15.778   -0.779  123  103  79   nodata  nodata  nodata
+                1  -18.908  -15.777   -0.78   124  104  81   nodata  nodata  nodata
+                2  -18.907  -15.775   -0.802  123  103  80   nodata  nodata  nodata
+              ...  ...      ...      ...      ...  ...  ...     ...     ...     ...
+            42451  -15.789  -17.961   -0.847  116  98   80   nodata  nodata  nodata
+            42452  -15.789  -17.939   -0.84   113  95   76   nodata  nodata  nodata
+            42453  -15.786  -17.937   -0.833  115  97   78   nodata  nodata  nodata
+
+        Here the xyz seems not the correct one, when we check the Pix4D project ``{name}_offset.xyz`` file in the param folders, we can find the offset values stored by Pix4D.
+
+        .. code-block:: python
+
+            >>> with open(test_data.pix4d.lotus_param / "hasu_tanashi_20170525_Ins1RGB_30m_offset.xyz", 'r') as f:
+            ...     f.readlines()
+            ['368043.000 3955495.000 98.000']
+
+        This often requires user manually add that offset back to point cloud. But EasyIDP supports dealing with such situation easily:
+
+        .. code-block:: python
+
+            >>> p4d_offset_np = np.array([368043, 3955495,  98]])
+            >>> pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin, p4d_offset_np)
+            >>> pcd
+                            x            y        z  r    g    b        nx      ny      nz
+                0  368024.092  3955479.222   97.221  123  103  79   nodata  nodata  nodata
+                1  368024.092  3955479.223   97.22   124  104  81   nodata  nodata  nodata
+                2  368024.093  3955479.225   97.198  123  103  80   nodata  nodata  nodata
+              ...     ...          ...      ...      ...  ...  ...     ...     ...     ...
+            42451  368027.211  3955477.039   97.153  116  98   80   nodata  nodata  nodata
+            42452  368027.211  3955477.061   97.16   113  95   76   nodata  nodata  nodata
+            42453  368027.214  3955477.063   97.167  115  97   78   nodata  nodata  nodata
+
+        .. note::
+
+            You can also obtain the ``p4d_offset_np`` by :class:`easyidp.Pix4D <easyidp.pix4d.Pix4D>` object:
+
+            .. code-block:: python
+
+                >>> p4d = idp.Pix4D(project_path   = test_data.pix4d.lotus_folder, 
+                ...                 raw_img_folder = test_data.pix4d.lotus_photos, 
+                ...                 param_folder   = test_data.pix4d.lotus_param))
+                >>> p4d.offset_np
+                array([ 368043., 3955495.,      98.])
+
+            And feed it to the previous function:
+
+            .. code-block:: python
+
+                >>> pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin, p4d.offset_np)
+        """
 
         self.file_path = pcd_path
         self.file_ext = ".ply"
 
         self._points = None   # internal points with offsets to save memory
+        #: The color (RGB) values of point cloud
         self.colors = None
+        #: The normal vector values of point cloud
         self.normals = None
+        #: The size of point cloud (xyz)
         self.shape = (0,3)
 
         self.offset = self._offset_type_check(offset)
+        # BeatTiFul print strings for calling print() function
         self._btf_print = '<Empty easyidp.PointCloud object>'
 
         if pcd_path != "":
@@ -90,6 +252,8 @@ class PointCloud(object):
 
     @property
     def points(self):
+        """The xyz values of point cloud
+        """
         if self._points is None:
             return None
         else:
@@ -108,6 +272,54 @@ class PointCloud(object):
 
     @property
     def offset(self):
+        """The offset value of point cloud
+
+        .. caution::
+
+            If change this value directly, the xyz value of point cloud will also be changed, just like moving the whole point cloud.
+
+        Example
+        -------
+        For example, the point cloud like:
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> pts = idp.PointCloud(test_data.pcd.maize_las)
+            >>> pts
+                            x            y        z  r    g    b  
+                0  367993.021  3955865.095   57.971  28   21   17 
+                1  367993.146  3955865.313   57.97   28   23   19 
+                2  367992.632  3955867.298   57.982  29   22   18 
+                ...     ...          ...      ...      ...  ...  ...
+            49655  368014.791  3955879.494   58.022  33   28   25 
+            49656  368014.153  3955883.578   58.032  30   40   26 
+            49657  368016.728  3955874.119   57.967  25   20   18 
+            >>> pts.offset
+            array([ 367900., 3955800.,       0.])
+
+        Change the offset directly:
+
+        .. code-block:: python
+
+            >>> pts.offset = [300, 200, 50]
+            >>> pts
+                            x        y        z  r    g    b  
+                0  393.021  265.095  107.971  28   21   17 
+                1  393.146  265.313  107.97   28   23   19 
+                2  392.632  267.298  107.982  29   22   18 
+                ...  ...      ...      ...      ...  ...  ...
+            49655  414.791  279.494  108.022  33   28   25 
+            49656  414.153  283.578  108.032  30   40   26 
+            49657  416.728  274.119  107.967  25   20   18 
+
+        .. caution::
+        
+            If you want to change the offset without affecting the point xyz values, please use :func:`update_offset_value`
+        
+        """
         return self._offset
 
     @offset.setter
@@ -122,34 +334,84 @@ class PointCloud(object):
         if self._points is not None:
             self._update_btf_print()
 
-    def set_offset_value(self, o, show_warn=True):
+    def update_offset_value(self, off_val):
+        """Change the offset value without affecting the xyz point values.
+
+        Parameters
+        ----------
+        off_val : list | tuple | ndarray
+            The offset values want to set
+
+        Example
+        -------
+        For example, the point cloud like:
+        
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> pts = idp.PointCloud(test_data.pcd.maize_las)
+            >>> pts
+                            x            y        z  r    g    b  
+                0  367993.021  3955865.095   57.971  28   21   17 
+                1  367993.146  3955865.313   57.97   28   23   19 
+                2  367992.632  3955867.298   57.982  29   22   18 
+                ...     ...          ...      ...      ...  ...  ...
+            49655  368014.791  3955879.494   58.022  33   28   25 
+            49656  368014.153  3955883.578   58.032  30   40   26 
+            49657  368016.728  3955874.119   57.967  25   20   18 
+            >>> pts.offset
+            array([ 367900., 3955800.,       0.])
+
+        Change the offset without affecting the xyz values:
+
+        .. code-block:: python
+
+            >>> pts.update_offset_value([360000, 3955000, 50])
+
+            >>> pts.offset
+            array([ 360000., 3955000.,      50.])
+
+            >>> pts.points
+                            x            y        z  r    g    b                        nx                     ny                    nz
+                0  367993.021  3955865.095   57.971  28   21   17    -0.031496062992125984    0.36220472440944884    0.9291338582677166
+                1  367993.146  3955865.313   57.97   28   23   19     0.08661417322834646     0.07086614173228346    0.9921259842519685
+                2  367992.632  3955867.298   57.982  29   22   18    -0.007874015748031496    0.26771653543307083    0.9606299212598425
+              ...     ...          ...      ...      ...  ...  ...  ...                     ...                    ...
+            49655  368014.791  3955879.494   58.022  33   28   25     0.44881889763779526    -0.14960629921259844    0.8740157480314961
+            49656  368014.153  3955883.578   58.032  30   40   26     0.44881889763779526    -0.29133858267716534    0.8346456692913385
+            49657  368016.728  3955874.119   57.967  25   20   18     0.3228346456692913      0.26771653543307083    0.8976377952755905
+
+        .. caution::
+
+            If you want to change the offset like moving point cloud (also change the xyz values), please use :func:`offset`
+        """
         # the point values not change
         # --------------------------------
         # points =  _point + offset
         #   |         |         |
         # no change   change-   change+
-        o = self._offset_type_check(o)
+        off_val = self._offset_type_check(off_val)
         
         if self._points is not None:
-            self._points = self._points + self._offset - o
-            self._offset = o
-            if show_warn:
-                warnings.warn("This will not change the value of point xyz values, if you want to just change offset value, please operate `pcd._offset = offset; pcd._update_btf_print()` directly")
+            self._points = self._points + self._offset - off_val
+            self._offset = off_val
             self._update_btf_print()
         else:
-            self._offset = o
+            self._offset = off_val
 
     @staticmethod
-    def _offset_type_check(o):
-        if len(o) == 3:
-            if isinstance(o, (list, tuple)):
-                return np.asarray(o, dtype=np.float64)
-            elif isinstance(o, np.ndarray):
-                return o.astype(np.float64)
+    def _offset_type_check(off_val):
+        if len(off_val) == 3:
+            if isinstance(off_val, (list, tuple)):
+                return np.asarray(off_val, dtype=np.float64)
+            elif isinstance(off_val, np.ndarray):
+                return off_val.astype(np.float64)
             else:
-                raise ValueError(f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(o)} type")
+                raise ValueError(f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(off_val)} type")
         else:
-            raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(o)} was given")
+            raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(off_val)} was given")
 
     def has_colors(self):
         """Returns True if the point cloud contains point colors.
@@ -188,6 +450,8 @@ class PointCloud(object):
             return True
 
     def clear(self):
+        """Delete all points and make an empty point cloud
+        """
         self._points = None   # internal points with offsets to save memory
         self.colors = None
         self.normals = None
@@ -351,7 +615,7 @@ class PointCloud(object):
             # create new Point Cloud object
             crop_pcd = PointCloud()
             crop_pcd.points = self.points[pick_idx, :]
-            crop_pcd.set_offset_value(self.offset, show_warn=False)
+            crop_pcd.update_offset_value(self.offset)
             if self.has_colors():
                 crop_pcd.colors = self.colors[pick_idx, :]
             if self.has_normals():

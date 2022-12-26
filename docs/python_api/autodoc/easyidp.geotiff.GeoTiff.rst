@@ -28,4 +28,12 @@
 
    
    
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeoTiff.file_path
+      ~GeoTiff.header
+      ~GeoTiff.imarray
+   
    

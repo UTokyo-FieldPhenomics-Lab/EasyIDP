@@ -31,13 +31,22 @@ class GeoTiff(object):
             >>> test_data = idp.data.TestData()
             >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
-        It has the following inner parameters:
-
+        """
+        self.file_path = os.path.abspath(tif_path)
+        """The file path of current GeoTiff
+        
         .. code-block:: python
-
+        
             >>> dom.file_path
             PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif')
-            
+        
+        """
+
+        self.header = None
+        """The Geotiff meta infomation
+        
+        .. code-block:: python
+        
             >>> dom.header
             {'height': 5752, 'width': 5490, 'dim': 4, 'nodata': 0, 'dtype': dtype('uint8'), 
             'tags': <tifffile.TiffTags @0x00007FB1E8C3FFD0>, 'photometric': <PHOTOMETRIC.RGB: 2>, 
@@ -62,8 +71,8 @@ class GeoTiff(object):
             5752
 
         """
-        self.file_path = os.path.abspath(tif_path)
-        self.header = None
+
+        #: The numpy ndarray of GeoTiff images
         self.imarray = None
 
         if tif_path != "":

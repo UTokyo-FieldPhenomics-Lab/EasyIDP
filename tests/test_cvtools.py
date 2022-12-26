@@ -367,7 +367,7 @@ def test_imarray_crop_handle_polygon_hv_with_float():
     with pytest.raises(
         TypeError, 
         match=re.escape(
-            "Only polygon coordinates with [np.interger] and [np.floating] are accepted, not dtype('<U21')"
+            "Only polygon coordinates with [np.interger] and [np.floating] are accepted, not dtype('<U"  # MacOS: <U21'), Win: <U11
         )
     ):
         img_coord = np.asarray([[0, 0], [1, 0], [1, 3]]).astype(str)

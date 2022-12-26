@@ -21,7 +21,7 @@
       ~PointCloud.has_normals
       ~PointCloud.has_points
       ~PointCloud.read_point_cloud
-      ~PointCloud.set_offset_value
+      ~PointCloud.update_offset_value
       ~PointCloud.write_point_cloud
    
    
@@ -34,5 +34,8 @@
    
       ~PointCloud.offset
       ~PointCloud.points
+      ~PointCloud.colors
+      ~PointCloud.normals
+      ~PointCloud.shape
    
    

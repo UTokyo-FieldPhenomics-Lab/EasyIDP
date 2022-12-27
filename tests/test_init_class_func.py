@@ -1,6 +1,7 @@
 import re
 import sys
 import pytest
+import numpy as np
 import easyidp as idp
 
 def test_class_container():
@@ -50,7 +51,24 @@ def test_class_container():
     assert len(slice_test) == 3
     for k in slice_test.keys():
         assert k in ['6', '7', '8']
-    
+
+def test_class_container_btf_print():
+    # short container
+    expected_str_s = '<easyidp.Container> with 3 items\n[0]\t1\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[1]\t2\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[2]\t3\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])'
+    ctn = idp.Container()
+    ctn['1'] = np.ones((4,3))
+    ctn['2'] = np.ones((4,3))
+    ctn['3'] = np.ones((4,3))
+
+    assert ctn._btf_print.replace(' ', '') ==  expected_str_s.replace(' ', '')
+
+    # long container
+    expected_str_l = '<easyidp.Container> with 6 items\n[0]\t1\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[1]\t2\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n...\n[4]\t134\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[5]\t135\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])'
+    ctn['133'] = np.ones((4,3))
+    ctn['134'] = np.ones((4,3))
+    ctn['135'] = np.ones((4,3))
+
+    assert ctn._btf_print.replace(' ', '') ==  expected_str_l.replace(' ', '')
 
 
 def test_def_parse_photo_relative_path():

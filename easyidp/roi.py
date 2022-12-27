@@ -108,6 +108,8 @@ class ROI(idp.Container):
         for k, v in roi_dict.items():
             self[k] = v
 
+        self._update_btf_print(title='easyidp.ROI')
+
     def read_labelme_json(self, json_path):
         """read roi from labelme marked json file
 
@@ -153,6 +155,8 @@ class ROI(idp.Container):
                         f"Only labelme [polygon] shape are accepted, not [{shapes['shape_type']}] of [{shapes['label']}]")
         else:
             raise TypeError(f"It seems [{json_path}] is not a Labelme json file.")
+
+        self._update_btf_print(title='easyidp.ROI')
 
     def change_crs(self, target_crs):
         """Change the geo coordinates of roi to another crs.

@@ -395,9 +395,12 @@ class Pix4D(idp.reconstruct.Recons):
         # seems all teh calculation is based on no offset coordinate
         points_xyz = points_xyz - self.meta["p4d_offset"]
 
+        if log:
+            print(f'[Calculator][Judge]camera_name photo.width photo.height -> x.min \t x.max \t y.min \t y.max')
+
         for photo_name, photo in self.photos.items():
             if log:
-                print(f'[Calculator][Judge]{photo.label}w:{photo.w}h:{photo.h}->', end='')
+                print(f'[Calculator][Judge]{photo.label} w:{photo.sensor.width} h:{photo.sensor.height} -> ', end='')
             #if method == 'exin':
             #    projected_coords = self._external_internal_calc(points, photo, distort_correct)
             projected_coords = self._pmatrix_calc(points_xyz, photo, distort_correct)

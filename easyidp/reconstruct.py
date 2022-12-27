@@ -161,30 +161,30 @@ class Sensor:
 
         if ignore is None:
             if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
-                if log: print('X ', (x_min, x_max, y_min, y_max))
+                if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return None
             else:
-                if log: print('O ', (x_min, x_max, y_min, y_max))
+                if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
         elif ignore=='x':
             if y_min < 0 or y_max > h:
-                if log: print('X ', (x_min, x_max, y_min, y_max))
+                if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return None
             else:
                 # replace outside points to image boundary
                 polygon_hv[polygon_hv[:, 0] < 0, 0] = 0
                 polygon_hv[polygon_hv[:, 0] > w, 0] = w
-                if log: print('O ', (x_min, x_max, y_min, y_max))
+                if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
         elif ignore=='y':
             if x_min < 0 or x_max > w:
-                if log: print('X ', (x_min, x_max, y_min, y_max))
+                if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return None
             else:
                 # replace outside point to image boundary
                 polygon_hv[polygon_hv[:, 1] < 0, 1] = 0
                 polygon_hv[polygon_hv[:, 1] > h, 1] = h
-                if log: print('O ', (x_min, x_max, y_min, y_max))
+                if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
 
 

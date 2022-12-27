@@ -34,6 +34,8 @@
    
       ~PointCloud.offset
       ~PointCloud.points
+      ~PointCloud.file_path
+      ~PointCloud.file_ext
       ~PointCloud.colors
       ~PointCloud.normals
       ~PointCloud.shape

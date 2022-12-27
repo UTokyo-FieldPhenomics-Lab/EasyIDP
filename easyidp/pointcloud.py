@@ -149,7 +149,7 @@ class PointCloud(object):
 
         .. code-block:: python
 
-            >>> p4d_offset_np = np.array([368043, 3955495,  98]])
+            >>> p4d_offset_np = np.array([368043, 3955495,  98])
             >>> pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin, p4d_offset_np)
             >>> pcd
                             x            y        z  r    g    b        nx      ny      nz
@@ -179,8 +179,9 @@ class PointCloud(object):
 
                 >>> pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin, p4d.offset_np)
         """
-
+        #: the file path to the current point cloud file
         self.file_path = pcd_path
+        #: the file extension to the current point cloud file
         self.file_ext = ".ply"
 
         self._points = None   # internal points with offsets to save memory
@@ -463,14 +464,62 @@ class PointCloud(object):
         self.file_path = ""
 
     def read_point_cloud(self, pcd_path):
+        """Open a new point cloud file to overwritting current file, support ply, laz, and las.
+
+        .. caution::
+
+            This operation will totally clear all data of current point cloud, and reopen a new point cloud.
+
+        Parameters
+        ----------
+        pcd_path : str | pathlib.Path
+            the path to point cloud file want to open
+
+        Example
+        -------
+
+        Data prepare:
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> aaa = idp.PointCloud(test_data.pcd.maize_las)
+            >>> aaa
+                            x            y        z  r    g    b                        nx                     ny                    nz
+                0  367993.021  3955865.095   57.971  28   21   17    -0.031496062992125984    0.36220472440944884    0.9291338582677166
+                1  367993.146  3955865.313   57.97   28   23   19     0.08661417322834646     0.07086614173228346    0.9921259842519685
+                2  367992.632  3955867.298   57.982  29   22   18    -0.007874015748031496    0.26771653543307083    0.9606299212598425
+            ...     ...          ...      ...      ...  ...  ...  ...                     ...                    ...
+            49655  368014.791  3955879.494   58.022  33   28   25     0.44881889763779526    -0.14960629921259844    0.8740157480314961
+            49656  368014.153  3955883.578   58.032  30   40   26     0.44881889763779526    -0.29133858267716534    0.8346456692913385
+            49657  368016.728  3955874.119   57.967  25   20   18     0.3228346456692913      0.26771653543307083    0.8976377952755905
+
+        This operation will totally overwrite the previous point cloud
+
+        .. code-block:: python
+
+            >>> aaa.read_point_cloud(test_data.pcd.lotus_las)
+            >>> aaa
+                        x        y        z  r    g    b        nx      ny      nz
+                0  -18.908  -15.778   -0.779  123  103  79   nodata  nodata  nodata
+                1  -18.908  -15.777   -0.78   124  104  81   nodata  nodata  nodata
+                2  -18.907  -15.775   -0.802  123  103  80   nodata  nodata  nodata
+            ...  ...      ...      ...      ...  ...  ...     ...     ...     ...
+            42451  -15.789  -17.961   -0.847  116  98   80   nodata  nodata  nodata
+            42452  -15.789  -17.939   -0.84   113  95   76   nodata  nodata  nodata
+            42453  -15.786  -17.937   -0.833  115  97   78   nodata  nodata  nodata
+
+        """
         if not os.path.exists(pcd_path):
             warnings.warn(f"Can not find file [{pcd_path}], skip loading")
             return
 
         if Path(pcd_path).suffix == ".ply":
-            points, colors, normals = read_ply(pcd_path)
+            pts, cls, nms = read_ply(pcd_path)
         elif Path(pcd_path).suffix in [".laz", ".las"]:
-            points, colors, normals = read_laz(pcd_path)
+            pts, cls, nms = read_laz(pcd_path)
         else:
             raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
 
@@ -480,20 +529,62 @@ class PointCloud(object):
         self.file_ext = os.path.splitext(pcd_path)[-1]
         self.file_path = os.path.abspath(pcd_path)
 
-        if abs(np.max(points)) > 65536:   # need offseting
+        if abs(np.max(pts)) > 65536:   # need offseting
             if not np.any(self._offset):    # not given any offset (0,0,0) -> calculate offset
-                self._offset = np.floor(points.min(axis=0) / 100) * 100
-            self._points = points - self._offset
+                self._offset = np.floor(pts.min(axis=0) / 100) * 100
+            self._points = pts - self._offset
         else:
-            self._points = points
+            self._points = pts
 
-        self.colors = colors
-        self.normals = normals
-        self.shape = points.shape
+        self.colors = cls
+        self.normals = nms
+        self.shape = pts.shape
 
         self._update_btf_print()
 
     def write_point_cloud(self, pcd_path):
+        """Save current point cloud to a file, support ply, las, laz format.
+
+        Parameters
+        ----------
+        pcd_path : str
+            The file path of saved point cloud, if file extention not given, will use parent point cloud file extention.
+
+        Example
+        -------
+        Data prepare:
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
+            >>> polygon = np.array([
+            ...     [-18.42576599, -16.10819054],
+            ...     [-18.00066757, -18.05295944],
+            ...     [-16.05021095, -17.63488388],
+            ...     [-16.46848488, -15.66774559],
+            ...     [-18.42576599, -16.10819054]])
+
+            >>> cropped = pcd.crop_point_cloud(polygon)
+            >>> cropped
+                         x        y        z  r       g       b           nx      ny      nz
+                0  -18.417  -16.119   -0.641  nodata  nodata  nodata  nodata  nodata  nodata
+                1  -18.409  -16.169   -0.647  nodata  nodata  nodata  nodata  nodata  nodata
+                2  -18.404  -16.142   -0.634  nodata  nodata  nodata  nodata  nodata  nodata
+              ...  ...      ...      ...      ...     ...     ...        ...     ...     ...
+            22419  -16.065  -17.607   -0.699  nodata  nodata  nodata  nodata  nodata  nodata
+            22420  -16.062  -17.578   -0.678  nodata  nodata  nodata  nodata  nodata  nodata
+            22421  -16.051  -17.632   -0.692  nodata  nodata  nodata  nodata  nodata  nodata
+
+        Use this function:
+
+        .. code-block:: python
+
+            >>> cropped.write_point_cloud(r"path/to/save/pointcloud.ply")
+
+        """
         # if ply -> self.points + self.offsets
         # if las -> self.points & offset = self.offsets
         pcd_path = Path(pcd_path)
@@ -523,7 +614,7 @@ class PointCloud(object):
                 offset=self._offset)
 
     def crop_rois(self, roi, save_folder=None):
-        """Crop several ROIs by given <ROI> object with several polygons and polygon names
+        """Crop several ROIs by given <ROI> or dict object with several polygons and polygon names, along z-axis
 
         Parameters
         ----------
@@ -537,8 +628,69 @@ class PointCloud(object):
 
         Returns
         -------
-        dict,
-            The dictionary with key as roi name and value as <idp.PointCloud> object
+        dict, The dictionary with key as roi name and value as <idp.PointCloud> object
+
+        Example
+        -------
+
+        Data prepare:
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+            >>> roi = roi[0:3]
+            >>> header = idp.geotiff.get_header(test_data.pix4d.lotus_dom)
+            >>> roi.change_crs(header['crs'])
+            <easyidp.ROI> with 3 items
+            [0]     N1W1
+            array([[ 368017.7565143 , 3955511.08102276],
+                   [ 368019.70190232, 3955511.49811902],
+                   [ 368020.11263046, 3955509.54636219],
+                   [ 368018.15769062, 3955509.13563382],
+                   [ 368017.7565143 , 3955511.08102276]])
+            [1]     N1W2
+            array([[ 368018.20042946, 3955508.96051697],
+                   [ 368020.14581791, 3955509.37761334],
+                   [ 368020.55654627, 3955507.42585654],
+                   [ 368018.601606  , 3955507.01512806],
+                   [ 368018.20042946, 3955508.96051697]])
+            [2]     N1W3
+            array([[ 368018.64801755, 3955506.84956301],
+                   [ 368020.59340644, 3955507.26665948],
+                   [ 368021.00413502, 3955505.31490271],
+                   [ 368019.04919431, 3955504.90417413],
+                   [ 368018.64801755, 3955506.84956301]])
+
+            >>> pcd = idp.PointCloud(test_data.pix4d.lotus_pcd, offset=[368043, 3955495,  98])
+                              x            y        z  r    g    b        nx      ny      nz
+                  0  368014.849  3955511.333   97.215  51   55   33   nodata  nodata  nodata
+                  1  368014.853  3955511.352   97.239  49   52   33   nodata  nodata  nodata
+                  2  368014.865  3955511.485   97.402  46   50   30   nodata  nodata  nodata
+                ...     ...          ...      ...      ...  ...  ...     ...     ...     ...
+            6235710  368055.047  3955482.412   96.997  173  168  170  nodata  nodata  nodata
+            6235711  368055.051  3955482.407   97.051  154  140  129  nodata  nodata  nodata
+            6235712  368055.058  3955482.373   97.107  114  93   72   nodata  nodata  nodata
+
+        Run this function:
+
+        .. code-block:: python
+
+            >>> out = pcd.crop_rois(roi)
+            >>> out
+            {'N1W1': <easyidp.PointCloud class>, 'N1W2': <easyidp.PointCloud class>, 'N1W3': <easyidp.PointCloud class>}
+
+        You can also save the output point cloud to given folder by:
+
+        .. code-block:: python
+
+            >>> out = pcd.crop_rois(roi, save_folder=r'path/to/save/folder/')
+        
+        See also
+        --------
+        crop_point_cloud
         """
         if not self.has_points():
             raise ValueError("Could not operate when PointCloud has no points")
@@ -571,8 +723,41 @@ class PointCloud(object):
 
         Returns
         -------
-        PointCloud object
-            The cropped point cloud
+        <easyidp.PointCloud> object, The cropped point cloud
+
+        Example
+        -------
+        
+        Data prepare:
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
+            >>> polygon = np.array([
+            ...     [-18.42576599, -16.10819054],
+            ...     [-18.00066757, -18.05295944],
+            ...     [-16.05021095, -17.63488388],
+            ...     [-16.46848488, -15.66774559],
+            ...     [-18.42576599, -16.10819054]])
+
+        Run this function:
+
+        .. code-block:: python
+
+            >>> cropped = pcd.crop_point_cloud(polygon)
+            >>> cropped
+                         x        y        z  r       g       b           nx      ny      nz
+                0  -18.417  -16.119   -0.641  nodata  nodata  nodata  nodata  nodata  nodata
+                1  -18.409  -16.169   -0.647  nodata  nodata  nodata  nodata  nodata  nodata
+                2  -18.404  -16.142   -0.634  nodata  nodata  nodata  nodata  nodata  nodata
+              ...  ...      ...      ...      ...     ...     ...        ...     ...     ...
+            22419  -16.065  -17.607   -0.699  nodata  nodata  nodata  nodata  nodata  nodata
+            22420  -16.062  -17.578   -0.678  nodata  nodata  nodata  nodata  nodata  nodata
+            22421  -16.051  -17.632   -0.692  nodata  nodata  nodata  nodata  nodata  nodata
+
         """
 
         # judge whether proper data type
@@ -669,6 +854,9 @@ def read_ply(ply_path):
                [113,  95,  76],
                [115,  97,  78]], dtype=uint8)
 
+    See also
+    --------
+    :func:`easyidp.PointCloud.read_point_cloud <easyidp.pointcloud.PointCloud.read_point_cloud>`
     """
 
     cloud_data = PlyData.read(ply_path).elements[0].data
@@ -737,6 +925,10 @@ def read_las(las_path):
                [113,  95,  76],
                [115,  97,  78]], dtype=uint8)
 
+    See also
+    --------
+    :func:`easyidp.PointCloud.read_point_cloud <easyidp.pointcloud.PointCloud.read_point_cloud>`
+
     """
     return read_laz(las_path)
 
@@ -782,6 +974,10 @@ def read_laz(laz_path):
                [113,  95,  76],
                [115,  97,  78]], dtype=uint8)
 
+    See also
+    --------
+    :func:`easyidp.PointCloud.read_point_cloud <easyidp.pointcloud.PointCloud.read_point_cloud>`
+    
     """
     las = laspy.read(laz_path)
 
@@ -897,6 +1093,10 @@ def write_ply(ply_path, points, colors, normals=None, binary=True):
     .. [2] https://stackoverflow.com/questions/3622850/converting-a-2d-numpy-array-to-a-structured-array
     .. [3] https://stackoverflow.com/questions/5355744/numpy-joining-structured-arrays
 
+    See also
+    --------
+    :func:`easyidp.PointCloud.write_point_cloud <easyidp.pointcloud.PointCloud.write_point_cloud>`
+
     """
 
     # convert to strucutrre array
@@ -982,6 +1182,9 @@ def write_laz(laz_path, points, colors, normals=None, offset=np.array([0., 0., 0
 
         The EasyIDP saved the las file with Las version=1.2
 
+    See also
+    --------
+    :func:`easyidp.PointCloud.write_point_cloud <easyidp.pointcloud.PointCloud.write_point_cloud>`
     """
     # create header
     header = laspy.LasHeader(point_format=2, version="1.2") 
@@ -1071,5 +1274,9 @@ def write_las(las_path, points, colors, normals=None, offset=np.array([0., 0., 0
 
         The EasyIDP saved the las file with Las version=1.2
 
+    See also
+    --------
+    :func:`easyidp.PointCloud.write_point_cloud <easyidp.pointcloud.PointCloud.write_point_cloud>`
+    
     """
     write_laz(las_path, points, colors, normals, offset, decimal)

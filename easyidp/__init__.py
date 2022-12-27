@@ -19,7 +19,7 @@ class Container(dict):
 
     References
     ----------
-    [1] https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
+    .. [1] https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
     """
     def __init__(self):
         super().__init__()

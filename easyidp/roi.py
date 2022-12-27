@@ -272,6 +272,8 @@ class ROI(idp.Container):
         self.id_item = idp.shp.convert_proj(self.id_item, self.crs, target_crs)
         self.crs = target_crs
 
+        self._update_btf_print(title='easyidp.ROI')
+
     def _get_z_input_check(self, obj, mode, kernel, buffer, func="dsm"):
         # check if has CRS (GeoROI), otherwise stop
         if not self.is_geo():

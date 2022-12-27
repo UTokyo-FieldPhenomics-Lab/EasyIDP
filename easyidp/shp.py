@@ -9,6 +9,7 @@ from pathlib import Path
 
 import easyidp as idp
 
+
 def read_proj(prj_path):
     """read \*.prj file to pyproj object
     
@@ -19,7 +20,35 @@ def read_proj(prj_path):
     
     Returns
     -------
-    proj : the pyproj object
+    <pyproj.CRS> object
+
+    Example
+    -------
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> prj_path = test_data.shp.roi_prj
+        PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/shp_test/roi.prj')
+        
+        >>> out_proj = idp.shp.read_proj(prj_path)
+        >>> out_proj
+        <Derived Projected CRS: EPSG:32654>
+        Name: WGS 84 / UTM zone 54N
+        Axis Info [cartesian]:
+        - E[east]: Easting (metre)
+        - N[north]: Northing (metre)
+        Area of Use:
+        - undefined
+        Coordinate Operation:
+        - name: UTM zone 54N
+        - method: Transverse Mercator
+        Datum: World Geodetic System 1984
+        - Ellipsoid: WGS 84
+        - Prime Meridian: Greenwich
+
     """
     with open(str(prj_path), 'r') as f:
         wkt_string = f.readline()
@@ -42,6 +71,37 @@ def show_shp_fields(shp_path, encoding="utf-8"):
         the file path of \*.shp
     encoding : str
         default is 'utf-8', however, or some chinese characters, 'gbk' is required
+
+    Example
+    -------
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> idp.shp.show_shp_fields(test_data.shp.complex_shp, encoding="GBK") 
+          [-1]            [0] ID                [1] MASSIFID       [2] CROPTYPE    [3] CROPDATE    [4] CROPAREA    [5] ATTID
+        ------  ---------------------------  -------------------  --------------  --------------  --------------  -----------
+             0  230104112201809010000000000  2301041120000000000       小麦         2018-09-01     61525.26302
+             1  230104112201809010000000012  2301041120000000012       蔬菜         2018-09-01      2802.33512
+             2  230104112201809010000000014  2301041120000000014       玉米         2018-09-01      6960.7745
+           ...              ...                      ...               ...             ...             ...            ...
+           320  230104112201809010000000583  2301041120000000583       大豆         2018-09-01      380.41704
+           321  230104112201809010000000584  2301041120000000584       其它         2018-09-01      9133.25998
+           322  230104112201809010000000585  2301041120000000585       其它         2018-09-01      1704.27193
+    
+        >>> idp.shp.show_shp_fields(test_data.shp.lotus_shp)
+          [-1]   [0] plot_id
+        ------  -------------
+             0      N1W1
+             1      N1W2
+             2      N1W3
+           ...       ...
+           109      S4E5
+           110      S4E6
+           111      S4E7
+    
     """
     shp = shapefile.Reader(str(shp_path), encoding=encoding)
 
@@ -181,6 +241,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], include_title=True, encoding='gbk') 
         >>> out.keys()
         dict_keys(['CROPTYPE_小麦_MASSIFID_23010...0000', 'CROPTYPE_蔬菜_MASSIFID_23010...0012', ... ])
+
     """
     #####################################
     # check projection coordinate first #

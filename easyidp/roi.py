@@ -13,6 +13,7 @@ class ROI(idp.Container):
     """
     Summary APIs of each objects, often read from shp file.
     """
+    __excluded__  = ["get"]
 
     def __init__(self, target_path=None, **kwargs):
         super().__init__()
@@ -20,7 +21,10 @@ class ROI(idp.Container):
         # self.id_item = {}
         # self.item_label = {}
         # if has CRS -> GPS coordiantes -> geo2pix convert
+
+        #: the CRS that current ROI used.
         self.crs = None   # default -> pixel coords
+        #: the source file path of current ROI.
         self.source = target_path
 
         if target_path is not None:

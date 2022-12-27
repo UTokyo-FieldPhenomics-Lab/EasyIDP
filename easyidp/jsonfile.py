@@ -28,6 +28,25 @@ def read_json(json_path):
     Returns
     -------
     dict
+
+    Example
+    -------
+
+    Data prepare:
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+    Use this function:
+
+    .. code-block:: python
+
+        >>> out = idp.jsonfile.read_json(test_data.json.for_read_json)
+        >>> out
+        {'test': {'rua': [[12, 34], [45, 56]]}, 'hua': [34, 34.567]}
+
     """
     if os.path.exists(json_path):
         with open(json_path) as json_file:
@@ -37,7 +56,7 @@ def read_json(json_path):
         raise FileNotFoundError(f"Could not locate the given json file [{json_path}]")
 
 def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
-    """Convert dict to the same structure json file
+    """Save dict object to the same structure json file
     
     Parameters
     ----------
@@ -51,20 +70,34 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
     encoding : str
         the encoding type of output file
 
-    Notes
-    -----
-    **indient example**
+    Example
+    -------
 
     .. code-block:: python
 
-        >>> print(json.dumps(data), indent=0)
-        {"age": 4, "name": "niuniuche", "attribute": "toy"}
-        >>> print(json.dumps(data,indent=4))
-        {
-            "age": 4,
-            "name": "niuniuche",
-            "attribute": "toy"
-        }
+        >>> import easyidp as idp
+        >>> a = {"test": {"rua": np.asarray([[12, 34], [45, 56]])}, "hua":[np.int32(34), np.float64(34.567)]}
+        >>> idp.jsonfile.dict2json(a, "/path/to/save/json_file.json")
+
+    .. note:: 
+
+        Dict without indient:
+
+        .. code-block:: python
+
+            >>> print(json.dumps(data), indent=0)
+            {"age": 4, "name": "niuniuche", "attribute": "toy"}
+
+        Dict with 4 space as indient:
+
+        .. code-block:: python
+
+            >>> print(json.dumps(data,indent=4))
+            {
+                "age": 4,
+                "name": "niuniuche",
+                "attribute": "toy"
+            }
 
     See also
     --------
@@ -80,7 +113,7 @@ def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):
 
 
 def write_json(data_dict, json_path, indent=0, encoding='utf-8'):
-    """Save dict to the same structure json file
+    """Save dict to the same structure json file, a function wrapper for :func:`dict2json`
     
     Parameters
     ----------
@@ -94,31 +127,17 @@ def write_json(data_dict, json_path, indent=0, encoding='utf-8'):
     encoding : str
         the encoding type of output file
 
-    Notes
-    -----
-    **indient example**
-
-    .. code-block:: python
-
-        >>> print(json.dumps(data), indent=0)
-        {"age": 4, "name": "niuniuche", "attribute": "toy"}
-        >>> print(json.dumps(data,indent=4))
-        {
-            "age": 4,
-            "name": "niuniuche",
-            "attribute": "toy"
-        }
 
     See also
     --------
-    easyidp.jsonfile.dict2json, easyidp.jsonfile.save_json
+    easyidp.jsonfile.dict2json
 
     """
     dict2json(data_dict, json_path, indent, encoding)
 
 
 def save_json(data_dict, json_path, indent=0, encoding='utf-8'):
-    """Save dict to the same structure json file
+    """Save dict to the same structure json file, a function wrapper for :func:`dict2json`
     
     Parameters
     ----------
@@ -132,24 +151,9 @@ def save_json(data_dict, json_path, indent=0, encoding='utf-8'):
     encoding : str
         the encoding type of output file
 
-    Notes
-    -----
-    **indient example**
-
-    .. code-block:: python
-
-        >>> print(json.dumps(data), indent=0)
-        {"age": 4, "name": "niuniuche", "attribute": "toy"}
-        >>> print(json.dumps(data,indent=4))
-        {
-            "age": 4,
-            "name": "niuniuche",
-            "attribute": "toy"
-        }
-
     See also
     --------
-    easyidp.jsonfile.dict2json, easyidp.jsonfile.save_json
+    easyidp.jsonfile.dict2json
 
     """
     dict2json(data_dict, json_path, indent, encoding)

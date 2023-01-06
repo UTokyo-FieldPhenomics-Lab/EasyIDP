@@ -25,7 +25,6 @@ class Container(dict):
         super().__init__()
         self.id_item = {}   # {0: item1, 1: item2}
         self.item_label = {}  #{"N1W1": 0, "N1W2": 1}, just index it position
-        self._btf_print = "<Empty easyidp.Container object>"
 
     def __setitem__(self, key, item):
         if isinstance(key, int):
@@ -51,8 +50,6 @@ class Container(dict):
         else:
             raise KeyError(f"Key should be 'int', 'str', not {key}")
 
-        self._update_btf_print()
-
     def __getitem__(self, key):
         if isinstance(key, int):  # index by photo order
             return self.id_item[key]
@@ -64,24 +61,25 @@ class Container(dict):
             out = self.copy()
             out.id_item = {k:v for k, v in self.id_item.items() if k in idx_list}
             out.item_label = {k:v for k, v in self.item_label.items() if v in idx_list}
-
-            out._update_btf_print()
             
             return out
         else:
             raise KeyError(f"Key should be 'int', 'str', 'slice', not {key}")
 
     def __repr__(self) -> str:
-        return self._btf_print
+        return self._btf_print()
 
     def __str__(self) -> str:
-        return self._btf_print
+        return self._btf_print()
 
-    def _update_btf_print(self, title='easyidp.Container'):
+    def _btf_print(self):
+        title = f'easyidp.{self.__class__.__name__}'
         key_list = list(self.item_label.keys())
         num = len(key_list)
         out_str = f'<{title}> with {num} items\n'
-        if num > 5:
+        if num == 0:
+            out_str = "<Empty easyidp.Container object>"
+        elif num > 5:
             for i, k in enumerate(key_list[:2]):
                 out_str += f"[{i}]\t{k}\n"
                 out_str += repr(self.id_item[self.item_label[k]])
@@ -98,7 +96,7 @@ class Container(dict):
                 out_str += '\n'
 
         out_str = out_str[:-1]
-        self._btf_print = out_str
+        return out_str
 
     def __len__(self):
         return len(self.id_item)
@@ -127,8 +125,6 @@ class Container(dict):
                 # e.g. {"N1W1": 0, "N1W2": 1},
                 label = _find_key(self.item_label, idx)
                 self.item_label[label] = idx - 1
-
-        self._update_btf_print()
 
     def __iter__(self):
         return iter(self.id_item.values())

@@ -60,7 +60,7 @@ def test_class_container_btf_print():
     ctn['2'] = np.ones((4,3))
     ctn['3'] = np.ones((4,3))
 
-    assert ctn._btf_print.replace(' ', '') ==  expected_str_s.replace(' ', '')
+    assert ctn._btf_print().replace(' ', '') ==  expected_str_s.replace(' ', '')
 
     # long container
     expected_str_l = '<easyidp.Container> with 6 items\n[0]\t1\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[1]\t2\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n...\n[4]\t134\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[5]\t135\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])'
@@ -68,7 +68,7 @@ def test_class_container_btf_print():
     ctn['134'] = np.ones((4,3))
     ctn['135'] = np.ones((4,3))
 
-    assert ctn._btf_print.replace(' ', '') ==  expected_str_l.replace(' ', '')
+    assert ctn._btf_print().replace(' ', '') ==  expected_str_l.replace(' ', '')
 
 
 def test_def_parse_photo_relative_path():

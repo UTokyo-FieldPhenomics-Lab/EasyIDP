@@ -103,6 +103,9 @@ Also, users can use any other software which can displace the coordinates where 
 .. image:: ../_static/images/roi_marking/gimp_coord.jpg
     :alt: gimp_coord.jpg
 
+
+.. _make-roi-on-point-cloud:
+
 2\. Marking ROI on point cloud
 ==============================
 

@@ -182,6 +182,21 @@ def test_class_roi_get_z_from_dsm():
     np.testing.assert_almost_equal(roi_f_mean_0_f[0][0,0], 368017.7565143015)
     np.testing.assert_almost_equal(roi_f_mean_0_f[0][0,1], 3955511.081022765)
 
+
+def test_class_roi_get_z_from_dsm_warns():
+    # the ROI outside the DSM ranges and cause nan values for z
+    # bug report #69
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+    roi = roi[0:3]
+
+    roi[0] = roi[0] + np.array([0,  -0.00029697])  # offset 1 degree lon & lat
+
+    lotus_full_dsm = test_data.pix4d.lotus_dsm
+
+    with pytest.warns(UserWarning, match=re.escape("Z values contains empty attribute [-10000.0] for ['N1W1'], this may be caused by the")):
+        roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+        print(roi[0])
+
 def test_class_roi_get_z_from_dsm_errors():
     roi = idp.ROI(test_data.shp.lotus_shp)
     lotus_full_dsm = test_data.pix4d.lotus_dsm

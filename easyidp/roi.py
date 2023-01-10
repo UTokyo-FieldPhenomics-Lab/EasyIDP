@@ -707,14 +707,16 @@ class ROI(idp.Container):
         else:
             poly_dict = idp.shp.convert_proj(self.id_item, self.crs, dsm.header["crs"])
 
-        pbar = tqdm(poly_dict.items(), desc=f"Read z values of roi from DSM [{dsm.file_path.name}]")
-        for key, poly in pbar:
+        nan_z_list = []
+        pbar = tqdm(self.items(), desc=f"Read z values of roi from DSM [{dsm.file_path.name}]")
+        for roi_name, val in pbar:
+            poly = poly_dict[self.item_label[roi_name]]
             # only get the x and y of coords
             poly = poly[:, 0:2]
 
             # using the full map
             if global_z is not None:
-                poly3d = _insert_z_value_for_roi(self.id_item[key], global_z)
+                poly3d = _insert_z_value_for_roi(val, global_z)
             else:
                 if mode == "face":    # using the polygon as uniform z values
                     # need do buffer
@@ -725,7 +727,7 @@ class ROI(idp.Container):
 
                     poly_z = dsm.polygon_math(poly, is_geo=True, kernel=kernel)
                     
-                    poly3d = _insert_z_value_for_roi(self.id_item[key], poly_z)
+                    poly3d = _insert_z_value_for_roi(val, poly_z)
 
                 else:    # using each point own z values
                     if buffer != 0 or buffer != 0.0:
@@ -743,9 +745,16 @@ class ROI(idp.Container):
                         # just qurey pixel value 
                         z_values = dsm.point_query(poly, is_geo=True)
 
-                    poly3d = _insert_z_value_for_roi(self.id_item[key], z_values)
+                    poly3d = _insert_z_value_for_roi(val, z_values)
 
-            self.id_item[key] = poly3d
+            # give warning if np.nan in z values (often caused by ROI outside DSM)
+            if(np.isin(poly3d, dsm.header['nodata']).any()):
+                nan_z_list.append(roi_name)
+
+            self[roi_name] = poly3d
+
+        if len(nan_z_list) > 0:
+            warnings.warn(f"Z values contains empty attribute [{dsm.header['nodata']}] for {nan_z_list}, this may be caused by the ROI distribute inside the DSM no-value area, please double check the source shapefile and DOM in GIS software")
 
 
     def get_z_from_pcd(self, pcd, mode="face", kernel="mean", buffer=0):

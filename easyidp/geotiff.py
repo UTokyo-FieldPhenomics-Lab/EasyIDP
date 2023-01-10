@@ -733,6 +733,10 @@ class GeoTiff(object):
         if len(imarray.shape) == 2:  # seems dsm
             # dim = 2
             inside_value = imarray[imarray != self.header["nodata"]]
+            # all nodata
+            # fix bug #69
+            if len(inside_value) == 0:
+                inside_value = np.array([self.header["nodata"]])
         elif len(imarray.shape) == 3 and imarray.shape[2]==4:  
             # RGBA dom
             # crop_polygon function only returns RGBA 4 layer data

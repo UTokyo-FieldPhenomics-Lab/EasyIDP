@@ -209,6 +209,26 @@ def test_class_roi_get_z_from_dsm_errors():
         roi.crs = None
         roi.get_z_from_dsm(lotus_full_dsm, buffer="abcde")
 
+def test_func_insert_z_value_for_roi_error():
+    # test catching incorrest ROI.shape
+    with pytest.raises(ValueError, match=re.escape("The expected ROI shape should be (n, 3), not given (5, 4)")):
+        out = idp.roi._insert_z_value_for_roi(np.ones((5,4)), 3)
+
+
+def test_class_roi_get_z_from_dsm_duplicate_load():
+    # fix bug #60
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+    roi = roi[0:3]
+
+    lotus_full_dsm = test_data.pix4d.lotus_dsm
+
+    roi.get_z_from_dsm(lotus_full_dsm)
+
+    assert roi['N1W1'].shape == (5, 3)
+
+    roi.get_z_from_dsm(lotus_full_dsm)
+
+    assert roi['N1W1'].shape == (5, 3)
 
 def test_class_roi_crop():
     # just ensure it can run, the data examine please check corresponding modules' test

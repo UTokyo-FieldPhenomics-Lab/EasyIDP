@@ -30,8 +30,22 @@ class Container(dict):
         if isinstance(key, int):
             # default method to set values
             # Container[0] = A, while A.label = "N1W1"
-            self.id_item[key] = item
-            self.item_label[item.label] = key
+
+            if key < len(self.item_label):
+                # change the value of one item
+                self.id_item[key] = item
+                if 'label' in dir(item):  # has item.label
+                    self.item_label[item.label] = key
+            elif key == len(self.item_label):
+                # add a new item
+                self.id_item[key] = item
+                if 'label' in dir(item): 
+                    self.item_label[item.label] = key
+                else:
+                    self.item_label[key] = key
+            else:
+                raise IndexError(f"Index [{key}] out of range (0, {len(self.item_label)})")
+
         elif isinstance(key, str):
             # advanced method to change items
             # Container["N1W1"] = B, here assuemt B.label already == "N1W1"
@@ -52,9 +66,15 @@ class Container(dict):
 
     def __getitem__(self, key):
         if isinstance(key, int):  # index by photo order
-            return self.id_item[key]
+            if key < len(self.item_label):
+                return self.id_item[key]
+            else:
+                raise IndexError(f"Index [{key}] out of range (0, {len(self.item_label)})")
         elif isinstance(key, str):  # index by photo name
-            return self.id_item[self.item_label[key]]
+            if key in self.item_label.keys():
+                return self.id_item[self.item_label[key]]
+            else:
+                raise KeyError(f"Can not find key [{key}]")
         elif isinstance(key, slice):
             idx_list = list(self.id_item.keys())[key]
 

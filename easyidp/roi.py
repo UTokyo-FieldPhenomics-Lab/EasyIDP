@@ -76,10 +76,6 @@ class ROI(idp.Container):
         if target_path is not None:
             self.open(target_path, **kwargs)
 
-    def __setitem__(self, key, item):
-        idx = len(self.id_item)
-        self.id_item[idx] = item
-        self.item_label[key] = idx
 
     def is_geo(self):
         """Returns True if the ROI is geo coordinate.
@@ -718,7 +714,7 @@ class ROI(idp.Container):
 
             # using the full map
             if global_z is not None:
-                poly3d = np.insert(self.id_item[key], obj=2, values=global_z, axis=1)
+                poly3d = _insert_z_value_for_roi(self.id_item[key], global_z)
             else:
                 if mode == "face":    # using the polygon as uniform z values
                     # need do buffer
@@ -729,7 +725,7 @@ class ROI(idp.Container):
 
                     poly_z = dsm.polygon_math(poly, is_geo=True, kernel=kernel)
                     
-                    poly3d = np.insert(self.id_item[key], obj=2, values=poly_z, axis=1)
+                    poly3d = _insert_z_value_for_roi(self.id_item[key], poly_z)
 
                 else:    # using each point own z values
                     if buffer != 0 or buffer != 0.0:
@@ -747,7 +743,7 @@ class ROI(idp.Container):
                         # just qurey pixel value 
                         z_values = dsm.point_query(poly, is_geo=True)
 
-                    poly3d = np.concatenate([self.id_item[key], z_values[:, None]], axis=1)
+                    poly3d = _insert_z_value_for_roi(self.id_item[key], z_values)
 
             self.id_item[key] = poly3d
 
@@ -1035,6 +1031,26 @@ class ROI(idp.Container):
                 out_dict[chunk.label] = chunk.back2raw(self, save_folder=save_path, **kwargs)
 
         return out_dict
+
+
+def _insert_z_value_for_roi(ndarray, z_value):
+    # given a value list
+    if isinstance(z_value, np.ndarray):
+        if ndarray.shape[1] == 2:
+            ndarray_z = np.concatenate([ndarray, z_value[:, None]], axis=1)
+        elif ndarray.shape[1] == 3:
+            ndarray_z = np.concatenate([ndarray[:, 0:2], z_value[:, None]], axis=1)
+        else:
+            raise ValueError(f"The expected ROI shape should be (n, 3), not given {ndarray.shape}")
+    else:  # share the same value
+        if ndarray.shape[1] == 2:
+            ndarray_z = np.insert(ndarray, obj=2, values=z_value, axis=1)
+        elif ndarray.shape[1] == 3:
+            ndarray_z = np.insert(ndarray[:,0:2], obj=2, values=z_value, axis=1)
+        else:
+            raise ValueError(f"The expected ROI shape should be (n, 3), not given {ndarray.shape}")
+
+    return ndarray_z
 
 
 def read_cc_txt(txt_path):

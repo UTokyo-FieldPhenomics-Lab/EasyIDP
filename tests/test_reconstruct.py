@@ -172,9 +172,9 @@ def test_class_calibration_calibrate_error():
 def test_class_container_photo():
     p1 = idp.reconstruct.Photo()
     p2 = idp.reconstruct.Photo()
-    p1.id = 1
+    p1.id = 0
     p1.label = "aaa.jpg"
-    p2.id = 2
+    p2.id = 1
     p2.label = "bbb.jpg"
 
     a = idp.Container()
@@ -182,7 +182,7 @@ def test_class_container_photo():
     a[p2.id] = p2
 
     assert len(a) == 2
-    assert a[1] == p1
+    assert a[0] == p1
     assert a["bbb.jpg"] == p2
 
 def test_func_sort_img_by_distance_ms():

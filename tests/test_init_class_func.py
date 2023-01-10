@@ -52,6 +52,28 @@ def test_class_container():
     for k in slice_test.keys():
         assert k in ['6', '7', '8']
 
+def test_class_container_error():
+    slice_test = idp.Container()
+    slice_test['111'] = 111
+    slice_test['222'] = 222
+    slice_test['333'] = 333
+
+    # test specify values without labels
+    slice_test[0] = 4
+    assert slice_test[0] == 4
+    assert slice_test[1] == 222
+
+    with pytest.raises(IndexError, match=re.escape("Index [4] out of range (0, 3)")):
+        slice_test[4]
+
+    with pytest.raises(IndexError, match=re.escape("Index [4] out of range (0, 3)")):
+        slice_test[4] = 3
+
+    with pytest.raises(KeyError, match=re.escape("Can not find key [233]")):
+        slice_test['233']
+
+    
+
 def test_class_container_btf_print():
     # short container
     expected_str_s = '<easyidp.Container> with 3 items\n[0]\t1\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[1]\t2\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])\n[2]\t3\narray([[1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.],\n       [1., 1., 1.]])'

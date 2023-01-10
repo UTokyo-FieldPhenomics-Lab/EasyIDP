@@ -278,3 +278,15 @@ def test_class_roi_back2raw():
 
     assert len(out_p4d) == 2
     assert len(out_ms) == 2
+
+def test_class_roi_back2raw_error():
+    ms = idp.Metashape(test_data.metashape.lotus_psx)
+
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+
+    # test ROI.back2raw error
+    with pytest.raises(
+        ValueError, 
+        match=re.escape(
+            "The back2raw function requires 3D roi with shape=(n, 3), but [N1W1] is (5, 2)")):
+        out_ms = roi.back2raw(ms)

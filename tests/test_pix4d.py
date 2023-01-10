@@ -241,6 +241,20 @@ def test_class_back2raw():
 
     assert len(out_all) == 2
 
+def test_class_back2raw_error():
+
+    p4d = idp.Pix4D(test_data.pix4d.lotus_folder, 
+                    test_data.pix4d.lotus_photos,
+                    test_data.pix4d.lotus_param)
+
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+
+    with pytest.raises(
+        ValueError, 
+        match=re.escape(
+            "The back2raw function requires 3D roi with shape=(n, 3), but [N1W1] is (5, 2)")):
+            p4d.back2raw(roi)
+
 
 def test_class_get_photo_position():
     lotus = idp.data.Lotus()

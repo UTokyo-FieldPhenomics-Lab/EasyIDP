@@ -1010,11 +1010,21 @@ class ROI(idp.Container):
         if not self.is_geo():
             raise TypeError("Could not operate without CRS specified")
 
+        # check if is 3D roi
+        # fix bugs #47
+        for k, coord in self.items():
+            print(coord)
+            dim = coord.shape[1]
+            if dim != 3:
+                raise ValueError(f"The back2raw function requires 3D roi with shape=(n, 3), but [{k}] is {coord.shape}")
+
         # if is one chunk
         if isinstance(recons, (idp.Pix4D, idp.Metashape)):
             out_dict = recons.back2raw(self, **kwargs)
         # several chunks
+        # Todo, not supported
         if isinstance(recons, idp.ProjectPool):
+            raise NotImplementedError("This Pool batch processing function has not been fully implemented")
             out_dict = {}
             for chunk in recons:
                 if isinstance(save_folder, str) and os.path.isdir(save_folder):

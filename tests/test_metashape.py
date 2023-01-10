@@ -205,6 +205,18 @@ def test_class_back2raw_and_crs():
     assert isinstance(out_all["N1W2"], dict)
 
 
+def test_class_back2raw_error():
+    ms = idp.Metashape(test_data.metashape.lotus_psx)
+
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+
+    with pytest.raises(
+        ValueError, 
+        match=re.escape(
+            "The back2raw function requires 3D roi with shape=(n, 3), but [N1W1] is (5, 2)")):
+            ms.back2raw(roi)
+
+
 def test_metashape_get_photo_position():
     lotus = idp.data.Lotus()
     ms = idp.Metashape(lotus.metashape.project, chunk_id=0)

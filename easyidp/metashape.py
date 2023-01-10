@@ -261,6 +261,9 @@ class Metashape(idp.reconstruct.Recons):
             else:
                 save_path = None
 
+            if points_xyz.shape[1] != 3:
+                raise ValueError(f"The back2raw function requires 3D roi with shape=(n, 3), but [{k}] is {points_xyz.shape}")
+
             one_roi_dict= self.back2raw_crs(points_xyz, save_folder=save_path, **kwargs)
 
             out_dict[k] = one_roi_dict

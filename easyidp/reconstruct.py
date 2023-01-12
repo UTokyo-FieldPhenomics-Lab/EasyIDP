@@ -24,29 +24,45 @@ class ProjectPool(idp.Container):
 
 class Recons(object):
     """
-    Equals to each individual Pix4D project & each chunk in Metashape project
+    The base class for reconstruction project. Used for each individual Pix4D project and each chunk in Metashape project
 
-    Coordinate systems used:
-    internal   coordinate (local)
-        the coordinate used in current chunk, often the center of model as initial point
-    geocentric coordinate (world)
-        use the earth's core as initial point, also called world coordinate
-    geographic coordinate (crs):
-        coordinate reference system (CRS) to locate geographical entities. Common used:
-        WGS84 (EPSG: 4326)  | xyz = longitude, latitude, altitude
-        WGS84/ UTM Zone xxx | e.g. UTM Zone 54N -> Tokyo area.
-        ...
+    .. note::
+
+        Coordinate systems used in the 3D reconstruction.
+
+        - internal coordinate (local): 
+        
+            the coordinate used in current chunk, often the center of model as initial point
+
+        - geocentric coordinate (world): 
+        
+            use the earth's core as initial point, also called world coordinate
+
+        - geographic coordinate (crs):
+        
+            coordinate reference system (CRS) to locate geographical entities. Common used:
+        
+            - ``WGS84 (EPSG: 4326)``: xyz = longitude, latitude, altitude
+            - ``WGS84/ UTM Zone xxx``: e.g. UTM Zone 54N -> Tokyo area.
+
     """
     def __init__(self):
 
+        #: the 3D reconstruction project name, ``<class 'str'>``
         self.label = ""
+        #: meta information in this project, ``<class 'dict'>``
         self.meta = {}
+        #: whether this project is activated, (often for Metashape), ``<class 'bool'>``
         self.enabled = True
 
+        #: the container for all sensors in this project (camera model), ``<class 'easyidp.Container'>``
         self.sensors = idp.Container()
+        #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
         self.photos = idp.Container()
 
+        #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
         self.world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
+        #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
         self.crs = None
 
         self._dom = idp.GeoTiff()
@@ -55,6 +71,7 @@ class Recons(object):
 
     @property
     def dom(self):
+        """The output digitial orthomosaic map (DOM), :class:`easyidp.GeoTiff <easyidp.geotiff.GeoTiff>`"""
         # default None
         if self._dom.has_data():
             return self._dom
@@ -75,6 +92,7 @@ class Recons(object):
 
     @property
     def dsm(self):
+        """The output digitial surface map (DSM), :class:`easyidp.GeoTiff <easyidp.geotiff.GeoTiff>`"""
         if self._dsm.has_data():
             return self._dsm
         else:
@@ -94,6 +112,7 @@ class Recons(object):
 
     @property
     def pcd(self):
+        """The output point cloud, :class:`easyidp.PointCloud <easyidp.pointcloud.PointCloud>`"""
         if self._pcd.has_points():
             return self._pcd
         else:
@@ -113,26 +132,36 @@ class Recons(object):
 
 
 class Sensor:
+    """The base class of camera model"""
 
     def __init__(self):
+        #: the sensor id in this 3D reconstruction project, often only has one. ``<class 'int'>``
         self.id = 0
+        #: the sensor label/name, ``<class 'str'>``
         self.label = ""
-        # Sensor type in [frame, fisheye, spherical, rpc]
+        #: Sensor type in [frame, fisheye, spherical, rpc] (often for metashape project), ``<class 'str'>``
         self.type = "frame"
+        #: The sensor width pixel number, ``<class 'int'>``
         self.width = 0  # in int
+        #: The sensor height pixel number, ``<class 'int'>``
         self.height = 0  # in int
 
-        # sensor actual size
-        self.w_mm = 0   
-        self.h_mm = 0 
+        #: sensor actual width, unit is mm, ``<class 'float'>``
+        self.w_mm = 0.0
+        #: sensor actual height, unit is mm, ``<class 'float'>``
+        self.h_mm = 0.0
         
-        # pixel scale in mm
+        #: the scale of one pixel width, unit in mm, ``<class 'float'>``
         self.pixel_width = 0.0
+        #: the scale of one pixel height, unit in mm, ``<class 'float'>``
         self.pixel_height = 0.0
+        #: the scale of one pixel, for pix4d, [pixel_height, pixel_width]
         self.pixel_size = []
 
+        #: focal length, unit in mm, ``<class 'float'>``
         self.focal_length = 0.0  # in mm
 
+        #: sensor calibration information, :class:`easyidp.reconstruct.Calibration`
         self.calibration = Calibration(self)
 
     def in_img_boundary(self, polygon_hv, ignore=None, log=False):
@@ -143,9 +172,24 @@ class Sensor:
         polygon_hv : numpy nx2 array
             [horizontal, vertical] points in pixel coordinate
         ignore : str | None, optional
-            None: strickly in image area;
-            'x': only y (vertical) in image area, x can outside image;
-            'y': only x (horizontal) in image area, y can outside image.
+            Whether tolerate small parts outside image
+
+            - ``None``: strickly in image area;
+            - ``x``: only y (vertical) in image area, x can outside image;
+            - ``y``: only x (horizontal) in image area, y can outside image.
+
+            .. todo::
+
+                This API will be enhanced and changed in the future.
+
+                ``ignore`` -> ``ignore_outside``:
+
+                - ``True``: strickly in image area;
+                - ``False``: cut the polygon inside the image range;
+                
+                .. image:: ../../_static/images/python_api/back2raw_ignore_todo.png
+                    :alt: back2raw_ignore_todo.png'
+                    :scale: 60
         log : bool, optional
             whether print log for debugging, by default False
 
@@ -189,43 +233,62 @@ class Sensor:
 
 
 class Photo:
+    """The base class to store image information used in 3D reconstruction project"""
 
-    """
-    This are used for pix4d
-    class Image:
-        def __init__(self, name, path, w, h, pmat, cam_matrix, rad_distort, tan_distort, cam_pos, cam_rot):
-            # external parameters
-            self.name = name   -> label
-            self.path = path
-            self.w = w    -> sensor property
-            self.h = h    -> sensor property
-            self.pmat = pmat   # transform matrix? 3x4 -> 4x4
-            self.cam_matrix = cam_matrix
-            #self.rad_distort = rad_distort   # seems not used
-            #self.tan_distort = tan_distort
-            self.cam_pos = cam_pos   -> location
-            self.cam_rot = cam_rot   -> rotation
-    """
+    # Modifed from the old API for pix4d
+    # 
+    # class Image:
+    #     def __init__(self, name, path, w, h, pmat, cam_matrix, rad_distort, tan_distort, cam_pos, cam_rot):
+    #         # external parameters
+    #         self.name = name   -> label
+    #         self.path = path
+    #         self.w = w    -> sensor property
+    #         self.h = h    -> sensor property
+    #         self.pmat = pmat   # transform matrix? 3x4 -> 4x4
+    #         self.cam_matrix = cam_matrix
+    #         #self.rad_distort = rad_distort   # seems not used
+    #         #self.tan_distort = tan_distort
+    #         self.cam_pos = cam_pos   -> location
+    #         self.cam_rot = cam_rot   -> rotation
 
     def __init__(self, sensor=None):
+        #: The id of current image in reconstruction project, ``<class 'int'>``
         self.id = 0
+
+        #: The image path in local computer, ``<class 'str'>``
         self.path = ""
-        self._path = ""
+        self._path = ""   # this is the relative path, often stored by metashape project
+
+        #: the image name, ``<class 'str'>``
         self.label = ""
+
+        #: the id of the camera model (sonsor), ``<class 'int'>``
         self.sensor_id = 0
+        #: the object of the camera model (sensor), :class:`easyidp.reconstruct.Sensor`
         self.sensor = sensor
+
+        #: whether this image is used in the 3D reconstruction,  ``<class 'bool'>``
         self.enabled = True
 
         # reconstruction info in local coord
+        #: the 3x3 camera matrix, the ``K`` in ``K[R t]``, ``<class 'numpy.ndarray'>``
         self.cam_matrix = None # np.zeros(3,3) -> K
+        #: the 3x1 vector of camera location, the ``t`` in ``K[R t]``, ``<class 'numpy.ndarray'>``
         self.location = None  # np.zeros(3,) -> t
+        #: the 3x3 rotation matrix, the ``R`` in ``K[R t]``, ``<class 'numpy.ndarray'>``
         self.rotation = None  # np.zeros(3,3) -> R
-        # metashape: 4x4 matrix describing photo location in the chunk coordinate system -> K[R t]
-        # pix4d: 3x4 pmatrix
+
+        #: the transform matrix, different between pix4d and metashape project, please check below for more details ``<class 'numpy.ndarray'>``
+        #:
+        #: - In ``metashape``: it is the 4x4 matrix describing photo location in the chunk coordinate system -> ``K[R t]``
+        #: - in ``pix4d``: it is the 3x4 pmatrix. Please check `Pix4D PMatrix documentation <https://support.pix4d.com/hc/en-us/articles/202977149-What-does-the-Output-Params-Folder-contain#label12>` for more details
+        #:
         self.transform = None  # 
+        #: the 3x1 translation vector, often provided by metashape.
         self.translation = None  # np.zeros(3,)
 
         # output infomation
+        #: The 3x1 vector of geo coodinate of image in real world, ``<class 'numpy.ndarray'>``
         self.position = None # -> in outputs geo_coordiantes
 
         # meta info, not necessary in current version
@@ -234,8 +297,8 @@ class Photo:
         #self.xyz = {"X": 0, "Y": 0, "Z": 0}
         #self.orientation = {"yaw": 0.0, "pitch": 0.0, "roll": 0.0}
 
-    def img_exists(func):
-        # the decorator to check if image exists
+    def _img_exists(func):
+        """the decorator to check if image exists"""
         def wrapper(self, *args, **kwargs):
             if self.path != "" or not os.path.exists(self.path):
                 raise FileNotFoundError("Could not operate if not specify correct image file path")
@@ -243,49 +306,116 @@ class Photo:
 
         return wrapper
 
-    @img_exists
-    def get_imarray(self, roi=None):
-        pass
+    # @_img_exists
+    # def get_imarray(self, roi=None):
+    #     """Read the original image, and return a image array, not implemented yet"""
+
+    #     raise NotImplementedError("This function has not been fully supported yet")
 
 
 class Calibration:
+    """The base class for camera lens distortion calibration"""
 
     def __init__(self, sensor=None):
+        #: the calibration model from which reconstruction software, in ["pix4d", "metashape"], ``<class 'str'>``
         self.software = "metashape"
+        #: the calibration type, same as the sensor.type, in [frame, fisheye, spherical, rpc], by default 'frame'
         self.type = "frame"
+        #: the object of the camera model (sensor), :class:`easyidp.reconstruct.Sensor`
         self.sensor = sensor
 
-        # focal length
-        self.f = 0.0  # unit is px, not mm for pix4d
-
-        # principle point offset
-        # metashape: In the older versions Cx and Cy were given in pixels from the top-left corner of the image,
-        #            in the latest release version they are measured as offset from the image center,
-        #            https://www.agisoft.com/forum/index.php?topic=5827.0
-        self.cx = 0.0  # pix4d -> px
-        #self.cx_unit = "px" 
+        #: focal length, unit is pixel, for pix4d project, convert mm to pixel. ``<class 'float'>``
+        self.f = 0.0 
+        
+        #: principle point offset, unit is pixel.
+        #: 
+        #: .. note::
+        #:    In the older version of metashape, Cx and Cy were given in pixels from the top-left corner of the image.
+        #:    But in the latest release version they are measured as offset from the image center.
+        #:    Reference: `https://www.agisoft.com/forum/index.php?topic=5827.0``
+        #:
+        self.cx = 0.0
+        #: principle point offset, unit is pixel.
         self.cy = 0.0
-        #self.cy_unit = "px"
 
-        # [metashape only] affinity and non-orthogonality (skew) coefficients (in pixels)
+        #: affinity and non-orthogonality (skew) coefficients (in pixels) [metashape use only] 
         self.b1 = 0.0
+        #: affinity and non-orthogonality (skew) coefficients (in pixels) [metashape use only]
         self.b2 = 0.0
 
-        # pix4d -> Symmetrical Lens Distortion Coeffs
-        # metashape -> radial distortion coefficients (dimensionless)
+        #: len distortion coefficient, different between pix4d and metashape, please check below for more details
+        #:
+        #: - ``pix4d``: Symmetrical Lens Distortion Coeffs
+        #: - ``metashape``: radial distortion coefficients (dimensionless)
         self.k1 = 0.0
+        #: len distortion coefficient
         self.k2 = 0.0
+        #: len distortion coefficient
         self.k3 = 0.0
+        #: len distortion coefficient
         self.k4 = 0.0
 
-        # pix4d -> Tangential Lens Distortion Coeffs
-        # metashape -> tangential distortion coefficient
-        self.t1 = self.p1 = 0.0  # metashape -> p1
-        self.t2 = self.p2 = 0.0  # metashape -> p2
-        self.t3 = self.p3 = 0.0  # metashape -> p3
-        self.t4 = self.p4 = 0.0  # metashape -> p4
+        #: Tangential Lens Distortion Coefficients, for Pix4D.
+        #:
+        #: .. note::
+        #:
+        #:    - ``pix4d``: Tangential Lens Distortion Coeffs, use T
+        #:    - ``metashape``: tangential distortion coefficient, use P
+        #:
+        self.t1 = 0.0  # metashape -> p1
+        #: Tangential Lens Distortion Coeffs
+        self.t2 = 0.0  # metashape -> p2
+        #: Tangential Lens Distortion Coeffs
+        self.t3 = 0.0  # metashape -> p3
+        #: Tangential Lens Distortion Coeffs
+        self.t4 = 0.0  # metashape -> p4
+
+        #: Tangential Lens Distortion Coefficients, for Metashape.
+        #:
+        #: .. note::
+        #:
+        #:    - ``pix4d``: Tangential Lens Distortion Coeffs, use T
+        #:    - ``metashape``: tangential distortion coefficient, use P
+        #:
+        self.p1 = self.t1  # metashape -> p1
+        #: Tangential Lens Distortion Coeffs
+        self.p2 = self.t2  # metashape -> p2
+        #: Tangential Lens Distortion Coeffs
+        self.p3 = self.t3  # metashape -> p3
+        #: Tangential Lens Distortion Coeffs
+        self.p4 = self.t4  # metashape -> p4
 
     def calibrate(self, u, v):
+        """Convert undistorted images -> original image pixel coordinate
+
+        Parameters
+        ----------
+        u : ndarray
+            the x pixel coordinate after R transform
+        v : ndarray
+            the y pixel coordinate after R transform
+
+        Returns
+        -------
+        xb, yb: 
+            the pixel coordinate on the original image
+
+
+        Note
+        ----
+
+        The calculation formular can be references by :
+
+        - Pix4D: #2.1.2 section in [1]_ .
+        - Metashape: Appendix C. Camera models in [2]_ .
+
+
+        References
+        ----------
+        .. [1] https://support.pix4d.com/hc/en-us/articles/202559089-How-are-the-Internal-and-External-Camera-Parameters-defined
+        .. [2] https://www.agisoft.com/pdf/metashape-pro_1_7_en.pdf
+
+        """
         if self.software == "pix4d":
             if self.type == "frame":
                 return self._calibrate_pix4d_frame(u, v)
@@ -400,20 +530,36 @@ class Calibration:
 
 
 class ChunkTransform:
+    """Similar API wrapper for Metashape Python API ``class Metashape.ChunkTransform``
+    """
 
     def __init__(self):
-        """metashape chunk.transform.matrix
-        from kunihiro kodama's Metashape API usage <kkodama@kazusa.or.jp>
-        >>> transm = chunk.transform.matrix
-        >>> invm = Metashape.Matrix.inv(chunk.transform.matrix)
-        invm.mulp(local_vec) --> transform chunk local coord to world coord(if you handle vec in local coord)
-        how to calculate from xml data:
-        https://www.agisoft.com/forum/index.php?topic=6176.0
-        """
+
+        #: Transformation matrix
         self.matrix = None
+        #: Rotation compone
         self.rotation = None
+        #: Translation compone
         self.translation = None
+        #: Scale compone
         self.scale = None
+        #: Inverse matrix
+        #:
+        #: .. note::
+        #: 
+        #:     Inspired from Kunihiro Kodama's Metashape API usage <kkodama@kazusa.or.jp>
+        #: 
+        #:     .. code-block:: python
+        #: 
+        #:         >>> import Metashape
+        #:         >>> chunk = Metashape.app.document.chunk()
+        #:         >>> transm = chunk.transform.matrix
+        #:         >>> invm = Metashape.Matrix.inv(chunk.transform.matrix)
+        #: 
+        #:     invm.mulp(local_vec) --> transform chunk local coord to world coord (if you handle vec in local coord)
+        #: 
+        #:     How to calculate from xml data: `Agisoft Forum: Topic: Camera coordinates to world <https://www.agisoft.com/forum/index.php?topic=6176.0>`_
+        #: 
         self.matrix_inv = None
 
 

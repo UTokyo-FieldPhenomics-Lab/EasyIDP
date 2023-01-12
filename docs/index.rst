@@ -375,6 +375,9 @@ Examples
    python_api/roi
    python_api/shp
    python_api/json
+   python_api/reconstruct
+   python_api/pix4d
+   python_api/metashape
 
 .. toctree::
    :hidden:

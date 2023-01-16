@@ -9,14 +9,155 @@ import easyidp as idp
 
 class Pix4D(idp.reconstruct.Recons):
 
+    """A Pix4D class, contains information of 3D reconstruction.
+    """
+
     def __init__(self, project_path=None, raw_img_folder=None, param_folder=None):
-        super().__init__()
+        """The method to initialize the Pix4D class
+
+        Parameters
+        ----------
+        project_path : str, optional
+            The pix4d project file to open, like "xxxx.p4d", by default None, means create an empty class
+        raw_img_folder : str, optional
+            the original UAV image folder, by default None
+        param_folder : str, optional
+            the folder of pix4d project parameters, just in case user changed the default folder structure (``...\\project_name\\1_initial\\params\\``), by default None
+
+        Example
+        -------
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+        Then open the demo pix4d project:
+
+        .. code-block:: python
+
+            >>> p4d = idp.Pix4D(test_data.pix4d.maize_folder)
+
+
+        Or manual specify parameters if the project folder structure has been changed. 
+
+        .. code-block:: python
+
+            >>> p4d = idp.Pix4D(
+            ...     project_path   = test_data.pix4d.lotus_folder, 
+            ...     raw_img_folder = test_data.pix4d.lotus_photos, 
+            ...     param_folder   = test_data.pix4d.lotus_param
+            ... )
+
+        Or you can create an empty project, and the open a given path:
+
+        .. code-block:: python
+
+            >>> p4d = idp.Pix4D()
+            >>> p4d.open_project(
+            ...     project_path   = test_data.pix4d.lotus_folder, 
+            ...     raw_img_folder = test_data.pix4d.lotus_photos, 
+            ...     param_folder   = test_data.pix4d.lotus_param
+            ... )
+
+        .. caution::
+
+            In previous case, the manager reorganized the project structure and outputs of ``test_data.pix4d.lotus_folder``
+            
+            (e.g., moved the ``\\project_name\\1_initial\\params\\`` to ``\\project_name\\params\\``, as well as other outputs, the following folder is no more a standard pix4d project)
+
+            .. code-block:: bash
+
+                $ls '/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/lotus_tanashi_full'
+
+                params/
+                photos/
+                hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif
+                hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply
+                hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif
+                plot_dom.tif
+                plot_dsm.tif
+                plot_pcd.ply
+
+            The default loading doesn't work, because it is not a standard pix4d project:
+
+            .. code-block:: python
+
+                >>> p4d = idp.Pix4D(test_data.pix4d.lotus_folder)
+
+                Traceback (most recent call last):
+                    File "<stdin>", line 1, in <module>
+                    File "/Users/hwang/OneDrive/Program/GitHub/EasyIDP/easyidp/pix4d.py", line 48, in __init__
+                    File "/Users/hwang/OneDrive/Program/GitHub/EasyIDP/easyidp/pix4d.py", line 56, in open_project
+                        hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply
+                    File "/Users/hwang/OneDrive/Program/GitHub/EasyIDP/easyidp/pix4d.py", line 829, in parse_p4d_project
+                        sub_folder = os.listdir(project_path)
+                FileNotFoundError: Can not find pix4d parameter in given project folder
+                
+
+            In this case, must manual specfiy the ``param_folder``
+        
+        """
+        #super().__init__()
+
+        #: the 3D reconstruction project software, in ['pix4d', 'metashape'], ``<class 'str'>``
         self.software = "pix4d"
+        #: pix4d point cloud offset
+        self.offset_np = np.zeros((3,1))
+
+        ########################################
+        # mute attributes warning for auto doc #
+        ########################################
+        #: project / chunk name
+        self.label = self.label
+        #: project meta information
+        self.meta = self.meta
+        #: whether this project is activated, (often for Metashape), ``<class 'bool'>``
+        self.enabled = self.enabled
+        #: the container for all sensors in this project (camera model), ``<class 'easyidp.Container'>``
+        self.sensors = self.sensors
+        #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
+        self.photos = self.photos
+        #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
+        self.world_crs = self.world_crs
+        #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
+        self.crs = self.crs
 
         if project_path is not None:
             self.open_project(project_path, raw_img_folder, param_folder)
 
     def open_project(self, project_path, raw_img_folder=None, param_folder=None):
+        """Open a new 3D reconstructin project to overwritting current project.
+
+        Parameters
+        ----------
+        project_path : str, optional
+            The pix4d project file to open, like "xxxx.p4d", by default None, means create an empty class
+        raw_img_folder : str, optional
+            the original UAV image folder, by default None
+        param_folder : str, optional
+            the folder of pix4d project parameters, just in case user changed the default folder structure (``...\\project_name\\1_initial\\params\\``), by default None
+
+        Example
+        -------
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+        Then using this function to open a new project:
+
+        .. code-block:: python
+
+            >>> p4d = idp.Pix4D()
+            >>> p4d.open_project(
+            ...     project_path   = test_data.pix4d.lotus_folder, 
+            ...     raw_img_folder = test_data.pix4d.lotus_photos, 
+            ...     param_folder   = test_data.pix4d.lotus_param
+            ... )
+
+        """
         project_path = str(project_path)
         # check if project_path = xxxx.p4d
         if ".p4d" == project_path[-4:]:
@@ -24,11 +165,12 @@ class Pix4D(idp.reconstruct.Recons):
 
         p4d_dict = parse_p4d_project(project_path, param_folder)
 
-        # project / chunk name
+        #: project / chunk name
         self.label = p4d_dict["project_name"]
 
-        # pix4d point cloud offset?
+        #: project meta information
         self.meta["p4d_offset"] = read_xyz(p4d_dict["param"]["xyz"])
+        #: pix4d point cloud offset
         self.offset_np = self.meta["p4d_offset"]
 
         #####################
@@ -551,6 +693,66 @@ def _match_suffix(folder, ext):
 
 
 def parse_p4d_param_folder(param_path:str):
+    """Get full file path of parameter folder (``...\\project_name\\1_initial\\params.``) of Pix4D project.
+
+    Parameters
+    ----------
+    param_path : str
+        The param folder path of pix4d project.
+
+    Returns
+    -------
+    dict
+        The dictionary contains pix4d params, ``keys=["project_name", "xyz", "pmat", "cicp", "ccp", "campos", "ssk", "crs"]``
+
+    Note
+    ----
+
+    We use the following parameters [1]_:
+
+    - ``project_name`` : the project name
+    - ``xyz``: the full file path of ``{project_name}_offset.xyz``, contains the point cloud offset values
+    - ``pmat``: the full file path of ``{project_name}_pmatrix.txt`` file, contains the compressed internal and external camera parameters.
+    - ``cicp``: the full file path of ``{project_name}_pix4d_calibrated_internal_camera_parameters.cam``, it contains information about the optimized (computed) internal camera parameters.
+    - ``ccp``: the full file path of ``{project_name}_calibrated_camera_parameters.txt``, it contains the information of each calibrated camera.
+    - ``campos``: the full file path of ``{project_name}_calibrated_images_position.txt``, the position information of each calibrated camera.
+    - ``ssk``: the full file path of ``{project_name}_camera.ssk``, it contains information about the camera parameters.
+    - ``crs`` : the full file path of ``{project_name}_wkt.prj``, it contains the projection of the output coordinate system in the projection format.
+
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
+        '/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/1_initial/params'
+
+    Then use this function:
+
+    .. code-block:: python
+
+        >>> param = idp.pix4d.parse_p4d_param_folder(param_folder)
+
+        >>> param.keys()
+        dict_keys(['project_name', 'xyz', 'pmat', 'cicp', 'ccp', 'campos', 'ssk', 'crs'])
+
+        >>> param['xyz']
+        '/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/1_initial/params/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_offset.xyz'
+
+        >>> param['ccp']
+        '/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/1_initial/params/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_calibrated_camera_parameters.txt'
+
+    References
+    ----------
+    .. [1] What does the Output Params Folder contain? https://support.pix4d.com/hc/en-us/articles/202977149-What-does-the-Output-Params-Folder-contain
+
+    """
     param_dict = {}
     # keys = ["project_name", "xyz", "pmat", "cicp", "ccp"]
 
@@ -646,35 +848,71 @@ def parse_p4d_project(project_path:str, param_folder=None):
     project_path: str
         the path to pix4d project file, that folder should contains the following sub-folder:
 
-        \project_path
-        |--- 1_initial\
-        |--- 2_densification\
-        |___ 3_dsm_ortho\
+        .. code-block:: text
+
+            \\project_path
+            |--- 1_initial\\
+            |--- 2_densification\\
+            |___ 3_dsm_ortho\\
+
 
     param_folder: str, default None
-        if not given, it will parse as a standard pix4d project, and trying
-            to get the project name from `1_initial/param` folder
-        if it is not a standard pix4d project (re-orgainzed folder), need manual
-            specify the path to param folder, in order to parse project_name
-            for later usage.
+        | if not given, it will parse as a standard pix4d project, and trying
+        |     to get the project name from ``1_initial/param`` folder
+        | if it is not a standard pix4d project (re-orgainzed folder), need manual
+        |     specify the path to param folder, in order to parse project_name
+        |     for later usage.
 
     Returns
     -------
     p4d: dict
         a python dictionary that contains the path to each file.
-        {
-            "project_name": the prefix of whole project file.
-            "param": the folder of parameters
-            "pcd": the point cloud file
-            "dom": the digital orthomosaic file
-            "dsm": the digital surface model file
-            "undist_raw": the undistorted images corrected by the pix4d software (when original image unable to find)
-        }
+        
+        .. code-block:: python
+
+            {
+                "project_name": the prefix of whole project file.
+                "param": the folder of parameters
+                "pcd": the point cloud file
+                "dom": the digital orthomosaic file
+                "dsm": the digital surface model file
+                "undist_raw": the undistorted images corrected by the pix4d software (when original image unable to find)
+            }
 
     Notes
     -----
     Project_name can be extracted from parameter folder prefix in easyidp 2.0, no need manual specify.
     To find the outputs, it will pick the first file that fits the expected file format.
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> test_folder = test_data.pix4d.maize_folder
+        PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d')
+        >>> proj_name1 = "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
+
+    Then use this function to parse given pix4d:
+
+    .. code-block:: python
+
+        >>> p4d_p = idp.pix4d.parse_p4d_project(test_folder)
+        >>> p4d_p.keys()
+        dict_keys(['param', 'pcd', 'dom', 'dsm', 'undist_raw', 'project_name'])
+
+        >>> p4d_p['project_name']
+        'maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d'
+
+        >>> p4d_p['dom']
+        PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/3_dsm_ortho/2_mosaic/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_transparent_mosaic_group1.tif')
+
+
     """
     p4d = {"param": None, "pcd": None, "dom": None, "dsm": None, "undist_raw": None, "project_name": None}
 
@@ -772,8 +1010,8 @@ def parse_p4d_project(project_path:str, param_folder=None):
 
 
 def read_xyz(xyz_path):
-    """
-    read pix4d file PROJECTNAME_offset.xyz
+    """read pix4d file ``{project_name}_offset.xyz``
+
     Parameters
     ----------
     xyz_path: str
@@ -782,6 +1020,39 @@ def read_xyz(xyz_path):
     Returns
     -------
     x, y, z: float
+
+    Note
+    ----
+
+    The offset.xyz file looks like:
+
+    .. code-block:: text
+
+        368009.000 3955854.000 97.000
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import numpy as np
+        >>> np.set_printoptions(suppress=True)
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
+        >>> param = idp.pix4d.parse_p4d_param_folder(param_folder)
+
+    Then use this function:
+
+    .. code-block:: python
+
+        >>> idp.pix4d.read_xyz(param['xyz'])
+        array([ 368009., 3955854.,      97.])
+
     """
     with open(xyz_path, 'r') as f:
         x, y, z = f.read().split(' ')
@@ -789,8 +1060,8 @@ def read_xyz(xyz_path):
 
 
 def read_pmat(pmat_path):
-    """
-    read pix4d file PROJECTNAME_pmatrix.txt
+    """read pix4d file ``{project_name}_pmatrix.txt``
+
     Parameters
     ----------
     pmat_path: str
@@ -798,8 +1069,56 @@ def read_pmat(pmat_path):
 
     Returns
     -------
-    pmat_dict: dict
-        pmat_dict = {"DJI_0000.JPG": nparray(3x4), ... ,"DJI_9999.JPG": nparray(3x4)}
+    dict
+
+        .. code-block:: python
+
+            pmat_dict = {
+                "DJI_0000.JPG": nparray(3x4), 
+                ... ,
+                "DJI_9999.JPG": nparray(3x4)
+            }
+
+    Note
+    ----
+
+    The pmatrix.txt file looks like:
+
+    .. code-block:: python
+
+        DJI_0954.JPG 3111.599161 -2366.736021 -2308.589802 -65840.192261 -2444.444098 -3031.331712 -1800.672677 18549.006987 0.005818 0.038647 -0.999236 31.851547 
+        DJI_0955.JPG 2962.002548 -2547.748788 -2312.702452 -69244.748198 -2620.207260 -2895.573136 -1776.758596 27157.887214 0.003220 0.034307 -0.999406 31.293337
+        DJI_0956.JPG 3756.991075 -1038.548434 -2327.984283 -49670.339047 -1138.894683 -3738.320518 -1770.474397 -22001.847467 -0.015923 0.031981 -0.999362 31.327806
+        DJI_0957.JPG 3923.542113 562.037059 -2214.273525 -8825.859811 514.572422 -3880.691126 -1755.606046 -68101.592371 0.001783 0.022713 -0.999740 30.301800
+        ...
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
+        >>> param = idp.pix4d.parse_p4d_param_folder(param_folder)
+
+    Then use this function:
+
+    .. code-block:: python
+
+        >>> idp.pix4d.read_pmat(param['pmat'])
+        {
+            'DJI_0954.JPG': 
+                array([[  3111.599161,  -2366.736021,  -2308.589802, -65840.192261],
+                    [ -2444.444098,  -3031.331712,  -1800.672677,  18549.006987],
+                    [     0.005818,      0.038647,     -0.999236,     31.851547]]), 
+            'DJI_0955.JPG':
+                array([...])
+            ...
+        }
 
     """
     pmat_nb = np.loadtxt(pmat_path, dtype=np.float, delimiter=None, usecols=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,))
@@ -814,21 +1133,28 @@ def read_pmat(pmat_path):
 
 
 def read_cicp(cicp_path):
-    """Read PROJECTNAME_pix4d_calibrated_internal_camera_parameters.cam file
-    Used for Sensor() object
+    """Read ``{project_name}_pix4d_calibrated_internal_camera_parameters.cam`` for :class:`easyidp.reconstruct.Sensor` object
 
     Parameters
     ----------
     cicp_path: str
+        file path
 
     Returns
     -------
-    cicp_dict: dict
+    dict
+
+        .. code-block:: python
+
+            cicp_dict.keys() = 
+                ['F', 'Px', 'Py', 'K1', 'K2', 'K3', 'T1', 'T2', 'w_mm', 'h_mm']
 
     Notes
     -----
-    It is the info about sensor
-    maize_cicp.txt:
+    It is the info about sensor, the file looks like:
+
+    .. code-block:: text
+
         Pix4D camera calibration file 0
         #Focal Length mm assuming a sensor width of 17.49998592000000030566x13.12498944000000200560mm
         F 15.01175404934517487732
@@ -842,6 +1168,41 @@ def read_cicp(cicp_path):
         #Tangential Lens Distortion Coeffs
         T1 0.00240851666319534747
         T2 0.00292562392135245920
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import numpy as np
+        >>> np.set_printoptions(suppress=True)
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
+        >>> param = idp.pix4d.parse_p4d_param_folder(param_folder)
+
+    Then use this function:
+
+    .. code-block:: python
+
+        >>> idp.pix4d.read_cicp(param['cicp'])
+        {
+            'w_mm': 17.49998592, 
+            'h_mm': 13.124989440000002, 
+            'F': 15.011754049345175, 
+            'Px': 8.4821051197042, 
+            'Py': 6.334346299780423, 
+            'K1': 0.03833474118270805, 
+            'K2': -0.017509179664957433, 
+            'K3': 0.020497987163918523, 
+            'T1': 0.0024085166631953475, 
+            'T2': 0.002925623921352459
+        }
+
     """
     with open(cicp_path, 'r') as f:
         key_pool = ['F', 'Px', 'Py', 'K1', 'K2', 'K3', 'T1', 'T2']
@@ -862,32 +1223,109 @@ def read_cicp(cicp_path):
 
 
 def read_ccp(ccp_path):
-    """Read PROJECTNAME_calibrated_camera_parameters.txt
-    Used for Photo() object
+    """Read ``{project_name}_calibrated_camera_parameters.txt`` for :class:`easyidp.reconstruct.Photo` object
 
     Parameters
     ----------
     ccp_path: str
+        file path
 
     Returns
     -------
-    img_configs: dict
-        {'w': 4608, 
-         'h': 3456, 
-         'Image1.JPG': 
-            {'cam_matrix': array([[...]]), 
-             'rad_distort': array([ 0.03833474, ...02049799]),
-             'tan_distort': array([0.00240852, 0...00292562]), 
-             'cam_pos': array([ 21.54872207,...8570281 ]), 
-             'cam_rot': array([[ 0.78389904,...99236  ]])}, 
-             
-         'Image2.JPG':
-            ...
-        }
+    dict
+
+        .. code-block:: python
+
+            img_configs = {
+                'w': 4608, 
+                'h': 3456, 
+                'Image1.JPG': {
+                    'cam_matrix':  array([[...]]), 
+                    'rad_distort': array([ 0.03833474, ...]),
+                    'tan_distort': array([0.00240852, ...]), 
+                    'cam_pos':     array([ 21.54872207, ...]), 
+                    'cam_rot':     array([[ 0.78389904, ...]])}, 
+                    
+                'Image2.JPG':
+                    {...}
+                }
 
     Notes
     -----
-    It is the camera position info
+    It is the camera position info in local coordinate, the file looks like:
+
+    .. code-block:: text
+
+        fileName imageWidth imageHeight
+        camera matrix K [3x3]
+        radial distortion [3x1]
+        tangential distortion [2x1]
+        camera position t [3x1]
+        camera rotation R [3x3]
+        camera model m = K [R|-Rt] X
+
+        DJI_0954.JPG 4608 3456
+        3952.81247514184087776812 0 2233.46124792750424603582
+        0 3952.81247514184087776812 1667.92521335858214115433
+        0 0 1
+        0.03833474118270804865 -0.01750917966495743258 0.02049798716391852335
+        0.00240851666319534747 0.00292562392135245920
+        21.54872206687879199194 -29.58734160676452162875 30.        85702810138878149360
+        0.78389904231994589345 -0.62058396220897726892 -0.      01943803742353054573
+        -0.62086105345046738169 -0.78318706257080084043 -0.     03390541741516269608
+        0.00581753884797473961 0.03864674463298682638 -0.99923600083815289352
+
+        DJI_0955.JPG ...
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import numpy as np
+        >>> np.set_printoptions(suppress=True)
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
+        >>> param = idp.pix4d.parse_p4d_param_folder(param_folder)
+
+    Then use this function:
+
+    .. code-block:: python
+
+        >>> ccp = idp.pix4d.read_ccp(param['ccp'])
+        >>> ccp.keys()
+        dict_keys(['DJI_0954.JPG', 'w', 'h', 'DJI_0955.JPG', ... , 'DJI_0091.JPG', 'DJI_0092.JPG'])
+
+        >>> ccp['w']
+        4608
+
+        >>> ccp['DJI_0954.JPG']
+        {
+            'cam_matrix': 
+                array([[3952.81247514,    0.        , 2233.46124793],
+                       [   0.        , 3952.81247514, 1667.92521336],
+                       [   0.        ,    0.        ,    1.        ]]), 
+                       
+            'rad_distort': 
+                array([ 0.03833474, -0.01750918,  0.02049799]),
+
+            'tan_distort': 
+                array([0.00240852, 0.00292562]), 
+
+            'cam_pos': 
+                array([ 21.54872207, -29.58734161,  30.8570281 ]), 
+
+            'cam_rot': 
+                array([[ 0.78389904, -0.62058396, -0.01943804],
+                       [-0.62086105, -0.78318706, -0.03390542],
+                       [ 0.00581754,  0.03864674, -0.999236  ]])
+        }
+
     """
     with open(ccp_path, 'r') as f:
         '''
@@ -944,16 +1382,31 @@ def read_ccp(ccp_path):
 
 
 def read_campos_geo(campos_path):
-    """Read PROJECTNAME_calibrated_images_position.txt
-    Used for Photo.location()? -> geo_location?
+    """Read ``{project_name}_calibrated_images_position.txt`` for :class:`easyidp.reconstruct.Photo.position` (geo_location)
 
     Parameters
     ----------
     campos_path : str
+        file path
+
+    Returns
+    -------
+    dict
+
+        .. code-block:: python
+
+            campos_dict = {
+                "Image1.JPG": np.array([x, y ,z]), 
+                "Image2.JPG": ...
+                ...
+            }
 
     Notes
     -----
-    the geo position of each camera
+    this file contains the geo position of each camera, and looks like:
+
+    .. code-block:: text
+
         DJI_0954.JPG,368030.548722,3955824.412658,127.857028
         DJI_0955.JPG,368031.004387,3955824.824967,127.381322
         DJI_0956.JPG,368033.252520,3955826.479610,127.080709
@@ -961,12 +1414,38 @@ def read_campos_geo(campos_path):
         DJI_0958.JPG,368031.901165,3955826.109158,126.666393
         DJI_0959.JPG,368030.686490,3955830.981070,127.327741
 
-    Returns
+
+    Example
     -------
-    campos_dict:
-        {"Image1.JPG": np.array([x, y ,z]), 
-         "Image2.JPG": ...
-         ...}
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import numpy as np
+        >>> np.set_printoptions(suppress=True)
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
+        >>> param = idp.pix4d.parse_p4d_param_folder(param_folder)
+
+    Then use this function:
+
+    .. code-block:: python
+
+        >>> idp.pix4d.read_campos_geo(param['campos'])
+        {
+            'DJI_0954.JPG': 
+                array([ 368030.548722, 3955824.412658,     127.857028]), 
+
+            'DJI_0955.JPG': 
+                array([ 368031.004387, 3955824.824967,     127.381322]),
+
+            ...
+        }
+
     """
     with open(campos_path, 'r') as f:
         cam_dict = {}
@@ -987,41 +1466,79 @@ def read_cam_ssk(ssk_path):
 
     Returns
     -------
-    ssk_info : dict
+    dict
+    
+        .. code-block:: python
+
+            ssk_info = 
+            {
+                "label":                  str
+                "type":                   str, e.g. frame / fisheye ...
+                "pixel_size":             [h, w]
+                "pixel_size_unit":        "mm"
+                "image_size_in_pixels":   [h ,w]
+                "orientation":            1   # guess 0 -> w, h?
+                "photo_center_in_pixels": [h, w]
+            }
+
+    Note
+    ----
+    SSK file contents:
+
+    .. code-block:: text
+
+        begin camera_parameters FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456 (RGB)(1)
+            focal_length:                      15.00522620622411729130
+            ppac:                              0.02793232590500918308 -0.02181191393910364776
+            ppbs:                               0 0
+            film_format:                       13.12498944000000200560 17.49998592000000030566
+            lens_distortion_flag:              off
+            io_required:                       yes
+            camera_type:                       frame
+            media_type:                        digital
+            pixel_size:                        3.79774000000000011568 3.79774000000000011568
+            image_size_in_pixels:              3456 4608
+            scanline_orientation:              4
+            photo_coord_sys_orientation:       1
+            photo_coord_sys_origin:            1727.50000000000000000000 2303.50000000000000000000
+            focal_length_calibration_flag:     off
+            calibrated_focal_length_stddev:    0.03
+            ppac_calibration_flag:             off
+            calibrated_ppac_stddevs:           0.003   0.003
+            self_calibration_enabled_params:   0
+            antenna_offsets:                   0   0   0
+        end camera_parameters
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import numpy as np
+        >>> np.set_printoptions(suppress=True)
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> param_folder = str(test_data.pix4d.maize_folder / "1_initial" / "params")
+        >>> param = idp.pix4d.parse_p4d_param_folder(param_folder)
+
+    Then use this function:
+
+    .. code-block:: python
+
+        >>> idp.pix4d.read_cam_ssk(param['ssk'])
         {
-            "label": str
-            "type": str   # frame / fisheye ...
-            "pixel_size": [h, w]
-            "pixel_size_unit": "mm"
-            "image_size_in_pixels": [h ,w]
-            "orientation": 1   # guess 0 -> w, h?
-            "photo_center_in_pixels": [h, w]
+            'label': 'FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456', 
+            'type': 'frame', 
+            'pixel_size': [3.79774, 3.79774], 
+            'image_size_in_pixels': [3456, 4608], 
+            'orientation': 1, 
+            'photo_center_in_pixels': [1727.5, 2303.5]
         }
 
-    Notes
-    -----
-    SSK file contents:
-    begin camera_parameters FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456 (RGB)(1)
-        focal_length:                      15.00522620622411729130
-        ppac:                              0.02793232590500918308 -0.02181191393910364776
-        ppbs:                               0 0
-        film_format:                       13.12498944000000200560 17.49998592000000030566
-        lens_distortion_flag:              off
-        io_required:                       yes
-        camera_type:                       frame
-        media_type:                        digital
-        pixel_size:                        3.79774000000000011568 3.79774000000000011568
-        image_size_in_pixels:              3456 4608
-        scanline_orientation:              4
-        photo_coord_sys_orientation:       1
-        photo_coord_sys_origin:            1727.50000000000000000000 2303.50000000000000000000
-        focal_length_calibration_flag:     off
-        calibrated_focal_length_stddev:    0.03
-        ppac_calibration_flag:             off
-        calibrated_ppac_stddevs:           0.003   0.003
-        self_calibration_enabled_params:   0
-        antenna_offsets:                   0   0   0
-    end camera_parameters
     """
     with open(ssk_path, 'r') as f:
         ssk_info = {}

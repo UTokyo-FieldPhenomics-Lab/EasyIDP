@@ -18,11 +18,14 @@ Supported operating systems:
 
 * Windows 10 (64-bit)
 * Windows 11 (64-bit)
+* macOS 10.15+
+* Manjaro
 
 The following operating system should also works, but have not been tested:
 
 * Ubuntu 18.04+
-* macOS 10.15+
+* ArchLinux
+
 
 Using this package requires basic Python programming knowledge, including basic python gramma and package installation.
 

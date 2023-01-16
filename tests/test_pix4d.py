@@ -274,3 +274,16 @@ def test_class_get_photo_position():
     assert len(out_lonlat) == 151
     assert "DJI_0430.JPG" in out_lonlat.keys()
     np.testing.assert_almost_equal(out_lonlat['DJI_0430.JPG'], np.array(np.array([139.5405607 ,  35.73445188, 136.75217778])))
+
+
+def test_class_init():
+
+    # test read folder & p4d file extention
+
+    # easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d
+    p4d = idp.Pix4D(test_data.pix4d.maize_folder)
+    assert p4d.label == 'maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d'
+
+    # easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d.p4d
+    p4d = idp.Pix4D(str(test_data.pix4d.maize_folder) + '.p4d' )
+    assert p4d.label == 'maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d'

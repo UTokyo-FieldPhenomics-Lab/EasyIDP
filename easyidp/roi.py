@@ -890,24 +890,11 @@ class ROI(idp.Container):
             | If back to software corrected images without len distortion, set it to False. 
             | (Pix4D support do this operation, seems metashape not supported yet.)
         ignore : str | None, optional
-            Whether tolerate small parts outside image
+            Whether tolerate small parts outside image, check :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
 
             - ``None``: strickly in image area;
             - ``x``: only y (vertical) in image area, x can outside image;
             - ``y``: only x (horizontal) in image area, y can outside image.
-
-            .. todo::
-
-                This API will be enhanced and changed in the future.
-
-                ``ignore`` -> ``ignore_outside``:
-
-                - ``True``: strickly in image area;
-                - ``False``: cut the polygon inside the image range;
-                
-                .. image:: ../../_static/images/python_api/back2raw_ignore_todo.png
-                    :alt: back2raw_ignore_todo.png'
-                    :scale: 60
 
         log : bool, optional
             whether print log for debugging, by default False

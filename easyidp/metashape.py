@@ -26,6 +26,8 @@ class Metashape(idp.reconstruct.Recons):
         self.crs = None
         self.reference_crs = pyproj.CRS.from_epsg(4326)
 
+        self._photo_position_cache = None
+
         if project_path is not None:
             self._open_whole_project(project_path)
             if chunk_id is not None:
@@ -271,36 +273,45 @@ class Metashape(idp.reconstruct.Recons):
         self.crs = before_crs
         return out_dict
 
-    def get_photo_position(self, to_crs=None):
+    def get_photo_position(self, to_crs=None, refresh=False):
         """Get all photos' center geo position (on given CRS)
 
         Parameters
         ----------
         to_crs : pyproj.CRS, optional
             Transformed to another geo coordinate, by default None, the project.crs
+        refresh : bool, optional
+            
+            - ``False`` : Use cached results (if have), by default
+            - ``True`` : recalculate the photo position
 
         Returns
         -------
         dict
             The dictionary contains "photo.label": [x, y, z] coordinates
         """
+        if self._photo_position_cache is not None and not refresh:
+            return self._photo_position_cache.copy()
+        else:
+            # change the out crs
+            before_crs = ccopy(self.crs)
+            if isinstance(to_crs, pyproj.CRS) and not to_crs.equals(self.crs):
+                self.crs = ccopy(to_crs)
 
-        # change the out crs
-        before_crs = ccopy(self.crs)
-        if isinstance(to_crs, pyproj.CRS) and not to_crs.equals(self.crs):
-            self.crs = ccopy(to_crs)
+            out = {}
+            pbar = tqdm(self.photos, desc=f"Getting photo positions")
+            for p in pbar:
+                if p.enabled:
+                    pos = self._world2crs(self._local2world(p.transform[0:3, 3]))
+                    out[p.label] = pos
+                    p.position = pos
 
-        out = {}
-        pbar = tqdm(self.photos, desc=f"Getting photo positions")
-        for p in pbar:
-            if p.enabled:
-                pos = self._world2crs(self._local2world(p.transform[0:3, 3]))
-                out[p.label] = pos
-                p.position = pos
+            self.crs = before_crs
 
-        self.crs = before_crs
+            # cache the photo position results for later use
+            self._photo_position_cache = out
 
-        return out
+            return out
 
 
     def sort_img_by_distance(self, img_dict_all, roi, distance_thresh=None, num=None):

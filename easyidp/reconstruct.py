@@ -3,6 +3,7 @@ import pyproj
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
+import warnings
 
 import easyidp as idp
 
@@ -182,9 +183,9 @@ class Sensor:
 
                 This API will be enhanced and changed in the future.
 
-                ``ignore`` -> ``ignore_outside``:
+                ``ignore`` (str) -> ``ignore_overflow`` (bool):
 
-                - ``True``: strickly in image area;
+                - ``True``: strickly in image area, default;
                 - ``False``: cut the polygon inside the image range;
                 
                 .. image:: ../../_static/images/python_api/back2raw_ignore_todo.png
@@ -211,6 +212,11 @@ class Sensor:
                 if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
         elif ignore=='x':
+            warnings.warn(
+                "This API `ignore` (str) will be enhanced and "
+                "changed to `ignore_overflow` (bool) in the future.", 
+                FutureWarning
+            )
             if y_min < 0 or y_max > h:
                 if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return None
@@ -221,6 +227,11 @@ class Sensor:
                 if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
         elif ignore=='y':
+            warnings.warn(
+                "This API `ignore` (str) will be enhanced and "
+                "changed to `ignore_overflow` (bool) in the future.", 
+                FutureWarning
+            )
             if x_min < 0 or x_max > w:
                 if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return None
@@ -230,6 +241,8 @@ class Sensor:
                 polygon_hv[polygon_hv[:, 1] > h, 1] = h
                 if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
+        else:
+            raise ValueError(f"`ignore` should be None, 'x', or 'y', not {ignore}")
 
 
 class Photo:

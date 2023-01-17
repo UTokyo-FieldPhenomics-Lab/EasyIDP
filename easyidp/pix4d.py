@@ -22,7 +22,8 @@ class Pix4D(idp.reconstruct.Recons):
         raw_img_folder : str, optional
             the original UAV image folder, by default None
         param_folder : str, optional
-            the folder of pix4d project parameters, just in case user changed the default folder structure (``...\\project_name\\1_initial\\params\\``), by default None
+            the folder of pix4d project parameters, just in case user changed the default folder structure 
+            (``...\\project_name\\1_initial\\params\\``), by default None
 
         Example
         -------
@@ -64,7 +65,8 @@ class Pix4D(idp.reconstruct.Recons):
 
             In previous case, the manager reorganized the project structure and outputs of ``test_data.pix4d.lotus_folder``
             
-            (e.g., moved the ``\\project_name\\1_initial\\params\\`` to ``\\project_name\\params\\``, as well as other outputs, the following folder is no more a standard pix4d project)
+            (e.g., moved the ``\\project_name\\1_initial\\params\\`` to ``\\project_name\\params\\``, 
+            as well as other outputs, the following folder is no more a standard pix4d project)
 
             .. code-block:: bash
 
@@ -98,12 +100,14 @@ class Pix4D(idp.reconstruct.Recons):
             In this case, must manual specfiy the ``param_folder``
         
         """
-        #super().__init__()
+        super().__init__()
 
         #: the 3D reconstruction project software, in ['pix4d', 'metashape'], ``<class 'str'>``
         self.software = "pix4d"
         #: pix4d point cloud offset
         self.offset_np = np.zeros((3,1))
+
+        self._photo_position_cache = None
 
         ########################################
         # mute attributes warning for auto doc #
@@ -136,7 +140,8 @@ class Pix4D(idp.reconstruct.Recons):
         raw_img_folder : str, optional
             the original UAV image folder, by default None
         param_folder : str, optional
-            the folder of pix4d project parameters, just in case user changed the default folder structure (``...\\project_name\\1_initial\\params\\``), by default None
+            the folder of pix4d project parameters, just in case user changed the default folder structure 
+            (``...\\project_name\\1_initial\\params\\``), by default None
 
         Example
         -------
@@ -326,17 +331,21 @@ class Pix4D(idp.reconstruct.Recons):
 
         Caution
         -------
-        The pix4d produced point cloud is offsetted (xyz-offset)
-        This function already handle adding offset back to point cloud
-        It you need manual specify ``idp.PointCloud()`` by yourself, please do:
+        The pix4d produced point cloud is offsetted (xyz-offset).
+        This function already handle adding offset back to point cloud.
+        If you need manual specify ``idp.PointCloud()`` by yourself, please do:
 
         .. code-block:: python
 
             >>> p4d = idp.Pix4D(project_path, param_folder)
+
             # wrong
             >>> pcd = idp.PointCloud(lotus_full_pcd)
+
             # correct
             >>> pcd = idp.PointCloud(lotus_full_pcd, offset=p4d.meta['p4d_offset'])
+            # or 
+            >>> pcd = idp.PointCloud(lotus_full_pcd, offset=p4d.offset_np)
 
         Example
         -------
@@ -519,18 +528,62 @@ class Pix4D(idp.reconstruct.Recons):
             If back to software corrected images without len distortion, set it to True. 
             Pix4D support do this operation, seems metashape not supported yet.
         ignore : str | None, optional
-            None: strickly in image area;
-            'x': only y (vertical) in image area, x can outside image;
-            'y': only x (horizontal) in image area, y can outside image.
+            Whether tolerate small parts outside image, check 
+            :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
+
+            - ``None``: strickly in image area;
+            - ``x``: only y (vertical) in image area, x can outside image;
+            - ``y``: only x (horizontal) in image area, y can outside image.
+
         save_folder : str | default ""
             The folder to contain the output results (preview images and json coords)
+
+            .. caution:: This feature has not been implemented
+
         log : bool, optional
             whether print log for debugging, by default False
 
         Returns
         -------
         dict,
-            a dictionary that key = img_name and values= pixel coordinate
+            a dictionary like ``{img_name: pixel coordinate, ... }``
+
+        Example
+        -------
+
+        Data preparation
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+
+            >>> p4d = idp.Pix4D(
+            ...     test_data.pix4d.lotus_folder,
+            ...     raw_img_folder=test_data.pix4d.lotus_photos,
+            ...     param_folder=test_data.pix4d.lotus_param
+            ... )
+
+            >>> plot =  np.array([   # N1E1 plot geo coordinate
+            ...     [ 368020.2974959 , 3955511.61264302,      97.56272272],
+            ...     [ 368022.24288365, 3955512.02973983,      97.56272272],
+            ...     [ 368022.65361232, 3955510.07798313,      97.56272272],
+            ...     [ 368020.69867274, 3955509.66725421,      97.56272272],
+            ...     [ 368020.2974959 , 3955511.61264302,      97.56272272]
+            ... ])
+
+        Then use this function to find the previous ROI positions on the raw images:
+
+        .. code-block:: python
+
+            >>> out_dict = p4d.back2raw_crs(plot, distort_correct=True)
+
+            >>> out_dict["DJI_0177.JPG"]
+            array([[ 137.10982937, 2359.55887614],
+                   [ 133.56116243, 2107.13954299],
+                   [ 384.767746  , 2097.05639105],
+                   [ 388.10993307, 2350.41225998],
+                   [ 137.10982937, 2359.55887614]])
+
         """
         out_dict = {}
         sensor = self.sensors[0]
@@ -555,7 +608,7 @@ class Pix4D(idp.reconstruct.Recons):
             #     os.makedirs(save_folder)
             # save to json file
             # save to one image file ()
-            pass
+            raise NotImplementedError("This feature has not been implemented")
 
         return out_dict
 
@@ -574,11 +627,59 @@ class Pix4D(idp.reconstruct.Recons):
             If back to software corrected images without len distortion, set it to True. 
             Pix4D support do this operation, seems metashape not supported yet.
         ignore : str | None, optional
-            None: strickly in image area;
-            'x': only y (vertical) in image area, x can outside image;
-            'y': only x (horizontal) in image area, y can outside image.
+            Whether tolerate small parts outside image, check 
+            :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
+
+            - ``None``: strickly in image area;
+            - ``x``: only y (vertical) in image area, x can outside image;
+            - ``y``: only x (horizontal) in image area, y can outside image.
+
         log : bool, optional
             whether print log for debugging, by default False
+
+        Example
+        -------
+
+        Data prepare
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+
+            >>> lotus = idp.data.Lotus()
+
+            >>> p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+                                raw_img_folder=lotus.photo,
+                                param_folder=lotus.pix4d.param)
+
+            >>> roi = idp.ROI(lotus.shp, name_field=0)
+            [shp][proj] Use projection [WGS 84] for loaded shapefile [plots.shp]
+            Read shapefile [plots.shp]: 100%|███████████████| 112/112 [00:00<00:00, 2481.77it/s]
+            >>> roi = roi[0:2]
+
+            >>> roi.get_z_from_dsm(lotus.pix4d.dsm)
+
+
+        Then using this function to do backward projection:
+
+        .. code-block:: python
+
+            >>> out_all = p4d.back2raw(roi)
+            {
+                'N1W1': {
+                    'DJI_0479.JPG': 
+                        array([[  52.9824393 , 1253.05643133],
+                               [  79.20465849,  979.90831093],
+                               [ 363.27656888, 1000.07501881],
+                               [ 337.25115499, 1273.15285336],
+                               [  52.9824393 , 1253.05643133]]), 
+                    'DJI_0480.JPG':
+                        array([...])
+                    ...
+                }
+                'N1W2': {...}   # output of `back2raw_crs()`
+            }
+
         """
         out_dict = {}
 
@@ -590,7 +691,9 @@ class Pix4D(idp.reconstruct.Recons):
                 save_path = None
 
             if points_xyz.shape[1] != 3:
-                raise ValueError(f"The back2raw function requires 3D roi with shape=(n, 3), but [{k}] is {points_xyz.shape}")
+                raise ValueError(
+                    f"The back2raw function requires 3D roi with shape=(n, 3)"
+                    f", but [{k}] is {points_xyz.shape}")
 
             one_roi_dict= self.back2raw_crs(points_xyz, save_folder=save_path, **kwargs)
 
@@ -598,33 +701,68 @@ class Pix4D(idp.reconstruct.Recons):
 
         return out_dict
 
-    def get_photo_position(self, to_crs=None):
+    def get_photo_position(self, to_crs=None, refresh=False):
         """Get all photos' center geo position (on given CRS)
 
         Parameters
         ----------
         to_crs : pyproj.CRS, optional
             Transformed to another geo coordinate, by default None, the project.crs
+        refresh : bool, optional
+            
+            - ``False`` : Use cached results (if have), by default
+            - ``True`` : recalculate the photo position
 
         Returns
         -------
         dict
             The dictionary contains "photo.label": [x, y, z] coordinates
+
+        Example
+        -------
+
+        Data prepare
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+
+            >>> lotus = idp.data.Lotus()
+            >>> p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+            >>>                 raw_img_folder=lotus.photo,
+            >>>                 param_folder=lotus.pix4d.param)
+
+        Then use this function to get the photo position in 3D world:
+
+        .. code-block:: python
+
+            >>> out = p4d.get_photo_position()
+            {
+                'DJI_0422.JPG': array([ 368016.23334752, 3955491.97729229,     138.25541246]), 
+                'DJI_0423.JPG': array([ 368016.33261375, 3955492.15845851,     138.05762001]),
+                ...
+            }
+
         """
-        out = {}
-        pbar = tqdm(self.photos, desc=f"Getting photo positions")
-        for p in pbar:
-            if p.enabled:
-                pos = p.location + self.meta["p4d_offset"]
+        if self._photo_position_cache is not None and not refresh:
+            return self._photo_position_cache.copy()
+        else:
+            out = {}
+            pbar = tqdm(self.photos, desc=f"Getting photo positions")
+            for p in pbar:
+                if p.enabled:
+                    pos = p.location + self.meta["p4d_offset"]
 
-                if isinstance(to_crs, pyproj.CRS):
-                    if not self.crs.equals(to_crs):
-                        pos = idp.metashape.convert_proj3d(pos, self.crs, to_crs)
+                    if isinstance(to_crs, pyproj.CRS):
+                        if not self.crs.equals(to_crs):
+                            pos = idp.metashape.convert_proj3d(pos, self.crs, to_crs)
 
-                out[p.label] = pos
-                p.position = pos
+                    out[p.label] = pos
+                    p.position = pos
 
-        return out
+            self._photo_position_cache = out
+
+            return out
 
     def sort_img_by_distance(self, img_dict_all, roi, distance_thresh=None, num=None):
         """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
@@ -645,6 +783,121 @@ class Pix4D(idp.reconstruct.Recons):
         -------
         dict
             the same structure as output of roi.back2raw(...)
+
+
+        Example
+        -------
+
+        In the previous :func:`back2raw` results :
+
+        .. code-block:: python
+
+            >>> out_all = p4d.back2raw(roi)
+            {
+                'N1W1': {
+                    'DJI_0479.JPG': 
+                        array([[  52.9824393 , 1253.05643133],
+                               [  79.20465849,  979.90831093],
+                               [ 363.27656888, 1000.07501881],
+                               [ 337.25115499, 1273.15285336],
+                               [  52.9824393 , 1253.05643133]]), 
+                    'DJI_0480.JPG':
+                        array([...])
+                    ...
+                }
+                'N1W2': {...}   # output of `back2raw_crs()`
+            }
+
+        The image are in chaos order, in most application cases, probable only 1-3 closest images 
+        (to ROI in real world) are required, so this function is provided to sort/filter out.
+
+        In the following example, it filtered 3 images whose distance from camera to ROI in real 
+        world smaller than 10m:
+
+        .. code-block:: python
+
+            >>> img_dict_sort = p4d.sort_img_by_distance(
+            ...     out_all, roi,
+            ...     distance_thresh=10,  # distance threshold is 10m
+            ...     num=3   # only keep 3 closest images
+            ... )
+
+            >>> img_dict_sort
+            {
+                'N1W1': {
+                    'DJI_0500.JPG': array([[1931.09279469, 2191.59919979],
+                                           [1939.92139124, 1930.65101348],
+                                           [2199.9439422 , 1939.32128527],
+                                           [2191.19230849, 2200.557026  ],
+                                           [1931.09279469, 2191.59919979]]), 
+                    'DJI_0517.JPG': array([[2870.94915401, 2143.3570243 ],
+                                           [2596.8790503 , 2161.04730612],
+                                           [2578.87033498, 1886.89058023],
+                                           [2853.13891851, 1869.99769984],
+                                           [2870.94915401, 2143.3570243 ]]), 
+                    'DJI_0518.JPG': array([[3129.43264924, 1984.91814896],
+                                           [2856.71879306, 2002.03817639],
+                                           [2838.71418138, 1730.00287388],
+                                           [3111.73360179, 1713.76233134],
+                                           [3129.43264924, 1984.91814896]])
+                }, 
+                'N1W2': {
+                    'DJI_0500.JPG': array([[2214.36789052, 2200.35979344],
+                                           [2221.8996575 , 1940.70687713],
+                                           [2479.9825464 , 1949.3909589 ],
+                                           [2472.52171907, 2209.40355333],
+                                           [2214.36789052, 2200.35979344]]), 
+                    'DJI_0517.JPG': array([[2849.82108263, 1845.6733702 ],
+                                           [2577.37309441, 1863.60741328],
+                                           [2559.80046778, 1592.07656949],
+                                           [2832.52942622, 1574.92640413],
+                                           [2849.82108263, 1845.6733702 ]]), 
+                    'DJI_0516.JPG': array([[2891.61686486, 2542.98979632],
+                                           [2616.06780032, 2559.41601014],
+                                           [2598.43900454, 2282.36641612],
+                                           [2874.23023492, 2266.71552931],
+                                           [2891.61686486, 2542.98979632]])
+                }
+            }
+
+        Or pick the closest one image:
+
+        .. code-block:: python
+
+            >>> img_dict_sort = p4d.sort_img_by_distance(
+            ...     out_all, roi,
+            ...     num=1   # only keep 3 closest images
+            ... )
+
+            >>> img_dict_sort
+            {
+                'N1W1': {
+                    'DJI_0500.JPG': array([[1931.09279469, 2191.59919979],
+                                           [1939.92139124, 1930.65101348],
+                                           [2199.9439422 , 1939.32128527],
+                                           [2191.19230849, 2200.557026  ],
+                                           [1931.09279469, 2191.59919979]])
+                }, 
+                'N1W2': {
+                    'DJI_0500.JPG': array([[2214.36789052, 2200.35979344],
+                                           [2221.8996575 , 1940.70687713],
+                                           [2479.9825464 , 1949.3909589 ],
+                                           [2472.52171907, 2209.40355333],
+                                           [2214.36789052, 2200.35979344]])
+                }
+            }
+
+        You can use ``list(dict.keys())[0]`` to get the image name automatically to iterate each plot:
+
+        .. code-block:: python
+
+            for plot_name, plot_value in img_dict_sort.items():
+                img_name = list(plot_value.key())[0]
+
+                coord = plot_value[img_name]
+                # or
+                coord = img_dict_sort[plot_name][img_name]
+
         """
         return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)
 
@@ -711,13 +964,13 @@ def parse_p4d_param_folder(param_path:str):
     We use the following parameters [1]_:
 
     - ``project_name`` : the project name
-    - ``xyz``: the full file path of ``{project_name}_offset.xyz``, contains the point cloud offset values
-    - ``pmat``: the full file path of ``{project_name}_pmatrix.txt`` file, contains the compressed internal and external camera parameters.
-    - ``cicp``: the full file path of ``{project_name}_pix4d_calibrated_internal_camera_parameters.cam``, it contains information about the optimized (computed) internal camera parameters.
-    - ``ccp``: the full file path of ``{project_name}_calibrated_camera_parameters.txt``, it contains the information of each calibrated camera.
-    - ``campos``: the full file path of ``{project_name}_calibrated_images_position.txt``, the position information of each calibrated camera.
-    - ``ssk``: the full file path of ``{project_name}_camera.ssk``, it contains information about the camera parameters.
-    - ``crs`` : the full file path of ``{project_name}_wkt.prj``, it contains the projection of the output coordinate system in the projection format.
+    - ``xyz``: the full file path of ``*_offset.xyz``, contains the point cloud offset values
+    - ``pmat``: the full file path of ``*_pmatrix.txt`` file, contains the compressed internal and external camera parameters.
+    - ``cicp``: the full file path of ``*_pix4d_calibrated_internal_camera_parameters.cam``, it contains information about the optimized (computed) internal camera parameters.
+    - ``ccp``: the full file path of ``*_calibrated_camera_parameters.txt``, it contains the information of each calibrated camera.
+    - ``campos``: the full file path of ``*_calibrated_images_position.txt``, the position information of each calibrated camera.
+    - ``ssk``: the full file path of ``*_camera.ssk``, it contains information about the camera parameters.
+    - ``crs`` : the full file path of ``*_wkt.prj``, it contains the projection of the output coordinate system in the projection format.
 
 
     Example
@@ -1010,7 +1263,7 @@ def parse_p4d_project(project_path:str, param_folder=None):
 
 
 def read_xyz(xyz_path):
-    """read pix4d file ``{project_name}_offset.xyz``
+    """read pix4d file ``*_offset.xyz``
 
     Parameters
     ----------
@@ -1060,7 +1313,7 @@ def read_xyz(xyz_path):
 
 
 def read_pmat(pmat_path):
-    """read pix4d file ``{project_name}_pmatrix.txt``
+    """read pix4d file ``*_pmatrix.txt``
 
     Parameters
     ----------
@@ -1133,7 +1386,7 @@ def read_pmat(pmat_path):
 
 
 def read_cicp(cicp_path):
-    """Read ``{project_name}_pix4d_calibrated_internal_camera_parameters.cam`` for :class:`easyidp.reconstruct.Sensor` object
+    """Read ``*_pix4d_calibrated_internal_camera_parameters.cam`` for :class:`easyidp.reconstruct.Sensor` object
 
     Parameters
     ----------
@@ -1223,7 +1476,7 @@ def read_cicp(cicp_path):
 
 
 def read_ccp(ccp_path):
-    """Read ``{project_name}_calibrated_camera_parameters.txt`` for :class:`easyidp.reconstruct.Photo` object
+    """Read ``*_calibrated_camera_parameters.txt`` for :class:`easyidp.reconstruct.Photo` object
 
     Parameters
     ----------
@@ -1382,7 +1635,7 @@ def read_ccp(ccp_path):
 
 
 def read_campos_geo(campos_path):
-    """Read ``{project_name}_calibrated_images_position.txt`` for :class:`easyidp.reconstruct.Photo.position` (geo_location)
+    """Read ``*_calibrated_images_position.txt`` for :class:`easyidp.reconstruct.Photo.position` (geo_location)
 
     Parameters
     ----------
@@ -1458,7 +1711,7 @@ def read_campos_geo(campos_path):
 
 
 def read_cam_ssk(ssk_path):
-    """Get the camera model name, used for Sensor() object
+    """Get the camera model name, for :class:`easyidp.reconstruct.Sensor` object
 
     Parameters
     ----------

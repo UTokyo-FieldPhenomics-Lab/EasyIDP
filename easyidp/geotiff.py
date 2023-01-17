@@ -821,7 +821,8 @@ def get_header(tif_path):
                 - E[east]: Easting (metre)
                 - N[north]: Northing (metre)
                 Area of Use:
-                - name: Between 138°E and 144°E, northern hemisphere between equator and 84°N, onshore and offshore. Japan. Russian Federation.
+                - name: Between 138°E and 144°E, northern hemisphere between equator and 84°N, 
+                        onshore and offshore. Japan. Russian Federation.
                 - bounds: (138.0, 0.0, 144.0, 84.0)
                 Coordinate Operation:
                 - name: UTM zone 54N

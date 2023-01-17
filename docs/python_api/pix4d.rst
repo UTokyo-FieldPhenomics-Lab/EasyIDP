@@ -18,7 +18,7 @@ A summary of class ``easyidp.pix4d.Pix4D``, can be simple accessed by ``easyidp.
 Functions
 =========
 
-This module (``easyidp.pix4d``) also contains the following standard-alone functions for preocessing GeoTiff file directly.
+This module (``easyidp.pix4d``) also contains the following standard-alone functions for preocessing Pix4D projects directly.
 
 .. caution::
     

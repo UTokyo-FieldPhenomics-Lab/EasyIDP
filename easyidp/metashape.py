@@ -12,19 +12,37 @@ import easyidp as idp
 
 
 class Metashape(idp.reconstruct.Recons):
-    # the object for each chunk in Metashape project
+    """the object for each chunk in Metashape 3D reconstruction project"""
 
     def __init__(self, project_path=None, chunk_id=None):
         super().__init__()
         self.software = "metashape"
         self.transform = idp.reconstruct.ChunkTransform()
 
-        # the whole metashape project (parent) info
+        # store the whole metashape project (parent) meta info:
         self.project_folder = None
         self.project_name = None
         self.project_chunks_dict = None
-        self.crs = None
         self.reference_crs = pyproj.CRS.from_epsg(4326)
+        # but this class, only parse one chunk in that project.
+
+        ########################################
+        # mute attributes warning for auto doc #
+        ########################################
+        #: project / chunk name
+        self.label = self.label
+        #: project meta information
+        self.meta = self.meta
+        #: whether this project is activated, (often for Metashape), ``<class 'bool'>``
+        self.enabled = self.enabled
+        #: the container for all sensors in this project (camera model), ``<class 'easyidp.Container'>``
+        self.sensors = self.sensors
+        #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
+        self.photos = self.photos
+        #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
+        self.world_crs = self.world_crs
+        #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
+        self.crs = self.crs
 
         self._photo_position_cache = None
 
@@ -341,11 +359,7 @@ class Metashape(idp.reconstruct.Recons):
 ###############
 
 def read_project_zip(project_folder, project_name):
-    """
-    [inner function] read project.zip xml files to string
-    project path = "/root/to/metashape/test_proj.psx"
-    -->  project_folder = "/root/to/metashape/"
-    -->  project_name = "test_proj"
+    """parse xml in the ``project.zip`` file to string
 
     Parameters
     ----------
@@ -359,7 +373,15 @@ def read_project_zip(project_folder, project_name):
 
     Notes
     -----
-    xml_str example:
+    If one project path look likes: ``/root/to/metashape/test_proj.psx``, 
+    then the input parameter should be:
+    
+    - ``project_folder = "/root/to/metashape/"``
+    - ``project_name = "test_proj"``
+
+    And obtained xml_str example:
+
+    .. code-block:: xml
 
         <document version="1.2.0">
           <chunks next_id="2">
@@ -374,6 +396,7 @@ def read_project_zip(project_folder, project_name):
             <property name="Info/OriginalSoftwareVersion" value="1.6.2.10247"/>
           </meta>
         </document>
+
     """
     project_dict = {}
 
@@ -388,10 +411,7 @@ def read_project_zip(project_folder, project_name):
 
 
 def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
-    """[inner function] read chunk.zip xml file in given chunk
-    project path = "/root/to/metashape/test_proj.psx"
-    -->  project_folder = "/root/to/metashape/"
-    -->  project_name = "test_proj"
+    """parse xml in the given ``chunk.zip`` file.
 
     Parameters
     ----------
@@ -409,7 +429,15 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
 
     Notes
     -----
+    If one project path look likes: ``/root/to/metashape/test_proj.psx``, 
+    then the input parameter should be:
+    
+    - ``project_folder = "/root/to/metashape/"``
+    - ``project_name = "test_proj"``
+
     Example for xml_str:
+
+    .. code-block:: xml
 
         <chunk version="1.2.0" label="170525" enabled="true">
         <sensors next_id="1">
@@ -441,6 +469,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
             <size>3.3381093645095824e+01 2.3577857828140260e+01 7.2410767078399658e+00</size>
             <R>-9.8317886026354417e-01 ...  9.9841729020145376e-01</R>   // 9 numbers
         </region>
+
     """
     frame_zip_file = f"{project_folder}/{project_name}.files/{chunk_id}/chunk.zip"
     xml_str = _get_xml_str_from_zip_file(frame_zip_file, "doc.xml")
@@ -507,8 +536,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
 
 
 def _split_project_path(path: str):
-    """
-    [inner_function] Get project name, current folder, extension, etc. from given project path.
+    """Get project name, current folder, extension, etc. from given project path.
 
     Parameters
     ----------
@@ -531,8 +559,7 @@ def _split_project_path(path: str):
 
 
 def _check_is_software(path: str):
-    """
-    [inner function] Check if given path is metashape project structure
+    """Check if given path is metashape project structure
 
     Parameters
     ----------
@@ -554,8 +581,7 @@ def _check_is_software(path: str):
 
 
 def _get_xml_str_from_zip_file(zip_file, xml_file):
-    """
-    [inner function] read xml file in zip file
+    """read xml file in zip file
 
     Parameters
     ----------
@@ -1034,8 +1060,7 @@ def _decode_frame_xml(xml_str):
 ###############
 
 def apply_transform_matrix(points_xyz, matrix):
-    """
-    Transforms a point or points in homogeneous coordinates.
+    """Transforms a point or points in homogeneous coordinates.
     equal to Metashape.Matrix.mulp() or Metashape.Matrix.mulv()
 
     Parameters
@@ -1043,25 +1068,33 @@ def apply_transform_matrix(points_xyz, matrix):
     matrix: np.ndarray
         4x4 transform numpy array
     points_df: np.ndarray
-        # 1x3 single point
-        >>> np.array([1,2,3])
-           x  y  z
-        0  1  2  3
+        For example:
 
-        # nx3 points
-        >>> np.array([[1,2,3], [4,5,6], ...])
-           x  y  z
-        0  1  2  3
-        1  4  5  6
-        ...
+        .. code-block:: python
+
+            # 1x3 single point
+            >>> np.array([1,2,3])
+               x  y  z
+            0  1  2  3
+
+            # nx3 points
+            >>> np.array([[1,2,3], [4,5,6], ...])
+               x  y  z
+            0  1  2  3
+            1  4  5  6
+            ...
 
     Returns
     -------
     out: pd.DataFrame
-        same size as input points_np
-           x  y  z
-        0  1  2  3
-        1  4  5  6
+        same size as input points_np:
+
+        .. code-block:: text
+
+               x  y  z
+            0  1  2  3
+            1  4  5  6
+
     """
     points_xyz, is_single = _is_single_point(points_xyz)
 
@@ -1076,8 +1109,7 @@ def apply_transform_matrix(points_xyz, matrix):
 
 
 def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
-    """
-    Transform a point or points from one CRS to another CRS, by pyproj.CRS.Transformer function
+    """Transform a point or points from one CRS to another CRS, by pyproj.CRS.Transformer function
 
     Parameters
     ----------

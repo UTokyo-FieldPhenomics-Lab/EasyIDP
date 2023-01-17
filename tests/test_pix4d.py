@@ -270,7 +270,7 @@ def test_class_get_photo_position():
     np.testing.assert_almost_equal(out['DJI_0430.JPG'], np.array([ 368020.07181613, 3955477.75605109,     136.75217778]))
 
     # convert to another proj?
-    out_lonlat = p4d.get_photo_position(to_crs=pyproj.CRS.from_epsg(4326))
+    out_lonlat = p4d.get_photo_position(to_crs=pyproj.CRS.from_epsg(4326), refresh=True)
     assert len(out_lonlat) == 151
     assert "DJI_0430.JPG" in out_lonlat.keys()
     np.testing.assert_almost_equal(out_lonlat['DJI_0430.JPG'], np.array(np.array([139.5405607 ,  35.73445188, 136.75217778])))

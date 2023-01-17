@@ -378,6 +378,7 @@ Examples
    python_api/reconstruct
    python_api/pix4d
    python_api/metashape
+   python_api/visualize
 
 .. toctree::
    :hidden:

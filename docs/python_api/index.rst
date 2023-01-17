@@ -20,6 +20,8 @@ The EasyIDP package have the following modules:
   - :doc:`Pix4D Submodule <./pix4d>`: handle Pix4D projects.
   - :doc:`Metashape Submodule <./metashape>`: handle Metashape projects.
 
+- :doc:`visualize Module <./visualize>` : Draw visualization figures for the output.
+
 
 For each module, consisted by several base functions (e.g. ``easyidp.geotiff.*`` ) and an advanced wrapper class for them (e.g. ``easyidp.GeoTiff``). In the most cases, please use the upper case class wrapper rather than the lowercase base functions unless you really need them.
 

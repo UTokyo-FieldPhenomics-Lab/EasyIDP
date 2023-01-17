@@ -52,17 +52,112 @@ def _view_poly2mask(poly, mask, pix_all, pix_in):
     plt.show()
 
 
-def draw_polygon_on_img(img_name, img_path, img_coord, img_correct=None, title=None, save_as=None, show=False,
+def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=None, title=None, save_as=None, show=False,
                         color='red', alpha=0.5, dpi=72):
+    """Plot one polygon on given image.
+
+    Parameters
+    ----------
+    img_name : str
+        the image file name.
+    img_path : str
+        the file path of image
+    poly_coord : np.ndarray
+        the 2D polygon pixel coordinate on the image
+    corrected_poly_coord : np.ndarray, optional
+        the corrected 2D polygon pixel coordiante on the image (if have), by default None
+    title : str, optional
+        The image title displayed on the top, by default None -> ``Projection on [img_name]``
+    save_as : str, optional
+        file path to save the output figure, by default None
+    show : bool, optional
+        whether display (in jupyter notebook) or popup (in command line) the figure, by default False
+    color : str, optional
+        the polygon line color, by default 'red'
+    alpha : float, optional
+        the polygon transparency, by default 0.5
+    dpi : int, optional
+        the dpi of produced figure, by default 72
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+
+        >>> p4d = idp.Pix4D(
+        ...     test_data.pix4d.lotus_folder,
+        ...     raw_img_folder=test_data.pix4d.lotus_photos,
+        ...     param_folder=test_data.pix4d.lotus_param
+        ... )
+
+        >>> plot =  np.array([   # N1E1 plot geo coordinate
+        ...     [ 368020.2974959 , 3955511.61264302,      97.56272272],
+        ...     [ 368022.24288365, 3955512.02973983,      97.56272272],
+        ...     [ 368022.65361232, 3955510.07798313,      97.56272272],
+        ...     [ 368020.69867274, 3955509.66725421,      97.56272272],
+        ...     [ 368020.2974959 , 3955511.61264302,      97.56272272]
+        ... ])
+
+    Then do backward projection, find the previous ROI positions on the raw images.
+
+    .. code-block:: python
+
+        >>> out_dict = p4d.back2raw_crs(plot, distort_correct=True)
+        >>> out_dict["DJI_0177.JPG"]
+        array([[ 137.10982937, 2359.55887614],
+               [ 133.56116243, 2107.13954299],
+               [ 384.767746  , 2097.05639105],
+               [ 388.10993307, 2350.41225998],
+               [ 137.10982937, 2359.55887614]])
+
+    The using this function to check one polygon on raw images
+
+    .. code-block:: python
+
+        >>> img_name = "DJI_0198.JPG"
+        >>> photo = p4d.photos[img_name]
+
+        >>> idp.visualize.draw_polygon_on_img(
+        ...     img_name, photo.path, out_dict[img_name],  
+        ...     save_as="p4d_back2raw_single_view.png")
+
+    If will get the following figure:
+
+    .. image:: ../../_static/images/visualize/p4d_back2raw_single_view.png
+        :alt: p4d_back2raw_single_view.png'
+        :scale: 100
+
+    Add an corrected polygon (here manual shifting 10 pixels just as example), and change the color and alpha info:
+
+    .. code-block:: python
+
+        >>> corrected_poly = out_dict[img_name] + np.array([10,10])
+
+        >>> idp.visualize.draw_polygon_on_img(
+        ...     img_name, photo.path, out_dict[img_name], corrected_poly,
+        ...     save_as="p4d_back2raw_single_view2.png", 
+        ...     color='blue', alpha=0.3)
+
+    If will get the following figure:
+
+    .. image:: ../../_static/images/visualize/p4d_back2raw_single_view2.png
+        :alt: p4d_back2raw_single_view2.png'
+        :scale: 100
+
+    """
     fig, ax = plt.subplots(1, 2, figsize=(10, 6), dpi=dpi)
     # using [::-1] to revert image along axis=0, and origin='lower' to change to 'lower-left' coordinate
     img_array = plt.imread(img_path)
     ax[0].imshow(img_array)
 
-    if img_correct is None:
-        polygon = pts.Polygon(img_coord, True)
+    if corrected_poly_coord is None:
+        polygon = pts.Polygon(poly_coord, True)
     else:
-        polygon = pts.Polygon(img_correct, True)
+        polygon = pts.Polygon(corrected_poly_coord, True)
     p = PatchCollection([polygon], alpha=alpha, facecolors=color)
 
     ax[0].add_collection(p)
@@ -77,17 +172,17 @@ def draw_polygon_on_img(img_name, img_path, img_coord, img_correct=None, title=N
 
     ax[1].imshow(img_array)
 
-    if img_correct is None:
-        x_min, y_min = img_coord[:,0:2].min(axis=0)
-        x_max, y_max = img_coord[:,0:2].max(axis=0)
+    if corrected_poly_coord is None:
+        x_min, y_min = poly_coord[:,0:2].min(axis=0)
+        x_max, y_max = poly_coord[:,0:2].max(axis=0)
 
-        ax[1].plot(img_coord[:, 0], img_coord[:, 1], color=color, linestyle='-')
+        ax[1].plot(poly_coord[:, 0], poly_coord[:, 1], color=color, linestyle='-')
     else:
-        x_min, y_min = np.vstack([img_coord, img_correct])[:,0:2].min(axis=0)
-        x_max, y_max = np.vstack([img_coord, img_correct])[:,0:2].max(axis=0)
+        x_min, y_min = np.vstack([poly_coord, corrected_poly_coord])[:,0:2].min(axis=0)
+        x_max, y_max = np.vstack([poly_coord, corrected_poly_coord])[:,0:2].max(axis=0)
 
-        l1, = ax[1].plot(img_coord[:, 0], img_coord[:, 1], color=color, linestyle='--')
-        l2, = ax[1].plot(img_correct[:, 0], img_correct[:, 1], color=color, linestyle='-')
+        l1, = ax[1].plot(poly_coord[:, 0], poly_coord[:, 1], color=color, linestyle='--')
+        l2, = ax[1].plot(corrected_poly_coord[:, 0], corrected_poly_coord[:, 1], color=color, linestyle='-')
         ax[1].legend((l1, l2), ('Original Projection', 'Corrected Position'), loc='lower center')
 
     x_shift = (x_max - x_min) * 0.1

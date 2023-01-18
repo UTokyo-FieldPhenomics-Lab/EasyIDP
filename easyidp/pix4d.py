@@ -8,9 +8,7 @@ from tqdm import tqdm
 import easyidp as idp
 
 class Pix4D(idp.reconstruct.Recons):
-
-    """A Pix4D class, contains information of 3D reconstruction.
-    """
+    """A Pix4D class, contains information of 3D reconstruction."""
 
     def __init__(self, project_path=None, raw_img_folder=None, param_folder=None):
         """The method to initialize the Pix4D class
@@ -122,8 +120,6 @@ class Pix4D(idp.reconstruct.Recons):
         self.sensors = self.sensors
         #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
         self.photos = self.photos
-        #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
-        self.world_crs = self.world_crs
         #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
         self.crs = self.crs
 

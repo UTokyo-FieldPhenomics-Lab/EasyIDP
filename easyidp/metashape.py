@@ -3,6 +3,7 @@ import pyproj
 import zipfile
 import numpy as np
 import warnings
+from tabulate import tabulate
 from xml.etree import ElementTree
 import xml.dom.minidom as minidom
 from tqdm import tqdm
@@ -23,7 +24,13 @@ class Metashape(idp.reconstruct.Recons):
         self.project_folder = None
         self.project_name = None
         self.project_chunks_dict = None
-        self.reference_crs = pyproj.CRS.from_epsg(4326)
+        self.chunk_id = chunk_id
+
+        # hidden attributes
+        self._chunk_id2label = {}   # for project_chunks
+        self._label2chunk_id = {}   # for project_chunks
+        self._reference_crs = pyproj.CRS.from_epsg(4326)
+        self._photo_position_cache = None
         # but this class, only parse one chunk in that project.
 
         ########################################
@@ -39,26 +46,51 @@ class Metashape(idp.reconstruct.Recons):
         self.sensors = self.sensors
         #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
         self.photos = self.photos
-        #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
-        self.world_crs = self.world_crs
         #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
         self.crs = self.crs
 
-        self._photo_position_cache = None
-
         if project_path is not None:
             self._open_whole_project(project_path)
-            if chunk_id is not None:
-                self.open_chunk(chunk_id)
+            self.open_chunk(self.chunk_id)
         else:
             if chunk_id is not None:
-                raise LookupError(
-                    f"Could not load chunk_id [{chunk_id}] for project_path [{project_path}]")
+                warnings.warn(
+                    f"Unable to open chunk_id [{chunk_id}] for empty project with project_path={project_path}")
+
+    def __repr__(self) -> str:
+        return self._show_chunk()
+
+    def __str__(self) -> str:
+        return self._show_chunk()
         
 
     ###############
     # zip/xml I/O #
     ###############
+
+    def _show_chunk(self, return_table_only=False):
+        if self.project_folder is None \
+            or self.project_name is None \
+            or self.project_chunks_dict is None \
+            or len(self._chunk_id2label) == 0 \
+            or len(self._label2chunk_id) == 0:
+            return "<Empty easyidp.Metashape object>"
+        else:
+            show_str = f"<'{self.project_name}.psx' easyidp.Metashape object with {len(self.project_chunks_dict)} active chunks>\n\n"
+
+            head = ["id", "label"]
+            data = []
+            for idx, label in self._chunk_id2label.items():
+                if idx == str(self.chunk_id):
+                    idx = '-> ' + idx
+                data.append([idx, label])
+
+            table_str = tabulate(data, headers=head, tablefmt='simple', colalign=["right", "left"])
+
+            if return_table_only:
+                return table_str
+            else:
+                return show_str + table_str
 
     def open_chunk(self, chunk_id, project_path=None):
         # given new project path, switch project
@@ -82,10 +114,16 @@ class Metashape(idp.reconstruct.Recons):
                 self.project_name, 
                 chunk_id=chunk_id, skip_disabled=False)
             self._chunk_dict_to_object(chunk_content_dict)
+        elif chunk_id in self._label2chunk_id.keys():
+            chunk_content_dict = read_chunk_zip(
+                self.project_folder, 
+                self.project_name, 
+                chunk_id=self._label2chunk_id[chunk_id], skip_disabled=False)
+            self._chunk_dict_to_object(chunk_content_dict)
         else:
             raise KeyError(
-                f"Could not find chunk_id [{chunk_id}] in "
-                f"{list(self.project_chunks_dict.keys())}")
+                f"Could not find chunk_id [{chunk_id}] in\n"
+                f"{self._show_chunk(return_table_only=True)}")
 
     def _open_whole_project(self, project_path):
         _check_is_software(project_path)
@@ -94,17 +132,65 @@ class Metashape(idp.reconstruct.Recons):
         # chunk_dict.keys() = [1,2,3,4,5] int id
         project_dict = read_project_zip(folder_path, project_name)
 
+        chunk_id2label = {}
+        label2chunk_id = {}
+        for chunk_id in project_dict.keys():
+            chunk_dict = read_chunk_zip(folder_path, project_name, chunk_id, return_label_only=True)
+
+            if chunk_dict['enabled']:
+                chunk_id2label[chunk_id] = chunk_dict['label']
+                label2chunk_id[chunk_dict['label']] = chunk_id
+            else:   # ignore the disabled chunk.
+                project_dict.pop(chunk_id)
+
+        # open the first chunk if chunk_id not given.
+        first_chunk_id = list(project_dict.keys())[0]
+        if len(project_dict) == 1:  # only has one chunk, open directly
+            self.chunk_id = first_chunk_id
+        else:   # has multiple chunks
+            if self.chunk_id is None:
+                warnings.warn(
+                    f"The project has [{len(project_dict)}] chunks, however no chunk_id has been specified, "
+                    f"open the first chunk [{first_chunk_id}] '{chunk_id2label[first_chunk_id]}' by default.")
+                self.chunk_id = first_chunk_id
+
+        # save to project parameters
         self.project_folder = folder_path
         self.project_name = project_name
         self.project_chunks_dict = project_dict
+        self._chunk_id2label = chunk_id2label
+        self._label2chunk_id = label2chunk_id
+
 
     def _chunk_dict_to_object(self, chunk_dict):
         self.label = chunk_dict["label"]
         self.enabled = chunk_dict["enabled"]
-        self.transform = chunk_dict["transform"]
+
+        self._reference_crs = chunk_dict["crs"]
+
+        # adapt for empty chunk without any information
+        missing_pool = []
+
+        if "transform" in chunk_dict.keys():
+            self.transform = chunk_dict["transform"]
+        else:
+            self.enabled = False
+            missing_pool.append('transform')
+
         self.sensors = chunk_dict["sensors"]
+        if len(chunk_dict["sensors"]) == 0:
+            self.enabled = False
+            missing_pool.append('sensors')
+
         self.photos = chunk_dict["photos"]
-        self.reference_crs = chunk_dict["crs"]
+        if len(chunk_dict["photos"]) == 0:
+            self.enabled = False
+            missing_pool.append('photos')
+
+        # show warning for emtpy tasks
+        if not self.enabled:
+            warnings.warn(f"Current chunk missing required {missing_pool} information "
+                "(is it an empty chunk without finishing SfM tasks?) and unable to do further analysis.")
 
     
     #######################
@@ -122,15 +208,15 @@ class Metashape(idp.reconstruct.Recons):
 
     def _world2crs(self, points_np):
         if self.crs is None:
-            return convert_proj3d(points_np, self.world_crs, self.reference_crs)
+            return convert_proj3d(points_np, self._world_crs, self._reference_crs)
         else:
-            return convert_proj3d(points_np, self.world_crs, self.crs)
+            return convert_proj3d(points_np, self._world_crs, self.crs)
 
     def _crs2world(self, points_np):
         if self.crs is None:
-            return convert_proj3d(points_np, self.reference_crs, self.world_crs)
+            return convert_proj3d(points_np, self._reference_crs, self._world_crs)
         else:
-            return convert_proj3d(points_np, self.crs, self.world_crs)
+            return convert_proj3d(points_np, self.crs, self._world_crs)
 
     def _back2raw_one2one(self, points_np, photo_id, distortion_correct=True):
         """Project one ROI(polygon) on one given photo
@@ -227,6 +313,9 @@ class Metashape(idp.reconstruct.Recons):
         dict,
             a dictionary that key = img_name and values= pixel coordinate
         """
+        if not self.enabled:
+            raise TypeError("Unable to process disabled chunk (.enabled=False)")
+        
         local_coord = self._world2local(self._crs2world(points_xyz))
 
         # for each raw image in the project / flight
@@ -269,6 +358,9 @@ class Metashape(idp.reconstruct.Recons):
         log : bool, optional
             whether print log for debugging, by default False
         """
+        if not self.enabled:
+            raise TypeError("Unable to process disabled chunk (.enabled=False)")
+        
         out_dict = {}
 
         before_crs = ccopy(self.crs)
@@ -308,6 +400,9 @@ class Metashape(idp.reconstruct.Recons):
         dict
             The dictionary contains "photo.label": [x, y, z] coordinates
         """
+        if not self.enabled:
+            raise TypeError("Unable to process disabled chunk (.enabled=False)")
+    
         if self._photo_position_cache is not None and not refresh:
             return self._photo_position_cache.copy()
         else:
@@ -352,6 +447,9 @@ class Metashape(idp.reconstruct.Recons):
         dict
             the same structure as output of roi.back2raw(...)
         """
+        if not self.enabled:
+            raise TypeError("Unable to process disabled chunk (.enabled=False)")
+        
         return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)
 
 ###############
@@ -410,7 +508,7 @@ def read_project_zip(project_folder, project_name):
     return project_dict
 
 
-def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
+def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, return_label_only=False):
     """parse xml in the given ``chunk.zip`` file.
 
     Parameters
@@ -421,7 +519,8 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
         the chunk id start from 0 of chunk.zip
     skip_disabled: bool
         return None if chunk enabled == False
-
+    return_label_only: bool
+        Only parse chunk.label, by default False
 
     Returns
     -------
@@ -482,6 +581,9 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False):
 
     if skip_disabled and not chunk_dict["enabled"]:
         return None
+
+    if return_label_only:
+        return chunk_dict
 
     # metashape chunk.transform.matrix
     transform_tags = xml_tree.findall("./transform")

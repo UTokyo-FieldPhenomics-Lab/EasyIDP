@@ -61,6 +61,16 @@ def test_convert_proj3d():
     np.testing.assert_array_almost_equal(out_d[0:2], geodetic[0:2], decimal=5)
     np.testing.assert_array_almost_equal(out_d[2], geodetic[2], decimal=1)
 
+############################
+# test metashape functions #
+############################
+
+def test_read_chunk_zip_label_only():
+
+    out_dict = idp.metashape.read_chunk_zip(
+        str(test_data.metashape.lotus_psx)[:-9], "Lotus", chunk_id=0, return_label_only=True)
+
+    assert list(out_dict.keys()) == ['label','enabled']
 
 #########################
 # test metashape object #
@@ -72,7 +82,7 @@ def test_class_init_metashape():
     # load with project_path
     m2 = idp.Metashape(project_path=test_data.metashape.goya_psx)
     assert m2.project_name == "goya_test"
-    assert m2.label == ''
+    assert m2.label == 'Chunk 1'
 
     # load with project_path + chunk_id
     m2 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id=0)
@@ -87,9 +97,76 @@ def test_class_init_metashape():
     assert m2.photos[0].rotation.shape == (3, 3)
     assert m2.photos[0].sensor.width == m2.sensors[0].width
 
-    # error init with chunk_id without project_path
-    with pytest.raises(LookupError, match=re.escape("Could not load chunk_id ")):
+def test_class_init_metashape_warns_errors():
+    # warning init with chunk_id without project_path
+    with pytest.warns(UserWarning, match=re.escape("Unable to open chunk_id [0] for empty project with project_path=None")):
         m3 = idp.Metashape(chunk_id=0)
+
+    # warning with multiple chunks:
+    with pytest.warns(UserWarning, match=re.escape("The project has [2] chunks, however no chunk_id has been specified, open the first chunk [1] 'multiple_bbb' by default.")):
+        m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
+
+    # warning with unable for further anaylsys
+    with pytest.warns(UserWarning, match=re.escape("Current chunk missing required ['transform', 'sensors', 'photos'] information (is it an empty chunk without finishing SfM tasks?) and unable to do further analysis.")):
+        m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id=1)
+        
+    m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
+
+    # trace errors for empty chunk:
+    with pytest.raises(TypeError, match=re.escape("Unable to process disabled chunk (.enabled=False)")):
+        m4.back2raw('roi')
+    with pytest.raises(TypeError, match=re.escape("Unable to process disabled chunk (.enabled=False)")):
+        m4.back2raw_crs('roi')
+    with pytest.raises(TypeError, match=re.escape("Unable to process disabled chunk (.enabled=False)")):
+        m4.get_photo_position('roi')
+    with pytest.raises(TypeError, match=re.escape("Unable to process disabled chunk (.enabled=False)")):
+        m4.sort_img_by_distance('img_dict_all', 'roi')
+
+
+def test_class_fetch_by_label():
+    m2 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="Chunk 1")
+
+    assert m2.label == 'Chunk 1'
+
+
+def test_class_fetch_by_label_error():
+    with pytest.raises(KeyError, match=re.escape("Could not find chunk_id [2] in")):
+        m2 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="2")
+
+def test_class_show_chunk():
+    m1 = idp.Metashape()
+
+    assert m1._show_chunk() == "<Empty easyidp.Metashape object>"
+
+    ms_goya = idp.Metashape(project_path=test_data.metashape.goya_psx)
+
+    goya_show = \
+        "<'goya_test.psx' easyidp.Metashape object with 1 active chunks>\n\n" \
+        "  id  label\n" \
+        "----  -------\n" \
+        "-> 0  Chunk 1"
+
+    assert ms_goya._show_chunk().replace(' ', '') == goya_show.replace(' ', '')
+
+    ms_lotus = idp.Metashape(project_path=test_data.metashape.lotus_psx)
+
+    lotus_show = \
+        "<'Lotus.psx' easyidp.Metashape object with 1 active chunks>\n\n" \
+        "  id  label\n" \
+        "----  -------\n" \
+        "-> 0  Chunk 1"
+
+    assert ms_lotus._show_chunk().replace(' ', '') == lotus_show.replace(' ', '')
+
+    m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id=1)
+    m4_show = \
+        "<'multichunk.psx' easyidp.Metashape object with 2 active chunks>\n\n" \
+        "  id  label\n" \
+        "----  ------------\n" \
+        "-> 1  multiple_bbb\n" \
+        "   2  miltiple_aaa"
+    
+    assert m4._show_chunk().replace(' ', '') == m4_show.replace(' ', '')
 
 
 def test_local2world2local():

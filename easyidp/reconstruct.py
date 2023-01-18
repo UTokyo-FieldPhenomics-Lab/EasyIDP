@@ -62,7 +62,7 @@ class Recons(object):
         self.photos = idp.Container()
 
         #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
-        self.world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
+        self._world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
         #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
         self.crs = None
 

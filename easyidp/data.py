@@ -439,6 +439,9 @@ class TestData(EasyidpDataSet):
         * ``.metashape.lotus_dsm``
         * ``.metashape.wheat_psx``
         * ``.metashape.wheat_param``
+        * ``.metashape.multichunk_psx``
+        * ``.metashape.multichunk_param``
+
 
         **pix4d test module** 
 
@@ -516,6 +519,9 @@ class TestData(EasyidpDataSet):
 
             self.wheat_psx   = data_dir / "metashape" / "wheat_tanashi.psx"
             self.wheat_param = data_dir / "metashape" / "wheat_tanashi.files"
+
+            self.multichunk_psx   = data_dir / "metashape" / "multichunk.psx"
+            self.multichunk_param = data_dir / "metashape" / "multichunk.files"
 
 
     class Pix4Dataset():

@@ -43,6 +43,6 @@ Although it may seem like more code, advanced wrappers have more convenient func
 
 .. caution:: 
 
-    The :class:`easyidp.Container` object, its child objects, and objects contains this object, like :class:`easyidp.ROI <easyidp.roi.ROI>` , ``ProjectPool`` , :class:`easyidp.Recons <easyidp.reconstruct.Recons>` , :class:`easyidp.Pix4D <easyidp.pix4d.Pix4D>` , ``Metashape``, can not be saved by pickle. 
+    The :class:`easyidp.Container` object, its child objects, and objects contains this object, like :class:`easyidp.ROI <easyidp.roi.ROI>` , ``ProjectPool`` , :class:`easyidp.Recons <easyidp.reconstruct.Recons>` , :class:`easyidp.Pix4D <easyidp.pix4d.Pix4D>` , :class:`easyidp.Metashape <easyidp.metashape.Metashape>`, can not be saved by pickle. 
     
     Please check this link for more details `What can be pickled and unpickled <https://docs.python.org/3/library/pickle.html#what-can-be-pickled-and-unpickled>`_ .

@@ -18,6 +18,7 @@
       ~Metashape.back2raw_crs
       ~Metashape.get_photo_position
       ~Metashape.open_chunk
+      ~Metashape.open_project
       ~Metashape.sort_img_by_distance
    
    
@@ -36,7 +37,6 @@
       ~Metashape.enabled
       ~Metashape.sensors
       ~Metashape.photos
-      ~Metashape.world_crs
       ~Metashape.crs
    
    

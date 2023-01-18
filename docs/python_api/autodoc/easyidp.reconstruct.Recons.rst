@@ -31,7 +31,6 @@
       ~Recons.enabled
       ~Recons.sensors
       ~Recons.photos
-      ~Recons.world_crs
       ~Recons.crs
    
    

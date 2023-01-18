@@ -16,6 +16,62 @@ class Metashape(idp.reconstruct.Recons):
     """the object for each chunk in Metashape 3D reconstruction project"""
 
     def __init__(self, project_path=None, chunk_id=None):
+        """The method to initialize the Metashape class
+
+        Parameters
+        ----------
+        project_path : str, optional
+            The metashape project file to open, like "xxxx.psx",, by default None, means create an empty class
+        chunk_id : int, optional
+            The chunk id want to open, by default None, open the first chunk.
+
+        Example
+        -------
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+        Then open the demo Metashape project:
+
+        .. code-block:: python
+
+            >>> ms = idp.Metashape(test_data.metashape.lotus_psx)
+            <'Lotus.psx' easyidp.Metashape object with 1 active chunks>
+
+              id  label
+            ----  -------
+            -> 0  Chunk 1
+
+        Or you can create an empty class and then open project (not recommended)
+
+        .. code-block:: python
+
+            >>> ms = idp.Metashape()
+            >>> ms.open_project(test_data.metashape.lotus_psx)
+            <'Lotus.psx' easyidp.Metashape object with 1 active chunks>
+
+            id  label
+            ----  -------
+            -> 0  Chunk 1
+
+        .. caution::
+
+            One metashape project may have several chunks, and each ``easyidp.Metashape`` project could only handle with only one chunk at once. 
+
+            The arrow before ID shows which chunk has been opened
+
+            .. code-block:: text
+
+                <'multichunk.psx' easyidp.Metashape object with 2 active chunks>
+
+                  id  label
+                ----  ------------
+                -> 1  multiple_bbb
+                   2  miltiple_aaa
+
+        """
         super().__init__()
         self.software = "metashape"
         self.transform = idp.reconstruct.ChunkTransform()
@@ -49,13 +105,7 @@ class Metashape(idp.reconstruct.Recons):
         #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
         self.crs = self.crs
 
-        if project_path is not None:
-            self._open_whole_project(project_path)
-            self.open_chunk(self.chunk_id)
-        else:
-            if chunk_id is not None:
-                warnings.warn(
-                    f"Unable to open chunk_id [{chunk_id}] for empty project with project_path={project_path}")
+        self.open_project(project_path, chunk_id)
 
     def __repr__(self) -> str:
         return self._show_chunk()
@@ -91,6 +141,15 @@ class Metashape(idp.reconstruct.Recons):
                 return table_str
             else:
                 return show_str + table_str
+            
+    def open_project(self, project_path, chunk_id=None):
+        if project_path is not None:
+            self._open_whole_project(project_path)
+            self.open_chunk(self.chunk_id)
+        else:
+            if chunk_id is not None:
+                warnings.warn(
+                    f"Unable to open chunk_id [{chunk_id}] for empty project with project_path={project_path}")
 
     def open_chunk(self, chunk_id, project_path=None):
         # given new project path, switch project
@@ -518,7 +577,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
     chunk_id: int or str
         the chunk id start from 0 of chunk.zip
     skip_disabled: bool
-        return None if chunk enabled == False
+        return None if chunk enabled is False in metashape project
     return_label_only: bool
         Only parse chunk.label, by default False
 

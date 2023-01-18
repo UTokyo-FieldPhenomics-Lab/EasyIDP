@@ -41,7 +41,6 @@
       ~Pix4D.enabled
       ~Pix4D.sensors
       ~Pix4D.photos
-      ~Pix4D.world_crs
       ~Pix4D.crs
    
    

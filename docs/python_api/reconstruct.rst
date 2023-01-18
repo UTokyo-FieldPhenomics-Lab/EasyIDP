@@ -4,7 +4,9 @@ reconstruct
 
 .. currentmodule:: easyidp.reconstruct
 
-This is the base module for 3D reconstruction project, all the following classes and functions have already been implemented into the submodule ``easyidp.Pix4D`` and ``easyidp.Metashape``. They are generally sufficient for most application cases, please don't create the following classes or use the following functions directly unless you really need to.
+.. caution:: 
+
+    This is the base module for 3D reconstruction project, all the following classes and functions have already been implemented into the submodule :class:`easyidp.Pix4D <easyidp.pix4d.Pix4D>` and :class:`easyidp.Metashape <easyidp.metashape.Metashape>`. They are generally sufficient for most application cases, it is not recommended to create the following classes or use the following functions directly unless you really need to.
 
 
 Class

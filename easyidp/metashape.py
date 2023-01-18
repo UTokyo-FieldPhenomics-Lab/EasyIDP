@@ -197,8 +197,20 @@ class Metashape(idp.reconstruct.Recons):
             chunk_dict = read_chunk_zip(folder_path, project_name, chunk_id, return_label_only=True)
 
             if chunk_dict['enabled']:
-                chunk_id2label[chunk_id] = chunk_dict['label']
-                label2chunk_id[chunk_dict['label']] = chunk_id
+                lb = chunk_dict['label']
+                lb_len = len(lb)
+                # judge if two chunks have the same label
+                while lb in label2chunk_id.keys():
+                    # extract '_1' from 'chunk_name_1' if have
+                    suffix = lb[lb_len:][1:]
+                    # do not have 
+                    if suffix == '':
+                        lb = lb[:lb_len] + '_1'
+                    else:
+                        lb = lb[:lb_len] + '_' + str(int(suffix) + 1)
+
+                chunk_id2label[chunk_id] = lb
+                label2chunk_id[lb] = chunk_id
             else:   # ignore the disabled chunk.
                 project_dict.pop(chunk_id)
 

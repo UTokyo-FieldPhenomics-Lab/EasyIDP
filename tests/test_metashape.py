@@ -160,14 +160,19 @@ def test_class_show_chunk():
 
     m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id=1)
     m4_show = \
-        "<'multichunk.psx' easyidp.Metashape object with 2 active chunks>\n\n" \
+        "<'multichunk.psx' easyidp.Metashape object with 4 active chunks>\n\n" \
         "  id  label\n" \
-        "----  ------------\n" \
+        "----  --------------\n" \
         "-> 1  multiple_bbb\n" \
-        "   2  miltiple_aaa"
+        "   2  multiple_aaa\n" \
+        "   3  multiple_aaa_1\n" \
+        "   4  multiple_aaa_2"
     
     assert m4._show_chunk().replace(' ', '') == m4_show.replace(' ', '')
 
+    # test the ability to handle duplicated name
+    assert list(m4._label2chunk_id.keys()) == list(m4._chunk_id2label.values())
+    assert list(m4._label2chunk_id.values()) == list(m4._chunk_id2label.keys())
 
 def test_local2world2local():
     attempt1 = idp.Metashape()

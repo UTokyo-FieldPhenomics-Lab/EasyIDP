@@ -32,6 +32,13 @@
 
    .. autosummary::
    
+      ~GeoTiff.crs
+      ~GeoTiff.dim
+      ~GeoTiff.height
+      ~GeoTiff.nodata
+      ~GeoTiff.scale
+      ~GeoTiff.tie_point
+      ~GeoTiff.width
       ~GeoTiff.file_path
       ~GeoTiff.header
       ~GeoTiff.imarray

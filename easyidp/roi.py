@@ -384,7 +384,7 @@ class ROI(idp.Container):
                 f"<{type(target_crs)}> should be <pyproj.CRS> type"
             )
 
-        self.id_item = idp.shp.convert_proj(self.id_item, self.crs, target_crs)
+        self.id_item = idp.geotools.convert_proj(self.id_item, self.crs, target_crs)
         self.crs = target_crs
 
     def _get_z_input_check(self, obj, mode, kernel, buffer, func="dsm"):
@@ -543,7 +543,7 @@ class ROI(idp.Container):
 
         .. code-block:: python
 
-            >>> lotus_full_dsm.header['crs']
+            >>> lotus_full_dsm.crs
             <Derived Projected CRS: EPSG:32654>
             Name: WGS 84 / UTM zone 54N
             ...
@@ -705,7 +705,7 @@ class ROI(idp.Container):
             self.change_crs(dsm.header["crs"])
             poly_dict = self.id_item.copy()
         else:
-            poly_dict = idp.shp.convert_proj(self.id_item, self.crs, dsm.header["crs"])
+            poly_dict = idp.geotools.convert_proj(self.id_item, self.crs, dsm.header["crs"])
 
         nan_z_list = []
         pbar = tqdm(self.items(), desc=f"Read z values of roi from DSM [{dsm.file_path.name}]")

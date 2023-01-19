@@ -181,7 +181,7 @@ def test_convert_shp():
 
     utm_shp, utm_proj = idp.shp.read_shp(utm_path, return_proj=True)
 
-    utm_cvt_shp = idp.shp.convert_proj(lonlat_shp, lonlat_proj, utm_proj)
+    utm_cvt_shp = idp.geotools.convert_proj(lonlat_shp, lonlat_proj, utm_proj)
 
     a = utm_cvt_shp['0']
     b = utm_shp['0']

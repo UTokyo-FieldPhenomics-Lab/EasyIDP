@@ -78,6 +78,62 @@ class GeoTiff(object):
         if tif_path != "":
             self.read_geotiff(tif_path)
 
+    @property
+    def crs(self):
+        """A quick access to ``self.header['crs']``, please access the ``header`` dict to change value"""
+        if isinstance(self.header, dict) and 'crs' in self.header.keys():
+            return self.header['crs']
+        else:
+            return None
+        
+    @property
+    def height(self):
+        """A quick access to ``self.header['height']``, please access the ``header`` dict to change value"""
+        if isinstance(self.header, dict) and 'height' in self.header.keys():
+            return self.header['height']
+        else:
+            return None
+        
+    @property
+    def width(self):
+        """A quick access to ``self.header['width']``, please access the ``header`` dict to change value"""
+        if isinstance(self.header, dict) and 'width' in self.header.keys():
+            return self.header['width']
+        else:
+            return None
+        
+    @property
+    def dim(self):
+        """A quick access to ``self.header['dim']``, please access the ``header`` dict to change value"""
+        if isinstance(self.header, dict) and 'dim' in self.header.keys():
+            return self.header['dim']
+        else:
+            return None
+        
+    @property
+    def nodata(self):
+        """A quick access to ``self.header['nodata']``, please access the ``header`` dict to change value"""
+        if isinstance(self.header, dict) and 'nodata' in self.header.keys():
+            return self.header['nodata']
+        else:
+            return None
+        
+    @property
+    def scale(self):
+        """A quick access to ``self.header['scale']``, please access the ``header`` dict to change value"""
+        if isinstance(self.header, dict) and 'scale' in self.header.keys():
+            return self.header['scale']
+        else:
+            return None
+        
+    @property
+    def tie_point(self):
+        """A quick access to ``self.header['tie_point']``, please access the ``header`` dict to change value"""
+        if isinstance(self.header, dict) and 'tie_point' in self.header.keys():
+            return self.header['tie_point']
+        else:
+            return None
+
 
     def read_geotiff(self, tif_path):
         """Open and get the meta information (header) from geotiff
@@ -263,7 +319,7 @@ class GeoTiff(object):
             # prepare several ROIs
             >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
             >>> roi = roi[0:3]    # only use 3 for quick example
-            >>> roi.change_crs(obj.header['crs'])   # transform to the same CRS like DOM
+            >>> roi.change_crs(obj.crs)   # transform to the same CRS like DOM
             {0: array([[ 368017.7565143 , 3955511.08102276],
                        [ 368019.70190232, 3955511.49811902],
                        [ 368020.11263046, 3955509.54636219],
@@ -352,7 +408,7 @@ class GeoTiff(object):
             # prepare polygon
             >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
             >>> roi = roi[0]
-            >>> roi.change_crs(dom.header['crs'])
+            >>> roi.change_crs(dom.crs)
             >>> roi
             array([[ 368017.7565143 , 3955511.08102276],
                    [ 368019.70190232, 3955511.49811902],
@@ -569,7 +625,7 @@ class GeoTiff(object):
             # prepare the roi data
             >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
             >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-            >>> roi.change_crs(dom.header['crs'])
+            >>> roi.change_crs(dom.crs)
             >>> roi_test = roi[111]
             array([[ 368051.75902187, 3955484.68169527],
                    [ 368053.70441367, 3955485.09879908],
@@ -619,7 +675,7 @@ class GeoTiff(object):
             # prepare the roi data
             >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
             >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-            >>> roi.change_crs(dom.header['crs'])
+            >>> roi.change_crs(dom.crs)
             >>> roi_test = roi[111]
             >>> roi_test_pixel = dom.geo2pixel(roi_test)
             array([[5043.01515811, 4551.90714551],
@@ -690,7 +746,7 @@ class GeoTiff(object):
             # prepare the roi data
             >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
             >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
-            >>> roi.change_crs(dsm.header['crs'])
+            >>> roi.change_crs(dsm.crs)
             >>> roi_test = roi[111]
             array([[ 368051.75902187, 3955484.68169527],
                    [ 368053.70441367, 3955485.09879908],

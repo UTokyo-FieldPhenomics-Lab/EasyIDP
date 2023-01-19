@@ -46,14 +46,14 @@ def test_convert_proj3d():
     geo_d = pyproj.CRS.from_epsg(4326)
     geo_c = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
 
-    out_c = idp.metashape.convert_proj3d(
+    out_c = idp.geotools.convert_proj3d(
         geodetic, geo_d, geo_c, is_xyz=True
     )
     # x: array([[-3943658.715, 3363404.132, 3704651.343]])
     # y: array([[-3943658.709, 3363404.124, 3704651.307]])
     np.testing.assert_array_almost_equal(out_c, geocentric, decimal=1)
 
-    out_d = idp.metashape.convert_proj3d(
+    out_d = idp.geotools.convert_proj3d(
         geocentric, geo_c, geo_d, is_xyz=False
     )
     # x: array([[139.540336,  35.737563,  96.849   ]])
@@ -103,7 +103,7 @@ def test_class_init_metashape_warns_errors():
         m3 = idp.Metashape(chunk_id=0)
 
     # warning with multiple chunks:
-    with pytest.warns(UserWarning, match=re.escape("The project has [2] chunks, however no chunk_id has been specified, open the first chunk [1] 'multiple_bbb' by default.")):
+    with pytest.warns(UserWarning, match=re.escape("The project has [4] chunks, however no chunk_id has been specified, open the first chunk [1] 'multiple_bbb' by default.")):
         m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
 
     # warning with unable for further anaylsys
@@ -130,8 +130,11 @@ def test_class_fetch_by_label():
 
 
 def test_class_fetch_by_label_error():
-    with pytest.raises(KeyError, match=re.escape("Could not find chunk_id [2] in")):
-        m2 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="2")
+    with pytest.raises(KeyError, match=re.escape("Could not find chunk_id [21] in")):
+        m2 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id="21")
+
+    with pytest.warns(UserWarning, match=re.escape("This project only has one chunk named [0] 'Chunk 1', ignore the wrong chunk_id [21] specified by user.")):
+        m3 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="21")
 
 def test_class_show_chunk():
     m1 = idp.Metashape()

@@ -181,8 +181,7 @@ class Metashape(idp.reconstruct.Recons):
             self._chunk_dict_to_object(chunk_content_dict)
         else:
             raise KeyError(
-                f"Could not find chunk_id [{chunk_id}] in\n"
-                f"{self._show_chunk(return_table_only=True)}")
+                f"Could not find chunk_id [{chunk_id}] in {self._chunk_id2label}")
 
     def _open_whole_project(self, project_path):
         _check_is_software(project_path)
@@ -217,6 +216,11 @@ class Metashape(idp.reconstruct.Recons):
         # open the first chunk if chunk_id not given.
         first_chunk_id = list(project_dict.keys())[0]
         if len(project_dict) == 1:  # only has one chunk, open directly
+            if self.chunk_id not in chunk_id2label.keys() and self.chunk_id not in chunk_id2label.values():
+                warnings.warn(
+                    f"This project only has one chunk named "
+                    f"[{first_chunk_id}] '{chunk_id2label[first_chunk_id]}', "
+                    f"ignore the wrong chunk_id [{self.chunk_id}] specified by user.")
             self.chunk_id = first_chunk_id
         else:   # has multiple chunks
             if self.chunk_id is None:
@@ -279,15 +283,15 @@ class Metashape(idp.reconstruct.Recons):
 
     def _world2crs(self, points_np):
         if self.crs is None:
-            return convert_proj3d(points_np, self._world_crs, self._reference_crs)
+            return idp.geotools.convert_proj3d(points_np, self._world_crs, self._reference_crs)
         else:
-            return convert_proj3d(points_np, self._world_crs, self.crs)
+            return idp.geotools.convert_proj3d(points_np, self._world_crs, self.crs)
 
     def _crs2world(self, points_np):
         if self.crs is None:
-            return convert_proj3d(points_np, self._reference_crs, self._world_crs)
+            return idp.geotools.convert_proj3d(points_np, self._reference_crs, self._world_crs)
         else:
-            return convert_proj3d(points_np, self.crs, self._world_crs)
+            return idp.geotools.convert_proj3d(points_np, self.crs, self._world_crs)
 
     def _back2raw_one2one(self, points_np, photo_id, distortion_correct=True):
         """Project one ROI(polygon) on one given photo
@@ -325,7 +329,7 @@ class Metashape(idp.reconstruct.Recons):
         t = camera_i.transform[0:3, 3]
         r = camera_i.transform[0:3, 0:3]
 
-        points_np, is_single = _is_single_point(points_np)
+        points_np, is_single = idp.geotools.is_single_point(points_np)
 
         xyz = (points_np - t).dot(r)
 
@@ -1269,7 +1273,7 @@ def apply_transform_matrix(points_xyz, matrix):
             1  4  5  6
 
     """
-    points_xyz, is_single = _is_single_point(points_xyz)
+    points_xyz, is_single = idp.geotools.is_single_point(points_xyz)
 
     point_ext = np.insert(points_xyz, 3, 1, axis=1)
     dot_matrix = point_ext.dot(matrix.T)
@@ -1279,107 +1283,3 @@ def apply_transform_matrix(points_xyz, matrix):
         return dot_points[0,:]
     else:
         return dot_points
-
-
-def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
-    """Transform a point or points from one CRS to another CRS, by pyproj.CRS.Transformer function
-
-    Parameters
-    ----------
-    points_np : np.ndarray
-        the nx3 3D coordinate points
-    crs_origin : pyproj.CRS object
-        the CRS of points_np
-    crs_target : pyproj.CRS object
-        the CRS of target
-    is_xyz: bool, default false
-        The format of points_np; 
-        True: x, y, z; False: lon, lat, alt
-
-    Returns
-    -------
-    np.ndarray
-
-    Notes
-    -----
-    ``point_np`` and ``fmt`` parameters
-
-    .. tab:: is_xyz = True
-
-        points_np in this format:
-
-        .. code-block:: text
-
-               x  y  z
-            0  1  2  3
-
-    .. tab:: is_xyz = False
-
-        points_np in this format:
-
-        .. code-block:: text
-
-                lon  lat  alt
-            0    1    2    3
-            1    4    5    6
-
-    .. caution::
-
-        pyproj.CRS order: (lat, lon, alt)
-        points order in EasyIDP are commonly (lon, lat, alt)
-
-        But if is xyz format, no need to change order
-
-    """
-    ts = pyproj.Transformer.from_crs(crs_origin, crs_target)
-
-    points_np, is_single = _is_single_point(points_np)
-
-    # check unit to know if is (lon, lat, lat) -> degrees or (x, y, z) -> meters
-    x_unit = crs_origin.coordinate_system.axis_list[0].unit_name
-    y_unit = crs_origin.coordinate_system.axis_list[1].unit_name
-    if x_unit == "degree" and y_unit == "degree": 
-        is_xyz = False
-    else:
-        is_xyz = True
-
-    if is_xyz:
-        if crs_target.is_geocentric:
-            x, y, z = ts.transform(*points_np.T)
-            out =  np.vstack([x, y, z]).T
-        elif crs_target.is_geographic:
-            lon, lat, alt = ts.transform(*points_np.T)
-            # the pyproj output order is reversed
-            out = np.vstack([lat, lon, alt]).T
-        elif crs_target.is_projected:
-            lat_m, lon_m, alt_m = ts.transform(*points_np.T)
-            out = np.vstack([lat_m, lon_m, alt_m]).T
-        else:
-            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`")
-    else:   
-        lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
-        
-        if crs_target.is_geocentric:
-            x, y, z = ts.transform(lat, lon, alt)
-            out = np.vstack([x, y, z]).T
-        elif crs_target.is_geographic:
-            lat, lon, alt = ts.transform(lat, lon, alt)
-            out = np.vstack([lon, lat, alt]).T
-        elif crs_target.is_projected and crs_target.is_derived:
-            lat_m, lon_m, alt_m = ts.transform(lat, lon, alt)
-            out = np.vstack([lon_m, lat_m, alt_m]).T
-        else:
-            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`")
-    
-    if is_single:
-        return out[0, :]
-    else:
-        return out
-
-def _is_single_point(points_np):
-    # check if only contains one point
-    if points_np.shape == (3,):
-        # with only single point
-        return np.array([points_np]), True
-    else:
-        return points_np, False

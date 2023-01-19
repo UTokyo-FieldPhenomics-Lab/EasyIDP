@@ -194,7 +194,7 @@ def test_class_back2raw_single():
     p4d.open_project(test_data.pix4d.lotus_folder, raw_img_folder=image_folder, param_folder=param_folder)
     
     #plot, proj = idp.shp.read_shp(r"./tests/data/pix4d/lotus_tanashi_full/plots.shp", name_field=0, return_proj=True)
-    #plot_t = idp.shp.convert_proj(plot, proj, p4d.crs)
+    #plot_t = idp.geotools.convert_proj(plot, proj, p4d.crs)
     plot =  np.array([   # N1E1
         [ 368020.2974959 , 3955511.61264302,      97.56272272],
         [ 368022.24288365, 3955512.02973983,      97.56272272],

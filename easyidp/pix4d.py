@@ -751,7 +751,7 @@ class Pix4D(idp.reconstruct.Recons):
 
                     if isinstance(to_crs, pyproj.CRS):
                         if not self.crs.equals(to_crs):
-                            pos = idp.metashape.convert_proj3d(pos, self.crs, to_crs)
+                            pos = idp.geotools.convert_proj3d(pos, self.crs, to_crs)
 
                     out[p.label] = pos
                     p.position = pos

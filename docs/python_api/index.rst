@@ -14,6 +14,7 @@ The EasyIDP package have the following modules:
   
   - :doc:`shp Submodule <./shp>`: read shape (\*.shp) file.
   - :doc:`jsonfile Submodule <./json>`: read and write json file.
+  - :doc:`geotools Submodule <./geotools>`: transform geo-coordinate.
 
 - :doc:`reconstruct Module <./reconstruct>` : process 3D reconstruction software project.
 

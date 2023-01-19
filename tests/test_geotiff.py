@@ -421,6 +421,22 @@ def test_class_init_with_path():
     assert Path(obj.file_path).resolve() == test_data.pix4d.lotus_dom.resolve()
     assert obj.header is not None
 
+def test_class_header_sugar_property():
+    # test the crs sugar to replace geotiff.header['crs']
+    obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
+    
+    assert obj.crs == obj.header['crs']
+    assert obj.height == obj.header['height']
+    assert obj.width == obj.header['width']
+    assert obj.dim == obj.header['dim']
+    assert obj.nodata == obj.header['nodata']
+    assert obj.scale == obj.header['scale']
+    assert obj.tie_point == obj.header['tie_point']
+
+    # test value setter
+    with pytest.raises(AttributeError, match=re.escape("can't set attribute")):
+        obj.crs = 'aaa'
+
 
 def test_class_read_geotiff():
     obj = idp.GeoTiff()
@@ -433,7 +449,7 @@ def test_class_crop_polygon_save_geotiff():
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
     plot, proj = idp.shp.read_shp(test_data.shp.lotus_shp, name_field=0, return_proj=True)
-    plot_t = idp.shp.convert_proj(plot, proj, obj.header["crs"])
+    plot_t = idp.geotools.convert_proj(plot, proj, obj.header["crs"])
 
     # test case 1
     #  polygon_hv = plot_t["N1W1"]

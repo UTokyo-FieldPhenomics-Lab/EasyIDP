@@ -19,4 +19,3 @@ Functions
     read_proj
     show_shp_fields
     read_shp
-    convert_proj

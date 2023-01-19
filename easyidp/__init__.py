@@ -197,16 +197,17 @@ def parse_relative_path(root_path, relative_path):
     else:
         warnings.warn(f"Seems it is an absolute path [{relative_path}]")
         return relative_path
-
+    
 ###############
 # import APIs #
 ###############
 
 from . import (
     visualize, 
+    cvtools,
+    geotools,
     shp, 
     jsonfile, 
-    cvtools,
     data, 
 )
 from .reconstruct import ProjectPool

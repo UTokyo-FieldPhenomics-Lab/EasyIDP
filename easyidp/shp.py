@@ -330,51 +330,6 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         return shp_dict
 
 
-def convert_proj(shp_dict, origin_proj, target_proj):
-    """ 
-    Provide the geo coordinate transfrom based on pyproj package
-
-    Parameters
-    ----------
-    shp_dict : dict
-        the output of read_shp() function
-    shp_proj : pyproj object
-        the hidden output of read_shp(..., return_proj=True)
-    target_proj : str | pyproj object
-        | Examples:
-        | ``target_proj = pyproj.CRS.from_epsg(4326)``
-        | ``target_proj = r'path/to/{shp_name}.prj'``
-
-    """
-    transformer = pyproj.Transformer.from_proj(origin_proj, target_proj)
-    trans_dict = {}
-    for k, coord_np in shp_dict.items():
-        # by default, the coord_np is (lon, lat), but transform needs (lat, lon)
-        if len(coord_np.shape) == 1:
-            transformed = transformer.transform(coord_np[1], coord_np[0])
-        elif len(coord_np.shape) == 2:
-            transformed = transformer.transform(coord_np[:, 1], coord_np[:, 0])
-        else:
-            raise IndexError(
-                f"The input coord should be either [x, y, z] -> shape=(3,) "
-                f"or [[x,y,z], [x,y,z], ...] -> shape=(n, 3)"
-                f"not current {coord_np.shape}")
-        coord_np = np.asarray(transformed).T
-
-        # judge if has inf value, means convert fail
-        if True in np.isinf(coord_np):
-            raise ValueError(
-                f'Fail to convert points from "{origin_proj.name}" to '
-                f'"{target_proj.name}", '
-                f'this may caused by the uncertainty of .prj file strings, '
-                f'please check the coordinate manually via QGIS Layer Infomation, '
-                f'get the EPGS code, and specify the function argument'
-                f'read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))')
-        trans_dict[k] = coord_np
-
-    return trans_dict
-
-
 def _get_field_key(shp):
     """
     Convert shapefile header {"Column": int_id}

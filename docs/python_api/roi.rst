@@ -7,12 +7,18 @@ ROI
 Class
 =====
 
-A summary of class ``easyidp.pointcloud.ROI``, can be simple accessed by ``easyidp.ROI``
+A summary of class ``easyidp.roi.ROI``, can be simple accessed by ``easyidp.ROI``
+
+
++-------------------------------------------------+---------------------------------------------------------------------------------------+
+| :doc:`easyidp.ROI <manualdoc/easyidp.roi.ROI>`  | A Region of Interest (ROI) object, can be either 2D or 3D, often read from shp file.  |
++-------------------------------------------------+---------------------------------------------------------------------------------------+
+
 
 .. toctree::
+   :hidden:
 
-    easyidp.ROI <manualdoc/easyidp.roi.ROI>
-
+   easyidp.roi.ROI <manualdoc/easyidp.roi.ROI>
 
 Functions
 =========

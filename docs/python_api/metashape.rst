@@ -32,4 +32,3 @@ This module (``easyidp.metashape``) also contains the following standard-alone f
     read_project_zip
     read_chunk_zip
     apply_transform_matrix
-    convert_proj3d

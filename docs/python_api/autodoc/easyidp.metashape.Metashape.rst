@@ -29,14 +29,17 @@
 
    .. autosummary::
    
+      ~Metashape.crs
       ~Metashape.dom
       ~Metashape.dsm
       ~Metashape.pcd
+      ~Metashape.project_folder
+      ~Metashape.project_name
+      ~Metashape.chunk_id
       ~Metashape.label
       ~Metashape.meta
       ~Metashape.enabled
       ~Metashape.sensors
       ~Metashape.photos
-      ~Metashape.crs
    
    

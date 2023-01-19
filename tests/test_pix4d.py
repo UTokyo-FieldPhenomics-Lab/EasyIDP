@@ -273,7 +273,13 @@ def test_class_get_photo_position():
     out_lonlat = p4d.get_photo_position(to_crs=pyproj.CRS.from_epsg(4326), refresh=True)
     assert len(out_lonlat) == 151
     assert "DJI_0430.JPG" in out_lonlat.keys()
-    np.testing.assert_almost_equal(out_lonlat['DJI_0430.JPG'], np.array(np.array([139.5405607 ,  35.73445188, 136.75217778])))
+    np.testing.assert_almost_equal(out_lonlat['DJI_0430.JPG'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
+
+    # change crs and refresh
+    p4d.crs = pyproj.CRS.from_epsg(4326)
+    assert p4d._photo_position_cache is None
+    out_utm = p4d.get_photo_position()
+    np.testing.assert_almost_equal(out_utm['DJI_0430.JPG'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
 
 
 def test_class_init():

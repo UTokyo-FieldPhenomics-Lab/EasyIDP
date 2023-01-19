@@ -4,6 +4,7 @@ import warnings
 import pyproj
 from pathlib import Path
 from tqdm import tqdm
+from copy import copy as ccopy
 
 import easyidp as idp
 
@@ -105,7 +106,6 @@ class Pix4D(idp.reconstruct.Recons):
         #: pix4d point cloud offset
         self.offset_np = np.zeros((3,1))
 
-        self._photo_position_cache = None
 
         ########################################
         # mute attributes warning for auto doc #
@@ -120,19 +120,18 @@ class Pix4D(idp.reconstruct.Recons):
         self.sensors = self.sensors
         #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
         self.photos = self.photos
-        #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
-        self.crs = self.crs
 
         if project_path is not None:
             self.open_project(project_path, raw_img_folder, param_folder)
+
 
     def open_project(self, project_path, raw_img_folder=None, param_folder=None):
         """Open a new 3D reconstructin project to overwritting current project.
 
         Parameters
         ----------
-        project_path : str, optional
-            The pix4d project file to open, like "xxxx.p4d", by default None, means create an empty class
+        project_path : str
+            The pix4d project file to open, like "xxxx.p4d", or "xxxx" without suffix
         raw_img_folder : str, optional
             the original UAV image folder, by default None
         param_folder : str, optional
@@ -304,6 +303,9 @@ class Pix4D(idp.reconstruct.Recons):
         # info for self.CRS #
         #####################
         self.crs = idp.shp.read_proj(p4d_dict["param"]["crs"])
+        # record the default CRS, used for camera position obtain (and convertion)
+        # check the def get_camera_position() function below
+        self._proj_crs = idp.shp.read_proj(p4d_dict["param"]["crs"])
 
         ################################
         # info for outpus(PCD|DOM|DSM) #
@@ -747,11 +749,18 @@ class Pix4D(idp.reconstruct.Recons):
             pbar = tqdm(self.photos, desc=f"Getting photo positions")
             for p in pbar:
                 if p.enabled:
+                    # it has the same crs of DOM/DSM, project_default_crs, the pix4d feature
+                    # it is different with metashape project logic, check Metashape.get_photo_position for more info
                     pos = p.location + self.meta["p4d_offset"]
 
+                    # if specify the output crs: (to_crs is not None)
                     if isinstance(to_crs, pyproj.CRS):
-                        if not self.crs.equals(to_crs):
-                            pos = idp.geotools.convert_proj3d(pos, self.crs, to_crs)
+                        if not self._proj_crs.equals(to_crs):  # need do proj convertion
+                            pos = idp.geotools.convert_proj3d(pos, self._proj_crs, to_crs)
+                    # not specify the output crs, then check the self.crs is the same with project default crs
+                    else:
+                        if not self._proj_crs.equals(self.crs):  # need do proj convertion
+                            pos = idp.geotools.convert_proj3d(pos, self._proj_crs, self.crs)
 
                     out[p.label] = pos
                     p.position = pos
@@ -862,7 +871,7 @@ class Pix4D(idp.reconstruct.Recons):
 
             >>> img_dict_sort = p4d.sort_img_by_distance(
             ...     out_all, roi,
-            ...     num=1   # only keep 3 closest images
+            ...     num=1   # only keep the closest images
             ... )
 
             >>> img_dict_sort
@@ -893,6 +902,10 @@ class Pix4D(idp.reconstruct.Recons):
                 coord = plot_value[img_name]
                 # or
                 coord = img_dict_sort[plot_name][img_name]
+
+        See also
+        --------
+        easyidp.reconstruct.sort_img_by_distance
 
         """
         return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)

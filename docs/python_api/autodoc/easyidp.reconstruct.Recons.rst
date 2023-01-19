@@ -23,6 +23,7 @@
 
    .. autosummary::
    
+      ~Recons.crs
       ~Recons.dom
       ~Recons.dsm
       ~Recons.pcd
@@ -31,6 +32,5 @@
       ~Recons.enabled
       ~Recons.sensors
       ~Recons.photos
-      ~Recons.crs
    
    

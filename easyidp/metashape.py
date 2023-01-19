@@ -22,8 +22,8 @@ class Metashape(idp.reconstruct.Recons):
         ----------
         project_path : str, optional
             The metashape project file to open, like "xxxx.psx",, by default None, means create an empty class
-        chunk_id : int, optional
-            The chunk id want to open, by default None, open the first chunk.
+        chunk_id : int or str, optional
+            The chunk id or name(label) want to open, by default None, open the first chunk.
 
         Example
         -------
@@ -44,7 +44,7 @@ class Metashape(idp.reconstruct.Recons):
             ----  -------
             -> 0  Chunk 1
 
-        Or you can create an empty class and then open project (not recommended)
+        Or you can create an empty class and then open project:
 
         .. code-block:: python
 
@@ -77,17 +77,18 @@ class Metashape(idp.reconstruct.Recons):
         self.transform = idp.reconstruct.ChunkTransform()
 
         # store the whole metashape project (parent) meta info:
+        #: the folder contains the metashape project (.psx) files
         self.project_folder = None
+        #: the metashape project (file) name.
         self.project_name = None
-        self.project_chunks_dict = None
+        #: the chunk that be picked as for easyidp (this class, only deal with one chunk in metashape project)
         self.chunk_id = chunk_id
 
         # hidden attributes
+        self._project_chunks_dict = None
         self._chunk_id2label = {}   # for project_chunks
         self._label2chunk_id = {}   # for project_chunks
         self._reference_crs = pyproj.CRS.from_epsg(4326)
-        self._photo_position_cache = None
-        # but this class, only parse one chunk in that project.
 
         ########################################
         # mute attributes warning for auto doc #
@@ -102,8 +103,6 @@ class Metashape(idp.reconstruct.Recons):
         self.sensors = self.sensors
         #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
         self.photos = self.photos
-        #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
-        self.crs = self.crs
 
         self.open_project(project_path, chunk_id)
 
@@ -112,7 +111,6 @@ class Metashape(idp.reconstruct.Recons):
 
     def __str__(self) -> str:
         return self._show_chunk()
-        
 
     ###############
     # zip/xml I/O #
@@ -121,17 +119,17 @@ class Metashape(idp.reconstruct.Recons):
     def _show_chunk(self, return_table_only=False):
         if self.project_folder is None \
             or self.project_name is None \
-            or self.project_chunks_dict is None \
+            or self._project_chunks_dict is None \
             or len(self._chunk_id2label) == 0 \
             or len(self._label2chunk_id) == 0:
             return "<Empty easyidp.Metashape object>"
         else:
-            show_str = f"<'{self.project_name}.psx' easyidp.Metashape object with {len(self.project_chunks_dict)} active chunks>\n\n"
+            show_str = f"<'{self.project_name}.psx' easyidp.Metashape object with {len(self._project_chunks_dict)} active chunks>\n\n"
 
             head = ["id", "label"]
             data = []
             for idx, label in self._chunk_id2label.items():
-                if idx == str(self.chunk_id):
+                if idx == str(self.chunk_id) or label == str(self.chunk_id):
                     idx = '-> ' + idx
                 data.append([idx, label])
 
@@ -143,6 +141,34 @@ class Metashape(idp.reconstruct.Recons):
                 return show_str + table_str
             
     def open_project(self, project_path, chunk_id=None):
+        """Open a new 3D reconstructin project to overwritting current project.
+
+        Parameters
+        ----------
+        project_path : str, optional
+            The pix4d project file to open, like "xxxx.psx", or "xxxx" without suffix.
+        chunk_id : int or str, optional
+            The chunk id or name(label) want to open, by default None, open the first chunk.
+
+        Example
+        --------
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> ms = idp.Metashape()
+            <Empty easyidp.Metashape object>
+
+            >>> ms.open_project(test_data.metashape.lotus_psx)
+            <'Lotus.psx' easyidp.Metashape object with 1 active chunks>
+
+              id  label
+            ----  -------
+            -> 0  Chunk 1
+
+        """
         if project_path is not None:
             self._open_whole_project(project_path)
             self.open_chunk(self.chunk_id)
@@ -152,12 +178,61 @@ class Metashape(idp.reconstruct.Recons):
                     f"Unable to open chunk_id [{chunk_id}] for empty project with project_path={project_path}")
 
     def open_chunk(self, chunk_id, project_path=None):
+        """switch to the other chunk, or chunk in a new project
+
+        Parameters
+        ----------
+        chunk_id : int or str
+            The chunk id or name(label) want to open
+        project_path : str, optional
+            The new metashape project file to open, like "xxxx.psx",, by default None, means swtich inside current metashape project
+
+
+        Example
+        --------
+
+        Data prepare
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> ms = idp.Metashape(test_data.metashape.multichunk_psx)
+            <'multichunk.psx' easyidp.Metashape object with 4 active chunks>
+
+              id  label
+            ----  --------------
+            -> 1  multiple_bbb
+               2  multiple_aaa
+               3  multiple_aaa_1
+               4  multiple_aaa_2
+
+        Then switch from chunk 1 to chunk 4, by id or by label:
+
+        .. code-block:: python
+
+            >>> ms.open_chunk('4')
+            # or
+            >>> ms.open_chunk('multiple_aaa_2')
+
+            >>> ms
+            <'multichunk.psx' easyidp.Metashape object with 4 active chunks>
+            
+              id  label
+            ----  --------------
+               1  multiple_bbb
+               2  multiple_aaa
+               3  multiple_aaa_1
+            -> 4  multiple_aaa_2
+        
+        """
         # given new project path, switch project
         if project_path is not None:  
             self._open_whole_project(project_path)
         else:
             # not given metashape project path when init this class
-            if self.project_chunks_dict is None:
+            if self._project_chunks_dict is None:
                 raise FileNotFoundError(
                     f"Not specify Metashape project (project_path="
                     f"'{os.path.join(self.project_folder, self.project_name)}')"
@@ -167,7 +242,7 @@ class Metashape(idp.reconstruct.Recons):
         if isinstance(chunk_id, int):
             chunk_id = str(chunk_id)
 
-        if chunk_id in self.project_chunks_dict.keys():
+        if chunk_id in self._project_chunks_dict.keys():
             chunk_content_dict = read_chunk_zip(
                 self.project_folder, 
                 self.project_name, 
@@ -182,6 +257,8 @@ class Metashape(idp.reconstruct.Recons):
         else:
             raise KeyError(
                 f"Could not find chunk_id [{chunk_id}] in {self._chunk_id2label}")
+        
+        self.chunk_id = chunk_id
 
     def _open_whole_project(self, project_path):
         _check_is_software(project_path)
@@ -232,7 +309,7 @@ class Metashape(idp.reconstruct.Recons):
         # save to project parameters
         self.project_folder = folder_path
         self.project_name = project_name
-        self.project_chunks_dict = project_dict
+        self._project_chunks_dict = project_dict
         self._chunk_id2label = chunk_id2label
         self._label2chunk_id = label2chunk_id
 
@@ -365,21 +442,26 @@ class Metashape(idp.reconstruct.Recons):
         else:
             return out
 
-    def back2raw_crs(self, points_xyz, distortion_correct=True, save_folder=None, ignore=None, log=False):
+    def back2raw_crs(self, points_xyz, save_folder=None, ignore=None, log=False):
         """Projs one GIS coordintates ROI (polygon) to all images
 
         Parameters
         ----------
         points_hv : ndarray (nx3)
             The 3D coordinates of polygon vertexm, in CRS coordinates
-        distortion_correct : bool, optional
-            Whether do distortion correction, by default True (back to raw image);
-            If back to software corrected images without len distortion, set it to True. 
-            Pix4D support do this operation, seems metashape not supported yet.
         ignore : str | None, optional
-            None: strickly in image area;
-            'x': only y (vertical) in image area, x can outside image;
-            'y': only x (horizontal) in image area, y can outside image.
+            Whether tolerate small parts outside image, check 
+            :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
+
+            - ``None``: strickly in image area;
+            - ``x``: only y (vertical) in image area, x can outside image;
+            - ``y``: only x (horizontal) in image area, y can outside image.
+
+        save_folder : str | default ""
+            The folder to contain the output results (preview images and json coords)
+
+            .. caution:: This feature has not been implemented
+
         log : bool, optional
             whether print log for debugging, by default False
 
@@ -387,9 +469,49 @@ class Metashape(idp.reconstruct.Recons):
         -------
         dict,
             a dictionary that key = img_name and values= pixel coordinate
+
+        Example
+        -------
+
+        Data preparation
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+
+            >>> ms = idp.Metashape(test_data.metashape.lotus_psx)
+            >>> dsm = idp.GeoTiff(test_data.metashape.lotus_dsm)
+            >>> ms.crs = dsm.crs
+
+            >>> plot =  np.array([   # N1E1 plot geo coordinate
+            ...     [ 368020.2974959 , 3955511.61264302,      97.56272272],
+            ...     [ 368022.24288365, 3955512.02973983,      97.56272272],
+            ...     [ 368022.65361232, 3955510.07798313,      97.56272272],
+            ...     [ 368020.69867274, 3955509.66725421,      97.56272272],
+            ...     [ 368020.2974959 , 3955511.61264302,      97.56272272]
+            ... ])
+
+        ..caution:: specifying the CRS of metashape project (``ms.crs = dsm.crs``) is required before doing backward projection calculation
+
+        Then use this function to find the previous ROI positions on the raw images:
+
+        .. code-block:: python
+
+            >>> out_dict = ms.back2raw_crs(plot)
+
+            >>> out_dict["DJI_0478"]
+            array([[   2.03352333, 1474.90817792],
+                   [  25.04572582, 1197.08827224],
+                   [ 311.99971438, 1214.81701547],
+                   [ 288.88669685, 1492.59824542],
+                   [   2.03352333, 1474.90817792]])
+
         """
         if not self.enabled:
             raise TypeError("Unable to process disabled chunk (.enabled=False)")
+        
+        if self.crs is None:
+            warnings.warn("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by `ms.crs=dom.crs` or `ms.crs=pyproj.CRS.from_epsg(...)` ")
         
         local_coord = self._world2local(self._crs2world(points_xyz))
 
@@ -422,19 +544,65 @@ class Metashape(idp.reconstruct.Recons):
             the <ROI> object created by easyidp.ROI() or dictionary
         save_folder : str, optional
             the folder to save projected preview images and json files, by default ""
-        distortion_correct : bool, optional
-            Whether do distortion correction, by default True (back to raw image);
-            If back to software corrected images without len distortion, set it to True. 
-            Pix4D support do this operation, seems metashape not supported yet.
         ignore : str | None, optional
-            None: strickly in image area;
-            'x': only y (vertical) in image area, x can outside image;
-            'y': only x (horizontal) in image area, y can outside image.
+            Whether tolerate small parts outside image, check 
+            :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
+
+            - ``None``: strickly in image area;
+            - ``x``: only y (vertical) in image area, x can outside image;
+            - ``y``: only x (horizontal) in image area, y can outside image.
+
         log : bool, optional
             whether print log for debugging, by default False
+
+
+        Example
+        -------
+
+        Data prepare
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+
+            >>> lotus = idp.data.Lotus()
+
+            >>> ms = idp.Metashape(project_path=lotus.metashape.project)
+
+            >>> roi = idp.ROI(lotus.shp, name_field=0)
+            [shp][proj] Use projection [WGS 84] for loaded shapefile [plots.shp]
+            Read shapefile [plots.shp]: 100%|███████████████| 112/112 [00:00<00:00, 2481.77it/s]
+            >>> roi = roi[0:2]
+
+            >>> roi.get_z_from_dsm(lotus.pix4d.dsm)
+
+
+        Then using this function to do backward projection:
+
+        .. code-block:: python
+
+            >>> out_all = ms.back2raw(roi)
+            {
+                'N1W1': {
+                    'DJI_0478.JPG': 
+                        array([[  14.96726711, 1843.13937997],
+                               [  38.0361733 , 1568.36113526],
+                               [ 320.25420037, 1584.28772847],
+                               [ 297.16110119, 1859.05913936],
+                               [  14.96726711, 1843.13937997]])
+                    'DJI_0479':
+                        array([...])
+                    ...
+                }
+                'N1W2': {...}   # output of `back2raw_crs()`
+            }
+
         """
         if not self.enabled:
             raise TypeError("Unable to process disabled chunk (.enabled=False)")
+        
+        if self.crs is None and roi.crs is None:
+            warnings.warn("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by either `ms.crs=...` or `roi.crs=...` ")
         
         out_dict = {}
 
@@ -474,6 +642,47 @@ class Metashape(idp.reconstruct.Recons):
         -------
         dict
             The dictionary contains "photo.label": [x, y, z] coordinates
+
+        Example
+        -------
+
+        Data prepare
+
+        .. code-block:: python
+        
+            >>> import numpy as np
+            >>> np.set_printoptions(suppress=True)
+
+            >>> import easyidp as idp
+
+            >>> lotus = idp.data.Lotus()
+            >>> ms = idp.Metashape(project_path=lotus.metashape.project)
+
+        Then use this function to get the photo position in 3D world:
+
+        .. code-block:: python
+
+            >>> out = ms.get_photo_position()
+            {
+                'DJI_0422': array([139.54053245,  35.73458169, 130.09433649]), 
+                'DJI_0423': array([139.54053337,  35.73458315, 129.93437641]),
+                ...
+            }
+
+        .. caution:: by default, if not specifying the CRS of metashape project, it will return in default CRS (epsg: 4326) -> (lon, lat, height), if need turn to the same coordinate like DOM/DSM, please specify the CRS first
+
+        .. code-block:: python
+
+            >>> dom = idp.GeoTiff(lotus.metashape.dom)
+            >>> ms.crs = dom.crs
+
+            >>> out = ms.get_photo_position()
+            {
+                'DJI_0422': array([ 368017.73174354, 3955492.1925972 ,     130.09433649]), 
+                'DJI_0423': array([ 368017.81717717, 3955492.35300323,     129.93437641]),
+                ...
+            }
+
         """
         if not self.enabled:
             raise TypeError("Unable to process disabled chunk (.enabled=False)")
@@ -490,7 +699,10 @@ class Metashape(idp.reconstruct.Recons):
             pbar = tqdm(self.photos, desc=f"Getting photo positions")
             for p in pbar:
                 if p.enabled:
+                    # the metashape logic, did the convertion based on self.crs in the following functions
+                    # this is different with the pix4d project, check Pix4D.get_photo_position() for more info
                     pos = self._world2crs(self._local2world(p.transform[0:3, 3]))
+
                     out[p.label] = pos
                     p.position = pos
 
@@ -521,6 +733,120 @@ class Metashape(idp.reconstruct.Recons):
         -------
         dict
             the same structure as output of roi.back2raw(...)
+
+        Example
+        -------
+
+        In the previous :func:`back2raw` results :
+
+        .. code-block:: python
+
+            >>> out_all = ms.back2raw(roi)
+            {
+                'N1W1': {
+                    'DJI_0478.JPG': 
+                        array([[  14.96726711, 1843.13937997],
+                               [  38.0361733 , 1568.36113526],
+                               [ 320.25420037, 1584.28772847],
+                               [ 297.16110119, 1859.05913936],
+                               [  14.96726711, 1843.13937997]])
+                    'DJI_0479':
+                        array([...])
+                    ...
+                }
+                'N1W2': {...}   # output of `back2raw_crs()`
+            }
+
+        The image are in chaos order, in most application cases, probable only 1-3 closest images 
+        (to ROI in real world) are required, so this function is provided to sort/filter out.
+
+        In the following example, it filtered 3 images whose distance from camera to ROI in real 
+        world smaller than 10m:
+
+        .. code-block:: python
+
+            >>> img_dict_sort = ms.sort_img_by_distance(
+            ...     out_all, roi,
+            ...     distance_thresh=10,  # distance threshold is 10m
+            ...     num=3   # only keep 3 closest images
+            ... )
+
+            >>> img_dict_sort
+            {
+                'N1W1': {
+                    'DJI_0500': array([[1931.09279469, 2191.59919979],
+                                       [1939.92139124, 1930.65101348],
+                                       [2199.9439422 , 1939.32128527],
+                                       [2191.19230849, 2200.557026  ],
+                                       [1931.09279469, 2191.59919979]]), 
+                    'DJI_0517': array([[2870.94915401, 2143.3570243 ],
+                                       [2596.8790503 , 2161.04730612],
+                                       [2578.87033498, 1886.89058023],
+                                       [2853.13891851, 1869.99769984],
+                                       [2870.94915401, 2143.3570243 ]]), 
+                    'DJI_0518': array([[3129.43264924, 1984.91814896],
+                                       [2856.71879306, 2002.03817639],
+                                       [2838.71418138, 1730.00287388],
+                                       [3111.73360179, 1713.76233134],
+                                       [3129.43264924, 1984.91814896]])
+                }, 
+                'N1W2': {
+                    'DJI_0500': array([[2214.36789052, 2200.35979344],
+                                       [2221.8996575 , 1940.70687713],
+                                       [2479.9825464 , 1949.3909589 ],
+                                       [2472.52171907, 2209.40355333],
+                                       [2214.36789052, 2200.35979344]]), 
+                    'DJI_0517': array([[2849.82108263, 1845.6733702 ],
+                                       [2577.37309441, 1863.60741328],
+                                       [2559.80046778, 1592.07656949],
+                                       [2832.52942622, 1574.92640413],
+                                       [2849.82108263, 1845.6733702 ]]), 
+                    'DJI_0516': array([[2891.61686486, 2542.98979632],
+                                       [2616.06780032, 2559.41601014],
+                                       [2598.43900454, 2282.36641612],
+                                       [2874.23023492, 2266.71552931],
+                                       [2891.61686486, 2542.98979632]])
+                }
+            }
+
+        Or pick the closest one image:
+
+        .. code-block:: python
+
+            >>> img_dict_sort = ms.sort_img_by_distance(
+            ...     out_all, roi,
+            ...     num=1   # only keep the closest images
+            ... )
+
+            >>> img_dict_sort
+            {
+                'N1W1': {
+                    'DJI_0500': array([[1931.09279469, 2191.59919979],
+                                       [1939.92139124, 1930.65101348],
+                                       [2199.9439422 , 1939.32128527],
+                                       [2191.19230849, 2200.557026  ],
+                                       [1931.09279469, 2191.59919979]])
+                }, 
+                'N1W2': {
+                    'DJI_0500': array([[2214.36789052, 2200.35979344],
+                                       [2221.8996575 , 1940.70687713],
+                                       [2479.9825464 , 1949.3909589 ],
+                                       [2472.52171907, 2209.40355333],
+                                       [2214.36789052, 2200.35979344]])
+                }
+            }
+
+        You can use ``list(dict.keys())[0]`` to get the image name automatically to iterate each plot:
+
+        .. code-block:: python
+
+            for plot_name, plot_value in img_dict_sort.items():
+                img_name = list(plot_value.key())[0]
+
+                coord = plot_value[img_name]
+                # or
+                coord = img_dict_sort[plot_name][img_name]
+
         """
         if not self.enabled:
             raise TypeError("Unable to process disabled chunk (.enabled=False)")
@@ -532,7 +858,7 @@ class Metashape(idp.reconstruct.Recons):
 ###############
 
 def read_project_zip(project_folder, project_name):
-    """parse xml in the ``project.zip`` file to string
+    """parse xml in the ``project.zip`` file, and get the chunk id and path
 
     Parameters
     ----------
@@ -569,6 +895,27 @@ def read_project_zip(project_folder, project_name):
             <property name="Info/OriginalSoftwareVersion" value="1.6.2.10247"/>
           </meta>
         </document>
+
+    Example
+    --------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> project_folder = test_data.metashape.lotus_psx.parents[0]
+        PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/metashape')
+        >>> project_name = 'Lotus'
+
+    Then use this function to 
+
+    .. code-block:: python
+
+        >>> idp.metashape.read_project_zip(project_folder, project_name)
+        {'0': '0/chunk.zip'}
 
     """
     project_dict = {}
@@ -643,6 +990,60 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
             <size>3.3381093645095824e+01 2.3577857828140260e+01 7.2410767078399658e+00</size>
             <R>-9.8317886026354417e-01 ...  9.9841729020145376e-01</R>   // 9 numbers
         </region>
+
+    Example
+    --------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> test_data = idp.data.TestData()
+
+        >>> project_folder = test_data.metashape.lotus_psx.parents[0]
+        PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/metashape')
+        >>> project_name = 'Lotus'
+
+    Then parse the chunk:
+
+    .. code-block:: python
+
+        >>> idp.metashape.read_chunk_zip(project_folder, project_name, chunk_id=0)
+        {
+            'label': 'Chunk 1', 
+
+            'enabled': True, 
+
+            'transform': <easyidp.reconstruct.ChunkTransform object at 0x7fe2b81bf370>,
+
+            'sensors': <easyidp.Container> with 1 items
+                       [0]     FC550, DJI MFT 15mm F1.7 ASPH (15mm)
+                       <easyidp.reconstruct.Sensor object at 0x7fe2a873a040>, 
+
+            'photos': <easyidp.Container> with 151 items
+                      [0]     DJI_0422
+                      <easyidp.reconstruct.Photo object at 0x7fe2a873a9a0>
+                      [1]     DJI_0423
+                      <easyidp.reconstruct.Photo object at 0x7fe2a873a130>
+                      ...
+                      [149]   DJI_0571
+                      <easyidp.reconstruct.Photo object at 0x7fe298e82820>
+                      [150]   DJI_0572
+                      <easyidp.reconstruct.Photo object at 0x7fe298e82850>, 
+            
+            'crs': <Geographic 2D CRS: EPSG:4326>
+                   Name: WGS 84
+                   Axis Info [ellipsoidal]:
+                   - Lat[north]: Geodetic latitude (degree)
+                   - Lon[east]: Geodetic longitude (degree)
+                   Area of Use:
+                   - name: World.
+                   - bounds: (-180.0, -90.0, 180.0, 90.0)
+                   Datum: World Geodetic System 1984 ensemble
+                   - Ellipsoid: WGS 84
+                   - Prime Meridian: Greenwich
+        }
 
     """
     frame_zip_file = f"{project_folder}/{project_name}.files/{chunk_id}/chunk.zip"

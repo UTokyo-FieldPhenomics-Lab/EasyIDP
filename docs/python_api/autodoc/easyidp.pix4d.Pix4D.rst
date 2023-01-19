@@ -31,6 +31,7 @@
 
    .. autosummary::
    
+      ~Pix4D.crs
       ~Pix4D.dom
       ~Pix4D.dsm
       ~Pix4D.pcd
@@ -41,6 +42,5 @@
       ~Pix4D.enabled
       ~Pix4D.sensors
       ~Pix4D.photos
-      ~Pix4D.crs
    
    

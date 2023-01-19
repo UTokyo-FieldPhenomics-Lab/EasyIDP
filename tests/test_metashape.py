@@ -122,6 +122,18 @@ def test_class_init_metashape_warns_errors():
     with pytest.raises(TypeError, match=re.escape("Unable to process disabled chunk (.enabled=False)")):
         m4.sort_img_by_distance('img_dict_all', 'roi')
 
+    # trace warnings when not given correct CRS
+    m5 = idp.Metashape(test_data.metashape.lotus_psx)
+    plot = np.ones((5,3)) * np.array([360000, 3950000, 100])
+
+    with pytest.warns(UserWarning, match=re.escape("Have not specify the CRS of output DOM/DSM/PCD, ")):
+        m5.back2raw_crs(plot)
+
+    with pytest.warns(UserWarning, match=re.escape("Have not specify the CRS of output DOM/DSM/PCD, ")):
+        roi = idp.ROI()
+        roi['plot1'] = plot
+        m5.back2raw(roi)
+            
 
 def test_class_fetch_by_label():
     m2 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="Chunk 1")
@@ -176,6 +188,36 @@ def test_class_show_chunk():
     # test the ability to handle duplicated name
     assert list(m4._label2chunk_id.keys()) == list(m4._chunk_id2label.values())
     assert list(m4._label2chunk_id.values()) == list(m4._chunk_id2label.keys())
+
+def test_class_open_chunk_print():
+
+    m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id=1)
+
+    # open chunk by id
+    m4.open_chunk('4')
+    m4_show_id = \
+        "<'multichunk.psx' easyidp.Metashape object with 4 active chunks>\n\n" \
+        "  id  label\n" \
+        "----  --------------\n" \
+        "   1  multiple_bbb\n" \
+        "   2  multiple_aaa\n" \
+        "   3  multiple_aaa_1\n" \
+        "-> 4  multiple_aaa_2"
+    
+    assert m4._show_chunk().replace(' ', '') == m4_show_id.replace(' ', '')
+
+    # open chunk by label
+    m4.open_chunk('multiple_aaa')
+    m4_show_label = \
+        "<'multichunk.psx' easyidp.Metashape object with 4 active chunks>\n\n" \
+        "  id  label\n" \
+        "----  --------------\n" \
+        "   1  multiple_bbb\n" \
+        "-> 2  multiple_aaa\n" \
+        "   3  multiple_aaa_1\n" \
+        "   4  multiple_aaa_2"
+    
+    assert m4._show_chunk().replace(' ', '') == m4_show_label.replace(' ', '')
 
 def test_local2world2local():
     attempt1 = idp.Metashape()
@@ -314,6 +356,12 @@ def test_metashape_get_photo_position():
     
     # convert to another proj
     out_utm = ms.get_photo_position(pyproj.CRS.from_epsg(32654), refresh=True)
+    np.testing.assert_almost_equal(out_utm['DJI_0430'], np.array([ 368021.21565782, 3955478.61203427,     128.96422715]))
+
+    # change crs and refresh
+    ms.crs = pyproj.CRS.from_epsg(32654)
+    assert ms._photo_position_cache is None
+    out_utm = ms.get_photo_position()
     np.testing.assert_almost_equal(out_utm['DJI_0430'], np.array([ 368021.21565782, 3955478.61203427,     128.96422715]))
 
 

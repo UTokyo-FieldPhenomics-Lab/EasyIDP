@@ -63,12 +63,27 @@ class Recons(object):
 
         #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
         self._world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
-        #: the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``
-        self.crs = None
 
         self._dom = idp.GeoTiff()
         self._dsm = idp.GeoTiff()
         self._pcd = idp.PointCloud()
+        self._crs = None
+
+        self._photo_position_cache = None
+
+    @property
+    def crs(self):
+        """the geographic coordinates (often the same as the export DOM and DSM),  ``<class 'pyproj.crs.crs.CRS'>``"""
+        return self._crs
+
+    @crs.setter
+    def crs(self, new_crs):
+        # clear photo position cache once changed the project crs
+        if isinstance(new_crs, pyproj.CRS) or new_crs is None:
+            self._photo_position_cache = None
+            self._crs = new_crs
+        else:
+            raise TypeError(f"Only <'pyproj.CRS' object> is acceptable for property .crs, not given {type(new_crs)}")
 
     @property
     def dom(self):

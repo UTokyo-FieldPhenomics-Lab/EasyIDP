@@ -176,44 +176,6 @@ class EasyidpDataSet():
 
     def load_data(self):
         r"""Download dataset from Google Drive to user AppData folder
-
-        Caution
-        -------
-        For users in China mainland, please either find a way to access google drive,
-        or download from `CowTransfer Link <https://fieldphenomics.cowtransfer.com/s/25f92eb0585b4d>`_ 
-
-        Save and extract all \*.zip file to folder ``idp.data.show_data_dir()``.
-
-        The data structure should like this:
-
-        
-        .. tab:: Windows
-
-            .. code-block:: text
-
-                . C:\Users\<user>\AppData\Local\easyidp.data
-                |-- 2017_tanashi_lotus
-                |-- gdown_test
-                |-- ...
-
-        .. tab:: MacOS
-
-            .. code-block:: text
-
-                . ~/Library/Application Support/easyidp.data
-                |-- 2017_tanashi_lotus
-                |-- gdown_test
-                |-- ...
-
-        .. tab:: Linux/BSD
-
-            .. code-block:: text
-
-                . ~/.local/share/easyidp.data   # or in $XDG_DATA_HOME, if defined
-                |-- 2017_tanashi_lotus
-                |-- gdown_test
-                |-- ...
-
         """
 
         if not os.path.exists(self.data_dir):
@@ -307,6 +269,13 @@ class Lotus(EasyidpDataSet):
     - **Outputs** : DOM, DSM, PCD
     """
 
+    url_list = [
+        "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing",
+        "https://fieldphenomics.cowtransfer.com/s/9a87698f8d3242"
+    ]
+    name = "2017_tanashi_lotus"
+    size = "3.3GB"
+
     def __init__(self):
         """
         Containts the following arguments, you can access by:
@@ -334,12 +303,11 @@ class Lotus(EasyidpDataSet):
         --------
         EasyidpDataSet
         """
+        self.data_dir = user_data_dir(self.name)
+        self.zip_file = user_data_dir(self.name + ".zip")
 
-        url_list = [
-            "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing",
-            "https://fieldphenomics.cowtransfer.com/s/9a87698f8d3242"
-        ]
-        super().__init__(name="2017_tanashi_lotus", url_list=url_list, size="3.6GB")
+        self.pix4d = self.ReconsProj()
+        self.metashape = self.ReconsProj()
 
         super().load_data()
 
@@ -362,12 +330,14 @@ class Lotus(EasyidpDataSet):
         
 class GDownTest(EasyidpDataSet):
 
+    url_list = [
+        "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=sharing",
+        "https://fieldphenomics.cowtransfer.com/s/b5a469fab5dc48"
+    ]
+
     def __init__(self):
-        url_list = [
-            "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=sharing",
-            "https://fieldphenomics.cowtransfer.com/s/b5a469fab5dc48"
-        ]
-        super().__init__("gdown_test", url_list, "0.2KB")
+
+        super().__init__("gdown_test", self.url_list, "0.2KB")
         super().load_data()
 
         self.pix4d.proj = self.data_dir / "file1.txt"
@@ -378,6 +348,14 @@ class GDownTest(EasyidpDataSet):
 class TestData(EasyidpDataSet):
     """The data for developer and package testing.
     """
+
+    url_list = [
+        "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=sharing",
+        "https://fieldphenomics.cowtransfer.com/s/edaf0826b02548"
+    ]
+    
+    name = "data_for_tests"
+    size = "344MB"
 
     def __init__(self, test_out="./tests/out"):
         """
@@ -479,14 +457,6 @@ class TestData(EasyidpDataSet):
         --------
         EasyidpDataSet
         """
-        url_list = [
-            "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=sharing",
-            "https://fieldphenomics.cowtransfer.com/s/edaf0826b02548"
-        ]
-
-        self.name = "data_for_tests"
-        self.url_list = url_list
-        self.size = "344MB"
         self.data_dir = user_data_dir(self.name)
         self.zip_file = user_data_dir(self.name + ".zip")
 

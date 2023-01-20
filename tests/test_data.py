@@ -3,6 +3,16 @@ from pathlib import Path
 
 import easyidp as idp
 
+def test_get_download_url_without_download():
+
+    assert idp.data.Lotus.name == '2017_tanashi_lotus'
+    assert idp.data.TestData.name == 'data_for_tests'
+
+    url = idp.data.Lotus.url_list
+
+    assert isinstance(url, list)
+    assert isinstance(url[1], str)
+
 def test_usr_data_dir():
     root_dir = idp.data.user_data_dir("")
     assert "easyidp.data" in str(root_dir)

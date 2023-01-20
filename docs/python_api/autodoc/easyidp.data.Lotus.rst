@@ -22,4 +22,12 @@
 
    
    
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Lotus.name
+      ~Lotus.size
+      ~Lotus.url_list
+   
    

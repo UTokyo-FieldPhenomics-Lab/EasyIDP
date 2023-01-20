@@ -22,4 +22,12 @@
 
    
    
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TestData.name
+      ~TestData.size
+      ~TestData.url_list
+   
    

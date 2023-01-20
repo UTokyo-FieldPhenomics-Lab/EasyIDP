@@ -871,7 +871,7 @@ class Pix4D(idp.reconstruct.Recons):
 
             >>> img_dict_sort = p4d.sort_img_by_distance(
             ...     out_all, roi,
-            ...     num=1   # only keep the closest images
+            ...     num=1   # only keep 1 closest images
             ... )
 
             >>> img_dict_sort

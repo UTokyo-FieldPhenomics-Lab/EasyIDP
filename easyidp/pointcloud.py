@@ -542,6 +542,22 @@ class PointCloud(object):
 
         self._update_btf_print()
 
+    def save(self, pcd_path):
+        """Save current point cloud to a file, support ply, las, laz format.
+
+        Parameters
+        ----------
+        pcd_path : str
+            The file path of saved point cloud, if file extention not given, will use parent point cloud file extention.
+
+        See also
+        --------
+        write_point_cloud
+
+        """
+
+        return self.write_point_cloud(pcd_path)
+
     def write_point_cloud(self, pcd_path):
         """Save current point cloud to a file, support ply, las, laz format.
 

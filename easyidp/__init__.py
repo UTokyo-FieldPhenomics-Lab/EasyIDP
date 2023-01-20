@@ -2,6 +2,7 @@ __version__ = "2.0.0.dev4"
 
 import os
 import warnings
+import numpy as np
 from pathlib import Path
 
 from copy import deepcopy
@@ -97,6 +98,11 @@ class Container(dict):
         key_list = list(self.item_label.keys())
         num = len(key_list)
         out_str = f'<{title}> with {num} items\n'
+
+        # limit the numpy print out
+        default_np_thresh = np.get_printoptions()['threshold']
+        default_np_suppress = np.get_printoptions()['suppress']
+        np.set_printoptions(threshold=4, suppress=True)
         if num == 0:
             out_str = "<Empty easyidp.Container object>"
         elif num > 5:
@@ -114,6 +120,7 @@ class Container(dict):
                 out_str += f"[{i}]\t{k}\n"
                 out_str += repr(self.id_item[self.item_label[k]])
                 out_str += '\n'
+        np.set_printoptions(threshold=default_np_thresh, suppress=default_np_suppress)
 
         out_str = out_str[:-1]
         return out_str

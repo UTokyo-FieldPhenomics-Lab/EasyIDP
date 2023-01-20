@@ -21,6 +21,7 @@
       ~PointCloud.has_normals
       ~PointCloud.has_points
       ~PointCloud.read_point_cloud
+      ~PointCloud.save
       ~PointCloud.update_offset_value
       ~PointCloud.write_point_cloud
    

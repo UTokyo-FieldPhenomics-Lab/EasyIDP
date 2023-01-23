@@ -53,6 +53,61 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
     In the EasyIDP, we use the (horizontal, vertical, dim) order as the coords order. When it applies to the GIS coordintes, is (longitude, latitude, altitude)
 
 
+Examples
+========
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Getting started
+
+   install
+
+.. toctree::
+   :hidden:
+   :maxdepth: 2
+   :caption: Backgrounds
+
+   backgrounds/virtualenv
+   backgrounds/roi_marking
+   backgrounds/geotiff_transparency
+
+.. nbgallery::
+   :glob:
+   :caption: Examples
+
+   jupyter/load_roi
+   jupyter/crop_outputs
+   jupyter/backward_projection
+   jupyter/get_z_from_dsm
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Python API
+
+   python_api/index
+   python_api/data
+   python_api/pointcloud
+   python_api/geotiff
+   python_api/cvtools
+   python_api/roi
+   python_api/shp
+   python_api/json
+   python_api/geotools
+   python_api/reconstruct
+   python_api/pix4d
+   python_api/metashape
+   python_api/visualize
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Development
+
+   contribute
+
+
 Quick Start
 ===========
 
@@ -311,66 +366,6 @@ Batch save single geotiff of each ROI:
 
     >>> imarray_dict = roi.raw4dom(ms, save_folder="/path/to/save/folder")
 
-
-Examples
-========
-
-.. toctree::
-   :hidden:
-   :maxdepth: 1
-   :caption: Getting started
-
-   install
-
-.. toctree::
-   :hidden:
-   :maxdepth: 2
-   :caption: Backgrounds
-
-   backgrounds/virtualenv
-   backgrounds/roi_marking
-   backgrounds/geotiff_transparency
-
-.. nbgallery::
-   :glob:
-   :caption: Examples
-
-   jupyter/load_roi
-   jupyter/crop_outputs
-   jupyter/backward_projection
-   jupyter/get_z_from_dsm
-
-.. toctree::
-   :hidden:
-   :maxdepth: 1
-   :caption: Python API
-
-   python_api/index
-   python_api/data
-   python_api/pointcloud
-   python_api/geotiff
-   python_api/cvtools
-   python_api/roi
-   python_api/shp
-   python_api/json
-   python_api/geotools
-   python_api/reconstruct
-   python_api/pix4d
-   python_api/metashape
-   python_api/visualize
-
-.. toctree::
-   :hidden:
-   :maxdepth: 1
-   :caption: Development
-
-   contribute
-
-.. Getting Started
-.. ==================
-
-.. * :doc:`install`
-.. * :doc:`contribute`
 
 
 References

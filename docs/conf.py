@@ -85,3 +85,10 @@ napoleon_use_admonition_for_references = True
 # autodoc_default_flags = ['members']
 autodoc_default_options = {'members': True,}
 autosummary_generate = True
+
+nbsphinx_thumbnails = {
+    'jupyter/load_roi': r'_static/images/jupyter/shp_icon.png',
+    'jupyter/crop_outputs': r"_static/images/jupyter/crop.png",
+    'jupyter/backward_projection': r"_static/images/jupyter/backward.png",
+    'jupyter/get_z_from_dsm': r"_static/images/jupyter/zval.png",
+}

@@ -909,6 +909,66 @@ class Pix4D(idp.reconstruct.Recons):
 
         """
         return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)
+    
+    def show_one_roi_on_img(self, img_dict, roi_name, img_name, **kwargs):
+        """Visualize the specific backward projection results for given roi on the given image.
+
+        Parameters
+        ----------
+        img_dict : dict
+            The backward results from back2raw()
+        roi_name : str
+            The roi name to show
+        img_name : str
+            the image file name.
+        corrected_poly_coord : np.ndarray, optional
+            the corrected 2D polygon pixel coordiante on the image (if have), by default None
+        title : str, optional
+            The image title displayed on the top, by default None -> ``ROI [roi_name] on [img_name]``
+        save_as : str, optional
+            file path to save the output figure, by default None
+        show : bool, optional
+            whether display (in jupyter notebook) or popup (in command line) the figure, by default False
+        color : str, optional
+            the polygon line color, by default 'red'
+        alpha : float, optional
+            the polygon transparency, by default 0.5
+        dpi : int, optional
+            the dpi of produced figure, by default 72
+
+        Example
+        -------
+
+        .. code-block:: python
+
+            >>> img_dict_p4d = roi.back2raw(p4d)
+            >>> p4d.show_one_roi_on_img(img_dict_p4d, "N1W1", "DJI_0479")
+
+        For more details, please check in :doc:`this example </jupyter/backward_projection>`
+
+        See also
+        --------
+        easyidp.visualize.draw_polygon_on_img
+        """
+        # check if given has values
+        if roi_name not in img_dict.keys() or img_name not in img_dict[roi_name].keys():
+            raise IndexError(f"Could not find backward results of plot [{roi_name}] on image [{img_name}]")
+        
+        if img_name not in self.photos.keys():
+            raise FileNotFoundError(f"Could not find the image file [{img_name}] in the Pix4D project")
+        
+        if 'title' not in kwargs:
+            kwargs['title'] = f"ROI [{roi_name}] on [{img_name}]"
+
+        if 'show' not in kwargs:
+            kwargs['show'] = True
+    
+        idp.visualize.draw_polygon_on_img(
+            img_name, 
+            img_path=self.photos[img_name].path, 
+            poly_coord=img_dict[roi_name][img_name], 
+            **kwargs
+            )
 
 ####################
 # code for file IO #

@@ -1002,7 +1002,6 @@ class ROI(idp.Container):
         # check if is 3D roi
         # fix bugs #47
         for k, coord in self.items():
-            print(coord)
             dim = coord.shape[1]
             if dim != 3:
                 raise ValueError(f"The back2raw function requires 3D roi with shape=(n, 3), but [{k}] is {coord.shape}")

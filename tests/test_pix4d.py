@@ -220,7 +220,7 @@ def test_class_back2raw_single():
     photo = p4d.photos[img_name]
     idp.visualize.draw_polygon_on_img(
         img_name, photo.path, out_dict[img_name], show=False, 
-        save_as="./tests/out/visual_test/p4d_back2raw_single_view.png")
+        save_as=test_data.vis.out / "p4d_back2raw_single_view.png")
 
 def test_class_back2raw():
     lotus = idp.data.Lotus()
@@ -293,3 +293,26 @@ def test_class_init():
     # easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d.p4d
     p4d = idp.Pix4D(str(test_data.pix4d.maize_folder) + '.p4d' )
     assert p4d.label == 'maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d'
+
+
+def test_visualize_one_roi_on_img():
+    lotus = idp.data.Lotus()
+
+    roi = idp.ROI(lotus.shp, name_field='plot_id')
+    roi.get_z_from_dsm(lotus.metashape.dsm)
+    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+                raw_img_folder=lotus.photo,
+                param_folder=lotus.pix4d.param)
+
+    img_dict_p4d = roi.back2raw(p4d)
+
+    with pytest.raises(IndexError, match=re.escape("Could not find backward results of plot [N1W2] on image [aaa]")):
+        p4d.show_one_roi_on_img(img_dict_p4d, 'N1W2', 'aaa')
+
+    with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233.JPG] in the Pix4D project")):
+        img_dict_p4d['N1W1']['DJI_2233.JPG'] = None
+        p4d.show_one_roi_on_img(img_dict_p4d, 'N1W1', 'DJI_2233.JPG')
+
+    out = p4d.show_one_roi_on_img(
+            img_dict_p4d, 'N1W1', "DJI_0500.JPG", title="AAAA", color='green', alpha=0.5, show=False,
+            save_as=test_data.vis.out / "p4d_show_one_roi_on_img_diy.png")

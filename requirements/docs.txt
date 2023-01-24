@@ -5,3 +5,6 @@ furo==2022.12.7
 nbsphinx==0.8.11
 # do not update to new version below, the index ipynb block display will change
 sphinx-gallery==0.10.1
+# fix readthedocs no code decoration for ipynb
+# No Pygments lexer found for "ipython3"
+ipython==8.3.0

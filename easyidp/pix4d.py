@@ -944,7 +944,7 @@ class Pix4D(idp.reconstruct.Recons):
             >>> img_dict_p4d = roi.back2raw(p4d)
             >>> p4d.show_one_roi_on_img(img_dict_p4d, "N1W1", "DJI_0479")
 
-        For more details, please check in :doc:`this example </jupyter/backward_projection>`
+        For more details, please check in :ref:`this example <show-one-roi-on-img-demo>`
 
         See also
         --------

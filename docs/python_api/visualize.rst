@@ -14,3 +14,4 @@ Functions
     :toctree: autodoc
 
     draw_polygon_on_img
+    draw_backward_one_roi

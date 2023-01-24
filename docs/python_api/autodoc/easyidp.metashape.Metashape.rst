@@ -19,7 +19,7 @@
       ~Metashape.get_photo_position
       ~Metashape.open_chunk
       ~Metashape.open_project
-      ~Metashape.show_one_roi_on_img
+      ~Metashape.show_roi_on_img
       ~Metashape.sort_img_by_distance
    
    

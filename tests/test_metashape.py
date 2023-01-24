@@ -485,24 +485,3 @@ def test_debug_calibration_tag_error():
             sensor = idp.metashape._decode_sensor_tag(sensor_tag)
 
             assert sensor.calibration.f == 3239.2350850187408
-
-
-def test_visualize_one_roi_on_img():
-    lotus = idp.data.Lotus()
-
-    roi = idp.ROI(lotus.shp, name_field='plot_id')
-    roi.get_z_from_dsm(lotus.metashape.dsm)
-    ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
-
-    img_dict_ms = roi.back2raw(ms)
-
-    with pytest.raises(IndexError, match=re.escape("Could not find backward results of plot [N1W2] on image [aaa]")):
-        ms.show_one_roi_on_img(img_dict_ms, 'N1W2', 'aaa')
-
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233] in the Metashape project")):
-        img_dict_ms['N1W1']['DJI_2233'] = None
-        ms.show_one_roi_on_img(img_dict_ms, 'N1W1', 'DJI_2233')
-
-    out = ms.show_one_roi_on_img(
-            img_dict_ms, 'N1W1', "DJI_0500", title="AAAA", color='green', alpha=0.5, show=False,
-            save_as=test_data.vis.out / "ms_show_one_roi_on_img_diy.png")

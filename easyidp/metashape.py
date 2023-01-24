@@ -853,7 +853,7 @@ class Metashape(idp.reconstruct.Recons):
         
         return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)
     
-    def show_one_roi_on_img(self, img_dict, roi_name, img_name, **kwargs):
+    def show_roi_on_img(self, img_dict, roi_name, img_name=None, **kwargs):
         """Visualize the specific backward projection results for given roi on the given image.
 
         Parameters
@@ -863,7 +863,7 @@ class Metashape(idp.reconstruct.Recons):
         roi_name : str
             The roi name to show
         img_name : str
-            the image file name.
+            the image file name, by default None, plotting all available images
         corrected_poly_coord : np.ndarray, optional
             the corrected 2D polygon pixel coordiante on the image (if have), by default None
         title : str, optional
@@ -885,19 +885,30 @@ class Metashape(idp.reconstruct.Recons):
         .. code-block:: python
 
             >>> img_dict_ms = roi.back2raw(ms)
-            >>> ms.show_one_roi_on_img(img_dict_ms, "N1W1", "DJI_0479")
+
+        Check the "N1W1" ROI on image "DJI_0479.JPG":
+
+        .. code-block:: python
+
+            >>> ms.show_roi_on_img(img_dict_ms, "N1W1", "DJI_0479")
+            
+        Check the "N1W1" ROI on all available images:
+
+            >>> ms.show_roi_on_img(img_dict_ms, "N1W1")
 
         For more details, please check in :ref:`this example <show-one-roi-on-img-demo>`
 
         See also
         --------
-        easyidp.visualize.draw_polygon_on_img
+        easyidp.visualize.draw_polygon_on_img, easyidp.visualize.draw_backward_one_roi
         """
         # check if given has values
-        if roi_name not in img_dict.keys() or img_name not in img_dict[roi_name].keys():
+        if roi_name not in img_dict.keys() or \
+                (img_name is not None and \
+                    img_name not in img_dict[roi_name].keys()):
             raise IndexError(f"Could not find backward results of plot [{roi_name}] on image [{img_name}]")
         
-        if img_name not in self.photos.keys():
+        if img_name is not None and img_name not in self.photos.keys():
             raise FileNotFoundError(f"Could not find the image file [{img_name}] in the Metashape project")
         
         if 'title' not in kwargs:
@@ -906,11 +917,17 @@ class Metashape(idp.reconstruct.Recons):
         if 'show' not in kwargs:
             kwargs['show'] = True
     
-        idp.visualize.draw_polygon_on_img(
-            img_name, 
-            img_path=self.photos[img_name].path, 
-            poly_coord=img_dict[roi_name][img_name], 
-            **kwargs
+        if img_name is not None:
+            idp.visualize.draw_polygon_on_img(
+                img_name, 
+                img_path=self.photos[img_name].path, 
+                poly_coord=img_dict[roi_name][img_name], 
+                **kwargs
+                )
+        else:
+            idp.visualize.draw_backward_one_roi(
+                self, img_dict[roi_name], 
+                **kwargs
             )
 
 ###############

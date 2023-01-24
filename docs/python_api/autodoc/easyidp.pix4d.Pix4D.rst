@@ -21,7 +21,7 @@
       ~Pix4D.load_dsm
       ~Pix4D.load_pcd
       ~Pix4D.open_project
-      ~Pix4D.show_one_roi_on_img
+      ~Pix4D.show_roi_on_img
       ~Pix4D.sort_img_by_distance
    
    

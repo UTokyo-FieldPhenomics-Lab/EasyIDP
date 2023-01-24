@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as pts
 from matplotlib.collections import PatchCollection
+from tqdm import tqdm
 
 
 def _view_poly2mask(poly, mask, pix_all, pix_in):
@@ -125,7 +126,7 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
         ...     img_name, photo.path, out_dict[img_name],  
         ...     save_as="p4d_back2raw_single_view.png")
 
-    If will get the following figure:
+    It will get the following figure:
 
     .. image:: ../../_static/images/visualize/p4d_back2raw_single_view.png
         :alt: p4d_back2raw_single_view.png'
@@ -142,7 +143,7 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
         ...     save_as="p4d_back2raw_single_view2.png", 
         ...     color='blue', alpha=0.3)
 
-    If will get the following figure:
+    It will get the following figure:
 
     .. image:: ../../_static/images/visualize/p4d_back2raw_single_view2.png
         :alt: p4d_back2raw_single_view2.png'
@@ -202,3 +203,137 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
     plt.clf()
     plt.close(fig)
     del fig, ax, img_array
+
+
+def draw_backward_one_roi(proj, result_dict, buffer=40, save_as=None, show=False, title=None, color='red', alpha=0.5, dpi=72):
+    """Plot one ROI results on all available images.
+
+    Parameters
+    ----------
+    proj : easyidp.Recons
+        The 3D reconstruction project object
+    result_dict : dict
+        | The dictionary of one ROI backward to all images.
+        | e.g. ``{"IMG_2345": np.array([...]), "IMG_2346": np.array([])}``
+    buffer : int, optional
+        The pixel buffer number around the backward ROI results, by default 40
+    save_as : str, optional
+        file path to save the output figure, by default None
+    show : bool, optional
+        whether display (in jupyter notebook) or popup (in command line) the figure, by default False
+    color : str, optional
+        the polygon line color, by default 'red'
+    alpha : float, optional
+        the polygon transparency, by default 0.5
+    dpi : int, optional
+        the dpi of produced figure, by default 72
+
+    Example
+    -------
+
+    Data prepare:
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> lotus = idp.data.Lotus()
+
+        >>> roi = idp.ROI(lotus.shp, name_field='plot_id')
+        >>> roi.get_z_from_dsm(lotus.metashape.dsm)
+
+        >>> ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
+        >>> img_dict_ms = roi.back2raw(ms)
+
+    Then use this code to show the results of ROI [N1W1]:
+
+    .. code-block:: python
+
+        >>> idp.visualize.draw_backward_one_roi(ms, img_dict_ms['N1W1'], save_as="draw_backward_one_roi.png")
+
+    It will get the following figure:
+
+    .. image:: ../../_static/images/visualize/draw_backward_one_roi.png
+        :alt: draw_backward_one_roi.png'
+
+    """
+    img_num = len(result_dict) + 1
+    grid_w = np.ceil(np.sqrt(img_num)).astype(int)
+
+    if img_num % grid_w == 0:  # no need a new line
+        grid_h = (img_num // grid_w).astype(int)
+    else:
+        grid_h = (img_num // grid_w + 1).astype(int)
+
+    ratio = grid_h / grid_w
+
+    # grid_w * 3 -> the recommended size of image
+    # grid_w * 3 * 2 -> the relative width of image, doubed due to two figures connected together
+    # griw_w * 3 * ratio -> the relative height of image
+    fig, ax = plt.subplots(ncols=grid_w*2, nrows=grid_h, figsize=(grid_w*3*2, grid_w*3*ratio), dpi=dpi)
+
+    tbar = tqdm(result_dict, desc=f"Reading image files for plotting")
+    for i, example_img in enumerate(tbar):
+        img_np = plt.imread(proj.photos[example_img].path)
+        img_coord = result_dict[example_img]
+        im_xmin, im_ymin = img_coord.min(axis=0)
+        im_xmax, im_ymax = img_coord.max(axis=0)
+
+        img_id = i
+        img_h = img_id // grid_w
+        img_w = img_id % grid_w
+
+        # print(f"img_id={img_id}; img_h={img_h}; img_w={img_w}", end='\r')
+
+        polygon = pts.Polygon(img_coord, True)
+        p = PatchCollection([polygon], alpha=alpha, facecolors=color)
+
+        # draw roi on full image
+        ax[img_h, img_w].imshow(img_np)
+        # ax[img_h, img_w].plot(*img_coord.T, '--', c=color)
+        ax[img_h, img_w].add_collection(p)
+        ax[img_h, img_w].set_xlabel(example_img, size='x-large')
+        ax[img_h, img_w].invert_yaxis()
+
+        # draw roi on zoomed image
+        ax[img_h, img_w + grid_w].imshow(img_np)
+        ax[img_h, img_w + grid_w].plot(*img_coord.T, '--', c=color)
+        ax[img_h, img_w + grid_w].set_xlim(im_xmin - buffer, im_xmax + buffer)
+        ax[img_h, img_w + grid_w].set_ylim(im_ymin - buffer, im_ymax + buffer)
+        ax[img_h, img_w + grid_w].set_xlabel(example_img, size='x-large')
+        ax[img_h, img_w + grid_w].invert_yaxis()
+
+    print(f"Image data loaded, drawing figures, this may cost a few seconds...")
+
+    for empty_idx in range(img_w+1, grid_w):
+        ax[img_h, empty_idx].axis('off')
+        ax[img_h, empty_idx + grid_w].axis('off')
+
+    plt.tight_layout()
+
+    # make space for suptitle
+    # y = -0.1/x + 0.99, in range 0.9-0.98
+    plt.subplots_adjust(top= -0.1 / grid_h + 0.99)
+
+    # add subfigure title
+    plt.text(.25, 0.99, 
+        'ROI Positions on Original Images', 
+        transform=fig.transFigure, 
+        horizontalalignment='center', 
+        verticalalignment='top', 
+        size='xx-large')
+    plt.text(.75, 0.99, 
+        'Enlarge Detail View', 
+        transform=fig.transFigure, 
+        horizontalalignment='center', 
+        verticalalignment='top', 
+        size='xx-large')
+
+    if save_as is not None:
+        plt.savefig(save_as)
+
+    if show:
+        plt.show()
+
+    plt.clf()
+    plt.close(fig)
+    del fig, ax, img_np

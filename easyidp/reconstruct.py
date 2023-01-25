@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 import warnings
+from skimage.io import imread, imsave
 
 import easyidp as idp
 
@@ -649,7 +650,7 @@ def _sort_img_by_distance_one_roi(recons, img_dict, plot_geo, cam_pos, distance_
     return img_dict_sort
 
 
-def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=None):
+def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=None, save_folder=None):
     """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
 
     Parameters
@@ -665,6 +666,8 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
         Keep the closest {x} images
     distance_thresh : None or float
         Keep the images closer than this distance to ROI.
+    save_folder : str, optional
+        the folder to save json files and parts of ROI on raw images, by default None
 
     Returns
     -------
@@ -682,4 +685,83 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
         )
         img_dict_sort_all[roi_name] = sort_dict
 
+    if save_folder is not None:
+        save_back2raw_json_and_png(recons, img_dict_sort_all, save_folder)
+
     return img_dict_sort_all
+
+
+def save_back2raw_json_and_png(recons, results_dict, save_folder):
+    """Save the backward reversed results 
+
+    Parameters
+    ----------
+    results_dict : dict
+        the outputs of :func:`back2raw() <easyidp.roi.back2raw()>` function results
+    save_path : str
+        the folder to save output files
+
+    Example
+    -------
+
+    Data prepare
+
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> lotus = idp.data.Lotus()
+        >>> p4d = idp.Pix4D(lotus.pix4d.project, lotus.photo, lotus.pix4d.param)
+
+        >>> roi = idp.ROI(lotus.shp, name_field=0)
+        >>> roi = roi[0:3]
+        >>> roi.get_z_from_dsm(lotus.pix4d.dsm)
+
+        >>> out_p4d = roi.back2raw(p4d)
+
+    Use this function:
+
+    .. code-block:: python
+
+        >>> idp.reconstruct.save_back2raw_json_and_png(p4d, out_p4d, "out_path")
+
+    """
+    # prepare the root folder
+    if isinstance(save_folder, (str, Path)):
+        save_folder = str(save_folder)
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+    else:
+        raise TypeError(f"Only the string path is acceptable, not [{save_folder} {type(save_folder)}]")
+    
+    # reverse the current order results_dict[roi][image_name] to results[image_name][roi]
+    # this will save the IO cost when loading images.
+    print("Optimising data structures of produced results, this may take some time...")
+    rev_dict = {}
+    for roi_name, roi_dict in results_dict.items():
+        # create the save path of each roi
+        roi_folder = os.path.join(save_folder, roi_name)
+        if not os.path.exists(roi_folder):
+            os.mkdir(roi_folder)
+
+        for img_name, img_pos in roi_dict.items():
+            if img_name not in rev_dict.keys():
+                rev_dict[img_name] = {}
+
+            rev_dict[img_name][roi_name] = img_pos
+
+    # save the full results as json directly
+    idp.jsonfile.save_json(results_dict, os.path.join(save_folder, "roi_image_order.json"))
+    idp.jsonfile.save_json(rev_dict, os.path.join(save_folder, "image_roi_order.json"))
+
+    # then doing the for loop for each image.
+    for img_name, img_rois in tqdm(rev_dict.items(), desc=f"Processing image [{img_name}]"):
+
+        img_array = imread(recons.photos[img_name].path)
+
+        for roi_name, img_pos in tqdm(img_rois.items(), leave=False):
+
+            png_save_path = os.path.join(save_folder, roi_name, f"{roi_name}_{img_name}.png")
+
+            cropped_png, _ = idp.cvtools.imarray_crop(img_array, img_pos)
+
+            imsave(png_save_path, cropped_png)

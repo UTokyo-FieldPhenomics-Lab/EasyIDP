@@ -32,7 +32,7 @@ def test_class_back2raw_single():
     out_dict = p4d.back2raw_crs(plot, distort_correct=True)
 
     # plot figures
-    img_name = "DJI_0198.JPG"
+    img_name = "DJI_0198"
     photo = p4d.photos[img_name]
     idp.visualize.draw_polygon_on_img(
         img_name, photo.path, out_dict[img_name], show=False, 
@@ -55,16 +55,16 @@ def test_visualize_one_roi_on_img_p4d():
     with pytest.raises(IndexError, match=re.escape("Could not find backward results of plot [N1W2] on image [aaa]")):
         p4d.show_roi_on_img(img_dict_p4d, 'N1W2', 'aaa')
 
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233.JPG] in the Pix4D project")):
-        img_dict_p4d['N1W1']['DJI_2233.JPG'] = None
-        p4d.show_roi_on_img(img_dict_p4d, 'N1W1', 'DJI_2233.JPG')
+    with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233] in the Pix4D project")):
+        img_dict_p4d['N1W1']['DJI_2233'] = None
+        p4d.show_roi_on_img(img_dict_p4d, 'N1W1', 'DJI_2233')
 
     out = p4d.show_roi_on_img(
-            img_dict_p4d, 'N1W1', "DJI_0500.JPG", title="AAAA", color='green', alpha=0.5, show=False,
+            img_dict_p4d, 'N1W1', "DJI_0500", title="AAAA", color='green', alpha=0.5, show=False,
             save_as=test_data.vis.out / "p4d_show_roi_on_img_diy.png")
     
     out = p4d.show_roi_on_img(
-            img_dict_p4d, 'N1W2', show=False, title=["AAAA", "BBBB"],  color='green', alpha=0.5, show=False,
+            img_dict_p4d, 'N1W2', show=False, title=["AAAA", "BBBB"],  color='green', alpha=0.5,
             save_as=test_data.vis.out / "p4d_show_one_roi_all.png")
 
 

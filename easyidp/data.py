@@ -472,6 +472,7 @@ class TestData(EasyidpDataSet):
 
         self.cv = self.CVDataset(self.data_dir, test_out)
         self.vis = self.VisualDataset(self.data_dir, test_out)
+        self.b2r = self.Back2rawDataset(self.data_dir, test_out)
 
 
     class MetashapeDataset():
@@ -646,3 +647,17 @@ class TestData(EasyidpDataSet):
 
         def __truediv__(self, other):
             return self.data_dir / "visual_test" / other
+        
+
+
+    class Back2rawDataset():
+
+        def __init__(self, data_dir, test_out):
+            self.data_dir = data_dir
+
+            if isinstance(test_out, str):
+                test_out = Path(test_out)
+            self.out = test_out / "back2raw_test"
+
+        def __truediv__(self, other):
+            return self.data_dir / "back2raw_test" / other

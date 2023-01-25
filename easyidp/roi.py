@@ -873,7 +873,7 @@ class ROI(idp.Container):
 
         return out
 
-    def back2raw(self, recons, save_folder=None, **kwargs):
+    def back2raw(self, recons, **kwargs):
         """Projects several GIS coordintates ROIs (polygons) to all images
 
         Parameters
@@ -948,9 +948,7 @@ class ROI(idp.Container):
             >>> import easyidp as idp
             >>> lotus = idp.data.Lotus()
 
-            >>> p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-            ...                 raw_img_folder=lotus.photo,
-            ...                 param_folder=lotus.pix4d.param)
+            >>> p4d = idp.Pix4D(lotus.pix4d.project, lotus.photo, lotus.pix4d.param)
 
             >>> ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
 
@@ -1090,6 +1088,7 @@ def load_detections(path):
     """
     
     # boxes = pd.read_csv(path)
+    boxes = None
     if not all([x in ["image_path","xmin","ymin","xmax","ymax","image_path","label"] for x in boxes.columns]):
         raise IOError("{} is expected to be a .csv with columns, xmin, ymin, xmax, ymax, image_path, label for each detection")
         

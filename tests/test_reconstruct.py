@@ -1,7 +1,9 @@
 import re
+import os
 import pytest
 import numpy as np
 import easyidp as idp
+import shutil
 
 test_data = idp.data.TestData()
 
@@ -222,26 +224,24 @@ def test_func_sort_img_by_distance_ms():
     filter_3_all_self = ms.sort_img_by_distance(out_all, roi, num=3)
     assert len(filter_3_all_self) == 2
 
+# =============
+# pix4d outputs
+# =============
+lotus = idp.data.Lotus()
+
+p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+                raw_img_folder=lotus.photo,
+                param_folder=lotus.pix4d.param)
+ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
+
+roi = idp.ROI(lotus.shp, name_field=0)
+# only pick 2 plots as testing data
+roi = roi[0:3]
+roi.get_z_from_dsm(lotus.pix4d.dsm)
+
+out_all = p4d.back2raw(roi)
+
 def test_func_sort_img_by_distance_p4d():
-    # =============
-    # pix4d outputs
-    # =============
-    lotus = idp.data.Lotus()
-
-    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-                    raw_img_folder=lotus.photo,
-                    param_folder=lotus.pix4d.param)
-
-    roi = idp.ROI(lotus.shp, name_field=0)
-    # only pick 2 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N1W2"]:
-            del roi[key]
-    roi.get_z_from_dsm(lotus.pix4d.dsm)
-
-    out_all = p4d.back2raw(roi)
-
     cam_pos = p4d.get_photo_position()
     filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W2"], roi["N1W2"], cam_pos, num=3)
     assert len(filter_3) == 3
@@ -251,10 +251,71 @@ def test_func_sort_img_by_distance_p4d():
 
     # test all roi
     filter_3_all = idp.reconstruct.sort_img_by_distance(p4d, out_all, roi, num=3)
-    assert len(filter_3_all) == 2
+    assert len(filter_3_all) == 3
     for v in filter_3_all.values():
         assert len(v) == 3
 
     # on self
     filter_3_all_self = p4d.sort_img_by_distance(out_all, roi, num=3)
-    assert len(filter_3_all_self) == 2
+    assert len(filter_3_all_self) == 3
+
+
+def test_func_save_back2raw_json_and_png():
+
+    with pytest.raises(TypeError, match=re.escape("Only the string path is acceptable, not [12345 <class 'int'>]")):
+        idp.reconstruct.save_back2raw_json_and_png(p4d, out_all, 12345)
+
+    out_path = test_data.b2r.out / "def_path"
+    if os.path.exists(out_path):
+        shutil.rmtree(out_path)
+
+    idp.reconstruct.save_back2raw_json_and_png(p4d, out_all, out_path)
+
+    file_list = os.listdir(str(out_path))
+    assert len(file_list) == len(out_all) + 2
+    assert "roi_image_order.json" in file_list
+    assert "image_roi_order.json" in file_list
+
+    roi_folder_list = os.listdir(str(out_path / "N1W1"))
+    assert len(roi_folder_list) == len(out_all['N1W1'])
+    assert "N1W1_DJI_0479.png" in roi_folder_list
+
+# test on the other easy-to-use functions
+def test_func_save_back2raw_json_and_png_other_func():
+
+    # this is very time costy, often no need to run...
+
+    # ms_out_path = test_data.b2r.out / "ms_back2raw"
+    # if os.path.exists(ms_out_path):
+    #     shutil.rmtree(ms_out_path)
+    # ms_out = ms.back2raw(roi, save_folder=ms_out_path)
+
+    # roi_folder_list1 = os.listdir(str(ms_out_path / "N1W1"))
+    # assert len(roi_folder_list1) == len(ms_out['N1W1'])
+
+
+    # p4d_out_path = test_data.b2r.out / "p4d_back2raw"
+    # if os.path.exists(p4d_out_path):
+    #     shutil.rmtree(p4d_out_path)
+    # p4d_out = p4d.back2raw(roi, save_folder=p4d_out_path)
+
+    # roi_folder_list2 = os.listdir(str(p4d_out_path / "N1W1"))
+    # assert len(roi_folder_list2) == len(p4d_out['N1W1'])
+
+
+    ms_sort_path = test_data.b2r.out / "ms_back2raw_sort"
+    if os.path.exists(ms_sort_path):
+        shutil.rmtree(ms_sort_path)
+    ms.sort_img_by_distance(ms_out, roi, num=3, save_folder=ms_sort_path)
+
+    roi_folder_list3 = os.listdir(str(ms_sort_path / "N1W1"))
+    assert len(roi_folder_list3) == 3
+
+
+    p4d_sort_path = test_data.b2r.out / "p4d_back2raw_sort"
+    if os.path.exists(p4d_sort_path):
+        shutil.rmtree(p4d_sort_path)
+    p4d.sort_img_by_distance(p4d_out, roi, num=3, save_folder=p4d_sort_path)
+    
+    roi_folder_list4 = os.listdir(str(p4d_sort_path / "N1W1"))
+    assert len(roi_folder_list4) == 3

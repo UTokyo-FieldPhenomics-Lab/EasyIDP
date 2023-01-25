@@ -442,7 +442,7 @@ class Metashape(idp.reconstruct.Recons):
         else:
             return out
 
-    def back2raw_crs(self, points_xyz, save_folder=None, ignore=None, log=False):
+    def back2raw_crs(self, points_xyz, ignore=None, log=False):
         """Projs one GIS coordintates ROI (polygon) to all images
 
         Parameters
@@ -456,11 +456,6 @@ class Metashape(idp.reconstruct.Recons):
             - ``None``: strickly in image area;
             - ``x``: only y (vertical) in image area, x can outside image;
             - ``y``: only x (horizontal) in image area, y can outside image.
-
-        save_folder : str | default ""
-            The folder to contain the output results (preview images and json coords)
-
-            .. caution:: This feature has not been implemented
 
         log : bool, optional
             whether print log for debugging, by default False
@@ -543,7 +538,7 @@ class Metashape(idp.reconstruct.Recons):
         roi : easyidp.ROI | dict
             the <ROI> object created by easyidp.ROI() or dictionary
         save_folder : str, optional
-            the folder to save projected preview images and json files, by default ""
+            the folder to save json files and parts of ROI on raw images, by default None
         ignore : str | None, optional
             Whether tolerate small parts outside image, check 
             :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
@@ -619,11 +614,15 @@ class Metashape(idp.reconstruct.Recons):
             if points_xyz.shape[1] != 3:
                 raise ValueError(f"The back2raw function requires 3D roi with shape=(n, 3), but [{k}] is {points_xyz.shape}")
 
-            one_roi_dict= self.back2raw_crs(points_xyz, save_folder=save_path, **kwargs)
+            one_roi_dict= self.back2raw_crs(points_xyz, **kwargs)
 
             out_dict[k] = one_roi_dict
 
         self.crs = before_crs
+
+        if save_folder is not None:
+            idp.reconstruct.save_back2raw_json_and_png(self, out_dict, save_folder)
+
         return out_dict
 
     def get_photo_position(self, to_crs=None, refresh=False):
@@ -714,7 +713,7 @@ class Metashape(idp.reconstruct.Recons):
             return out
 
 
-    def sort_img_by_distance(self, img_dict_all, roi, distance_thresh=None, num=None):
+    def sort_img_by_distance(self, img_dict_all, roi, distance_thresh=None, num=None, save_folder=None):
         """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
 
         Parameters
@@ -728,6 +727,8 @@ class Metashape(idp.reconstruct.Recons):
             Keep the closest {x} images
         distance_thresh : None or float
             Keep the images closer than this distance to ROI.
+        save_folder : str, optional
+            the folder to save json files and parts of ROI on raw images, by default None
 
         Returns
         -------
@@ -851,7 +852,7 @@ class Metashape(idp.reconstruct.Recons):
         if not self.enabled:
             raise TypeError("Unable to process disabled chunk (.enabled=False)")
         
-        return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num)
+        return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num, save_folder)
     
     def show_roi_on_img(self, img_dict, roi_name, img_name=None, **kwargs):
         """Visualize the specific backward projection results for given roi on the given image.

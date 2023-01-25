@@ -107,4 +107,4 @@ Functions
     :toctree: autodoc
 
     sort_img_by_distance
-    
+    save_back2raw_json_and_png

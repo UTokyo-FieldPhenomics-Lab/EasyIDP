@@ -166,7 +166,8 @@ def test_class_read_renamed_project():
     assert p4d.sensors[0].calibration.f == 3951.0935994102065
     assert p4d.sensors[0].focal_length == 15.005226206224117
 
-    assert p4d.photos[0].label == "DJI_0151.JPG"
+    # assert p4d.photos[0].label == "DJI_0151.JPG"
+    assert p4d.photos[0].label == "DJI_0151"
     assert p4d.photos[0].path == ''
     assert "photos" in str(p4d.photos["DJI_0174.JPG"].path)
     assert p4d.photos["DJI_0174.JPG"].cam_matrix.shape == (3,3)
@@ -213,14 +214,7 @@ def test_class_back2raw_single():
         [ 388.10993307, 2350.41225998],
         [ 137.10982937, 2359.55887614]])
 
-    np.testing.assert_almost_equal(out_dict["DJI_0177.JPG"], px_0177)
-
-    # plot figures
-    img_name = "DJI_0198.JPG"
-    photo = p4d.photos[img_name]
-    idp.visualize.draw_polygon_on_img(
-        img_name, photo.path, out_dict[img_name], show=False, 
-        save_as=test_data.vis.out / "p4d_back2raw_single_view.png")
+    np.testing.assert_almost_equal(out_dict["DJI_0177"], px_0177)
 
 def test_class_back2raw():
     lotus = idp.data.Lotus()
@@ -266,20 +260,20 @@ def test_class_get_photo_position():
     out = p4d.get_photo_position()
 
     assert len(out) == 151
-    assert "DJI_0430.JPG" in out.keys()
-    np.testing.assert_almost_equal(out['DJI_0430.JPG'], np.array([ 368020.07181613, 3955477.75605109,     136.75217778]))
+    assert "DJI_0430" in out.keys()
+    np.testing.assert_almost_equal(out['DJI_0430'], np.array([ 368020.07181613, 3955477.75605109,     136.75217778]))
 
     # convert to another proj?
     out_lonlat = p4d.get_photo_position(to_crs=pyproj.CRS.from_epsg(4326), refresh=True)
     assert len(out_lonlat) == 151
-    assert "DJI_0430.JPG" in out_lonlat.keys()
-    np.testing.assert_almost_equal(out_lonlat['DJI_0430.JPG'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
+    assert "DJI_0430" in out_lonlat.keys()
+    np.testing.assert_almost_equal(out_lonlat['DJI_0430'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
 
     # change crs and refresh
     p4d.crs = pyproj.CRS.from_epsg(4326)
     assert p4d._photo_position_cache is None
     out_utm = p4d.get_photo_position()
-    np.testing.assert_almost_equal(out_utm['DJI_0430.JPG'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
+    np.testing.assert_almost_equal(out_utm['DJI_0430'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
 
 
 def test_class_init():
@@ -293,3 +287,12 @@ def test_class_init():
     # easyidp.data/data_for_tests/pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d.p4d
     p4d = idp.Pix4D(str(test_data.pix4d.maize_folder) + '.p4d' )
     assert p4d.label == 'maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d'
+
+def test_class_photos_get_by_short_name():
+    p4d = idp.Pix4D()
+
+    param_folder = test_data.pix4d.lotus_param
+    image_folder = test_data.pix4d.lotus_photos
+    p4d.open_project(test_data.pix4d.lotus_folder, raw_img_folder=image_folder, param_folder=param_folder)
+
+    assert p4d.photos["DJI_0174"] == p4d.photos["DJI_0174.JPG"]

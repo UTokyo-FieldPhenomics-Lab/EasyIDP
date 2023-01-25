@@ -22,10 +22,11 @@ class Container(dict):
     ----------
     .. [1] https://stackoverflow.com/questions/4014621/a-python-class-that-acts-like-dict
     """
-    def __init__(self):
+    def __init__(self, suffix=''):
         super().__init__()
         self.id_item = {}   # {0: item1, 1: item2}
         self.item_label = {}  #{"N1W1": 0, "N1W2": 1}, just index it position
+        self._suffix = str(suffix)
 
     def __setitem__(self, key, item):
         if isinstance(key, int):
@@ -74,6 +75,8 @@ class Container(dict):
         elif isinstance(key, str):  # index by photo name
             if key in self.item_label.keys():
                 return self.id_item[self.item_label[key]]
+            elif self._suffix in key and os.path.splitext(key)[0] in self.item_label.keys():
+                return self.id_item[self.item_label[os.path.splitext(key)[0]]]
             else:
                 raise KeyError(f"Can not find key [{key}]")
         elif isinstance(key, slice):

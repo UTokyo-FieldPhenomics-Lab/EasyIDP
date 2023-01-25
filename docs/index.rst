@@ -281,10 +281,10 @@ Then check the results:
 
     # find the raw image name list
     >>> img_dict.keys()   
-    dict_keys(['DJI_0177.JPG', 'DJI_0178.JPG', 'DJI_0179.JPG', 'DJI_0180.JPG', ... ]
+    dict_keys(['DJI_0177', 'DJI_0178', 'DJI_0179', 'DJI_0180', ... ]
 
     # the roi pixel coordinate on that image
-    >>> img_dict['DJI_0177.JPG'] 
+    >>> img_dict['DJI_0177'] 
     array([[ 779,  902],
            [1043,  846],
            [1099, 1110],

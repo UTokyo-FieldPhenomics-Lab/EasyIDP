@@ -64,7 +64,7 @@ def test_visualize_one_roi_on_img_p4d():
             save_as=test_data.vis.out / "p4d_show_roi_on_img_diy.png")
     
     out = p4d.show_roi_on_img(
-            img_dict_p4d, 'N1W2', title="AAAA", color='green', alpha=0.5, show=False,
+            img_dict_p4d, 'N1W2', show=False, title=["AAAA", "BBBB"],  color='green', alpha=0.5, show=False,
             save_as=test_data.vis.out / "p4d_show_one_roi_all.png")
 
 
@@ -85,7 +85,8 @@ def test_visualize_one_roi_on_img_ms():
             save_as=test_data.vis.out / "ms_show_roi_on_img_diy.png")
     
     out = ms.show_roi_on_img(
-            img_dict_ms, 'N1W2', color='green', alpha=0.5, show=False,
+            img_dict_ms, 'N1W2', color='green', alpha=0.5, 
+            show=False, title=["AAAA", "BBBB"], 
             save_as=test_data.vis.out / "ms_show_one_roi_all.png")
     
 
@@ -99,8 +100,10 @@ def test_draw_backward_one_roi():
 
     img_dict_ms = roi.back2raw(ms)
 
-    idp.visualize.draw_backward_one_roi(
-        ms, img_dict_ms['N1W1'], buffer=40, 
-        save_as=test_data.vis.out / "draw_backward_one_roi.png",
-        color='blue', show=False
-    )
+    with pytest.warns(UserWarning, match=re.escape(
+            "Expected title like ['title1', 'title2'], not given 'sdedf', using default title instead")):
+        idp.visualize.draw_backward_one_roi(
+            ms, img_dict_ms['N1W1'], buffer=40, title='sdedf',
+            save_as=test_data.vis.out / "draw_backward_one_roi.png",
+            color='blue', show=False
+        )

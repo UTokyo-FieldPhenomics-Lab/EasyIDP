@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as pts
 from matplotlib.collections import PatchCollection
 from tqdm import tqdm
+import warnings
 
 
 def _view_poly2mask(poly, mask, pix_all, pix_in):
@@ -205,7 +206,7 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
     del fig, ax, img_array
 
 
-def draw_backward_one_roi(proj, result_dict, buffer=40, save_as=None, show=False, title=None, color='red', alpha=0.5, dpi=72):
+def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None, show=False, color='red', alpha=0.5, dpi=72):
     """Plot one ROI results on all available images.
 
     Parameters
@@ -217,6 +218,8 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, save_as=None, show=False
         | e.g. ``{"IMG_2345": np.array([...]), "IMG_2346": np.array([])}``
     buffer : int, optional
         The pixel buffer number around the backward ROI results, by default 40
+    title : str, optional
+        The image title displayed on the top, by default None -> ``Projection on [img_name]``
     save_as : str, optional
         file path to save the output figure, by default None
     show : bool, optional
@@ -256,6 +259,13 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, save_as=None, show=False
         :alt: draw_backward_one_roi.png'
 
     """
+    title_list = ['ROI Positions on Original Images', 'Enlarge Detail View']
+    if title is not None:
+        if isinstance(title, list) and len(title) == 2:
+            title_list = title
+        else:
+            warnings.warn(f"Expected title like ['title1', 'title2'], not given '{title}', using default title instead")
+
     img_num = len(result_dict) + 1
     grid_w = np.ceil(np.sqrt(img_num)).astype(int)
 
@@ -316,13 +326,13 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, save_as=None, show=False
 
     # add subfigure title
     plt.text(.25, 0.99, 
-        'ROI Positions on Original Images', 
+        title_list[0], 
         transform=fig.transFigure, 
         horizontalalignment='center', 
         verticalalignment='top', 
         size='xx-large')
     plt.text(.75, 0.99, 
-        'Enlarge Detail View', 
+        title_list[1], 
         transform=fig.transFigure, 
         horizontalalignment='center', 
         verticalalignment='top', 

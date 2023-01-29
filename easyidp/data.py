@@ -179,7 +179,9 @@ class EasyidpDataSet():
         """
 
         if not os.path.exists(self.data_dir):
-            out = self._download_data()
+            
+            if not os.path.exists(self.zip_file):
+                out = self._download_data()
 
             if os.path.exists(self.zip_file):
                 print("Successfully downloaded, start unzipping ...")
@@ -270,7 +272,7 @@ class Lotus(EasyidpDataSet):
     """
 
     url_list = [
-        "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=sharing",
+        "https://drive.google.com/file/d/1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j/view?usp=share_link",
         "https://fieldphenomics.cowtransfer.com/s/9a87698f8d3242"
     ]
     name = "2017_tanashi_lotus"
@@ -331,7 +333,7 @@ class Lotus(EasyidpDataSet):
 class GDownTest(EasyidpDataSet):
 
     url_list = [
-        "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=sharing",
+        "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=share_link",
         "https://fieldphenomics.cowtransfer.com/s/b5a469fab5dc48"
     ]
 
@@ -350,7 +352,7 @@ class TestData(EasyidpDataSet):
     """
 
     url_list = [
-        "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=sharing",
+        "https://drive.google.com/file/d/17b_17CofqIuCVOWMnD67_wOnWMtwF8bw/view?usp=share_link",
         "https://fieldphenomics.cowtransfer.com/s/edaf0826b02548"
     ]
     

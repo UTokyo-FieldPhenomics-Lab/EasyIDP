@@ -1026,10 +1026,19 @@ class ROI(idp.Container):
 def _insert_z_value_for_roi(ndarray, z_value):
     # given a value list
     if isinstance(z_value, np.ndarray):
+        # fix bug #72, the input z_value is already nx1 2d array
+        if len(z_value.shape) == 1:
+            # convert [1,2,3,4] -> [[1],[2],[3],[4]]
+            z_value_2d = z_value[:, None]
+        elif len(z_value.shape) == 2:
+            z_value_2d = z_value
+        else:
+            raise ValueError(f"The expected z_value shape should be either (n) or (n, 1), not given {z_value.shape}")
+
         if ndarray.shape[1] == 2:
-            ndarray_z = np.concatenate([ndarray, z_value[:, None]], axis=1)
+            ndarray_z = np.concatenate([ndarray, z_value_2d], axis=1)
         elif ndarray.shape[1] == 3:
-            ndarray_z = np.concatenate([ndarray[:, 0:2], z_value[:, None]], axis=1)
+            ndarray_z = np.concatenate([ndarray[:, 0:2], z_value_2d], axis=1)
         else:
             raise ValueError(f"The expected ROI shape should be (n, 3), not given {ndarray.shape}")
     else:  # share the same value

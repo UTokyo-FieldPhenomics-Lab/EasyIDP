@@ -229,6 +229,48 @@ def test_func_insert_z_value_for_roi_error():
     with pytest.raises(ValueError, match=re.escape("The expected ROI shape should be (n, 3), not given (5, 4)")):
         out = idp.roi._insert_z_value_for_roi(np.ones((5,4)), 3)
 
+    val = np.array(
+       [[ 368017.7565143 , 3955511.08102277],
+        [ 368019.70190232, 3955511.49811902],
+        [ 368020.11263046, 3955509.54636219],
+        [ 368018.15769062, 3955509.13563382],
+        [ 368017.7565143 , 3955511.08102277]])
+    z_value = np.array(
+        [[97.25353 ],
+         [97.34388 ],
+         [97.4322  ],
+         [97.305435],
+         [97.25353 ]])
+
+    with pytest.raises(ValueError, match=re.escape("The expected z_value shape should be either (n) or (n, 1), not given (5, 1, 1)")):
+        out = idp.roi._insert_z_value_for_roi(val, z_value[:, None])
+
+def test_func_insert_z_value_for_roi_error_point_mode():
+    # meet the error #72
+    val = np.array(
+       [[ 368017.7565143 , 3955511.08102277],
+        [ 368019.70190232, 3955511.49811902],
+        [ 368020.11263046, 3955509.54636219],
+        [ 368018.15769062, 3955509.13563382],
+        [ 368017.7565143 , 3955511.08102277]])
+    z_value = np.array(
+        [[97.25353 ],
+         [97.34388 ],
+         [97.4322  ],
+         [97.305435],
+         [97.25353 ]])
+
+    out = idp.roi._insert_z_value_for_roi(val, z_value)
+
+    assert out.shape == (5,3)
+
+    # then the following code should runnable
+    lotus = idp.data.Lotus()
+    roi = idp.ROI(lotus.shp, name_field = "plot_id")
+    roi.get_z_from_dsm(lotus.metashape.dsm, mode="point")
+
+    assert roi[0].shape == (5,3)
+
 
 def test_class_roi_get_z_from_dsm_duplicate_load():
     # fix bug #60

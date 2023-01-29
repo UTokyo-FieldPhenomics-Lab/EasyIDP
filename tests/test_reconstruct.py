@@ -285,22 +285,22 @@ def test_func_save_back2raw_json_and_png_other_func():
 
     # this is very time costy, often no need to run...
 
-    # ms_out_path = test_data.b2r.out / "ms_back2raw"
-    # if os.path.exists(ms_out_path):
-    #     shutil.rmtree(ms_out_path)
-    # ms_out = ms.back2raw(roi, save_folder=ms_out_path)
+    ms_out_path = test_data.b2r.out / "ms_back2raw"
+    if os.path.exists(ms_out_path):
+        shutil.rmtree(ms_out_path)
+    ms_out = ms.back2raw(roi, save_folder=ms_out_path)
 
-    # roi_folder_list1 = os.listdir(str(ms_out_path / "N1W1"))
-    # assert len(roi_folder_list1) == len(ms_out['N1W1'])
+    roi_folder_list1 = os.listdir(str(ms_out_path / "N1W1"))
+    assert len(roi_folder_list1) == len(ms_out['N1W1'])
 
 
-    # p4d_out_path = test_data.b2r.out / "p4d_back2raw"
-    # if os.path.exists(p4d_out_path):
-    #     shutil.rmtree(p4d_out_path)
-    # p4d_out = p4d.back2raw(roi, save_folder=p4d_out_path)
+    p4d_out_path = test_data.b2r.out / "p4d_back2raw"
+    if os.path.exists(p4d_out_path):
+        shutil.rmtree(p4d_out_path)
+    p4d_out = p4d.back2raw(roi, save_folder=p4d_out_path)
 
-    # roi_folder_list2 = os.listdir(str(p4d_out_path / "N1W1"))
-    # assert len(roi_folder_list2) == len(p4d_out['N1W1'])
+    roi_folder_list2 = os.listdir(str(p4d_out_path / "N1W1"))
+    assert len(roi_folder_list2) == len(p4d_out['N1W1'])
 
 
     ms_sort_path = test_data.b2r.out / "ms_back2raw_sort"

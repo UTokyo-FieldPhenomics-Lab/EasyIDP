@@ -97,6 +97,54 @@ def test_class_init_metashape():
     assert m2.photos[0].rotation.shape == (3, 3)
     assert m2.photos[0].sensor.width == m2.sensors[0].width
 
+def test_class_init_metashape_multi_folder():
+    ms = idp.Metashape(project_path=test_data.metashape.multifolder_psx, chunk_id=0)
+
+    assert ms.photos[0].label == "100MEDIA-DJI_0003"
+    assert "100MEDIA/DJI_0003" in ms.photos[0].path
+
+    # test run reverse calcuation
+    # 1/30 size of square in the center of the full plot
+    # export the chunk to aaa.ply, and read by open3d
+    # 
+    # In [2]: pts = o3d.io.read_point_cloud("/Users/hwang/Desktop/aaa.ply")
+    # In [4]: points = np.array(pts.points)
+    # In [8]: xmin, ymin, z_min = points.min(axis=0)
+    # In [9]: xmax, ymax, z_max = points.max(axis=0)
+    # In [10]: xmean, ymean, z_mean = points.mean(axis=0)
+    # In [11]: xlen = xmax- xmin
+    # In [12]: ylen = ymax-ymin
+    #
+    # In [13]: xlen
+    # Out[13]: 0.0045318603515625
+    # In [26]: bf = xlen/30
+    # In [27]: x0 = xmean - bf
+    # In [28]: y0 = ymean -bf
+    # In [29]: x1 = xmean + bf
+    # In [30]: y1 = ymean + bf
+    # In [31]: roi = np.array([[x0, y0, z0],[x0, y1, z0],[x1,y1,z0],[x1,y0,z0],[x0,y0,
+    #     ...: z0]])
+    # In [32]: roi
+    # Out[32]: 
+    # array([[-120.87534231,   39.50387817, 1441.56202452],
+    #        [-120.87534231,   39.50418029, 1441.56202452],
+    #        [-120.87504018,   39.50418029, 1441.56202452],
+    #        [-120.87504018,   39.50387817, 1441.56202452],
+    #        [-120.87534231,   39.50387817, 1441.56202452]])
+
+    roi = np.array(
+        [[-120.87534231,   39.50387817, 1441.56202452],
+         [-120.87534231,   39.50418029, 1441.56202452],
+         [-120.87504018,   39.50418029, 1441.56202452],
+         [-120.87504018,   39.50387817, 1441.56202452],
+         [-120.87534231,   39.50387817, 1441.56202452]])
+
+    out = ms.back2raw_crs(roi)
+
+    assert len(out) == 40
+    assert "100MEDIA-DJI_0099" in out.keys()
+    
+
 def test_class_init_metashape_warns_errors():
     # warning init with chunk_id without project_path
     with pytest.warns(UserWarning, match=re.escape("Unable to open chunk_id [0] for empty project with project_path=None")):

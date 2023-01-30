@@ -510,6 +510,9 @@ class Metashape(idp.reconstruct.Recons):
         
         local_coord = self._world2local(self._crs2world(points_xyz))
 
+        if log:
+            print(f'[Calculator][Judge]camera_name photo.width photo.height -> x.min \t x.max \t y.min \t y.max')
+
         # for each raw image in the project / flight
         out_dict = {}
         for photo_name, photo in self.photos.items():
@@ -1160,10 +1163,32 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
     chunk_dict["sensors"] = sensors
 
     photos = idp.Container()
-    for camera_tag in xml_tree.findall("./cameras/camera"):
-        camera = _decode_camera_tag(camera_tag)
-        camera.sensor = sensors[camera.sensor_id]
-        photos[camera.id] = camera
+    # when no camera groups, the tag is 
+    # <cameras ... >
+    #   <camera ... >
+    #
+    # But if has camera groupds, the tag is 
+    # <cameras next_id="218" next_group_id="3">
+    #   <group id="0" label="100MEDIA" type="folder">
+    #     <camera id="0" sensor_id="0" component_id="0" label="DJI_0003">
+    group_tags = xml_tree.findall("./cameras/group")
+    if len(group_tags) == 0:
+        for camera_tag in xml_tree.findall("./cameras/camera"):
+            camera = _decode_camera_tag(camera_tag)
+            camera.sensor = sensors[camera.sensor_id]
+            photos[camera.id] = camera
+    else:
+        for group_tag in group_tags:
+            group_label = group_tag.attrib['label']
+            camera_tags = group_tag.findall("./camera")
+
+            for camera_tag in camera_tags:
+                camera = _decode_camera_tag(camera_tag)
+                camera.sensor = sensors[camera.sensor_id]
+                # rename camera label to group-label to avoid duplicates
+                camera.label = f"{group_label}-{camera.label}" 
+                photos[camera.id] = camera
+
     chunk_dict["photos"] = photos
 
     for frame_tag in xml_tree.findall("./frames/frame"):

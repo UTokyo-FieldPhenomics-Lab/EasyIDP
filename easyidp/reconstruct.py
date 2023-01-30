@@ -222,10 +222,10 @@ class Sensor:
 
         if ignore is None:
             if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
-                if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
+                if log: print(f'X  w[{x_min} ~ {x_max}], h[{y_min} ~ {y_max}]')
                 return None
             else:
-                if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
+                if log: print(f'O  w[{x_min} ~ {x_max}], h[{y_min} ~ {y_max}]')
                 return polygon_hv
         elif ignore=='x':
             warnings.warn(
@@ -698,7 +698,7 @@ def save_back2raw_json_and_png(recons, results_dict, save_folder):
     ----------
     results_dict : dict
         the outputs of :func:`back2raw() <easyidp.roi.back2raw()>` function results
-    save_path : str
+    save_folder : str
         the folder to save output files
 
     Example
@@ -760,8 +760,8 @@ def save_back2raw_json_and_png(recons, results_dict, save_folder):
 
         for roi_name, img_pos in tqdm(img_rois.items(), leave=False):
 
-            png_save_path = os.path.join(save_folder, roi_name, f"{roi_name}_{img_name}.png")
+            cropped_png, off = idp.cvtools.imarray_crop(img_array, img_pos)
 
-            cropped_png, _ = idp.cvtools.imarray_crop(img_array, img_pos)
+            png_save_path = os.path.join(save_folder, roi_name, f"{roi_name}_{img_name}_at_top_{off[0]}_left_{off[1]}.png")
 
             imsave(png_save_path, cropped_png)

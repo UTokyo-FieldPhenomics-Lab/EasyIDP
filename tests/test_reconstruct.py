@@ -278,7 +278,7 @@ def test_func_save_back2raw_json_and_png():
 
     roi_folder_list = os.listdir(str(out_path / "N1W1"))
     assert len(roi_folder_list) == len(out_all['N1W1'])
-    assert "N1W1_DJI_0479.png" in roi_folder_list
+    assert "N1W1_DJI_0479_at_top_52_left_979.png" in roi_folder_list
 
 # test on the other easy-to-use functions
 def test_func_save_back2raw_json_and_png_other_func():

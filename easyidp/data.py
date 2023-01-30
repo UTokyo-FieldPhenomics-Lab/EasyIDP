@@ -496,6 +496,9 @@ class TestData(EasyidpDataSet):
             self.multichunk_psx   = data_dir / "metashape" / "multichunk.psx"
             self.multichunk_param = data_dir / "metashape" / "multichunk.files"
 
+            self.multifolder_psx   = data_dir / "metashape" / "multifolder.psx"
+            self.multifolder_param = data_dir / "metashape" / "multifolder.files"
+
 
     class Pix4Dataset():
 

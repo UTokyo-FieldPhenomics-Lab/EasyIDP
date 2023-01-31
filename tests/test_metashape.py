@@ -143,7 +143,13 @@ def test_class_init_metashape_multi_folder():
 
     assert len(out) == 40
     assert "100MEDIA-DJI_0099" in out.keys()
-    
+
+    # test_class_init_metashape_nested_folder
+    ms = idp.Metashape(project_path=test_data.metashape.nestedfolder_psx, chunk_id=0)
+
+    assert ms.photos[0].label == "[0]100MEDIA-DJI_0001"
+    assert len(ms.photos) == 218
+
 
 def test_class_init_metashape_warns_errors():
     # warning init with chunk_id without project_path

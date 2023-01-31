@@ -1178,8 +1178,19 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
             camera.sensor = sensors[camera.sensor_id]
             photos[camera.id] = camera
     else:
+        # judge if has group with the same name
+        group_label_pool = [g.attrib['label'] for g in group_tags]
+        group_label_pool_unique = set(group_label_pool)
+        if len(group_label_pool_unique) != len(group_label_pool):
+            has_duplicate_name = True
+        else:
+            has_duplicate_name = False
+
         for group_tag in group_tags:
-            group_label = group_tag.attrib['label']
+            if has_duplicate_name:
+                group_label = f"[{group_tag.attrib['id']}]{group_tag.attrib['label']}"
+            else:
+                group_label = group_tag.attrib['label'] 
             camera_tags = group_tag.findall("./camera")
 
             for camera_tag in camera_tags:

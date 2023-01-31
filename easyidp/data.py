@@ -499,6 +499,9 @@ class TestData(EasyidpDataSet):
             self.multifolder_psx   = data_dir / "metashape" / "multifolder.psx"
             self.multifolder_param = data_dir / "metashape" / "multifolder.files"
 
+            self.nestedfolder_psx   = data_dir / "metashape" / "nestedfolders.psx"
+            self.nestedfolder_param = data_dir / "metashape" / "nestedfolders.files"
+
 
     class Pix4Dataset():
 

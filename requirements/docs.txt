@@ -7,4 +7,4 @@ nbsphinx==0.8.11
 sphinx-gallery==0.10.1
 # fix readthedocs no code decoration for ipynb
 # No Pygments lexer found for "ipython3"
-ipython==8.3.0
+ipython==8.10.0

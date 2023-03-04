@@ -13,8 +13,6 @@
   <img alt="GitHub Downloads" src="https://img.shields.io/pypi/dm/easyidp?color=%233775A9&label=pypi%20downloads&style=plastic">
 </p>
 
-
-
 </div>
 
 EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions: 
@@ -25,10 +23,13 @@ EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region
 
 This project tried to use packges based on pure-python, instead of installing some heavy packages (Open3D, OpenCV) and hard to install packages (GDAL dependices) for one or two individual functions. This may cause efficiency loss and differences in coding habit.
 
+<p align="center">
+  <img alt="GitHub Downloads" height="400px" src="https://api.star-history.com/svg?repos=UTokyo-FieldPhenomics-Lab/EasyIDP&type=Date">
+</p>
+
 ## <div align="center">Documentation</div>
 
 Please check [Official Documents](https://easyidp.readthedocs.io/en/latest/) ( [中文](https://easyidp.readthedocs.io/zh_CN/latest/) | [日本語(翻訳募集)](https://easyidp.readthedocs.io/ja/latest/) ) for full documentations. And please also use the [Github Discussion](https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions) when you meet any problems.
-
 
 ## <div align="center">References</div>
 

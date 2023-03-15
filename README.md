@@ -15,6 +15,9 @@
 
 </div>
 
+> **Note**
+> The author is busying for graduation thesis currently, this project is out of developing before Oct 2023 (Severe bug fixing may still available).
+
 EasyIDP (Easy Intermediate Data Processor), A handy tool for dealing with region of interest (ROI) on the image reconstruction (Metashape & Pix4D) outputs, mainly in agriculture applications. It provides the following functions: 
 
 1. Backward Projection ROI to original images (`Backward Projector`).

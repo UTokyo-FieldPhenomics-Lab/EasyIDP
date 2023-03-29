@@ -1456,7 +1456,7 @@ def read_pmat(pmat_path):
         }
 
     """
-    pmat_nb = np.loadtxt(pmat_path, dtype=np.float, delimiter=None, usecols=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,))
+    pmat_nb = np.loadtxt(pmat_path, dtype=float, delimiter=None, usecols=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,))
     pmat_names = np.loadtxt(pmat_path, dtype=str, delimiter=None, usecols=0)
 
     pmat_dict = {}
@@ -1692,24 +1692,24 @@ def read_ccp(ccp_path):
                 img_configs['w'] = int(w)
                 img_configs['h'] = int(h)
             elif block_id == 2:
-                cam_mat_line1 = np.fromstring(line, dtype=np.float, sep=' ')
+                cam_mat_line1 = np.fromstring(line, dtype=float, sep=' ')
             elif block_id == 3:
-                cam_mat_line2 = np.fromstring(line, dtype=np.float, sep=' ')
+                cam_mat_line2 = np.fromstring(line, dtype=float, sep=' ')
             elif block_id == 4:
-                cam_mat_line3 = np.fromstring(line, dtype=np.float, sep=' ')
+                cam_mat_line3 = np.fromstring(line, dtype=float, sep=' ')
                 img_configs[file_name]['cam_matrix'] = np.vstack([cam_mat_line1, cam_mat_line2, cam_mat_line3])
             elif block_id == 5:
-                img_configs[file_name]['rad_distort'] = np.fromstring(line, dtype=np.float, sep=' ')
+                img_configs[file_name]['rad_distort'] = np.fromstring(line, dtype=float, sep=' ')
             elif block_id == 6:
-                img_configs[file_name]['tan_distort'] = np.fromstring(line, dtype=np.float, sep=' ')
+                img_configs[file_name]['tan_distort'] = np.fromstring(line, dtype=float, sep=' ')
             elif block_id == 7:
-                img_configs[file_name]['cam_pos'] = np.fromstring(line, dtype=np.float, sep=' ')
+                img_configs[file_name]['cam_pos'] = np.fromstring(line, dtype=float, sep=' ')
             elif block_id == 8:
-                cam_rot_line1 = np.fromstring(line, dtype=np.float, sep=' ')
+                cam_rot_line1 = np.fromstring(line, dtype=float, sep=' ')
             elif block_id == 9:
-                cam_rot_line2 = np.fromstring(line, dtype=np.float, sep=' ')
+                cam_rot_line2 = np.fromstring(line, dtype=float, sep=' ')
             elif block_id == 0:
-                cam_rot_line3 = np.fromstring(line, dtype=np.float, sep=' ')
+                cam_rot_line3 = np.fromstring(line, dtype=float, sep=' ')
                 cam_rot = np.vstack([cam_rot_line1, cam_rot_line2, cam_rot_line3])
                 img_configs[file_name]['cam_rot'] = cam_rot
 
@@ -1787,7 +1787,7 @@ def read_campos_geo(campos_path):
         for line in f.readlines():
             sp_list = line.split(',')
             if len(sp_list) == 4: 
-                cam_dict[sp_list[0]] = np.array(sp_list[1:], dtype=np.float)
+                cam_dict[sp_list[0]] = np.array(sp_list[1:], dtype=float)
 
     return cam_dict
 

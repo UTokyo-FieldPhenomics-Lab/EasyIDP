@@ -1317,10 +1317,10 @@ def _decode_chunk_transform_tag(xml_obj):
     """
     transform = idp.reconstruct.ChunkTransform()
     chunk_rotation_str = xml_obj.findall("./rotation")[0].text
-    transform.rotation = np.fromstring(chunk_rotation_str, sep=" ", dtype=np.float).reshape((3, 3))
+    transform.rotation = np.fromstring(chunk_rotation_str, sep=" ", dtype=float).reshape((3, 3))
 
     chunk_translation_str = xml_obj.findall("./translation")[0].text
-    transform.translation = np.fromstring(chunk_translation_str, sep=" ", dtype=np.float)
+    transform.translation = np.fromstring(chunk_translation_str, sep=" ", dtype=float)
 
     transform.scale = float(xml_obj.findall("./scale")[0].text)
 
@@ -1648,7 +1648,7 @@ def _decode_camera_tag(xml_obj):
     transform_tag = xml_obj.findall("./transform")
     if len(transform_tag) == 1:
         transform_str = transform_tag[0].text
-        camera.transform = np.fromstring(transform_str, sep=" ", dtype=np.float).reshape((4, 4))
+        camera.transform = np.fromstring(transform_str, sep=" ", dtype=float).reshape((4, 4))
     else:
         # have no transform, can not do the reverse caluclation
         camera.enabled = False
@@ -1656,12 +1656,12 @@ def _decode_camera_tag(xml_obj):
     shutter_rotation_tag = xml_obj.findall("./rolling_shutter/rotation")
     if len(shutter_rotation_tag) == 1:
         shutter_rotation_str = shutter_rotation_tag[0].text
-        camera.rotation = np.fromstring(shutter_rotation_str, sep=" ", dtype=np.float).reshape((3, 3))
+        camera.rotation = np.fromstring(shutter_rotation_str, sep=" ", dtype=float).reshape((3, 3))
 
     shutter_translation_tag = xml_obj.findall("./rolling_shutter/translation")
     if len(shutter_translation_tag) == 1:
         shutter_translation_str = shutter_translation_tag[0].text
-        camera.translation = np.fromstring(shutter_translation_str, sep=" ", dtype=np.float)
+        camera.translation = np.fromstring(shutter_translation_str, sep=" ", dtype=float)
 
     return camera
 

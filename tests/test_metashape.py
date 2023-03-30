@@ -17,10 +17,10 @@ def test_apply_transform_matrix():
         [-0.86573098, -0.01489186,  0.08977677,  7.65034123],
         [ 0.06972335,  0.44334391,  0.74589315,  1.85910928],
         [-0.05848325,  0.74899678, -0.43972184, -0.1835615],
-        [ 0.,          0.,          0.,          1.]], dtype=np.float)
+        [ 0.,          0.,          0.,          1.]], dtype=float)
     matrix2 = np.linalg.inv(matrix)
 
-    point1 = np.array([0.5, 1, 1.5], dtype=np.float)
+    point1 = np.array([0.5, 1, 1.5], dtype=float)
     out1 = idp.metashape.apply_transform_matrix(point1, matrix2)
 
     ans1 = np.array([7.96006409,  1.30195288, -2.66971818])
@@ -28,7 +28,7 @@ def test_apply_transform_matrix():
 
     np_array = np.array([
         [0.5, 1, 1.5],
-        [0.5, 1, 1.5]], dtype=np.float)
+        [0.5, 1, 1.5]], dtype=float)
     out2 = idp.metashape.apply_transform_matrix(np_array, matrix2)
     ans2 = np.array([
         [7.96006409, 1.30195288, -2.66971818],
@@ -279,7 +279,7 @@ def test_local2world2local():
         [-0.86573098, -0.01489186,  0.08977677,  7.65034123],
         [ 0.06972335,  0.44334391,  0.74589315,  1.85910928],
         [-0.05848325,  0.74899678, -0.43972184, -0.1835615],
-        [ 0.,          0.,          0.,           1.]], dtype=np.float)
+        [ 0.,          0.,          0.,           1.]], dtype=float)
     w_pos = np.array([0.5, 1, 1.5])
     l_pos = np.array(
         [7.960064093299587, 1.3019528769064523, -2.6697181763370965]

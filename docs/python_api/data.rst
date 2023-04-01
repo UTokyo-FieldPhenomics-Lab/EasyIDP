@@ -13,6 +13,7 @@ The datasets are as follows (**for user**):
     :toctree: autodoc
 
     Lotus
+    ForestBirds
 
 Use example:
 

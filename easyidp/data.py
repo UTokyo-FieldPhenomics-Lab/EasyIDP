@@ -329,6 +329,65 @@ class Lotus(EasyidpDataSet):
         self.metashape.dsm = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif"
         self.metashape.pcd = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz"
 
+class ForestBirds(EasyidpDataSet):
+    """The dataset for forest ecology survey, provided by the University of Florida.
+
+    .. image:: ../../_static/images/data/2022_florida_forestbirds.png 
+        :width: 600
+        :alt: 2022_florida_forestbird.png 
+
+    - **Author**: Prof. Ben Weinstein, The University of Florida.
+    - **Location** : Florida, US
+    - **Flight date** : March 24, 2022
+    - **UAV model** : DJI FC6540
+    - **Flight height** : ?? m
+    - **Image number** :93
+    - **Image size** : 6016 x 4008
+    - **Software** : Metashape
+    - **Outputs** : DOM, DSM, PCD
+    """
+    url_list = [
+        "https://drive.google.com/file/d/1mXkzaoSSCAA87cxcMHKL6_VNlykRYxJr/view?usp=sharing",
+        "https://fieldphenomics.cowtransfer.com/s/7709bf78fd6145"
+    ]
+    name = "2022_florida_forestbirds"
+    size = "5.4GB"
+
+    def __init__(self):
+        """
+        Containts the following arguments, you can access by:
+
+        .. code-block:: python
+
+            >>> fb = idp.data.ForestBirds()
+            >>> fb.photo
+            'C:\\Users\\<user>\\AppData\\Local\\easyidp.data\\2022_florida_forestbirds\\Hidden_Little_03_24_2022'
+
+        - ``.photo`` : the folder containts raw images
+        - ``.shp`` : the plot roi shapefile
+        - ``.metashape.project`` : the metashape project file
+        - ``.metashape.param`` : the metashape project folder
+        - ``.metashape.dom`` : the metashape produced orthomosaic
+        - ``.metashape.dsm`` : the metashape produced digial surface model
+
+        See also
+        --------
+        EasyidpDataSet
+        """
+        self.data_dir = user_data_dir(self.name)
+        self.zip_file = user_data_dir(self.name + ".zip")
+
+        self.metashape = self.ReconsProj()
+
+        super().load_data()
+
+        self.photo = self.data_dir / "Hidden_Little_03_24_2022"
+        self.shp = self.data_dir / "Hidden_Little_grid.shp"
+
+        self.metashape.project = self.data_dir / "Hidden_Little_03_24_2022.psx"
+        self.metashape.param = self.data_dir / "Hidden_Little_03_24_2022.files"
+        self.metashape.dom = self.data_dir / "Hidden_Little_03_24_2022.tiff"
+        self.metashape.dsm = self.data_dir / "Hidden_Little_03_24_2022_DEM.tif"
         
 class GDownTest(EasyidpDataSet):
 

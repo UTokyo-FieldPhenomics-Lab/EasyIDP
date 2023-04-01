@@ -257,6 +257,12 @@ class Sensor:
                 polygon_hv[polygon_hv[:, 1] > h, 1] = h
                 if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
+        elif ignore=='as_point':
+            # Convert polygon to points, then just keep the points inside images.
+            # This mode is designed for broccoli position points backward projection or UAVBroccoli project
+            points_left = polygon_hv[(polygon_hv[:,0] > 0) & (polygon_hv[:,0] < w) & 
+                                     (polygon_hv[:,1] > 0) & (polygon_hv[:,1] < h), :]
+            return points_left
         else:
             raise ValueError(f"`ignore` should be None, 'x', or 'y', not {ignore}")
 

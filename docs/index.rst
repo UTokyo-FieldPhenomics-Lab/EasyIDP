@@ -80,6 +80,7 @@ Examples
    jupyter/crop_outputs
    jupyter/backward_projection
    jupyter/get_z_from_dsm
+   jupyter/forward_projection
 
 .. toctree::
    :hidden:

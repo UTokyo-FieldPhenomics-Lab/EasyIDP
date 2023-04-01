@@ -722,7 +722,7 @@ class GeoTiff(object):
         
         Notes
         -----
-        Option details for ``kernal`` parameter:
+        Option details for ``kernel`` parameter:
 
         - "mean": the mean value inside polygon
         - "min": the minimum value inside polygon

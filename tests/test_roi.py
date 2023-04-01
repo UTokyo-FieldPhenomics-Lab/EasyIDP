@@ -205,7 +205,7 @@ def test_class_roi_get_z_from_dsm_errors():
         roi.get_z_from_dsm(lotus_full_dsm, mode="abcde")
 
     with pytest.raises(KeyError, match=re.escape(
-        "The param 'kernal' only accept 'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10' not 'abcde'"
+        "The param 'kernel' only accept 'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10' not 'abcde'"
         )):
         roi.get_z_from_dsm(lotus_full_dsm, kernel="abcde")
 

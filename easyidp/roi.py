@@ -401,7 +401,7 @@ class ROI(idp.Container):
         if kernel not in [
             "mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"
         ]:
-            raise KeyError(f"The param 'kernal' only accept "
+            raise KeyError(f"The param 'kernel' only accept "
                 f"'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10'"
                 f" not '{kernel}'"
             )
@@ -447,8 +447,8 @@ class ROI(idp.Container):
             - ``point``: get height on each vertex, result in different values for each vertex
             - ``face``: get height on polygon face, result in the same value for each vertex
 
-        kernal : str, optional
-            The math kernal to calculate the z value, by default 'mean'
+        kernel : str, optional
+            The math kernel to calculate the z value, by default 'mean'
 
             - ``mean``: the mean value inside polygon
             - ``min``: the minimum value inside polygon

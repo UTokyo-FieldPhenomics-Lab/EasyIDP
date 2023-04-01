@@ -1147,21 +1147,66 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
     if len(transform_tags) == 1:
         chunk_dict["transform"] = _decode_chunk_transform_tag(transform_tags[0])
 
+    # change sensor xml to idp object
+    debug_meta = {
+        "project_folder": project_folder, 
+        "project_name"  : project_name,
+        "chunk_id": chunk_id,
+        "chunk_path": frame_zip_file
+    }
+    sensors = _sensorxml2object(
+        xml_tree.findall("./sensors/sensor"), 
+        debug_meta)
+    chunk_dict["sensors"] = sensors
+
+    # change photo xml to idp object
+    photos = _photoxml2object(
+        xml_tree, sensors
+    )
+    chunk_dict["photos"] = photos
+
+    for frame_tag in xml_tree.findall("./frames/frame"):
+        # frame_zip_idx = frame_tag.attrib["id"]
+        frame_zip_path = frame_tag.attrib["path"]
+
+        frame_zip_file = f"{project_folder}/{project_name}.files/{chunk_id}/{frame_zip_path}"
+        frame_xml_str = _get_xml_str_from_zip_file(frame_zip_file, "doc.xml")
+
+        camera_meta, marker_meta = _decode_frame_xml(frame_xml_str)
+        for camera_idx, camera_path in camera_meta.items():
+            chunk_dict["photos"][camera_idx]._path = camera_path
+            # here need to resolve absolute path
+            # <photo path="../../../../source/220613_G_M600pro/DSC06035.JPG">
+            # this is the root to 220613_G_M600pro.files\0\0\frame.zip"
+            if "../../../" in camera_path:
+                chunk_dict["photos"][camera_idx].path = idp.parse_relative_path(
+                    frame_zip_file, camera_path
+                )
+            else:
+                chunk_dict["photos"][camera_idx].path = camera_path
+
+    chunk_dict["crs"] = _decode_chunk_reference_tag(xml_tree.findall("./reference"))
+
+    return chunk_dict
+
+def _sensorxml2object(xml_tree_search, debug_meta):
     sensors = idp.Container()
-    for sensor_tag in xml_tree.findall("./sensors/sensor"):
-        debug_meta = {
-            "project_folder": project_folder, 
-            "project_name"  : project_name,
-            "chunk_id": chunk_id,
-            "chunk_path": frame_zip_file
-        }
+    for sensor_tag in xml_tree_search:
+
 
         sensor = _decode_sensor_tag(sensor_tag, debug_meta)
         if sensor.calibration is not None:
             sensor.calibration.software = "metashape"
-        sensors[sensor.id] = sensor
-    chunk_dict["sensors"] = sensors
 
+        # add unique key for duplicate labels
+        if sensor.label in sensors.item_label.keys():
+            sensor.label = f"{sensor.label} [{sensor.id}]"
+
+        sensors[sensor.id] = sensor
+
+    return sensors
+
+def _photoxml2object(xml_tree, sensors):
     photos = idp.Container()
     # when no camera groups, the tag is 
     # <cameras ... >
@@ -1200,32 +1245,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
                 camera.label = f"{group_label}-{camera.label}" 
                 photos[camera.id] = camera
 
-    chunk_dict["photos"] = photos
-
-    for frame_tag in xml_tree.findall("./frames/frame"):
-        # frame_zip_idx = frame_tag.attrib["id"]
-        frame_zip_path = frame_tag.attrib["path"]
-
-        frame_zip_file = f"{project_folder}/{project_name}.files/{chunk_id}/{frame_zip_path}"
-        frame_xml_str = _get_xml_str_from_zip_file(frame_zip_file, "doc.xml")
-
-        camera_meta, marker_meta = _decode_frame_xml(frame_xml_str)
-        for camera_idx, camera_path in camera_meta.items():
-            chunk_dict["photos"][camera_idx]._path = camera_path
-            # here need to resolve absolute path
-            # <photo path="../../../../source/220613_G_M600pro/DSC06035.JPG">
-            # this is the root to 220613_G_M600pro.files\0\0\frame.zip"
-            if "../../../" in camera_path:
-                chunk_dict["photos"][camera_idx].path = idp.parse_relative_path(
-                    frame_zip_file, camera_path
-                )
-            else:
-                chunk_dict["photos"][camera_idx].path = camera_path
-
-    chunk_dict["crs"] = _decode_chunk_reference_tag(xml_tree.findall("./reference"))
-
-    return chunk_dict
-
+    return photos
 
 def _split_project_path(path: str):
     """Get project name, current folder, extension, etc. from given project path.

@@ -101,7 +101,9 @@ def test_class_init_metashape_multi_folder():
     ms = idp.Metashape(project_path=test_data.metashape.multifolder_psx, chunk_id=0)
 
     assert ms.photos[0].label == "100MEDIA-DJI_0003"
-    assert "100MEDIA/DJI_0003" in ms.photos[0].path
+    # mac\linux path
+    assert "100MEDIA/DJI_0003" in ms.photos[0].path or \
+        "100MEDIA\\DJI_0003"  # windows path
 
     # test run reverse calcuation
     # 1/30 size of square in the center of the full plot
@@ -528,7 +530,10 @@ def test_debug_calibration_tag_error():
     """
 
     xml_tree = ET.ElementTree(ET.fromstring(wrong_sensor))
-    for i, sensor_tag in enumerate(xml_tree.findall("./sensors/sensor")):
+    sensors_search = xml_tree.findall("sensor")
+    assert len(sensors_search) == 2
+
+    for i, sensor_tag in enumerate(sensors_search):
 
         if i == 0:
             with pytest.warns(UserWarning, match=re.escape("The sensor tag in [chunk_id/chunk.zip] has 0 <calibration> tags")):
@@ -539,3 +544,112 @@ def test_debug_calibration_tag_error():
             sensor = idp.metashape._decode_sensor_tag(sensor_tag)
 
             assert sensor.calibration.f == 3239.2350850187408
+
+def test_parse_sensors_with_same_name():
+    dup_sensor_xml = '''
+    <sensors next_id="2">
+      <sensor id="0" label="FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)" type="frame">
+        <resolution width="6016" height="4008"/>
+        <property name="pixel_width" value="0.0040285449299403706"/>
+        <property name="pixel_height" value="0.0040285449299403706"/>
+        <property name="focal_length" value="35"/>
+        <property name="layer_index" value="0"/>
+        <bands>
+          <band label="Red"/>
+          <band label="Green"/>
+          <band label="Blue"/>
+        </bands>
+        <data_type>uint8</data_type>
+        <calibration type="frame" class="adjusted">
+          <resolution width="6016" height="4008"/>
+          <f>9342.1085191198836</f>
+          <cx>-189.83553452556305</cx>
+          <cy>-248.40233539070047</cy>
+          <k1>0.0052975616132609543</k1>
+          <k2>0.027912759943829309</k2>
+          <k3>-0.12864398897487536</k3>
+          <p1>-0.0024626716234921551</p1>
+          <p2>-0.0024610186099128023</p2>
+        </calibration>
+        <covariance>
+          <params>f cx cy k1 k2 k3 p1 p2</params>
+          <coeffs>1.1740045342439880e+03 -3.4394700471517147e+01 -3.3180326357285384e+02 1.6849981987575206e-02 1.5741313147122529e-02 -8.5010002649401867e-02 5.8937284128415400e-04 -1.2820457371104787e-03 -3.4394700471517147e+01 5.6928870156399785e+02 1.0440571407055680e+02 -5.0203223275715834e-03 3.4033758363738821e-02 -1.5844202993434009e-01 7.1071918910600640e-03 2.9935751725901649e-03 -3.3180326357285384e+02 1.0440571407055680e+02 8.4323501491232173e+02 -3.0776560324552549e-03 1.6590670272864705e-02 -8.3429592861818072e-02 -1.4068952485630937e-03 1.2302961508974116e-02 1.6849981987575206e-02 -5.0203223275715834e-03 -3.0776560324552549e-03 2.0018503479389884e-06 -9.0504175352094234e-06 3.3351105317809357e-05 -1.1225180036431045e-07 -8.7892383954720855e-08 1.5741313147122529e-02 3.4033758363738821e-02 1.6590670272864705e-02 -9.0504175352094234e-06 1.3680837569344449e-04 -5.6344581604431023e-04 3.7526941935984332e-07 6.3368605124869975e-07 -8.5010002649401867e-02 -1.5844202993434009e-01 -8.3429592861818072e-02 3.3351105317809357e-05 -5.6344581604431023e-04 2.4232449739335538e-03 -1.7766537215773514e-06 -2.6766923915642131e-06 5.8937284128415400e-04 7.1071918910600640e-03 -1.4068952485630937e-03 -1.1225180036431045e-07 3.7526941935984332e-07 -1.7766537215773514e-06 1.9765062090723055e-07 -5.6279874436949450e-09 -1.2820457371104787e-03 2.9935751725901649e-03 1.2302961508974116e-02 -8.7892383954720855e-08 6.3368605124869975e-07 -2.6766923915642131e-06 -5.6279874436949450e-09 3.1830332460518177e-07</coeffs>
+        </covariance>
+        <meta>
+          <property name="Exif/BodySerialNumber" value="f6bcb102921b4f05c347eb48aa3c6c4e"/>
+          <property name="Exif/LensModel" value="DJI DL   35mm F2.8 LS ASPH"/>
+          <property name="Exif/Make" value="DJI"/>
+          <property name="Exif/Model" value="FC6540"/>
+          <property name="Exif/Software" value="v01.11.2229"/>
+        </meta>
+      </sensor>
+      <sensor id="1" label="FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)" type="frame">
+        <resolution width="6016" height="4008"/>
+        <property name="pixel_width" value="0.0040285449299403706"/>
+        <property name="pixel_height" value="0.0040285449299403706"/>
+        <property name="focal_length" value="35"/>
+        <property name="layer_index" value="0"/>
+        <bands>
+          <band label="Red"/>
+          <band label="Green"/>
+          <band label="Blue"/>
+        </bands>
+        <data_type>uint8</data_type>
+        <calibration type="frame" class="adjusted">
+          <resolution width="6016" height="4008"/>
+          <f>9387.1765809220942</f>
+          <cx>-189.15758198107463</cx>
+          <cy>-265.14255491838492</cy>
+          <k1>0.0076862161029297013</k1>
+          <k2>-0.043809529098681556</k2>
+          <k3>0.40166503757785404</k3>
+          <p1>-0.0023837114019031116</p1>
+          <p2>-0.0025772853340219823</p2>
+        </calibration>
+        <covariance>
+          <params>f cx cy k1 k2 k3 p1 p2</params>
+          <coeffs>1.2195330725028307e+03 -5.3735598672316883e+01 -3.7325165607216098e+02 1.1722819819355189e-02 1.0131250438547020e-01 -3.5632648588716120e-01 5.0113004722645562e-04 -2.0167635963142761e-03 -5.3735598672316883e+01 6.0260592898404343e+02 1.1057298434334751e+02 4.9153782827387818e-03 -1.2865261567558878e-01 6.6435130809814547e-01 8.2737700693599793e-03 2.9310257451372625e-03 -3.7325165607216098e+02 1.1057298434334751e+02 9.1959003457243728e+02 3.8389201797127022e-03 -1.5341597049181380e-01 9.1862221053245008e-01 -1.6363211896899016e-03 1.4543714011642174e-02 1.1722819819355189e-02 4.9153782827387818e-03 3.8389201797127022e-03 1.5738041771317424e-05 -2.1490224712750715e-04 9.3462158031549830e-04 7.3983108789068019e-09 2.0779815359742948e-08 1.0131250438547020e-01 -1.2865261567558878e-01 -1.5341597049181380e-01 -2.1490224712750715e-04 3.3906039833590069e-03 -1.5356957977758715e-02 -1.1686629422313892e-06 -2.2023046985842392e-06 -3.5632648588716120e-01 6.6435130809814547e-01 9.1862221053245008e-01 9.3462158031549830e-04 -1.5356957977758715e-02 7.2049482094581438e-02 5.5623589830091482e-06 1.3736512174935269e-05 5.0113004722645562e-04 8.2737700693599793e-03 -1.6363211896899016e-03 7.3983108789068019e-09 -1.1686629422313892e-06 5.5623589830091482e-06 2.3698285337728938e-07 -1.1939453965135837e-08 -2.0167635963142761e-03 2.9310257451372625e-03 1.4543714011642174e-02 2.0779815359742948e-08 -2.2023046985842392e-06 1.3736512174935269e-05 -1.1939453965135837e-08 3.9342177110061375e-07</coeffs>
+        </covariance>
+        <meta>
+          <property name="Exif/BodySerialNumber" value="20160411011b4f05c347eb48aa3c6c4e"/>
+          <property name="Exif/LensModel" value="DJI DL   35mm F2.8 LS ASPH"/>
+          <property name="Exif/Make" value="DJI"/>
+          <property name="Exif/Model" value="FC6540"/>
+          <property name="Exif/Software" value="v01.11.2229"/>
+        </meta>
+      </sensor>
+    </sensors>
+    '''
+    xml_tree = ET.ElementTree(ET.fromstring(dup_sensor_xml))
+    sensors = idp.Container()
+
+    # the old error version
+    debug_meta = {
+        "project_folder": "project_folder", 
+        "project_name"  : "project_name",
+        "chunk_id": 0,
+        "chunk_path": "frame_zip_file"
+    }
+    for i, sensor_tag in enumerate(xml_tree.findall("sensor")):
+
+
+        sensor = idp.metashape._decode_sensor_tag(sensor_tag, debug_meta)
+        if sensor.calibration is not None:
+            sensor.calibration.software = "metashape"
+
+        # Raise errors for the old version
+        if i == 1:
+            with pytest.raises(KeyError, match=re.escape("The given item's label [FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)] already exists -> ")):
+                sensors[sensor.id] = sensor
+        else:
+            sensors[sensor.id] = sensor
+
+    # the fixed version
+    sensors = idp.metashape._sensorxml2object(
+        xml_tree.findall("sensor"), debug_meta
+    )
+
+    assert len(sensors) == 2
+
+    assert sensors[0].label == 'FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)'
+    assert sensors[1].label == 'FC6540, DJI DL   35mm F2.8 LS ASPH (35mm) [1]'

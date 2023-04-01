@@ -42,7 +42,11 @@ class Container(dict):
                 # add a new item
                 self.id_item[key] = item
                 if 'label' in dir(item): 
-                    self.item_label[item.label] = key
+                    # sometimes two items has the same label
+                    if item.label in self.item_label.keys():
+                        raise KeyError(f"The given item's label [{item.label}] already exists -> {self.item_label.keys()}")
+                    else:
+                        self.item_label[item.label] = key
                 else:
                     self.item_label[key] = key
             else:

@@ -72,6 +72,20 @@ def test_class_container_error():
     with pytest.raises(KeyError, match=re.escape("Can not find key [233]")):
         slice_test['233']
 
+    # spcify values with duplicate labels
+    sensor1 = idp.reconstruct.Sensor()
+    sensor2 = idp.reconstruct.Sensor()
+
+    sensor1.id = 0
+    sensor1.label = "FC1234"
+
+    sensor2.id = 1
+    sensor2.label = "FC1234"
+
+    with pytest.raises(KeyError, match=re.escape("The given item's label [FC1234] already exists -> ")):
+        duplicate_label_test = idp.Container()
+        duplicate_label_test[sensor1.id] = sensor1
+        duplicate_label_test[sensor2.id] = sensor2
     
 
 def test_class_container_btf_print():

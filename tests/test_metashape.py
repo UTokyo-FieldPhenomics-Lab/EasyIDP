@@ -275,6 +275,48 @@ def test_class_open_chunk_print():
     
     assert m4._show_chunk().replace(' ', '') == m4_show_label.replace(' ', '')
 
+def test_metashape_show_photo_folder(capfd):
+    ms = idp.Metashape(
+        test_data.metashape.lotus_psx, 
+        chunk_id=0, 
+    )
+
+    ms.show_photo_folder()
+
+    out, err = capfd.readouterr()
+
+    assert out == "'C:\\Users\\hwang\\AppData\\Local\\easyidp.data\\data_for_tests\\metashape\\20170531\\photos': [DJI_0422.JPG, DJI_0423.JPG, ..., DJI_0571.JPG, DJI_0572.JPG] (151 photos)\n\n"
+
+def test_metashape_change_raw_img_folder():
+    # test with string input
+    with pytest.raises(NotADirectoryError, match=re.escape("The given folder [Path/not/exists] not exists")):
+        ms = idp.Metashape(
+            test_data.metashape.lotus_psx, 
+            chunk_id=0, 
+            raw_img_folder="Path/not/exists",
+            check_img_existance=True
+        )
+
+    with pytest.raises(FileNotFoundError, match=re.escape("Could not find image file")):
+        ms = idp.Metashape(
+            test_data.metashape.lotus_psx, 
+            chunk_id=0, 
+            raw_img_folder=test_data.data_dir / "pix4d" / "lotus_tanashi_full" / "photos",
+            check_img_existance=True
+        )
+
+    changed_folder = test_data.data_dir / "pix4d" / "lotus_tanashi_full" / "photos"
+
+    ms = idp.Metashape(
+        test_data.metashape.lotus_psx, 
+        chunk_id=0, 
+        raw_img_folder=changed_folder,
+        check_img_existance=False
+    )
+
+    assert ms.photos[0].path == str(changed_folder / "DJI_0422.JPG")
+    
+
 def test_local2world2local():
     attempt1 = idp.Metashape()
     attempt1.transform.matrix = np.asarray([

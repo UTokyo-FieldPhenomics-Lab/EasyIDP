@@ -3,6 +3,7 @@ import pyproj
 import zipfile
 import numpy as np
 import warnings
+import pathlib
 from tabulate import tabulate
 from xml.etree import ElementTree
 import xml.dom.minidom as minidom
@@ -15,7 +16,7 @@ import easyidp as idp
 class Metashape(idp.reconstruct.Recons):
     """the object for each chunk in Metashape 3D reconstruction project"""
 
-    def __init__(self, project_path=None, chunk_id=None):
+    def __init__(self, project_path=None, chunk_id=None, raw_img_folder=None, check_img_existance=True):
         """The method to initialize the Metashape class
 
         Parameters
@@ -24,6 +25,8 @@ class Metashape(idp.reconstruct.Recons):
             The metashape project file to open, like "xxxx.psx",, by default None, means create an empty class
         chunk_id : int or str, optional
             The chunk id or name(label) want to open, by default None, open the first chunk.
+        raw_img_folder : str, optional
+            the original UAV image folder, by default None
 
         Example
         -------
@@ -83,6 +86,8 @@ class Metashape(idp.reconstruct.Recons):
         self.project_name = None
         #: the chunk that be picked as for easyidp (this class, only deal with one chunk in metashape project)
         self.chunk_id = chunk_id
+        #: the folder that contains the origial images
+        self.raw_img_folder = raw_img_folder
 
         # hidden attributes
         self._project_chunks_dict = None
@@ -105,6 +110,9 @@ class Metashape(idp.reconstruct.Recons):
         self.photos = self.photos
 
         self.open_project(project_path, chunk_id)
+
+        if raw_img_folder is not None:
+            self.change_photo_folder(raw_img_folder, check_img_existance=check_img_existance)
 
     def __repr__(self) -> str:
         return self._show_chunk()
@@ -343,6 +351,63 @@ class Metashape(idp.reconstruct.Recons):
         if not self.enabled:
             warnings.warn(f"Current chunk missing required {missing_pool} information "
                 "(is it an empty chunk without finishing SfM tasks?) and unable to do further analysis.")
+            
+    def show_photo_folder(self):
+        """A function to check the original photo path
+        """
+        print_cache = {}
+        for photo in self.photos:
+            root_path, photo_name = os.path.split(photo.path)
+            if root_path not in print_cache.keys():
+                print_cache[root_path] = []
+            print_cache[root_path].append(photo_name)
+
+        # then make the print string
+        print_str = ''
+        for key, value in print_cache.items():
+            print_str += f"'{key}': "
+            if len(value) <= 5:
+                print_str += f"{value} ({len(value)} photos)"
+            else:
+                print_str += f"[{value[0]}, {value[1]}, ..., {value[-2]}, {value[-1]}] ({len(value)} photos)\n"
+
+        print(print_str)
+            
+    def change_photo_folder(self, raw_img_folder, check_img_existance=True):
+        """Change the folder path of raw images
+
+        Parameters
+        ----------
+        raw_img_folder : str | dict
+            The new folder path contains raw image folder.
+
+            If type == `str` : 
+                replace the root string directly.
+            if type == `dict` : (not implemented)
+                e.g. {'path/to/flight1/': 'new/path/to/flight1', }
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        """
+        if isinstance(raw_img_folder, pathlib.WindowsPath):
+            raw_img_folder = str(raw_img_folder)
+        if isinstance(raw_img_folder, str):
+            if not os.path.exists(raw_img_folder) or not os.path.isdir(raw_img_folder):
+                raise NotADirectoryError(f"The given folder [{raw_img_folder}] not exists")
+            for photo in self.photos:
+                root_path, photo_name = os.path.split(photo.path)
+                new_img_path = os.path.join(raw_img_folder, photo_name)
+                if check_img_existance and not os.path.exists(new_img_path):
+                    raise FileNotFoundError(f"Could not find image file [{photo_name}] under given [{raw_img_folder}] folder")
+                else:
+                    photo.path = new_img_path
+        elif isinstance(raw_img_folder, dict):
+            raise NotImplementedError("Changing raw_img_folder by dictionary has not supported yet.")
+        else:
+            raise TypeError(f"Only <str> or <dict> type are acceptable, not <{type(raw_img_folder)}> for {raw_img_folder}")
 
     
     #######################
@@ -1011,7 +1076,7 @@ def read_project_zip(project_folder, project_name):
     return project_dict
 
 
-def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, return_label_only=False):
+def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, return_label_only=False, raw_img_folder=None):
     """parse xml in the given ``chunk.zip`` file.
 
     Parameters

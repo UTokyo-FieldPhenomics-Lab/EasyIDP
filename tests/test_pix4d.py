@@ -218,14 +218,12 @@ def test_class_back2raw_single():
     np.testing.assert_almost_equal(out_dict["DJI_0177"], px_0177)
 
 def test_class_back2raw():
-    lotus = idp.data.Lotus()
-
-    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-                    raw_img_folder=lotus.photo,
-                    param_folder=lotus.pix4d.param)
+    p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
+                    raw_img_folder=test_data.pix4d.lotus_photos,
+                    param_folder=test_data.pix4d.lotus_param)
 
     roi = roi_select.copy()
-    roi.get_z_from_dsm(lotus.pix4d.dsm)
+    roi.get_z_from_dsm(test_data.pix4d.lotus_dsm)
 
     out_all = p4d.back2raw(roi)
 
@@ -247,29 +245,34 @@ def test_class_back2raw_error():
 
 
 def test_class_get_photo_position():
-    lotus = idp.data.Lotus()
-
-    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-                    raw_img_folder=lotus.photo,
-                    param_folder=lotus.pix4d.param)
+    # old verion in Lotus() is 170531
+    # p4d_old = idp.Pix4D(project_path=lotus.pix4d.project, 
+    #                 raw_img_folder=lotus.photo,
+    #                 param_folder=lotus.pix4d.param)
+    
+    # the test_data = 170525
+    p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
+                raw_img_folder=test_data.pix4d.lotus_photos,
+                param_folder=test_data.pix4d.lotus_param)
 
     out = p4d.get_photo_position()
 
-    assert len(out) == 151
-    assert "DJI_0430" in out.keys()
-    np.testing.assert_almost_equal(out['DJI_0430'], np.array([ 368020.07181613, 3955477.75605109,     136.75217778]))
+    # assert len(out) == 151 (date: 170531)
+    assert len(out) == 266 #(date: 170525)
+    assert "DJI_0198" in out.keys()
+    np.testing.assert_almost_equal(out['DJI_0198'], np.array([ 368023.40811193, 3955507.59273012,     128.38110638]))
 
     # convert to another proj?
     out_lonlat = p4d.get_photo_position(to_crs=pyproj.CRS.from_epsg(4326), refresh=True)
-    assert len(out_lonlat) == 151
-    assert "DJI_0430" in out_lonlat.keys()
-    np.testing.assert_almost_equal(out_lonlat['DJI_0430'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
+    assert len(out_lonlat) == 266
+    assert "DJI_0198" in out_lonlat.keys()
+    np.testing.assert_almost_equal(out_lonlat['DJI_0198'], np.array([139.54059267,  35.73472126, 128.38110638]))
 
     # change crs and refresh
     p4d.crs = pyproj.CRS.from_epsg(4326)
     assert p4d._photo_position_cache is None
     out_utm = p4d.get_photo_position()
-    np.testing.assert_almost_equal(out_utm['DJI_0430'], np.array([139.5405607 ,  35.73445188, 136.75217778]))
+    np.testing.assert_almost_equal(out_utm['DJI_0198'], np.array([139.54059267,  35.73472126, 128.38110638]))
 
 
 def test_class_init():

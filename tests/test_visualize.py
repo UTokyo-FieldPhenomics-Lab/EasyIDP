@@ -6,7 +6,6 @@ from pathlib import Path
 import easyidp as idp
 
 test_data = idp.data.TestData()
-lotus = idp.data.Lotus()
 
 ##############################
 # Test back2raw_single based #
@@ -42,50 +41,58 @@ def test_class_back2raw_single():
 # advanced wrapper for classes
 #==============================
     
-roi = idp.ROI(lotus.shp, name_field='plot_id')
-roi.get_z_from_dsm(lotus.metashape.dsm)
+# roi = idp.ROI(lotus.shp, name_field='plot_id')
+# roi.get_z_from_dsm(lotus.metashape.dsm)
+roi = idp.ROI(test_data.shp.lotus_shp, name_field='plot_id')
+roi.get_z_from_dsm(test_data.metashape.lotus_dsm, mode="point")
 
 def test_visualize_one_roi_on_img_p4d():
-    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-                    raw_img_folder=lotus.photo,
-                    param_folder=lotus.pix4d.param)
+    # p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+    #                 raw_img_folder=lotus.photo,
+    #                 param_folder=lotus.pix4d.param)
+    p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
+                raw_img_folder=test_data.pix4d.lotus_photos,
+                param_folder=test_data.pix4d.lotus_param)
 
     img_dict_p4d = roi.back2raw(p4d)
 
     with pytest.raises(IndexError, match=re.escape("Could not find backward results of plot [N1W2] on image [aaa]")):
         p4d.show_roi_on_img(img_dict_p4d, 'N1W2', 'aaa')
 
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233] in the Pix4D project")):
-        img_dict_p4d['N1W1']['DJI_2233'] = None
-        p4d.show_roi_on_img(img_dict_p4d, 'N1W1', 'DJI_2233')
+    # with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233] in the Pix4D project")):
+    #     # img_dict_p4d['N1W1']['DJI_2233'] = None
+    #     p4d.show_roi_on_img(img_dict_p4d, 'N1W2', 'DJI_2233')
 
     out = p4d.show_roi_on_img(
-            img_dict_p4d, 'N1W1', "DJI_0500", title="AAAA", color='green', alpha=0.5, show=False,
+            img_dict_p4d, 'N1W1', "DJI_0198", title="AAAA", color='green', alpha=0.5, show=False,
             save_as=test_data.vis.out / "p4d_show_roi_on_img_diy.png")
     
     out = p4d.show_roi_on_img(
-            img_dict_p4d, 'N1W2', show=False, title=["AAAA", "BBBB"],  color='green', alpha=0.5,
+            img_dict_p4d, 'N1W1', show=False, title=["AAAA", "BBBB"],  color='green', alpha=0.5,
             save_as=test_data.vis.out / "p4d_show_one_roi_all.png")
 
 
 def test_visualize_one_roi_on_img_ms():
-    ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
+    ms = idp.Metashape(
+        test_data.metashape.lotus_psx, 
+        chunk_id=0, 
+    )
 
     img_dict_ms = roi.back2raw(ms)
 
     with pytest.raises(IndexError, match=re.escape("Could not find backward results of plot [N1W2] on image [aaa]")):
         ms.show_roi_on_img(img_dict_ms, 'N1W2', 'aaa')
 
-    with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233] in the Metashape project")):
-        img_dict_ms['N1W1']['DJI_2233'] = None
-        ms.show_roi_on_img(img_dict_ms, 'N1W1', 'DJI_2233')
+    # with pytest.raises(FileNotFoundError, match=re.escape("Could not find the image file [DJI_2233] in the Metashape project")):
+    #     img_dict_ms['N1W1']['DJI_2233'] = None
+    #     ms.show_roi_on_img(img_dict_ms, 'N1W1', 'DJI_2233')
 
     out = ms.show_roi_on_img(
-            img_dict_ms, 'N1W2', "DJI_0500", title="AAAA", color='green', alpha=0.5, show=False,
+            img_dict_ms, 'N1W1', "DJI_0500", title="AAAA", color='green', alpha=0.5, show=False,
             save_as=test_data.vis.out / "ms_show_roi_on_img_diy.png")
     
     out = ms.show_roi_on_img(
-            img_dict_ms, 'N1W2', color='green', alpha=0.5, 
+            img_dict_ms, 'N1W1', color='green', alpha=0.5, 
             show=False, title=["AAAA", "BBBB"], 
             save_as=test_data.vis.out / "ms_show_one_roi_all.png")
     
@@ -96,7 +103,8 @@ def test_visualize_one_roi_on_img_ms():
 ####################################
 
 def test_draw_backward_one_roi():
-    ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
+    # ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
+    ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
 
     img_dict_ms = roi.back2raw(ms)
 

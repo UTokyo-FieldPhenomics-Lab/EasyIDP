@@ -114,7 +114,7 @@ def test_class_roi_get_z_from_dsm():
     # only test whether works, not examine the value is true or not
     roi = roi_select.copy()
 
-    assert len(roi) == 3
+    assert len(roi) == 4
     # have different CRS from shp file
     lotus_full_dsm = test_data.pix4d.lotus_dsm
 
@@ -260,9 +260,8 @@ def test_func_insert_z_value_for_roi_error_point_mode():
     assert out.shape == (5,3)
 
     # then the following code should runnable
-    lotus = idp.data.Lotus()
-    roi = idp.ROI(lotus.shp, name_field = "plot_id")
-    roi.get_z_from_dsm(lotus.metashape.dsm, mode="point")
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field='plot_id')
+    roi.get_z_from_dsm(test_data.metashape.lotus_dsm, mode="point")
 
     assert roi[0].shape == (5,3)
 
@@ -296,14 +295,14 @@ def test_class_roi_crop():
 
     # crop geotiff
     out_dom = roi.crop(lotus_full_dom)
-    assert len(out_dom) == 3
+    assert len(out_dom) == 4
 
     out_dsm = roi.crop(lotus_full_dsm)
-    assert len(out_dsm) == 3
+    assert len(out_dsm) == 4
 
     # crop point cloud
     out_pcd = roi.crop(lotus_full_pcd)
-    assert len(out_pcd) == 3
+    assert len(out_pcd) == 4
 
 def test_class_roi_crop_error():
     roi = idp.ROI()
@@ -320,16 +319,14 @@ def test_class_roi_crop_error():
 
 def test_class_roi_back2raw():
     # single chunk:
-    lotus = idp.data.Lotus()
+    p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
+                    raw_img_folder=test_data.pix4d.lotus_photos,
+                    param_folder=test_data.pix4d.lotus_param)
 
-    p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-                    raw_img_folder=lotus.photo,
-                    param_folder=lotus.pix4d.param)
-
-    ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
+    ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
 
     roi = roi_select.copy()
-    roi.get_z_from_dsm(lotus.pix4d.dsm)
+    roi.get_z_from_dsm(test_data.pix4d.lotus_dsm)
 
     ms.crs = roi.crs
 

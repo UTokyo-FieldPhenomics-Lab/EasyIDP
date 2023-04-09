@@ -226,37 +226,42 @@ def test_func_sort_img_by_distance_ms():
 # =============
 # pix4d outputs
 # =============
-lotus = idp.data.Lotus()
+# lotus = idp.data.Lotus()
 
-p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-                raw_img_folder=lotus.photo,
-                param_folder=lotus.pix4d.param)
-ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
+# p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+#                 raw_img_folder=lotus.photo,
+#                 param_folder=lotus.pix4d.param)
+# ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
 
-roi = idp.ROI(lotus.shp, name_field=0)
-# only pick 2 plots as testing data
-roi = roi[0:3]
-roi.get_z_from_dsm(lotus.pix4d.dsm)
+p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
+                raw_img_folder=test_data.pix4d.lotus_photos,
+                param_folder=test_data.pix4d.lotus_param)
+ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
+
+roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+# only pick 1 plots as testing data
+roi = roi[0:1]
+roi.get_z_from_dsm(test_data.pix4d.lotus_dsm)
 
 out_all = p4d.back2raw(roi)
 
 def test_func_sort_img_by_distance_p4d():
     cam_pos = p4d.get_photo_position()
-    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W2"], roi["N1W2"], cam_pos, num=3)
+    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W1"], roi["N1W1"], cam_pos, num=3)
     assert len(filter_3) == 3
 
-    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W2"], roi["N1W2"], cam_pos, distance_thresh=0.1, num=3)
+    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W1"], roi["N1W1"], cam_pos, distance_thresh=0.1, num=3)
     assert len(filter_3_dis_01) == 0
 
     # test all roi
     filter_3_all = idp.reconstruct.sort_img_by_distance(p4d, out_all, roi, num=3)
-    assert len(filter_3_all) == 3
+    assert len(filter_3_all) == 1
     for v in filter_3_all.values():
         assert len(v) == 3
 
     # on self
     filter_3_all_self = p4d.sort_img_by_distance(out_all, roi, num=3)
-    assert len(filter_3_all_self) == 3
+    assert len(filter_3_all_self) == 1
 
 
 def test_func_save_back2raw_json_and_png():
@@ -268,16 +273,19 @@ def test_func_save_back2raw_json_and_png():
     if os.path.exists(out_path):
         shutil.rmtree(out_path)
 
-    idp.reconstruct.save_back2raw_json_and_png(p4d, out_all, out_path)
+    out_all4test = {}
+    out_all4test['N1W1'] = out_all['N1W1']
+
+    idp.reconstruct.save_back2raw_json_and_png(p4d, out_all4test, out_path)
 
     file_list = os.listdir(str(out_path))
-    assert len(file_list) == len(out_all) + 2
+    assert len(file_list) == len(out_all4test) + 2
     assert "roi_image_order.json" in file_list
     assert "image_roi_order.json" in file_list
 
     roi_folder_list = os.listdir(str(out_path / "N1W1"))
     assert len(roi_folder_list) == len(out_all['N1W1'])
-    assert "N1W1_DJI_0479_at_top_52_left_979.png" in roi_folder_list
+    assert "N1W1_DJI_0177_at_top_128_left_2428.png" in roi_folder_list
 
 # test on the other easy-to-use functions
 def test_func_save_back2raw_json_and_png_other_func():

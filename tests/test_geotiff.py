@@ -615,7 +615,7 @@ def test_class_crop_rois():
 
     out_dict = obj.crop_rois(roi, save_folder=tif_out_folder)
 
-    assert len(out_dict) == 3
+    assert len(out_dict) == 4
     assert (tif_out_folder / "N1W1.tif").exists()
     assert out_dict["N2E2"].shape == (320, 320, 4)
 

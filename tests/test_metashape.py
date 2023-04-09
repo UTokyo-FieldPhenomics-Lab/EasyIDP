@@ -448,8 +448,7 @@ def test_class_back2raw_error():
 
 
 def test_metashape_get_photo_position():
-    lotus = idp.data.Lotus()
-    ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
+    ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
 
     out = ms.get_photo_position()
 

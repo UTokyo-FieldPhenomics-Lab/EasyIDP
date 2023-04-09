@@ -512,7 +512,7 @@ def test_class_crop():
 
     out = p4d.pcd.crop_rois(roi, save_folder=tif_out_folder)
 
-    assert len(out) == 3
+    assert len(out) == 4
     assert len(out["N1W1"]) == 15226
 
     assert (tif_out_folder / "N1W1.ply").exists()

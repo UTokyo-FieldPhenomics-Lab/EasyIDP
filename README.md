@@ -6,6 +6,7 @@
 </p>
 
 <p align="center">
+  <img alt="GitHub Actions Badge" src="https://github.com/github/docs/actions/workflows/pytest.yml/badge.svg?style=plastic">
   <img alt="GitHub code size in bytes" src="https://img.shields.io/tokei/lines/github/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
   <img alt="GitHub" src="https://img.shields.io/github/license/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">

@@ -6,6 +6,7 @@ import shutil
 import easyidp as idp
 
 test_data = idp.data.TestData()
+from . import roi_select
 
 ##########################
 # test read point clouds #
@@ -494,14 +495,7 @@ def test_class_point_cloud_crop():
         assert cropped is None
 
 def test_class_crop():
-    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-
-    # only pick 3 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N2E2", "S1W1"]:
-            del roi[key]
-
+    roi = roi_select.copy()
     roi.get_z_from_dsm(test_data.pix4d.lotus_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
 
     p4d = idp.Pix4D(

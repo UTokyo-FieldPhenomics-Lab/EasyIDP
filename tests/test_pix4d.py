@@ -6,6 +6,7 @@ from pathlib import Path
 import easyidp as idp
 
 test_data = idp.data.TestData()
+from . import roi_select
 
 def test_hidden_match_suffix():
     test_folder = test_data.pix4d.maize_empty / "2_densification" / "point_cloud"
@@ -223,17 +224,12 @@ def test_class_back2raw():
                     raw_img_folder=lotus.photo,
                     param_folder=lotus.pix4d.param)
 
-    roi = idp.ROI(lotus.shp, name_field=0)
-    # only pick 2 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N1W2"]:
-            del roi[key]
+    roi = roi_select.copy()
     roi.get_z_from_dsm(lotus.pix4d.dsm)
 
     out_all = p4d.back2raw(roi)
 
-    assert len(out_all) == 2
+    assert len(out_all) == 4
 
 def test_class_back2raw_error():
 

@@ -5,7 +5,8 @@ import pyproj
 
 import easyidp as idp
 
-test_data = idp.data.TestData(test_out="./tests/out")
+test_data = idp.data.TestData()
+from . import roi_select
 
 def test_read_cc_txt():
     results = np.array([
@@ -111,17 +112,11 @@ def test_class_roi_change_crs():
 
 def test_class_roi_get_z_from_dsm():
     # only test whether works, not examine the value is true or not
-    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+    roi = roi_select.copy()
+
+    assert len(roi) == 3
     # have different CRS from shp file
     lotus_full_dsm = test_data.pix4d.lotus_dsm
-
-    # only pick 3 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N2E2", "S1W1"]:
-            del roi[key]
-            
-    assert len(roi) == 3
 
     #######################
     # test mode == points #
@@ -296,14 +291,7 @@ def test_class_roi_crop():
     lotus_full_dom = test_data.pix4d.lotus_dom 
     lotus_full_shp = test_data.shp.lotus_shp 
 
-    roi = idp.ROI(lotus_full_shp, name_field=0)
-
-    # only pick 3 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N2E2", "S1W1"]:
-            del roi[key]
-
+    roi = roi_select.copy()
     roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
 
     # crop geotiff
@@ -340,12 +328,7 @@ def test_class_roi_back2raw():
 
     ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
 
-    roi = idp.ROI(lotus.shp, name_field=0)
-    # only pick 2 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N1W2"]:
-            del roi[key]
+    roi = roi_select.copy()
     roi.get_z_from_dsm(lotus.pix4d.dsm)
 
     ms.crs = roi.crs
@@ -353,8 +336,8 @@ def test_class_roi_back2raw():
     out_p4d = roi.back2raw(p4d)
     out_ms = roi.back2raw(ms)
 
-    assert len(out_p4d) == 2
-    assert len(out_ms) == 2
+    assert len(out_p4d) == 4
+    assert len(out_ms) == 4
 
 def test_class_roi_back2raw_error():
     ms = idp.Metashape(test_data.metashape.lotus_psx)

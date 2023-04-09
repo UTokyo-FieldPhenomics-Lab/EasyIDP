@@ -6,8 +6,8 @@ import xml.etree.ElementTree as ET
 
 import easyidp as idp
 
-
 test_data = idp.data.TestData()
+from . import roi_select
 
 #########################
 # test math calculation #
@@ -367,12 +367,15 @@ def test_world2crs_and_on_raw_images():
 def test_class_back2raw_and_crs():
     ms = idp.Metashape(project_path=test_data.metashape.lotus_psx, chunk_id=0)
 
-    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-    # only pick 2 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N1W2"]:
-            del roi[key]
+    # roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+    # # only pick 2 plots as testing data
+    # key_list = list(roi.keys())
+    # for key in key_list:
+    #     if key not in ["N1W1", "N1W2"]:
+    #         del roi[key]
+    # roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
+
+    roi = roi_select.copy()
     roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
     poly = roi["N1W2"]
@@ -380,11 +383,13 @@ def test_class_back2raw_and_crs():
 
     out = ms.back2raw_crs(poly)
 
+    # out_err = ms.back2raw_crs(roi_err['N1W2'])
+
     assert len(out) == 21
 
     out_all = ms.back2raw(roi)
 
-    assert len(out_all) == 2
+    assert len(out_all) == 4
     assert isinstance(out_all["N1W2"], dict)
 
 

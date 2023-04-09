@@ -6,6 +6,7 @@ import easyidp as idp
 import shutil
 
 test_data = idp.data.TestData()
+from . import roi_select
 
 def test_class_recons_output_io():
     # init return None
@@ -193,12 +194,7 @@ def test_func_sort_img_by_distance_ms():
     # =================
     ms = idp.Metashape(project_path=test_data.metashape.lotus_psx, chunk_id=0)
 
-    roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-    # only pick 2 plots as testing data
-    key_list = list(roi.keys())
-    for key in key_list:
-        if key not in ["N1W1", "N1W2"]:
-            del roi[key]
+    roi = roi_select.copy()
     roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
     poly = roi["N1W2"]
@@ -216,13 +212,16 @@ def test_func_sort_img_by_distance_ms():
 
     # test all roi
     filter_3_all = idp.reconstruct.sort_img_by_distance(ms, out_all, roi, num=3)
-    assert len(filter_3_all) == 2
+    assert len(filter_3_all) == 4
     for v in filter_3_all.values():
         assert len(v) == 3
 
     # on self
-    filter_3_all_self = ms.sort_img_by_distance(out_all, roi, num=3)
-    assert len(filter_3_all_self) == 2
+    filter_num = 3
+    filter_3_all_self = ms.sort_img_by_distance(out_all, roi, num=filter_num)
+    assert len(filter_3_all_self) == 4
+    for values in filter_3_all_self.values():
+        assert len(values) == filter_num
 
 # =============
 # pix4d outputs

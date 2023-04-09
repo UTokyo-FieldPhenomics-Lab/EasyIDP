@@ -34,10 +34,19 @@ class Container(dict):
             # Container[0] = A, while A.label = "N1W1"
 
             if key < len(self.item_label):
+                if 'label' in dir(item):  # has item.label
+                    # delete old label
+                    # e.g. {'empty 0': 0, 'empty 1': 1}
+                    #       0 -> IMG_0001;
+                    #      {'empty 0': 0, 'empty 1': 1, 'IMG_0001': 0}
+                    old_key = self.id_item[key].label
+                    del self.item_label[old_key]
+                    
+                    # add new label
+                    self.item_label[item.label] = key
                 # change the value of one item
                 self.id_item[key] = item
-                if 'label' in dir(item):  # has item.label
-                    self.item_label[item.label] = key
+
             elif key == len(self.item_label):
                 # add a new item
                 self.id_item[key] = item

@@ -561,6 +561,9 @@ class TestData(EasyidpDataSet):
             self.nestedfolder_psx   = data_dir / "metashape" / "nestedfolders.psx"
             self.nestedfolder_param = data_dir / "metashape" / "nestedfolders.files"
 
+            self.camera_disorder_psx   = data_dir / "metashape" / "camera_disorder.psx"
+            self.camera_disorder_param = data_dir / "metashape" / "camera_disorder.files"
+
 
     class Pix4Dataset():
 

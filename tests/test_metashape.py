@@ -593,6 +593,7 @@ def test_debug_calibration_tag_error():
 
 def test_parse_sensors_with_same_name():
     dup_sensor_xml = '''
+    <test>
     <sensors next_id="2">
       <sensor id="0" label="FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)" type="frame">
         <resolution width="6016" height="4008"/>
@@ -665,6 +666,7 @@ def test_parse_sensors_with_same_name():
         </meta>
       </sensor>
     </sensors>
+    </test>
     '''
     xml_tree = ET.ElementTree(ET.fromstring(dup_sensor_xml))
     sensors = idp.Container()
@@ -676,26 +678,33 @@ def test_parse_sensors_with_same_name():
         "chunk_id": 0,
         "chunk_path": "frame_zip_file"
     }
-    for i, sensor_tag in enumerate(xml_tree.findall("sensor")):
-
-
-        sensor = idp.metashape._decode_sensor_tag(sensor_tag, debug_meta)
-        if sensor.calibration is not None:
-            sensor.calibration.software = "metashape"
-
-        # Raise errors for the old version
-        if i == 1:
-            with pytest.raises(KeyError, match=re.escape("The given item's label [FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)] already exists -> ")):
-                sensors[sensor.id] = sensor
-        else:
-            sensors[sensor.id] = sensor
+    # for i, sensor_tag in enumerate(xml_tree.findall("sensor")):
+    #     sensor = idp.metashape._decode_sensor_tag(sensor_tag, debug_meta)
+    #     if sensor.calibration is not None:
+    #         sensor.calibration.software = "metashape"
+    #     # Raise errors for the old version
+    #     if i == 1:
+    #         with pytest.raises(KeyError, match=re.escape("The given item's label [FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)] already exists -> ")):
+    #             sensors[sensor.id] = sensor
+    #     else:
+    #         sensors[sensor.id] = sensor
 
     # the fixed version
     sensors = idp.metashape._sensorxml2object(
-        xml_tree.findall("sensor"), debug_meta
+        xml_tree, debug_meta
     )
 
     assert len(sensors) == 2
 
     assert sensors[0].label == 'FC6540, DJI DL   35mm F2.8 LS ASPH (35mm)'
     assert sensors[1].label == 'FC6540, DJI DL   35mm F2.8 LS ASPH (35mm) [1]'
+
+def test_metashape_disordered_image_xml():
+    ms = idp.Metashape(test_data.metashape.camera_disorder_psx)
+
+    for i in range(len(ms.photos)):
+        assert ms.photos[i].id == i
+    
+    assert ms.photos[0].label == "80m/e-w/card01/100MEDIA/DJI_0001.JPG"
+
+    assert ms.photos[1].label == '80m/e-w/card01/101MEDIA/DJI_0538.JPG'

@@ -1220,8 +1220,7 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
         "chunk_path": frame_zip_file
     }
     sensors = _sensorxml2object(
-        xml_tree.findall("./sensors/sensor"), 
-        debug_meta)
+        xml_tree, debug_meta)
     chunk_dict["sensors"] = sensors
 
     # change photo xml to idp object
@@ -1254,11 +1253,16 @@ def read_chunk_zip(project_folder, project_name, chunk_id, skip_disabled=False, 
 
     return chunk_dict
 
-def _sensorxml2object(xml_tree_search, debug_meta):
+def _sensorxml2object(xml_tree, debug_meta):
     sensors = idp.Container()
-    for sensor_tag in xml_tree_search:
+    sensor_total_num = int(xml_tree.findall("./sensors")[0].attrib['next_id'])
+    for i in range(sensor_total_num):
+        empty_sensor = idp.reconstruct.Sensor()
+        empty_sensor.id = i
+        empty_sensor.label = f"empty {i}"
+        sensors[i] = empty_sensor
 
-
+    for sensor_tag in xml_tree.findall("./sensors/sensor"):
         sensor = _decode_sensor_tag(sensor_tag, debug_meta)
         if sensor.calibration is not None:
             sensor.calibration.software = "metashape"
@@ -1277,11 +1281,21 @@ def _photoxml2object(xml_tree, sensors):
     # <cameras ... >
     #   <camera ... >
     #
-    # But if has camera groupds, the tag is 
+    # But if has camera groups, the tag is 
     # <cameras next_id="218" next_group_id="3">
     #   <group id="0" label="100MEDIA" type="folder">
     #     <camera id="0" sensor_id="0" component_id="0" label="DJI_0003">
     group_tags = xml_tree.findall("./cameras/group")
+
+    # create an empty conatiner for disordered camera
+    cam_total_num = int(xml_tree.findall("./cameras")[0].attrib['next_id'])
+    for i in range(cam_total_num):
+        disabled_camera = idp.reconstruct.Photo()
+        disabled_camera.id = i
+        disabled_camera.label = f'empty {i}'
+        disabled_camera.enabled = False
+        photos[i] = disabled_camera
+
     if len(group_tags) == 0:
         for camera_tag in xml_tree.findall("./cameras/camera"):
             camera = _decode_camera_tag(camera_tag)

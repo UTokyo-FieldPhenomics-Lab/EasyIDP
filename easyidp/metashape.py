@@ -3,7 +3,7 @@ import pyproj
 import zipfile
 import numpy as np
 import warnings
-import pathlib
+from pathlib import Path
 from tabulate import tabulate
 from xml.etree import ElementTree
 import xml.dom.minidom as minidom
@@ -392,7 +392,7 @@ class Metashape(idp.reconstruct.Recons):
             _description_
 
         """
-        if isinstance(raw_img_folder, pathlib.WindowsPath):
+        if isinstance(raw_img_folder, Path):
             raw_img_folder = str(raw_img_folder)
         if isinstance(raw_img_folder, str):
             if not os.path.exists(raw_img_folder) or not os.path.isdir(raw_img_folder):

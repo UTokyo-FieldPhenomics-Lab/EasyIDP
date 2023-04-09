@@ -285,7 +285,7 @@ def test_metashape_show_photo_folder(capfd):
 
     out, err = capfd.readouterr()
 
-    assert out == "'C:\\Users\\hwang\\AppData\\Local\\easyidp.data\\data_for_tests\\metashape\\20170531\\photos': [DJI_0422.JPG, DJI_0423.JPG, ..., DJI_0571.JPG, DJI_0572.JPG] (151 photos)\n\n"
+    assert out == f"\'{str(test_data.data_dir / 'metashape' / '20170531' / 'photos')}\': [DJI_0422.JPG, DJI_0423.JPG, ..., DJI_0571.JPG, DJI_0572.JPG] (151 photos)\n\n"
 
 def test_metashape_change_raw_img_folder():
     # test with string input

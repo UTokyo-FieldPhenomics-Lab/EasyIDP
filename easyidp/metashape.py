@@ -573,7 +573,7 @@ class Metashape(idp.reconstruct.Recons):
         if self.crs is None:
             warnings.warn("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by `ms.crs=dom.crs` or `ms.crs=pyproj.CRS.from_epsg(...)` ")
         
-        if self.crs.name in ['Local Coordinates', 'Local Coordinates (m)']:
+        if self.crs is not None and self.crs.name in ['Local Coordinates', 'Local Coordinates (m)']:
             local_coord = self._world2local(points_xyz)
         else:
             local_coord = self._world2local(self._crs2world(points_xyz))

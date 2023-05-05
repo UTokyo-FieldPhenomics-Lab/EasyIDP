@@ -573,7 +573,10 @@ class Metashape(idp.reconstruct.Recons):
         if self.crs is None:
             warnings.warn("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by `ms.crs=dom.crs` or `ms.crs=pyproj.CRS.from_epsg(...)` ")
         
-        local_coord = self._world2local(self._crs2world(points_xyz))
+        if self.crs.name in ['Local Coordinates', 'Local Coordinates (m)']:
+            local_coord = self._world2local(points_xyz)
+        else:
+            local_coord = self._world2local(self._crs2world(points_xyz))
 
         if log:
             print(f'[Calculator][Judge]camera_name photo.width photo.height -> x.min \t x.max \t y.min \t y.max')

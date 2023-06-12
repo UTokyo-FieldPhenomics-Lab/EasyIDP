@@ -266,8 +266,8 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None
         else:
             warnings.warn(f"Expected title like ['title1', 'title2'], not given '{title}', using default title instead")
 
-    img_num = len(result_dict) + 1
-    grid_w = np.ceil(np.sqrt(img_num)).astype(int)
+    img_num = len(result_dict)
+    grid_w = np.ceil(np.sqrt(img_num + 1)).astype(int)  # img_num + 1 ensures the column num > row num
 
     if img_num % grid_w == 0:  # no need a new line
         grid_h = (img_num // grid_w).astype(int)

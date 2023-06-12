@@ -27,6 +27,8 @@ class Metashape(idp.reconstruct.Recons):
             The chunk id or name(label) want to open, by default None, open the first chunk.
         raw_img_folder : str, optional
             the original UAV image folder, by default None
+        check_img_existance : bool
+            Ignore the missing photos when set to False, suitable for testing project with just a few images, to avoid the FileNotFoundError
 
         Example
         -------
@@ -385,6 +387,8 @@ class Metashape(idp.reconstruct.Recons):
                 replace the root string directly.
             if type == `dict` : (not implemented)
                 e.g. {'path/to/flight1/': 'new/path/to/flight1', }
+        check_img_existance : bool
+            Ignore the missing photos when set to False, suitable for testing project with just a few images, to avoid the FileNotFoundError
 
         Returns
         -------

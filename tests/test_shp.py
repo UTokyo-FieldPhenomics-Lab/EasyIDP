@@ -199,3 +199,27 @@ def test_convert_shp():
     # lonlat_utm order: [A, D. C. B, A]
 
     np.testing.assert_almost_equal(a, np.flip(b, axis=0), decimal=6)
+
+def test_convert_xy_order_jp():
+    # fix the https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/issues/104
+    # testing by the Japanese Coordinate epsg 30166
+    roi = idp.ROI(test_data.shp.jp_crs_shp, name_field='name');
+
+    source_np_id_1 = np.array([[   7823.3030067 , -112609.60232095],
+                               [   7822.21310759, -112609.52507115],
+                               [   7822.21128186, -112607.32159423],
+                               [   7823.27253373, -112607.32505667],
+                               [   7823.3030067 , -112609.60232095]])
+    
+    np.testing.assert_almost_equal(roi['1'], source_np_id_1)
+
+    convert_np_id_1 = np.array([[136.08281125,  34.98802348],
+                                [136.08279931,  34.98802419],
+                                [136.08279931,  34.98804405],
+                                [136.08281094,  34.98804401],
+                                [136.08281125,  34.98802348]])
+    
+    roi.change_crs(pyproj.CRS.from_epsg(4326))
+    np.testing.assert_almost_equal(roi['1'], convert_np_id_1)
+
+

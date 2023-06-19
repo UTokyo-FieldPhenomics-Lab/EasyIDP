@@ -633,6 +633,9 @@ class TestData(EasyidpDataSet):
             self.testutm_shp = data_dir / "shp_test" / "test_utm.shp"
             self.testutm_prj = data_dir / "shp_test" / "test_utm.prj"
 
+            self.jp_crs_shp = data_dir / "shp_test" / "jp_crs.shp"
+            self.jp_crs_prj = data_dir / "shp_test" / "jp_crs.prj"
+
             if isinstance(test_out, str):
                 test_out = Path(test_out)
             self.out = test_out / "shp_test"

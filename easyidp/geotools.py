@@ -5,7 +5,7 @@ import numpy as np
 # pyproj transformer tools #
 ############################
 
-def convert_proj(shp_dict, origin_proj, target_proj):
+def convert_proj(shp_dict, crs_origin, crs_target):
     """ 
     Provide the geo coordinate transfrom based on pyproj package
 
@@ -13,12 +13,12 @@ def convert_proj(shp_dict, origin_proj, target_proj):
     ----------
     shp_dict : dict
         the output of read_shp() function
-    shp_proj : pyproj object
+    crs_origin : pyproj object
         the hidden output of read_shp(..., return_proj=True)
-    target_proj : str | pyproj object
+    crs_target : str | pyproj object
         | Examples:
-        | ``target_proj = pyproj.CRS.from_epsg(4326)``
-        | ``target_proj = r'path/to/{shp_name}.prj'``
+        | ``crs_target = pyproj.CRS.from_epsg(4326)``
+        | ``crs_target = r'path/to/{shp_name}.prj'``
 
     Example
     -------
@@ -44,26 +44,38 @@ def convert_proj(shp_dict, origin_proj, target_proj):
                         [ 368019.70199342, 3955511.49771163]])}
 
     """
-    transformer = pyproj.Transformer.from_proj(origin_proj, target_proj)
+    transformer = pyproj.Transformer.from_proj(crs_origin, crs_target)
     trans_dict = {}
     for k, coord_np in shp_dict.items():
-        # by default, the coord_np is (lon, lat), but transform needs (lat, lon)
+        origin_xy_order = _get_crs_xy_order(crs_origin)
+        target_xy_order = _get_crs_xy_order(crs_target)
         if len(coord_np.shape) == 1:
-            transformed = transformer.transform(coord_np[1], coord_np[0])
+            if origin_xy_order == 'xy':
+                # by default, the coord_np is (lon, lat), but transform needs (lat, lon)
+                transformed = transformer.transform(coord_np[0], coord_np[1])
+            else:
+                transformed = transformer.transform(coord_np[1], coord_np[0])
         elif len(coord_np.shape) == 2:
-            transformed = transformer.transform(coord_np[:, 1], coord_np[:, 0])
+            if origin_xy_order == 'xy':
+                transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
+            else:
+                transformed = transformer.transform(coord_np[:, 1], coord_np[:, 0])
         else:
             raise IndexError(
-                f"The input coord should be either [x, y, z] -> shape=(3,) "
-                f"or [[x,y,z], [x,y,z], ...] -> shape=(n, 3)"
+                f"The input coord should be either [x, y] -> shape=(2,) "
+                f"or [[x,y], [x,y], ...] -> shape=(n, 2)"
                 f"not current {coord_np.shape}")
-        coord_np = np.asarray(transformed).T
+
+        if target_xy_order == 'xy':
+            coord_np = np.asarray(transformed).T
+        else:
+            coord_np = np.flip(np.asarray(transformed).T, axis=1)
 
         # judge if has inf value, means convert fail
         if True in np.isinf(coord_np):
             raise ValueError(
-                f'Fail to convert points from "{origin_proj.name}" to '
-                f'"{target_proj.name}", '
+                f'Fail to convert points from "{crs_origin.name}" to '
+                f'"{crs_target.name}", '
                 f'this may caused by the uncertainty of .prj file strings, '
                 f'please check the coordinate manually via QGIS Layer Infomation, '
                 f'get the EPGS code, and specify the function argument'
@@ -237,3 +249,19 @@ def is_single_point(points_np):
         return np.array([points_np]), True
     else:
         return points_np, False
+
+
+def _get_crs_xy_order(crs):
+    """get the axis order of pyproj CRS coordinates
+
+    Parameters
+    ----------
+    crs : pyproj object
+        _description_
+    """
+    if crs.axis_info[0].abbrev in ['E', 'X', 'east', 'Lon']:
+        return 'xy'
+    elif crs.axis_info[0].abbrev in ['N', 'Y', 'north', 'Lat']:
+        return 'yx'
+    else:
+        raise ValueError(f'Unable to parse the crs axis info\n- {crs.axis_info[0]}\n- {crs.axis_info[1]}')

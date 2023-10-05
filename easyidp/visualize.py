@@ -157,9 +157,9 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
     ax[0].imshow(img_array)
 
     if corrected_poly_coord is None:
-        polygon = pts.Polygon(poly_coord, True)
+        polygon = pts.Polygon(poly_coord, closed=True)
     else:
-        polygon = pts.Polygon(corrected_poly_coord, True)
+        polygon = pts.Polygon(corrected_poly_coord, closed=True)
     p = PatchCollection([polygon], alpha=alpha, facecolors=color)
 
     ax[0].add_collection(p)
@@ -294,7 +294,7 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None
 
         # print(f"img_id={img_id}; img_h={img_h}; img_w={img_w}", end='\r')
 
-        polygon = pts.Polygon(img_coord, True)
+        polygon = pts.Polygon(img_coord, closed=True)
         p = PatchCollection([polygon], alpha=alpha, facecolors=color)
 
         # draw roi on full image

@@ -435,7 +435,9 @@ def test_class_header_sugar_property():
     assert obj.tie_point == obj.header['tie_point']
 
     # test value setter
-    with pytest.raises(AttributeError, match=re.escape("can't set attribute")):
+    with pytest.raises(AttributeError):
+        # python <3.10 : can't set attribute ...
+        # python >3.10 : property 'crs' of 'GeoTiff' object has no setter
         obj.crs = 'aaa'
 
 

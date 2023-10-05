@@ -1275,7 +1275,7 @@ def _get_tiled_crop(page, i0, j0, h, w):
 
             fh.seek(offset)
             data = fh.read(bytecount)
-            tile, indices, shape = page.decode(data, index)
+            tile, indices, shape = page.decode(data, index, jpegtables=page.jpegtables)
 
             im_i = (i - tile_i0) * tile_height
             im_j = (j - tile_j0) * tile_width
@@ -1370,7 +1370,7 @@ def _get_untiled_crop(page, i0, j0, h, w):
         fh.seek(offset)
         data = fh.read(bytecount)
 
-        tile, indices, shape = page.decode(data, index)
+        tile, indices, shape = page.decode(data, index, jpegtables=page.jpegtables)
 
         # double check if is row_step per read
         # shape -> (1, 2, full_width, channel_num)

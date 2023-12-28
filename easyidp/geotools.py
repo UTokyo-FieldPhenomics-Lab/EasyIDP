@@ -176,8 +176,21 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
     points_np, is_single = is_single_point(points_np)
 
     # check unit to know if is (lon, lat, lat) -> degrees or (x, y, z) -> meters
-    x_unit = crs_origin.coordinate_system.axis_list[0].unit_name
-    y_unit = crs_origin.coordinate_system.axis_list[1].unit_name
+    if crs_origin.coordinate_system is not None:
+        # suitable for pyproj > 3.4.0 < 3.6.0
+        x_unit = crs_origin.coordinate_system.axis_list[0].unit_name
+        y_unit = crs_origin.coordinate_system.axis_list[1].unit_name
+    elif crs_origin.axis_info is not None:
+        # suitable for pyproj > 3.6.1
+        x_unit = crs_origin.axis_info[0].unit_name
+        y_unit = crs_origin.axis_info[1].unit_name
+    else:
+        raise AttributeError(
+            f'The API of pyproj to get axis unit may changed at current {pyproj.__version__}.'
+            f'Unable to find at both "crs.coordinate_system.axis_list" (pyproj < 3.6.0) '
+            f'and "crs.axis_info" (pyproj > 3.6.0), please report this issue or downgrade your pyproj version to 3.6.1'
+        )
+
     if x_unit == "degree" and y_unit == "degree": 
         is_xyz = False
     else:

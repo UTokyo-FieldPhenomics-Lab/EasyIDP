@@ -22,6 +22,8 @@ Functions
     :toctree: autodoc
 
     read_json
+    read_geojson
+    show_geojson_fields
     dict2json
     write_json
     save_json

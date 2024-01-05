@@ -63,7 +63,7 @@ def read_proj(prj_path):
 
 def show_shp_fields(shp_path, encoding="utf-8"):
     """
-    Read shp field data to pandas.DataFrame, for further json metadata usage
+    Show geojson properties data, for better setting ``name_field`` of :py:obj:`read_shp <easyidp.roi.ROI.read_shp>`
     
     Parameters
     ----------

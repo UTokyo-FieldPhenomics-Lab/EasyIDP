@@ -407,8 +407,10 @@ We also thanks the benefits from the following open source projects:
   * imagecodecs: `https://github.com/cgohlke/imagecodecs <https://github.com/cgohlke/imagecodecs>`_ 
   * shapely: `https://github.com/shapely/shapely <https://github.com/shapely/shapely>`_ 
   * laspy/lasrs/lasio: `https://github.com/laspy/laspy <https://github.com/laspy/laspy>`_ 
+  * geojson: `https://github.com/jazzband/geojson <https://github.com/jazzband/geojson>`_ 
   * plyfile: `https://github.com/dranjan/python-plyfile <https://github.com/dranjan/python-plyfile>`_ 
   * pyshp: `https://github.com/GeospatialPython/pyshp <https://github.com/GeospatialPython/pyshp>`_ 
+  * rich: `https://github.com/Textualize/rich <https://github.com/Textualize/rich>`_ 
   * tabulate: `https://github.com/astanin/python-tabulate <https://github.com/astanin/python-tabulate>`_ 
   * tqdm: `https://github.com/tqdm/tqdm <https://github.com/tqdm/tqdm>`_ 
   * gdown: `https://github.com/wkentaro/gdown <https://github.com/wkentaro/gdown>`_ 

@@ -600,6 +600,8 @@ class TestData(EasyidpDataSet):
             self.labelme_warn  = data_dir / "json_test" / "labelme_warn_img.json"
             self.labelme_err   = data_dir / "json_test" / "for_read_json.json"
 
+            self.geojson_soy   = data_dir / "json_test" / "2023_soybean_field.geojson"
+
             if isinstance(test_out, str):
                 test_out = Path(test_out)
             self.out = test_out / "json_test"

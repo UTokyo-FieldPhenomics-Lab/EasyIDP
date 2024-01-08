@@ -46,11 +46,11 @@ def test_read_geojson_wrong_format():
         out = idp.jsonfile.read_geojson(test_data.json.labelme_demo)
 
 def test_read_geojson():
-    out = idp.jsonfile.read_geojson(test_data.json.geojson_soy)
+    out, crs = idp.jsonfile.read_geojson(test_data.json.geojson_soy, return_proj=True)
 
-    assert out['crs'] == pyproj.CRS.from_epsg(6677)
+    assert crs == pyproj.CRS.from_epsg(6677)
 
-    assert len(out['geometry']) == len(out['property'])
+    assert len(out) == 260
 
 geojson_table_preview_unix = \
 "                   Properties of /Users/hwang/Library/Application                   \n"\

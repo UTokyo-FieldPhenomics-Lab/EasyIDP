@@ -3,10 +3,14 @@ import os
 import numpy as np
 import geojson
 import pyproj
+import warnings
 
 from rich.table import Table
 from rich.box import HORIZONTALS
 from rich import print
+from rich.progress import track
+
+import easyidp as idp
 
 class MyEncoder(json.JSONEncoder):
     # The original json package doesn't compatible to numpy object, add this compatible encoder to it.
@@ -75,15 +79,24 @@ def _check_geojson_format(geojson_path):
     if 'features' not in geojson_data.keys():
         raise TypeError('geojson does not have features properties')
     
+    if len(geojson_data.features) == 0:
+        raise IndexError('geojson must have at least 1 item')
+    
     return geojson_data
     
-def read_geojson(geojson_path):
+def read_geojson(geojson_path, name_field=None, include_title=False, return_proj=False):
     """Read geojson file to python dict
 
     Parameters
     ----------
     geojson_path : str
         The path to geojson file
+    name_field : str or int or list[ str|int ], optional
+        by default None, the id or name of shp file fields as output dictionary keys
+    include_title : bool, optional
+        by default False, whether add column name to roi key.
+    return_proj : bool, optional
+        by default False, if given as true, will return extra pyproj.CRS object of current shp file.
 
     Returns
     -------
@@ -150,7 +163,8 @@ def read_geojson(geojson_path):
         }
 
     """
-    out_dict = {'crs': None, 'geometry': [], 'property':[]}
+    geo_dict = {}
+    crs_proj = None
 
     geojson_data = _check_geojson_format(geojson_path)
     
@@ -158,7 +172,7 @@ def read_geojson(geojson_path):
         # ensure it has correct format for CRS info
         if  'properties' in geojson_data.crs and \
             'name'       in geojson_data.crs['properties']:
-            out_dict['crs'] = pyproj.CRS.from_string(geojson_data.crs['properties']['name'])
+            crs_proj = pyproj.CRS.from_string(geojson_data.crs['properties']['name'])
         else:
             crs_template = {
                 "type": "name",
@@ -171,11 +185,77 @@ def read_geojson(geojson_path):
     else:
         print(f'[json][geojson] geojson does not have CRS properties')
 
-    for f in geojson_data.features:
-        out_dict['geometry'].append(f['geometry'])
-        out_dict['property'].append(f['properties'])
-    
-    return out_dict
+    # calculate the geo_fields (shp_fields)
+    # Format:  {"Column": int_id}
+    # Exmaple: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+    geo_fields = {}
+    for i, key in enumerate(geojson_data.features[0]['properties'].keys()):
+        geo_fields[key] = i
+
+    ### do not put it into the following loop, save calculation time.
+    # field_id => int or list[ int ] 
+    if isinstance(name_field, list):
+        field_id = [idp.shp._find_name_related_int_id(geo_fields, nf) for nf in name_field]
+    else:
+        field_id = idp.shp._find_name_related_int_id(geo_fields, name_field)  
+
+    # build the format template
+    plot_name_template, keyring = idp.shp._get_plot_name_template(geo_fields, field_id, include_title)
+
+    non_polygon_warning = 0
+    for i, feature in track(enumerate(geojson_data.features), description=f"Read geojson [{os.path.basename(geojson_path)}]"):
+        # convert dict_key name string by given name_field
+
+        ### feature['property'] => 
+        # {'FID': 65,
+        #  '試験区': 'SubBlk 2b',
+        #  ...
+        #  'lineNum': 1}
+        if isinstance(field_id, list):
+            values = [feature['properties'][_key] for _key in keyring]
+            plot_name = plot_name_template.format(*values)
+        elif field_id is None:
+            plot_name = plot_name_template.format(i)
+        else:
+            plot_name = plot_name_template.format(feature['properties'][keyring])
+
+        plot_name = plot_name.replace(r'/', '_')
+        plot_name = plot_name.replace(r'\\', '_')
+
+        ##################################
+        # get the shape coordinate value #
+        ##################################
+        geometry = feature['geometry']
+        # -> 
+        # {"coordinates": [[[-26384.952573, -28870.678514], 
+        #                   [-26384.269447, -28870.522501], 
+        #                   [-26385.160022, -28866.622912], 
+        #                   [-26385.843163, -28866.778928], 
+        #                   [-26384.952573, -28870.678514]]], 
+        #  "type": "Polygon"}
+
+        if geometry['type'] == "Polygon":
+            # Polygon -> nx2x1 lists, only need nx2
+            coord_np = np.asarray(geometry['coordinates'][0])
+        else:
+            non_polygon_warning += 1
+            # only warning at the first time
+            if non_polygon_warning == 1:
+                warnings.warn(f"Currently only supports [Polygon] type geojson, but [{geometry['type']}] are used")
+            
+            coord_np = np.asarray(geometry['coordinates'])
+
+        # check if has duplicated key, otherwise will cause override
+        if plot_name in geo_dict.keys():
+            raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {geo_fields} or simple leave it blank `name_field=None`")
+
+        geo_dict[plot_name] = coord_np
+
+    if return_proj:
+        return geo_dict, crs_proj
+    else:
+        return geo_dict
+
 
 def show_geojson_fields(geojson_path):
     """
@@ -208,7 +288,11 @@ def show_geojson_fields(geojson_path):
           258      4        SB 0a        0                   Fukuyutaka-10         3       
           259      1      SubBlk 2a      0          無          Enrei-20           1       
         ──────────────────────────────────────────────────────────────────────────────────
-        
+    
+    See also
+    --------
+    easyidp.shp.show_shp_fields
+
     """
     geojson_data = _check_geojson_format(geojson_path)
 

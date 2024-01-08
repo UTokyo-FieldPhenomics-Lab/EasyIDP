@@ -272,6 +272,57 @@ class ROI(idp.Container):
                         f"Only labelme [polygon] shape are accepted, not [{shapes['shape_type']}] of [{shapes['label']}]")
         else:
             raise TypeError(f"It seems [{json_path}] is not a Labelme json file.")
+        
+    def read_geojson(self, geojson_path, name_field=None, include_title=False):
+        """read ROI from geojson file
+
+        Parameters
+        ----------
+        geojson_path : str
+            the file path of \*.geojson
+        name_field : str or int or list[ str|int ], optional
+            by default None, the id or name of shp file fields as output dictionary keys
+        include_title : bool, optional
+            by default False, whether add column name to roi key.
+
+        Example
+        -------
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            >>> roi = idp.ROI()
+
+        Then you can open a ROI by:
+
+        .. code-block:: python
+
+            >>> roi.read_shp(test_data.shp.lotus_shp, name_field=0)
+            [shp][proj] Use projection [WGS 84] for loaded shapefile [lotus_plots.shp]
+            Read shapefile [lotus_plots.shp]: 100%|██████████████| 112/112 [00:00<00:00, 2559.70it/s]
+            >>> roi
+
+
+        See also
+        --------
+        easyidp.jsonfile.read_geojson, easyidp.jsonfile.show_geojson_fields
+        """
+        pass
+
+        geojson_dict, crs_proj = idp.jsonfile.read_geojson(
+            geojson_path, name_field, include_title, return_proj=True)
+
+        self.source = geojson_path
+
+        self.crs = crs_proj
+        self.id_item = {}
+        self.item_label = {}
+
+        for k, v in geojson_dict.items():
+            self[k] = v
+
 
     def change_crs(self, target_crs):
         """Change the geo coordinates of roi to another crs.

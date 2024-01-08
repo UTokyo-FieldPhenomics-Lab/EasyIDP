@@ -95,7 +95,7 @@ def test_read_shp_proj_success_print(capfd):
     shp_path = test_data.shp.testutm_shp
     test_utm_shp = idp.shp.read_shp(shp_path)
     out, err = capfd.readouterr()
-    assert out == '[shp][proj] Use projection [WGS 84 / UTM zone 53N] for loaded shapefile [test_utm.shp]\n'
+    assert '[shp][proj] Use projection [WGS 84 / UTM zone 53N] for loaded shapefile [test_utm.shp]\n' in out
 
     wanted_np = np.asarray([[ 484593.62443893, 3862259.85857523],
                             [ 484593.71826623, 3862259.85888695],

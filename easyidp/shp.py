@@ -7,6 +7,8 @@ from tabulate import tabulate
 from tqdm import tqdm
 from pathlib import Path
 
+from rich.progress import track
+
 import easyidp as idp
 
 
@@ -101,7 +103,10 @@ def show_shp_fields(shp_path, encoding="utf-8"):
            109      S4E5
            110      S4E6
            111      S4E7
-    
+
+    See also
+    --------
+    easyidp.jsonfile.show_geojson_fields
     """
     shp = shapefile.Reader(str(shp_path), encoding=encoding)
 
@@ -265,10 +270,10 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     print(f'[shp][proj] Use projection [{shp_proj.name}] for loaded shapefile [{Path(shp_path).name}]')
 
     # read shapefile
-    shp = shapefile.Reader(str(shp_path), encoding=encoding)
+    shp_data = shapefile.Reader(str(shp_path), encoding=encoding)
     
     # read shp file fields (headers)
-    shp_fields = _get_field_key(shp)
+    shp_fields = _get_field_key(shp_data)
 
     ########################
     # read shp coordinates #
@@ -281,30 +286,23 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     else:
         field_id = _find_name_related_int_id(shp_fields, name_field)
 
-    pbar = tqdm(shp.shapes(), desc=f"Read shapefile [{os.path.basename(shp_path)}]")
-    for i, shape in enumerate(pbar):
+    # build the format template
+    plot_name_template, keyring = idp.shp._get_plot_name_template(
+        shp_fields, field_id, include_title
+    )
+    ### the ``keyring`` only for dict like object,
+    ### but shp.shapes() is not dict, so not useable
+    ### keyring designed for read_geojson function in jsonfile.py
+
+    for i, shape in track(enumerate(shp_data.shapes()), description=f"Read shapefile  [{os.path.basename(shp_path)}]"):
         # convert dict_key name string by given name_field
         if isinstance(field_id, list):
-            plot_name = ""
-            for j, fid in enumerate(field_id):
-                if include_title:
-                    plot_name += f"{idp._find_key(shp_fields, fid)}_{shp.records()[i][fid]}"
-                else:
-                    plot_name += f"{shp.records()[i][fid]}"
-
-                # not adding the last key A_B_C_ --> A_B_C
-                if j < len(field_id)-1:
-                    plot_name += "_"
+            values = [shp_data.records()[i][fid] for fid in field_id]
+            plot_name = plot_name_template.format(*values)
         elif field_id is None:
-            if include_title:
-                plot_name = f"line_{i}"
-            else:
-                plot_name = f"{i}"
+            plot_name = plot_name_template.format(i)
         else:
-            if include_title:
-                plot_name = f"{idp._find_key(shp_fields, field_id)}_{shp.records()[i][field_id]}"
-            else:
-                plot_name = f"{shp.records()[i][field_id]}"
+            plot_name = plot_name_template.format(shp_data.records()[i][field_id])
 
         plot_name = plot_name.replace(r'/', '_')
         plot_name = plot_name.replace(r'\\', '_')
@@ -343,7 +341,7 @@ def _get_field_key(shp):
     -------
     dict
         Format: {"Column": int_id}; 
-        Exmaple: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+        Example: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
     """
     shp_fields = {}
     f_count = 0
@@ -411,3 +409,53 @@ def _find_name_related_int_id(shp_fields, name_field):
         raise KeyError(f'Can not find key {name_field} in {shp_fields}')
     
     return field_id
+
+def _get_plot_name_template(roi_fields:dict, field_id:int|list, include_title:bool):
+    """
+    Parameters
+    ----------
+    roi_fields : dict
+        example: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+    field_id : int or list[ int ] 
+        the output of _find_name_related_int_id(), the column of property used for index
+    include_title : bool, optional
+        by default False, whether add column name to roi key.
+    
+    Returns
+    -------
+    plot_name : str
+        >>> a = "{} {}"
+        >>> a.format("hello", "world") 
+        'hello world'
+    keyring : str or list[ str ]
+        a variable to save key of geo_field:dict
+    """
+    if isinstance(field_id, list):
+        plot_name_template = ""
+        keyring = []
+        for j, fid in enumerate(field_id):
+            _key = idp._find_key(roi_fields, fid)
+            keyring.append(_key)
+            if include_title:
+                plot_name_template +=  _key + "_{}"
+            else:
+                plot_name_template += "{}"
+
+            # not adding the last key A_B_C_ --> A_B_C
+            if j < len(field_id)-1:
+                plot_name_template += "_"
+            
+    elif field_id is None:
+        keyring = None
+        if include_title:
+            plot_name_template = "line_{}"
+        else:
+            plot_name_template = "{}"
+    else:
+        keyring = idp._find_key(roi_fields, field_id)
+        if include_title:
+            plot_name_template =  keyring + "_{}"
+        else:
+            plot_name_template = "{}"
+
+    return plot_name_template, keyring

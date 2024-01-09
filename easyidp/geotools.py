@@ -272,9 +272,9 @@ def _get_crs_xy_order(crs):
     crs : pyproj object
         _description_
     """
-    if crs.axis_info[0].abbrev in ['E', 'X', 'east', 'Lon']:
+    if crs.axis_info[0].direction == 'east':
         return 'xy'
-    elif crs.axis_info[0].abbrev in ['N', 'Y', 'north', 'Lat']:
+    elif crs.axis_info[0].direction == 'north':
         return 'yx'
     else:
         raise ValueError(f'Unable to parse the crs axis info\n- {crs.axis_info[0]}\n- {crs.axis_info[1]}')

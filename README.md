@@ -65,7 +65,6 @@ We also thanks the benefits from the following open source projects:
   * geojson: [https://github.com/jazzband/geojson](https://github.com/jazzband/geojson)
   * plyfile: [https://github.com/dranjan/python-plyfile](https://github.com/dranjan/python-plyfile)
   * pyshp: [https://github.com/GeospatialPython/pyshp](https://github.com/GeospatialPython/pyshp)
-  * rich: [https://github.com/Textualize/rich](https://github.com/Textualize/rich)
   * tabulate: [https://github.com/astanin/python-tabulate](https://github.com/astanin/python-tabulate)
   * tqdm: [https://github.com/tqdm/tqdm](https://github.com/tqdm/tqdm)
   * gdown: [https://github.com/wkentaro/gdown](https://github.com/wkentaro/gdown)

@@ -4,11 +4,8 @@ import numpy as np
 import geojson
 import pyproj
 import warnings
-
-from rich.table import Table
-from rich.box import HORIZONTALS
-from rich import print
-from rich.progress import track
+from tabulate import tabulate
+from tqdm import tqdm
 
 import easyidp as idp
 
@@ -203,7 +200,11 @@ def read_geojson(geojson_path, name_field=None, include_title=False, return_proj
     plot_name_template, keyring = idp.shp._get_plot_name_template(geo_fields, field_id, include_title)
 
     non_polygon_warning = 0
-    for i, feature in track(enumerate(geojson_data.features), description=f"Read geojson [{os.path.basename(geojson_path)}]"):
+    pbar = tqdm(
+        geojson_data.features,
+        desc=f"[json] Read geojson [{os.path.basename(geojson_path)}]"
+    )
+    for i, feature in enumerate(pbar):
         # convert dict_key name string by given name_field
 
         ### feature['property'] => 
@@ -296,39 +297,36 @@ def show_geojson_fields(geojson_path):
     """
     geojson_data = _check_geojson_format(geojson_path)
 
-    table = Table(title=f"Properties of {geojson_path}", box=HORIZONTALS)
-
-    table.add_column("[-1]", justify='right')
-    for i, c in enumerate(geojson_data.features[0]['properties'].keys()):
-        table.add_column(f"[{i}] {c}", justify='center')
+    head = ["[-1]"] + \
+        [f"[{i}] {k}" for i, k in enumerate(geojson_data.features[0]['properties'].keys())]
+    data = []
 
     row_num = len(geojson_data.features)
     col_num = len(geojson_data.features[0]['properties'].keys())
 
+    col_align = ["right"] + ["center"] * col_num
+
     if row_num >= 6:
-        show_idx_top = [0, 1, 2]
-        show_idx_btm = [-3, -2, -1]
-
-        for i in show_idx_top:
-            row = [str(i)] + [str(k) for k in geojson_data.features[i]['properties'].values()]
-            table.add_row(*row)
-
-        omit_row = ['...'] * (col_num + 1)
-        table.add_row(*omit_row)
-
-        for i in show_idx_btm:
-            row = [str(row_num + i)] + [str(k) for k in geojson_data.features[i]['properties'].values()]
-            table.add_row(*row)
-
+        show_idx = [0, 1, 2, -3, -2, -1]
     else:
         # print all without omit
         show_idx = list(range(row_num))
 
-        for i in show_idx:
-            row = [str(i)] + list(geojson_data.features[i]['properties'].values())
-            table.add_row(*row)
+    for i in show_idx:
+        if i >= 0:
+            data.append(
+                [i] + list(geojson_data.features[i]['properties'].values())
+            )
+        else:
+            data.append(
+                [row_num + i] + list(geojson_data.features[i]['properties'].values())
+            )
 
-    print(table)
+    if row_num > 6:
+        data.insert(3, ['...'] * (col_num + 1))
+
+    table_str = tabulate(data, headers=head, tablefmt='simple', colalign=col_align)
+    print(table_str)
 
 
 def dict2json(data_dict, json_path, indent=None, encoding='utf-8'):

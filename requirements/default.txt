@@ -7,10 +7,6 @@ scikit-image >= 0.19.2
 
 # replace pandas to show table in command 
 tabulate >= 0.8.9
-#pandas>=1.1.2
-
-# better print effects
-rich >= 13.7.0
 
 # progressbar
 tqdm >= 4.64.0

@@ -7,8 +7,6 @@ from tabulate import tabulate
 from tqdm import tqdm
 from pathlib import Path
 
-from rich.progress import track
-
 import easyidp as idp
 
 
@@ -294,7 +292,11 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     ### but shp.shapes() is not dict, so not useable
     ### keyring designed for read_geojson function in jsonfile.py
 
-    for i, shape in track(enumerate(shp_data.shapes()), description=f"Read shapefile  [{os.path.basename(shp_path)}]"):
+    pbar = tqdm(
+        shp_data.shapes(), 
+        desc=f"[shp] Read shapefile [{os.path.basename(shp_path)}]"
+    )
+    for i, shape in enumerate(pbar):
         # convert dict_key name string by given name_field
         if isinstance(field_id, list):
             values = [shp_data.records()[i][fid] for fid in field_id]
@@ -410,7 +412,7 @@ def _find_name_related_int_id(shp_fields, name_field):
     
     return field_id
 
-def _get_plot_name_template(roi_fields:dict, field_id:int|list, include_title:bool):
+def _get_plot_name_template(roi_fields: dict, field_id:int | list, include_title:bool):
     """
     Parameters
     ----------

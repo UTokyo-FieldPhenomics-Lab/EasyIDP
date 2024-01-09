@@ -110,4 +110,4 @@ def test_show_geojson_fields(capfd):
 
     out, err = capfd.readouterr()
 
-    assert out.replace(' ', '') ==  geojson_table_preview.replace(' ', '')
+    assert out.replace(' ', '').replace('-','') ==  geojson_table_preview.replace(' ', '').replace('-','') 

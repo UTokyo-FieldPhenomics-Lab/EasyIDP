@@ -132,16 +132,25 @@ def test_read_shp_key_names_merge():
     # merge several columns
     shp_path = test_data.shp.complex_shp
 
-    str_name_field_list_title_false = idp.shp.read_shp(shp_path, name_field=["CROPTYPE", "MASSIFID"], encoding='gbk')
+    str_name_field_list_title_false = idp.shp.read_shp(
+        shp_path, name_field=["CROPTYPE", "MASSIFID"], encoding='gbk'
+    )
     assert "小麦_2301041120000000000" in str_name_field_list_title_false.keys()
 
-    str_name_field_list_title_true = idp.shp.read_shp(shp_path, name_field=["CROPTYPE", "MASSIFID"], include_title=True, encoding='gbk')
+    str_name_field_list_title_true = idp.shp.read_shp(
+        shp_path, name_field=["CROPTYPE", "MASSIFID"], 
+        include_title=True, encoding='gbk'
+    )
     assert "CROPTYPE_小麦_MASSIFID_2301041120000000000" in str_name_field_list_title_true.keys()
 
-    int_name_field_list_title_false = idp.shp.read_shp(shp_path, name_field=[2, 1], encoding='gbk')
+    int_name_field_list_title_false = idp.shp.read_shp(
+        shp_path, name_field=[2, 1], encoding='gbk'
+    )
     assert "小麦_2301041120000000000" in int_name_field_list_title_false.keys()
 
-    int_name_field_list_title_true = idp.shp.read_shp(shp_path, name_field=[2, 1], include_title=True, encoding='gbk')
+    int_name_field_list_title_true = idp.shp.read_shp(
+        shp_path, name_field=[2, 1], include_title=True, encoding='gbk'
+    )
     assert "CROPTYPE_小麦_MASSIFID_2301041120000000000" in int_name_field_list_title_true.keys()
 
 def test_read_shp_duplicate_key_name_error():

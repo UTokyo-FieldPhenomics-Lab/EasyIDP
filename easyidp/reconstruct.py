@@ -57,9 +57,9 @@ class Recons(object):
         #: whether this project is activated, (often for Metashape), ``<class 'bool'>``
         self.enabled = True
 
-        #: the container for all sensors in this project (camera model), ``<class 'easyidp.Container'>``
+        #: the container for all sensors in this project (camera model), ``<class 'easyidp.Container'>``, a dict-like object consisted by :py:class:`Sensor <easyidp.reconstruct.Sensor>`
         self.sensors = idp.Container()
-        #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
+        #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``, a dict-like object consisted by :py:class:`Photo <easyidp.reconstruct.Photo>`
         self.photos = idp.Container()
 
         #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
@@ -178,7 +178,7 @@ class Sensor:
         #: focal length, unit in mm, ``<class 'float'>``
         self.focal_length = 0.0  # in mm
 
-        #: sensor calibration information, :class:`easyidp.reconstruct.Calibration`
+        #: sensor calibration information, :py:class:`easyidp.Calibration <easyidp.reconstruct.Calibration>`
         self.calibration = Calibration(self)
 
     def in_img_boundary(self, polygon_hv, ignore=None, log=False):
@@ -299,7 +299,7 @@ class Photo:
 
         #: the id of the camera model (sonsor), ``<class 'int'>``
         self.sensor_id = 0
-        #: the object of the camera model (sensor), :class:`easyidp.reconstruct.Sensor`
+        #: the object of the camera model (sensor), :class:`easyidp.Sensor <easyidp.reconstruct.Sensor>`
         self.sensor = sensor
 
         #: whether this image is used in the 3D reconstruction,  ``<class 'bool'>``
@@ -356,7 +356,7 @@ class Calibration:
         self.software = "metashape"
         #: the calibration type, same as the sensor.type, in [frame, fisheye, spherical, rpc], by default 'frame'
         self.type = "frame"
-        #: the object of the camera model (sensor), :class:`easyidp.reconstruct.Sensor`
+        #: the object of the camera model (sensor), :py:class:`Sensor <easyidp.reconstruct.Sensor>`
         self.sensor = sensor
 
         #: focal length, unit is pixel, for pix4d project, convert mm to pixel. ``<class 'float'>``

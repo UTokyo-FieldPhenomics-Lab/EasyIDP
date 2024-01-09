@@ -23,6 +23,7 @@
       ~ROI.open
       ~ROI.read_labelme_json
       ~ROI.read_shp
+      ~ROI.read_geojson
    
    .. rubric:: Attributes
 

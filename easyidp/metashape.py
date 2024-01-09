@@ -106,9 +106,9 @@ class Metashape(idp.reconstruct.Recons):
         self.meta = self.meta
         #: whether this project is activated, (often for Metashape), ``<class 'bool'>``
         self.enabled = self.enabled
-        #: the container for all sensors in this project (camera model), ``<class 'easyidp.Container'>``
+        #: the container for all sensors in this project (camera model), ``<class 'easyidp.Container'>``, a dict-like object consisted by :py:class:`Sensor <easyidp.reconstruct.Sensor>`
         self.sensors = self.sensors
-        #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``
+        #: the container for all photos used in this project (images), ``<class 'easyidp.Container'>``, a dict-like object consisted by :py:class:`Photo <easyidp.reconstruct.Photo>`
         self.photos = self.photos
 
         self.open_project(project_path, chunk_id)
@@ -389,12 +389,7 @@ class Metashape(idp.reconstruct.Recons):
                 e.g. {'path/to/flight1/': 'new/path/to/flight1', }
         check_img_existance : bool
             Ignore the missing photos when set to False, suitable for testing project with just a few images, to avoid the FileNotFoundError
-
-        Returns
-        -------
-        _type_
-            _description_
-
+            
         """
         if isinstance(raw_img_folder, Path):
             raw_img_folder = str(raw_img_folder)

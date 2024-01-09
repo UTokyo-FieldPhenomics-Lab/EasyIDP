@@ -32,7 +32,7 @@ class ROI(idp.Container):
 
             >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
             [shp][proj] Use projection [WGS 84] for loaded shapefile [lotus_plots.shp]
-            Read shapefile [lotus_plots.shp]: 100%|██████████████| 112/112 [00:00<00:00, 2559.70it/s]
+            Read shapefile [lotus_plots.shp]: 100%|███████████| 112/112 [00:00<00:00, 2559.70it/s]
 
             >>> roi
             <easyidp.ROI> with 112 items
@@ -172,7 +172,7 @@ class ROI(idp.Container):
 
             >>> roi.read_shp(test_data.shp.lotus_shp, name_field=0)
             [shp][proj] Use projection [WGS 84] for loaded shapefile [lotus_plots.shp]
-            Read shapefile [lotus_plots.shp]: 100%|██████████████| 112/112 [00:00<00:00, 2559.70it/s]
+            Read shapefile [lotus_plots.shp]: 100%|███████████| 112/112 [00:00<00:00, 2559.70it/s]
             >>> roi
             <easyidp.ROI> with 112 items
             [0]     N1W1
@@ -299,15 +299,44 @@ class ROI(idp.Container):
 
         .. code-block:: python
 
-            >>> roi.read_shp(test_data.shp.lotus_shp, name_field=0)
-            [shp][proj] Use projection [WGS 84] for loaded shapefile [lotus_plots.shp]
-            Read shapefile [lotus_plots.shp]: 100%|██████████████| 112/112 [00:00<00:00, 2559.70it/s]
+            >>> roi.read_geojson(test_data.json.geojson_soy, name_field="FID")
+            Read geojson [2023_soybean_field.geojson]: 100%|███████████| 260/260         [00:00<00:00, 218234.75it/s]
+        
             >>> roi
-
+            <easyidp.ROI> with 260 items
+            [0]	65
+            array([[-26384.952573, -28870.678514],
+                   [-26384.269447, -28870.522501],
+                   [-26385.160022, -28866.622912],
+                   [-26385.843163, -28866.778928],
+                   [-26384.952573, -28870.678514]])
+            [1]	97
+            array([[-26386.065868, -28865.804036],
+                   [-26385.382668, -28865.648006],
+                   [-26386.273244, -28861.748416],
+                   [-26386.956458, -28861.90445 ],
+                   [-26386.065868, -28865.804036]])
+            ...
+            [258]	4
+            array([[-26404.447166, -28860.770249],
+                   [-26405.337854, -28856.870669],
+                   [-26406.020223, -28857.026509],
+                   [-26405.129644, -28860.926114],
+                   [-26404.447166, -28860.770249]])
+            [259]	1
+            array([[-26393.693576, -28844.979604],
+                   [-26394.58426 , -28841.08004 ],
+                   [-26395.26665 , -28841.235885],
+                   [-26394.375966, -28845.135449],
+                   [-26393.693576, -28844.979604]])
+        
+        Notes
+        -----
+        For more details of these parameters, please refer to :func:`easyidp.jsonfile.read_geojson`
 
         See also
         --------
-        easyidp.jsonfile.read_geojson, easyidp.jsonfile.show_geojson_fields
+        easyidp.jsonfile.show_geojson_fields
         """
         pass
 

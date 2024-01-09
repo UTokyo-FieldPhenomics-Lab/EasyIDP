@@ -217,7 +217,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         >>> # or 
         >>> out = idp.shp.read_shp(data_path, name_field=1, encoding='gbk')
         [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
-        [shp] read shp [complex_shp_review.shp]: 100%|███████████████████████████████████████| 323/323 [00:02<00:00, 143.13it/s] 
+        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s] 
         >>> out['23010...0000'] 
         array([[ 45.83319255, 126.84383445],
                [ 45.83222256, 126.84212197],
@@ -233,7 +233,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         >>> # or
         >>> out = idp.shp.read_shp(data_path, name_field=[2, 1], include_title=True, encoding='gbk') 
         [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
-        [shp] read shp [complex_shp_review.shp]: 100%|███████████████████████████████████████| 323/323 [00:02<00:00, 143.13it/s] 
+        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s] 
         >>> out.keys()
         dict_keys(['小麦_23010...0000', '蔬菜_23010...0012', '玉米_23010...0014', ... ])
 
@@ -244,6 +244,10 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
         >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], include_title=True, encoding='gbk') 
         >>> out.keys()
         dict_keys(['CROPTYPE_小麦_MASSIFID_23010...0000', 'CROPTYPE_蔬菜_MASSIFID_23010...0012', ... ])
+
+    See also
+    --------
+    easyidp.jsonfile.read_geojson
 
     """
     #####################################

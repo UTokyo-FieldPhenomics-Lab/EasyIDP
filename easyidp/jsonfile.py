@@ -97,67 +97,95 @@ def read_geojson(geojson_path, name_field=None, include_title=False, return_proj
 
     Returns
     -------
-    dict
+    dict, 
+        the dictionary with read numpy polygon coordinates
+
         .. code-block:: python
 
-            {
-                'crs': pyproj.CRS, 
-                'geometry': [ 
-                    {'coordiante': [[[...]]], 'type': '...'}, 
-                    ... 
-                ], 
-                'property': [ 
-                    {key1: v1, key2: v2},
-                    ... 
-                ]
-            }
+            {'id1': np.array([[x1,y1],[x2,y2],...]),
+             'id2': np.array([[x1,y1],[x2,y2],...]),...}
+    pyproj.CRS, optional
+        once set return_proj=True
     
     Example
     -------
+
+    The example geojons file has the following columns:
+
+    .. code-block:: text
+
+         [0] FID    [1] 試験区    [2] ID    [3] 除草剤    [4] plotName    [5] lineNum
+        ---------  ------------  --------  ------------  --------------  -------------
+           65       SubBlk 2b       0           有          Enrei-10           1
+           97       SubBlk 2b       0           有          Enrei-20           1
+           147      SubBlk 2b       0           有        Nakasenri-10         1
+           ...         ...         ...         ...            ...             ...
+           259        SB 0a         0                    Tachinagaha-10        3
+            4         SB 0a         0                    Fukuyutaka-10         3
+            1       SubBlk 2a       0           無          Enrei-20           1
+
     Data prepare:
 
     .. code-block:: python
 
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
+        >>> data_path = test_data.json.geojson_soy
 
-    Use this function:
+    Use this function to read geojson:
 
     .. code-block:: python
 
-        >>> out = idp.jsonfile.read_json(test_data.json.geojson_soy)
-        >>> out
-        {'crs': <Projected CRS: EPSG:6677>
-            Name: JGD2011 / Japan Plane Rectangular CS IX
-            Axis Info [cartesian]:
-            - X[north]: Northing (metre)
-            - Y[east]: Easting (metre)
-            Area of Use:
-            - name: Japan - onshore - Honshu - Tokyo-to.
-            - bounds: (138.4, 29.31, 141.11, 37.98)
-            Coordinate Operation:
-            - name: Japan Plane Rectangular CS zone IX
-            - method: Transverse Mercator
-            Datum: Japanese Geodetic Datum 2011
-            - Ellipsoid: GRS 1980
-            - Prime Meridian: Greenwich,
-         'geometry': [
-            { 
-                "coordinates": [[[-26384.952573, -28870.678514], ..., [-26384.952573, -28870.678514]]], 
-                "type": "Polygon" 
-            },
-            ...
-         ],
-         'property': [
-            {'FID': 65,
-             '試験区': 'SubBlk 2b',
-             'ID': 0,
-             '除草剤': '有',
-             'plotName': 'Enrei-10',
-             'lineNum': 1},
-            ...
-         ]
-        }
+        >>> out = idp.jsonfile.read_geojson(data_path)
+        >>> out['196']  
+        array([[-26403.247163, -28847.161464],
+               [-26404.137868, -28843.261904],
+               [-26404.820258, -28843.417749],
+               [-26403.929552, -28847.317309],
+               [-26403.247163, -28847.161464]])
+
+    .. caution::
+
+        The ``196`` in previous code is the row 196, not the ``FID``=196. 
+        To use the FID as result key, Please use ``name_field`` introduced below
+               
+    If want use other attributes as result keys, for example, the first column ``FID`` as the key:
+
+    .. code-block:: python
+
+        >>> out = idp.jsonfile.read_geojson(data_path, name_field="FID")
+        >>> # or
+        >>> out = idp.jsonfile.read_geojson(data_path, name_field="0")
+        >>> out['196']
+        array([[-26391.733164, -28862.99536 ],
+               [-26392.623851, -28859.09578 ],
+               [-26393.306263, -28859.25163 ],
+               [-26392.415575, -28863.15121 ],
+               [-26391.733164, -28862.99536 ]])
+
+    You can also combine multiple columns as the key values, by passing a list to ``name_field``:
+
+    .. code-block:: python
+
+        >>> out = idp.jsonfile.read_geojson(data_path, name_field=["FID", "plotName"])
+        >>> # or
+        >>> out = idp.jsonfile.read_geojson(data_path, name_field=[0, 4])
+        >>> out.keys()
+        dict_keys(['65_Enrei-10', '97_Enrei-20', '147_Nakasenri-10', ... ])
+
+    And you can also add column_names to id by ``include_title=True`` :
+
+    .. code-block:: python
+
+        >>> out = idp.jsonfile.read_geojson(data_path, name_field=["FID", "plotName"], include_title=True)
+        >>> # or
+        >>> out = idp.jsonfile.read_geojson(data_path, name_field=[0, 4], include_title=True)
+        >>> out.keys()
+         dict_keys(['FID_65_plotName_Enrei-10', 'FID_97_plotName_Enrei-20', ... ])
+
+    See also
+    --------
+    easyidp.jsonfile.show_geojson_fields, easyidp.shp.read_shp
 
     """
     geo_dict = {}
@@ -276,19 +304,15 @@ def show_geojson_fields(geojson_path):
         >>> test_data = idp.data.TestData()
 
         >>> idp.jsonfile.show_geojson_fields(test_data.json.geojson_soy)
-                          Properties of /Users/hwang/Library/Application                   
-             Support/easyidp.data/data_for_tests/json_test/2023_soybean_field.geojson      
-        ────────────────────────────────────────────────────────────────────────────────── 
-         [-1]   [0] FID   [1] 試験区   [2] ID   [3] 除草剤    [4] plotName    [5] lineNum  
-        ────────────────────────────────────────────────────────────────────────────────── 
-            0     65      SubBlk 2b      0          有          Enrei-10           1       
-            1     97      SubBlk 2b      0          有          Enrei-20           1       
-            2     147     SubBlk 2b      0          有        Nakasenri-10         1       
-          ...     ...        ...        ...        ...            ...             ...      
-          257     259       SB 0a        0                   Tachinagaha-10        3       
-          258      4        SB 0a        0                   Fukuyutaka-10         3       
-          259      1      SubBlk 2a      0          無          Enrei-20           1       
-        ──────────────────────────────────────────────────────────────────────────────────
+         [0] FID    [1] 試験区    [2] ID    [3] 除草剤    [4] plotName    [5] lineNum
+        ---------  ------------  --------  ------------  --------------  -------------
+           65       SubBlk 2b       0           有          Enrei-10           1
+           97       SubBlk 2b       0           有          Enrei-20           1
+           147      SubBlk 2b       0           有        Nakasenri-10         1
+           ...         ...         ...         ...            ...             ...
+           259        SB 0a         0                    Tachinagaha-10        3
+            4         SB 0a         0                    Fukuyutaka-10         3
+            1       SubBlk 2a       0           無          Enrei-20           1
     
     See also
     --------

@@ -18,8 +18,8 @@ EasyIDP (Easy Intermediate Data Processor) is a handy tool for dealing with regi
 
 .. _Sphinx: http://sphinx-doc.org
 
-.. image:: https://img.shields.io/tokei/lines/github/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
-   :alt: GitHub code size in bytes
+.. image:: https://img.shields.io/pypi/pyversions/easyidp
+   :alt: PyPI - Python Version
 
 .. image:: https://img.shields.io/github/license/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic
    :alt: GitHub

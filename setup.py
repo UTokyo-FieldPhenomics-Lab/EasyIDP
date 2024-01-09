@@ -52,9 +52,10 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3 :: Only",
     ],
-    python_requires='>=3.6, <4',
+    python_requires='>=3.7, <4',
     project_urls={
         'Documentation': 'https://easyidp.readthedocs.io/en/latest/',
         'Source': 'https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP',

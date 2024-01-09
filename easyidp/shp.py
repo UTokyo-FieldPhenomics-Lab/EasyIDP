@@ -416,7 +416,7 @@ def _find_name_related_int_id(shp_fields, name_field):
     
     return field_id
 
-def _get_plot_name_template(roi_fields: dict, field_id:int | list, include_title:bool):
+def _get_plot_name_template(roi_fields, field_id, include_title):
     """
     Parameters
     ----------

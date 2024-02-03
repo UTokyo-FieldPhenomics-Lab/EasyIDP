@@ -51,4 +51,5 @@ geojson>=3.1.0
 
 # download the data file
 ## fix google drive download permission denied since 2023.01.29
-gdown>=4.6.0
+## fix google drive download None type error since 2023.02.03
+gdown>=4.7.3

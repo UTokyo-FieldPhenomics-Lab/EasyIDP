@@ -56,7 +56,7 @@ def test_read_geojson_key_names():
     gjs_path = test_data.json.geojson_soy
 
     str_no_name_field_title_true= idp.jsonfile.read_geojson(gjs_path, include_title=True)
-    assert "line_1" in str_no_name_field_title_true.keys()
+    assert "# 1" in str_no_name_field_title_true.keys()
 
     str_name_field_title_false = idp.jsonfile.read_geojson(gjs_path, name_field="FID")
     assert "259" in str_name_field_title_false.keys()
@@ -65,10 +65,19 @@ def test_read_geojson_key_names():
     assert "259" in int_name_field_title_false.keys()
 
     str_name_field_title_true = idp.jsonfile.read_geojson(gjs_path, name_field="FID", include_title=True)
-    assert "FID_65" in str_name_field_title_true.keys()
+    assert "FID 65" in str_name_field_title_true.keys()
 
     int_name_field_title_true = idp.jsonfile.read_geojson(gjs_path, name_field=0, include_title=True)
-    assert "FID_65" in int_name_field_title_true.keys()
+    assert "FID 65" in int_name_field_title_true.keys()
+
+    index_name_field_title_true = idp.jsonfile.read_geojson(gjs_path, name_field=-1, include_title=True)
+    assert "# 1" in index_name_field_title_true.keys()
+
+    str_index_name_field_title_true = idp.jsonfile.read_geojson(gjs_path, name_field='#', include_title=True)
+    assert "# 1" in str_index_name_field_title_true.keys()
+
+    str_index_name_field_title_false = idp.jsonfile.read_geojson(gjs_path, name_field='#', include_title=False)
+    assert "1" in str_index_name_field_title_false.keys()
 
 def test_read_geojson_key_names_merge():
     # merge several columns
@@ -77,33 +86,43 @@ def test_read_geojson_key_names_merge():
     str_name_field_list_title_false = idp.jsonfile.read_geojson(
         gjs_path, name_field=["FID", "plotName"]
     )
-    assert "65_Enrei-10" in str_name_field_list_title_false.keys()
+    assert "65|Enrei-10" in str_name_field_list_title_false.keys()
 
     str_name_field_list_title_true = idp.jsonfile.read_geojson(
         gjs_path, name_field=["FID", "plotName"], include_title=True
     )
-    assert "FID_65_plotName_Enrei-10" in str_name_field_list_title_true.keys()
+    assert "FID 65|plotName Enrei-10" in str_name_field_list_title_true.keys()
 
     int_name_field_list_title_false = idp.jsonfile.read_geojson(
         gjs_path, name_field=[0, 4]
     )
-    assert "65_Enrei-10" in int_name_field_list_title_false.keys()
+    assert "65|Enrei-10" in int_name_field_list_title_false.keys()
 
     int_name_field_list_title_true = idp.jsonfile.read_geojson(
         gjs_path, name_field=[0, 4], include_title=True
     )
-    assert "FID_65_plotName_Enrei-10" in int_name_field_list_title_true.keys()
+    assert "FID 65|plotName Enrei-10" in int_name_field_list_title_true.keys()
+    
+    int_index_name_field_list_title_true = idp.jsonfile.read_geojson(
+        gjs_path, name_field=[-1, 4], include_title=True
+    )
+    assert "# 0|plotName Enrei-10" in int_index_name_field_list_title_true.keys()
+    
+    str_index_name_field_list_title_false = idp.jsonfile.read_geojson(
+        gjs_path, name_field=["#", "FID"], include_title=False
+    )
+    assert "0|65" in str_index_name_field_list_title_false.keys()
 
 geojson_table_preview = \
-"  [-1]   [0] FID    [1] 試験区    [2] ID    [3] 除草剤    [4] plotName    [5] lineNum\n"\
-"------  ---------  ------------  --------  ------------  --------------  -------------\n"\
-"     0     65       SubBlk 2b       0           有          Enrei-10           1\n"\
-"     1     97       SubBlk 2b       0           有          Enrei-20           1\n"\
-"     2     147      SubBlk 2b       0           有        Nakasenri-10         1\n"\
-"   ...     ...         ...         ...         ...            ...             ...\n"\
-"   257     259        SB 0a         0                    Tachinagaha-10        3\n"\
-"   258      4         SB 0a         0                    Fukuyutaka-10         3\n"\
-"   259      1       SubBlk 2a       0           無          Enrei-20           1\n"
+"  [-1] #   [0] FID    [1] 試験区    [2] ID    [3] 除草剤    [4] plotName    [5] lineNum\n"\
+"--------  ---------  ------------  --------  ------------  --------------  -------------\n"\
+"       0     65       SubBlk 2b       0           有          Enrei-10           1\n"\
+"       1     97       SubBlk 2b       0           有          Enrei-20           1\n"\
+"       2     147      SubBlk 2b       0           有        Nakasenri-10         1\n"\
+"     ...     ...         ...         ...         ...            ...             ...\n"\
+"     257     259        SB 0a         0                    Tachinagaha-10        3\n"\
+"     258      4         SB 0a         0                    Fukuyutaka-10         3\n"\
+"     259      1       SubBlk 2a       0           無          Enrei-20           1\n"
 def test_show_geojson_fields(capfd):
 
     idp.jsonfile.show_geojson_fields(test_data.json.geojson_soy)

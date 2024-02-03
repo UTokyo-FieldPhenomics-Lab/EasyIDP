@@ -81,7 +81,7 @@ def _check_geojson_format(geojson_path):
     
     return geojson_data
     
-def read_geojson(geojson_path, name_field=None, include_title=False, return_proj=False):
+def read_geojson(geojson_path, name_field=-1, include_title=False, return_proj=False):
     """Read geojson file to python dict
 
     Parameters
@@ -240,13 +240,21 @@ def read_geojson(geojson_path, name_field=None, include_title=False, return_proj
         #  '試験区': 'SubBlk 2b',
         #  ...
         #  'lineNum': 1}
+
         if isinstance(field_id, list):
-            values = [feature['properties'][_key] for _key in keyring]
+            # list comprehension
+            values = [
+                feature['properties'][_key] 
+                if fid != -1 else i 
+                for fid, _key in zip(field_id, keyring)
+            ]
+            
             plot_name = plot_name_template.format(*values)
-        elif field_id is None:
-            plot_name = plot_name_template.format(i)
         else:
-            plot_name = plot_name_template.format(feature['properties'][keyring])
+            if field_id != -1:
+                plot_name = plot_name_template.format(feature['properties'][keyring])
+            else:
+                plot_name = plot_name_template.format(i)
 
         plot_name = plot_name.replace(r'/', '_')
         plot_name = plot_name.replace(r'\\', '_')
@@ -276,7 +284,7 @@ def read_geojson(geojson_path, name_field=None, include_title=False, return_proj
 
         # check if has duplicated key, otherwise will cause override
         if plot_name in geo_dict.keys():
-            raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {geo_fields} or simple leave it blank `name_field=None`")
+            raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {geo_fields} or using row id as key `name_field='#'`")
 
         geo_dict[plot_name] = coord_np
 
@@ -321,7 +329,7 @@ def show_geojson_fields(geojson_path):
     """
     geojson_data = _check_geojson_format(geojson_path)
 
-    head = ["[-1]"] + \
+    head = ["[-1] #"] + \
         [f"[{i}] {k}" for i, k in enumerate(geojson_data.features[0]['properties'].keys())]
     data = []
 

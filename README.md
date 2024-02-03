@@ -7,7 +7,7 @@
 
 <p align="center">
   <img alt="GitHub Actions Badge" src="https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/actions/workflows/pytest.yml/badge.svg?style=plastic">
-  <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/easyidp">
+  <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/easyidp?style=plastic">
   <img alt="GitHub" src="https://img.shields.io/github/license/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/UTokyo-FieldPhenomics-Lab/EasyIDP?style=plastic">
   <img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/UTokyo-FieldPhenomics-Lab/EasyIDP/total?label=github%20downloads&style=plastic">

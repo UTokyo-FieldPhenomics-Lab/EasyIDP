@@ -20,8 +20,9 @@ test_data = idp.data.TestData()
 
 roi_all = idp.ROI(test_data.shp.lotus_shp, name_field=0)
 
-roi_select = idp.ROI()
-
+# global variable for testing
+# shorten for quick for loops
+roi_select = idp.ROI() 
 for key in ["N1W1", "N1W2", "N2E2", "S1W1"]:
     roi_select[key] = roi_all[key]
     roi_select.crs = roi_all.crs

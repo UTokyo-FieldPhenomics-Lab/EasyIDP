@@ -11,33 +11,33 @@ test_data = idp.data.TestData()
 ########################
 
 complex_shp_review = \
-'  [-1]            [0] ID                [1] MASSIFID       [2] CROPTYPE    [3] CROPDATE    [4] CROPAREA    [5] ATTID\n'\
-'------  ---------------------------  -------------------  --------------  --------------  --------------  -----------\n'\
-'     0  230104112201809010000000000  2301041120000000000       小麦         2018-09-01     61525.26302\n'\
-'     1  230104112201809010000000012  2301041120000000012       蔬菜         2018-09-01      2802.33512\n'\
-'     2  230104112201809010000000014  2301041120000000014       玉米         2018-09-01      6960.7745\n'\
-'   ...              ...                      ...               ...             ...             ...            ...\n'\
-'   320  230104112201809010000000583  2301041120000000583       大豆         2018-09-01      380.41704\n'\
-'   321  230104112201809010000000584  2301041120000000584       其它         2018-09-01      9133.25998\n'\
-'   322  230104112201809010000000585  2301041120000000585       其它         2018-09-01      1704.27193\n'
+'  [-1] #            [0] ID                [1] MASSIFID       [2] CROPTYPE    [3] CROPDATE    [4] CROPAREA    [5] ATTID\n'\
+'--------  ---------------------------  -------------------  --------------  --------------  --------------  -----------\n'\
+'       0  230104112201809010000000000  2301041120000000000       小麦         2018-09-01     61525.26302\n'\
+'       1  230104112201809010000000012  2301041120000000012       蔬菜         2018-09-01      2802.33512\n'\
+'       2  230104112201809010000000014  2301041120000000014       玉米         2018-09-01      6960.7745\n'\
+'     ...              ...                      ...               ...             ...             ...            ...\n'\
+'     320  230104112201809010000000583  2301041120000000583       大豆         2018-09-01      380.41704\n'\
+'     321  230104112201809010000000584  2301041120000000584       其它         2018-09-01      9133.25998\n'\
+'     322  230104112201809010000000585  2301041120000000585       其它         2018-09-01      1704.27193\n'
 
 roi_shp_preview = \
-'  [-1]   [0] id\n'\
-'------  --------\n'\
-'     0     0\n'\
-'     1     1\n'\
-'     2     2\n'
+'  [-1] #   [0] id\n'\
+'--------  --------\n'\
+'       0     0\n'\
+'       1     1\n'\
+'       2     2\n'
 
 plots_shp_preview = \
-'  [-1]   [0] plot_id\n'\
-'------  -------------\n'\
-'     0      N1W1\n'\
-'     1      N1W2\n'\
-'     2      N1W3\n'\
-'   ...       ...\n'\
-'   109      S4E5\n'\
-'   110      S4E6\n'\
-'   111      S4E7\n'
+'  [-1] #   [0] plot_id\n'\
+'--------  -------------\n'\
+'       0      N1W1\n'\
+'       1      N1W2\n'\
+'       2      N1W3\n'\
+'     ...       ...\n'\
+'     109      S4E5\n'\
+'     110      S4E6\n'\
+'     111      S4E7\n'
 
 
 
@@ -108,13 +108,8 @@ def test_read_shp_proj_success_print(capfd):
 def test_read_shp_key_names():
     shp_path = test_data.shp.utm53n_shp
 
-    # show warning if not specifying 'name_field'
-    with pytest.warns(UserWarning, match=re.escape("Not specifying parameter 'name_field', will using the row id ")):
-        str_no_name_field_title_false = idp.shp.read_shp(shp_path)
-        assert "1" in str_no_name_field_title_false.keys()
-
     str_no_name_field_title_true= idp.shp.read_shp(shp_path, include_title=True)
-    assert "line_1" in str_no_name_field_title_true.keys()
+    assert "# 1" in str_no_name_field_title_true.keys()
 
     str_name_field_title_false = idp.shp.read_shp(shp_path, name_field="Attr")
     assert "1_02" in str_name_field_title_false.keys()
@@ -123,10 +118,17 @@ def test_read_shp_key_names():
     assert "1_02" in int_name_field_title_false.keys()
 
     str_name_field_title_true = idp.shp.read_shp(shp_path, name_field="Attr", include_title=True)
-    assert "Attr_1_02" in str_name_field_title_true.keys()
+    assert "Attr 1_02" in str_name_field_title_true.keys()
 
     int_name_field_title_true = idp.shp.read_shp(shp_path, name_field=0, include_title=True)
-    assert "Attr_1_02" in int_name_field_title_true.keys()
+    assert "Attr 1_02" in int_name_field_title_true.keys()
+
+    row_int_name_field_title_false = idp.shp.read_shp(shp_path, name_field=-1, include_title=False)
+    assert "1" in row_int_name_field_title_false.keys()
+
+    row_str_name_field_title_false = idp.shp.read_shp(shp_path, name_field="#", include_title=True)
+    assert "# 1" in row_str_name_field_title_false.keys()
+
 
 def test_read_shp_key_names_merge():
     # merge several columns
@@ -135,23 +137,28 @@ def test_read_shp_key_names_merge():
     str_name_field_list_title_false = idp.shp.read_shp(
         shp_path, name_field=["CROPTYPE", "MASSIFID"], encoding='gbk'
     )
-    assert "小麦_2301041120000000000" in str_name_field_list_title_false.keys()
+    assert "小麦|2301041120000000000" in str_name_field_list_title_false.keys()
 
     str_name_field_list_title_true = idp.shp.read_shp(
         shp_path, name_field=["CROPTYPE", "MASSIFID"], 
         include_title=True, encoding='gbk'
     )
-    assert "CROPTYPE_小麦_MASSIFID_2301041120000000000" in str_name_field_list_title_true.keys()
+    assert "CROPTYPE 小麦|MASSIFID 2301041120000000000" in str_name_field_list_title_true.keys()
 
     int_name_field_list_title_false = idp.shp.read_shp(
         shp_path, name_field=[2, 1], encoding='gbk'
     )
-    assert "小麦_2301041120000000000" in int_name_field_list_title_false.keys()
+    assert "小麦|2301041120000000000" in int_name_field_list_title_false.keys()
 
     int_name_field_list_title_true = idp.shp.read_shp(
         shp_path, name_field=[2, 1], include_title=True, encoding='gbk'
     )
-    assert "CROPTYPE_小麦_MASSIFID_2301041120000000000" in int_name_field_list_title_true.keys()
+    assert "CROPTYPE 小麦|MASSIFID 2301041120000000000" in int_name_field_list_title_true.keys()
+
+    index_name_field_list_title_true = idp.shp.read_shp(
+        shp_path, name_field=[2, -1], include_title=True, encoding='gbk'
+    )
+    assert "CROPTYPE 小麦|# 0" in index_name_field_list_title_true.keys()
 
 def test_read_shp_duplicate_key_name_error():
     shp_path = test_data.shp.complex_shp

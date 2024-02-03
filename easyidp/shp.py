@@ -92,7 +92,7 @@ def show_shp_fields(shp_path, encoding="utf-8"):
            322  230104112201809010000000585  2301041120000000585       其它         2018-09-01      1704.27193
     
         >>> idp.shp.show_shp_fields(test_data.shp.lotus_shp)
-          [-1]   [0] plot_id
+        [-1] #   [0] plot_id
         ------  -------------
              0      N1W1
              1      N1W2
@@ -111,7 +111,7 @@ def show_shp_fields(shp_path, encoding="utf-8"):
     # read shp file fields
     shp_fields = _get_field_key(shp)
 
-    head = ["[-1]"] + [f"[{v}] {k}" for k, v in shp_fields.items()]
+    head = ["[-1] #"] + [f"[{v}] {k}" for k, v in shp_fields.items()]
     data = []
 
     row_num = len(shp.records())
@@ -138,7 +138,7 @@ def show_shp_fields(shp_path, encoding="utf-8"):
     print(table_str)
 
 
-def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, encoding='utf-8', return_proj=False):
+def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encoding='utf-8', return_proj=False):
     """read shp file to python numpy object
     
     Parameters
@@ -303,12 +303,17 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
     for i, shape in enumerate(pbar):
         # convert dict_key name string by given name_field
         if isinstance(field_id, list):
-            values = [shp_data.records()[i][fid] for fid in field_id]
+            values = [
+                shp_data.records()[i][fid] 
+                if fid != -1 else i 
+                for fid in field_id
+            ]
             plot_name = plot_name_template.format(*values)
-        elif field_id is None:
-            plot_name = plot_name_template.format(i)
         else:
-            plot_name = plot_name_template.format(shp_data.records()[i][field_id])
+            if field_id != -1:
+                plot_name = plot_name_template.format(shp_data.records()[i][field_id])
+            else:
+                plot_name = plot_name_template.format(i)
 
         plot_name = plot_name.replace(r'/', '_')
         plot_name = plot_name.replace(r'\\', '_')
@@ -324,7 +329,7 @@ def read_shp(shp_path, shp_proj=None, name_field=None, include_title=False, enco
 
         # check if has duplicated key, otherwise will cause override
         if plot_name in shp_dict.keys():
-            raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {shp_fields} or simple leave it blank `name_field=None`")
+            raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {shp_fields} or or using row id as key `name_field='#'`")
 
         shp_dict[plot_name] = coord_np
 
@@ -398,19 +403,17 @@ def _find_name_related_int_id(shp_fields, name_field):
             >>> _find_name_related_int_id(a, b)
             [0, 2]
     """
-    if name_field is None:
-        field_id = None
-        warnings.warn(
-            "Not specifying parameter 'name_field', will using the row id (from 0 to end) as the index for each polygon."\
-            "Please using idp.shp.show_shp_field(shp_path) to display the full available indexs")
-    elif isinstance(name_field, int):
-        if name_field >= len(shp_fields):
+    if isinstance(name_field, int):
+        if name_field >= len(shp_fields) or name_field < -1:
             raise IndexError(f'Int key [{name_field}] is outside the number of fields {shp_fields}')
         field_id = name_field
     elif isinstance(name_field, str):
-        if name_field not in shp_fields.keys():
-            raise KeyError(f'Can not find key {name_field} in {shp_fields}')
-        field_id = shp_fields[name_field]
+        if name_field == '#':
+            field_id = -1
+        else:
+            if name_field not in shp_fields.keys():
+                raise KeyError(f'Can not find key {name_field} in {shp_fields}')
+            field_id = shp_fields[name_field]
     else:
         raise KeyError(f'Can not find key {name_field} in {shp_fields}')
     
@@ -436,32 +439,34 @@ def _get_plot_name_template(roi_fields, field_id, include_title):
     keyring : str or list[ str ]
         a variable to save key of geo_field:dict
     """
+
+    def _fetch_single_field(roi_fields, field_id):
+        plot_name_template = ""
+        if field_id == -1:  # the row index
+            _key = '#'
+        else:
+            _key = idp._find_key(roi_fields, field_id)
+
+        if include_title:
+            plot_name_template +=  _key + " {}"
+        else:
+            plot_name_template += "{}"
+
+        return plot_name_template, _key
+
     if isinstance(field_id, list):
         plot_name_template = ""
         keyring = []
         for j, fid in enumerate(field_id):
-            _key = idp._find_key(roi_fields, fid)
-            keyring.append(_key)
-            if include_title:
-                plot_name_template +=  _key + "_{}"
-            else:
-                plot_name_template += "{}"
+            _plot_name_template, _key = _fetch_single_field(roi_fields, fid)
 
-            # not adding the last key A_B_C_ --> A_B_C
+            plot_name_template += _plot_name_template
+            keyring.append(_key)
+
+            # not adding the last key A|B|C| --> A|B|C
             if j < len(field_id)-1:
-                plot_name_template += "_"
-            
-    elif field_id is None:
-        keyring = None
-        if include_title:
-            plot_name_template = "line_{}"
-        else:
-            plot_name_template = "{}"
+                plot_name_template += "|"
     else:
-        keyring = idp._find_key(roi_fields, field_id)
-        if include_title:
-            plot_name_template =  keyring + "_{}"
-        else:
-            plot_name_template = "{}"
+        plot_name_template, keyring = _fetch_single_field(roi_fields, field_id)
 
     return plot_name_template, keyring

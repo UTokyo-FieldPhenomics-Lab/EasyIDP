@@ -138,7 +138,7 @@ class ROI(idp.Container):
             self.read_labelme_json(target_path)
 
 
-    def read_shp(self, shp_path, shp_proj=None, name_field=None, include_title=False, encoding='utf-8'):
+    def read_shp(self, shp_path, shp_proj=None, name_field=-1, include_title=False, encoding='utf-8'):
         """read ROI from shp file
 
         Parameters
@@ -273,7 +273,7 @@ class ROI(idp.Container):
         else:
             raise TypeError(f"It seems [{json_path}] is not a Labelme json file.")
         
-    def read_geojson(self, geojson_path, name_field=None, include_title=False):
+    def read_geojson(self, geojson_path, name_field=-1, include_title=False):
         """read ROI from geojson file
 
         Parameters

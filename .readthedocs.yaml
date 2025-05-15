@@ -28,5 +28,4 @@ python:
    install:
     - method: pip
       path: .
-      extra_requirements:
-        - docs
+      dependency_groups: [docs]

@@ -57,7 +57,7 @@ def user_data_dir(file_name=""):
     add_usr = path.expanduser()
 
     if not os.path.exists(str(add_usr)):
-        os.mkdir(str(add_usr))
+        os.makedirs(str(add_usr))
 
     return add_usr / file_name
 

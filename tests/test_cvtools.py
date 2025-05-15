@@ -17,8 +17,7 @@ def test_poly2mask_type_int():
     width = 11
     height = 10
 
-    mask_shp = idp.cvtools.poly2mask((width, height), xy, engine='shapely')
-    mask_skm = idp.cvtools.poly2mask((width, height), xy, engine='skimage')
+    mask_ski = idp.cvtools.poly2mask((width, height), xy, engine='skimage')
 
     # the same results from skimage.polygon > 0.18.3
     wanted_shp = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -32,21 +31,7 @@ def test_poly2mask_type_int():
                            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
 
-
-    wanted_pil = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
-
-    np.testing.assert_equal(mask_shp, wanted_shp)
-    # np.testing.assert_equal(mask_pil, wanted_pil)
-    np.testing.assert_equal(mask_skm, wanted_shp)
+    np.testing.assert_equal(mask_ski, wanted_shp)
 
 
 def test_poly2mask_type_float():
@@ -57,30 +42,7 @@ def test_poly2mask_type_float():
     width = 11
     height = 10
 
-    mask_shp = idp.cvtools.poly2mask((width, height), xy, engine='shapely')
-    mask_skm = idp.cvtools.poly2mask((width, height), xy, engine='skimage')
-
-    wanted_shp = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
-
-    wanted_pil = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
+    mask_ski = idp.cvtools.poly2mask((width, height), xy, engine='skimage')
 
     wanted_skm = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -93,8 +55,7 @@ def test_poly2mask_type_float():
                            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=bool)
 
-    np.testing.assert_equal(mask_shp, wanted_shp)
-    np.testing.assert_equal(mask_skm, wanted_skm)
+    np.testing.assert_equal(mask_ski, wanted_skm)
 
 def test_poly2mask_out_of_bound():
     x=[1,7,4,1]   # horizontal coord

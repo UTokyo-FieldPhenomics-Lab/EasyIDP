@@ -13,6 +13,8 @@ Supported Python versions:
 
 * 3.8
 * 3.9
+* 3.10
+* 3.11
 
 Supported operating systems:
 
@@ -83,6 +85,19 @@ Using from source code
 
 If you need to make some changes to the source code (e.g. fix bugs) and want it work immediately (rather than waiting for offical fix). You can also using from the source code directly.
 
+Assuming the source package was downloaded in ``C:\path\to\source\code\EasyIDP`` and the ``code`` folder has the following files:
+
+.. code-block:: text
+
+    C:\path\to\source\code\EasyIDP
+    ├─ docs/
+    ├─ src/
+    |  |─ easyidp/
+    ├─ tests/
+    readme.md
+    pyproject.toml
+    ...
+
 .. tip::
     Please ensure you have uninstalled the pypi easyidp in your current environment:
 
@@ -92,31 +107,19 @@ If you need to make some changes to the source code (e.g. fix bugs) and want it 
 
     and need to restart python to make changes taking effects.
 
-
-Assuming the source package was downloaded in ``C:\path\to\source\code\EasyIDP`` and the ``code`` folder has the following files:
-
-.. code-block:: text
-
-    C:\path\to\source\code\EasyIDP
-    ├─ docs/
-    ├─ easyidp/
-    ├─ tests/
-    readme.md
-    setup.py
-    ...
-
-Then you can used the following code to manual import easyidp package:
-
-.. code-block:: python
-
-    import sys
-    sys.path.insert(0, r'C:/path/to/source/code/EasyIDP')
-
-    import easyidp as idp
-
-Or install to your virtual environment by:
+You can install to your virtual environment by:
 
 .. code-block:: bash
 
     > cd "C:/path/to/source/code/EasyIDP"   # contains setup.py
     > pip install -e .
+
+
+Or using the following code to manual import easyidp package:
+
+.. code-block:: python
+
+    import sys
+    sys.path.insert(0, r'C:/path/to/source/code/EasyIDP/src')
+
+    import easyidp as idp

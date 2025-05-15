@@ -4,23 +4,111 @@
 Contribute
 ==========
 
-Code contribution
-=================
-
-To be continued
-
-.. how to setup pip install -e
-
-.. how to vscode
-
-.. how to run tests
-
-
 Bug reports
 ===========
 
-To be continued
+1. Go to our GitHub repository's Issues page
+2. Click "New Issue" button
+3. Select "Bug Report" template
+4. Fill in the following details:
+   - Clear title describing the issue
+   - Detailed steps to reproduce the bug
+   - Expected behavior
+   - Actual behavior
+   - Relevant code snippets or test data
+   - Environment information (OS, Python version, etc.)
+5. Attach screenshots if applicable
+6. Click "Submit new issue"
 
+Code contribution
+=================
+
+To contribute, you first need to fork the EasyIDP to your repo, and git clone your repo to your local computer.
+
+For example, the git repo folder is located at: ``C:\path\to\source\code\EasyIDP`` with the following folder structure:
+
+.. code-block:: text
+
+    C:\path\to\source\code\EasyIDP
+    ├─ docs/
+    ├─ src/
+    |  |─ easyidp/
+    ├─ tests/
+    readme.md
+    pyproject.toml
+    ...
+
+Prerequisites
+-------------
+
+We recommend to using `uv <https://docs.astral.sh/uv/getting-started/installation/>`_ to setup and manage your developing environments. Please ensure the command uv is accessable to your command line
+
+.. code-block:: bash
+
+    > uv --version
+    uv 0.6.14 
+
+Using the following command to setup the virtual environment for code development:
+
+.. code-block:: bash
+
+    > cd "C:/path/to/source/code/EasyIDP"
+    ...EasyIDP > uv venv   # create virtual env
+    ...EasyIDP > uv sync --all-groups  # install all dependencies
+
+Then activate the virtual environment through the command line:
+
+.. tab:: Windows
+
+    .. code-block:: bash
+
+        ...EasyIDP > .venv/Scripts/activate
+        (EasyIDP) ...EasyIDP > 
+
+.. tab:: Linux/macOS
+
+    .. code-block:: bash
+
+        ...EasyIDP > source .venv/bin/activate
+        (EasyIDP) ...EasyIDP > 
+
+If you need adding extra dependencies, please follow the `uv instructions <https://docs.astral.sh/uv/guides/projects/#managing-dependencies>`_. As a summaries, the following command are most commonly used:
+
+install to default dependencies.
+
+.. code-block:: bash
+
+    ...EasyIDP > uv add some-package
+
+install to group dependencies (we have ``docs``, ``tests`` two groups):
+
+.. code-block:: bash
+        ...EasyIDP > uv add --group docs some-packages
+
+Code Testing
+-------------
+
+Then you can edit the source code by any IDE you preferred (for EasyIDP, it is developped under vscode). And writting the corresponding test samples for your added or modified functions.
+
+Run all tests:
+
+.. code-block:: bash
+
+    (EasyIDP) ...EasyIDP > pytest tests/
+
+Run specific test file:
+
+.. code-block:: bash
+
+    (EasyIDP) ...EasyIDP > pytest tests/test_module.py
+
+Run single test case:
+
+.. code-block:: bash
+
+    (EasyIDP) ...EasyIDP > pytest tests/test_module.py::TestClass::test_method
+
+After ensuring all testing cases can be executed successfully, you can pull request your modification to the EasyIDP repo.
 
 Documentation
 =============
@@ -42,7 +130,7 @@ You need to install python dependices by the following code (please activate you
 
 .. code-block:: bash
 
-    (venv)> pip install -r requirements/docs.txt
+    ...EasyIDP > uv sync --group docs
 
 In order to deal with jupyter notebook extensions, you will also need to install `pandoc <https://pandoc.org/installing.html>`_ into your computer.
 
@@ -79,7 +167,7 @@ Then you can build the documentation by:
 
 .. code-block:: bash
 
-    (venv) EasyIDP/docs> make html
+    (venv) EasyIDP/docs> make html  # or .\make html
 
 You can open the ``_build\html\index.html`` to see the generated documentations
 
@@ -96,7 +184,7 @@ First, extract document’s translatable messages into pot files:
 
 .. code-block:: bash
 
-    (venv) EasyIDP/docs> make gettext
+    (venv) EasyIDP/docs> make gettext # or .\make gettext
 
 This invokes the sphinx gettext builder that generates ``*.pot`` files under ``_build/gettext`` directory.
 

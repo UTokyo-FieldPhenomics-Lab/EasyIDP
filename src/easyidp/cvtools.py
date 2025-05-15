@@ -243,10 +243,10 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
             (horizontal, vertical) = (width, height)
             
     engine : str, default "skimage"
-        | "skimage" or "shapely"; the "pillow" has been deprecated;
+        | "skimage" only; the "pillow" and "shapely" has been deprecated;
         | skimage - ``skimage.draw.polygon2mask``, the default method;
         | pillow is slight different than "skimage", deprecated;
-        | shapely is almost the same with "skiamge", but effiency is very slow, not recommended.
+        | shapely is almost the same with "skiamge", but effiency is very slow, deprecated.
 
     Returns
     -------
@@ -289,72 +289,14 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
     xmin, ymin = poly_coord.min(axis=0)
     xmax, ymax = poly_coord.max(axis=0)
 
-    if engine == "shapely" and max(xmax-xmin, ymax-ymin) > 100:
-        warnings.warn("Shaply Engine can not handle size over 100 efficiently, convert using pillow engine")
-        engine = "skimage"
-
     if xmin < 0 or ymin < 0 or xmax >= w or ymax >= h:
         raise ValueError(f"The polygon coords ({xmin}, {ymin}, {xmax}, {ymax}) is out of mask boundary [0, 0, {w}, {h}]")
 
-    if engine == "shapely":
-        mask = _shapely_poly2mask(h, w, poly_coord)
-    else:   # using pillow -> skimage
-        # mask = _pillow_poly2mask(h, w, poly_coord)
-        # the coordinate of xy is reversed with skimage
-        mask = polygon2mask((w, h), poly_coord).T
+    if engine != "skimage":
+        warnings.warn("The `shapely` and `pillow` engine has been deprecated, using only skimage as engine since easyidp 2.0.1")
+    mask = polygon2mask((w, h), poly_coord).T
 
     return mask
-
-
-def _shapely_poly2mask(h, w, poly_coord):
-    mask = np.zeros((h, w), dtype=bool)
-
-    # use the pixel center as judgement points
-    x = np.arange(0, w) + 0.5
-    y = np.arange(0, h) + 0.5
-
-    xx, yy = np.meshgrid(x, y)
-
-    # get the coordinates of all pixel points
-    # it is reversed with numpy index order -> [vertical, horizontal]
-    pts = np.array([yy.ravel(), xx.ravel()]).T
-    points = MultiPoint(pts)
-
-    # judge the type of polygon coordinates
-    if np.issubdtype(poly_coord.dtype, np.integer):
-        # is int type, mainly means it represent
-        # the id of int rather than coords xy values
-        # -> shift 0.5 as the pixel center
-        poly = Polygon(poly_coord + 0.5)
-    elif np.issubdtype(poly_coord.dtype, np.floating):
-        poly = Polygon(poly_coord)
-
-    points_in = points.intersection(poly)
-
-    # here will raise warning when obtain coords from shapely multipoints
-    # -0.5 turns points center coords to point id
-    # here are point index of "masked" pixels
-    idx = (np.array(points_in) - 0.5).astype(int)
-
-    # turn to masks
-    # idx -> (pixel horizontal, pixel vertical)
-    # it is reversed with numpy index order -> [vertical, horizontal]
-    mask[idx[:,1], idx[:,0]] = True
-
-    return mask
-
-# def _pillow_poly2mask(h, w, poly_coord):
-#     # deprecated
-#     mask = Image.new('1', (w, h), color=0)
-#     draw = ImageDraw.Draw(mask)
-
-#     xy_pil = [tuple(i) for i in poly_coord]
-    
-#     draw.polygon(xy_pil, fill=1, outline=1)
-
-#     mask = np.array(mask, dtype=bool)
-
-#     return mask
 
 
 def rgb2gray(rgb):

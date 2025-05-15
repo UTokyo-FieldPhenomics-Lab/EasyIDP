@@ -80,7 +80,7 @@ install to default dependencies.
 
     ...EasyIDP > uv add some-package
 
-install to group dependencies (we have ``docs``, ``tests`` two groups):
+install to group dependencies (we have ``docs``, ``test`` two groups):
 
 .. code-block:: bash
         ...EasyIDP > uv add --group docs some-packages

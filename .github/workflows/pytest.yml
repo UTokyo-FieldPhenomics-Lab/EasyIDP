@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+      max-parallel: 1  # 关键修改：限制同时运行的 job 数量为 1
 
     steps:
     - uses: actions/checkout@v4

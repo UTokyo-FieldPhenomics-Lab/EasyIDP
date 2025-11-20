@@ -2,13 +2,13 @@ import os
 import pyproj
 import zipfile
 import numpy as np
-import warnings
 from pathlib import Path
 from tabulate import tabulate
 from xml.etree import ElementTree
 import xml.dom.minidom as minidom
 from tqdm import tqdm
 from copy import copy as ccopy
+from loguru import logger
 
 import easyidp as idp
 
@@ -184,7 +184,7 @@ class Metashape(idp.reconstruct.Recons):
             self.open_chunk(self.chunk_id)
         else:
             if chunk_id is not None:
-                warnings.warn(
+                logger.warning(
                     f"Unable to open chunk_id [{chunk_id}] for empty project with project_path={project_path}")
 
     def open_chunk(self, chunk_id, project_path=None):
@@ -310,14 +310,14 @@ class Metashape(idp.reconstruct.Recons):
         first_chunk_id = list(project_dict.keys())[0]
         if len(project_dict) == 1:  # only has one chunk, open directly
             if str(self.chunk_id) not in chunk_id2label.keys() and self.chunk_id not in chunk_id2label.values():
-                warnings.warn(
+                logger.warning(
                     f"This project only has one chunk named "
                     f"[{first_chunk_id}] '{chunk_id2label[first_chunk_id]}', "
                     f"ignore the wrong chunk_id [{self.chunk_id}] specified by user.")
             self.chunk_id = first_chunk_id
         elif len(project_dict) > 1:   # has multiple chunks
             if self.chunk_id is None:
-                warnings.warn(
+                logger.warning(
                     f"The project has [{len(project_dict)}] chunks, however no chunk_id has been specified, "
                     f"open the first chunk [{first_chunk_id}] '{chunk_id2label[first_chunk_id]}' by default.")
                 self.chunk_id = first_chunk_id
@@ -359,7 +359,7 @@ class Metashape(idp.reconstruct.Recons):
 
         # show warning for emtpy tasks
         if not self.enabled:
-            warnings.warn(f"Current chunk missing required {missing_pool} information "
+            logger.warning(f"Current chunk missing required {missing_pool} information "
                 "(is it an empty chunk without finishing SfM tasks?) and unable to do further analysis.")
             
     def show_photo_folder(self):
@@ -578,7 +578,7 @@ class Metashape(idp.reconstruct.Recons):
             raise TypeError("Unable to process disabled chunk (.enabled=False)")
         
         if self.crs is None:
-            warnings.warn("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by `ms.crs=dom.crs` or `ms.crs=pyproj.CRS.from_epsg(...)` ")
+            logger.warning("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by `ms.crs=dom.crs` or `ms.crs=pyproj.CRS.from_epsg(...)` ")
         
         if self.crs is not None and self.crs.name in ['Local Coordinates', 'Local Coordinates (m)']:
             local_coord = self._world2local(points_xyz)
@@ -675,7 +675,7 @@ class Metashape(idp.reconstruct.Recons):
             raise TypeError("Unable to process disabled chunk (.enabled=False)")
         
         if self.crs is None and roi.crs is None:
-            warnings.warn("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by either `ms.crs=...` or `roi.crs=...` ")
+            logger.warning("Have not specify the CRS of output DOM/DSM/PCD, may get wrong backward projection results, please specify it by either `ms.crs=...` or `roi.crs=...` ")
         
         out_dict = {}
 
@@ -1623,14 +1623,14 @@ def _decode_sensor_tag(xml_obj, debug_meta={}):
 
     if len(calib_tags) != 1:
         if has_adjusted_tag:
-            warnings.warn(f'Detect {len(calib_tags)} <calibration> tags in <sensor label={sensor.label}> tag, using <calibration class="adjusted">')
+            logger.warning(f'Detect {len(calib_tags)} <calibration> tags in <sensor label={sensor.label}> tag, using <calibration class="adjusted">')
             
 
     if not has_adjusted_tag:
         xml_str = minidom.parseString(ElementTree.tostring(xml_obj)).toprettyxml(indent="  ")
         # remove the first line <?xml version="1.0" ?> and empty lines
         xml_str = os.linesep.join([s for s in xml_str.splitlines() if s.strip() and '?xml version=' not in s])
-        warnings.warn(
+        logger.warning(
             f'No expected <calibration class="adjusted"> tag found in <sensor label={sensor.label}> tag\n'
             f'Problemed XML tags for debugging reference: \n{xml_str}\n')
         

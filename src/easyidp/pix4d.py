@@ -1,10 +1,10 @@
 import os
 import numpy as np
-import warnings
 import pyproj
 from pathlib import Path
 from tqdm import tqdm
 from copy import copy as ccopy
+from loguru import logger
 
 import easyidp as idp
 
@@ -236,7 +236,7 @@ class Pix4D(idp.reconstruct.Recons):
             sensor.calibration.cy, sensor.calibration.cx = ssk["photo_center_in_pixels"]
         # the order is reversed, probably orientatio == 0
         elif ssk["image_size_in_pixels"] == [ccp["w"], ccp["h"]]:
-            warnings.warn(f"It seems the orientation = {ssk['orientation']} and the height and width are reversed")
+            logger.warning(f"It seems the orientation = {ssk['orientation']} and the height and width are reversed")
             sensor.pixel_size = ssk["pixel_size"][::-1]   # reverse
             sensor.pixel_width, sensor.pixel_height = ssk["pixel_size"]
             sensor.calibration.cx, sensor.calibration.cy = ssk["photo_center_in_pixels"]
@@ -299,7 +299,7 @@ class Pix4D(idp.reconstruct.Recons):
             self.photos[i] = img
 
         if len(missing_photo) > 0:
-            warnings.warn(
+            logger.warning(
                 f"Could not find {missing_photo} in given raw_img_folder"
                 "[{raw_img_folder}]"
             )
@@ -1301,7 +1301,7 @@ def parse_p4d_project(project_path:str, param_folder=None):
             if force is not None:
                 p4d["pcd"] = force
             else:
-                warnings.warn(
+                logger.warning(
                     f"Unable to find any point cloud output file "
                     "[*.ply, *.las, *.laz] in the project folder "
                     "[{pcd_folder}]. Please specify manually."
@@ -1319,7 +1319,7 @@ def parse_p4d_project(project_path:str, param_folder=None):
             if force is not None:
                 p4d["dsm"] = force
             else:
-                warnings.warn(
+                logger.warning(
                     f"Unable to find any DSM output file "
                     "[*.ply, *.las, *.laz] in the project folder "
                     "[{dense_folder}]. Please specify manually."
@@ -1335,7 +1335,7 @@ def parse_p4d_project(project_path:str, param_folder=None):
             if force is not None:
                 p4d["dom"] = force
             else:
-                warnings.warn(
+                logger.warning(
                     f"Unable to find any DOM output file "
                     "[*.ply, *.las, *.laz] in the project folder "
                     "[{dense_folder}]. Please specify manually."

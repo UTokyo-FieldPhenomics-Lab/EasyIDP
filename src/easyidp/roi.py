@@ -1,10 +1,10 @@
 import os
 import pyproj
-import warnings
 import numpy as np
 from tqdm import tqdm
 from shapely.geometry import Point, Polygon
 from pathlib import Path
+from loguru import logger
 
 import easyidp as idp
 
@@ -268,7 +268,7 @@ class ROI(idp.Container):
 
                     self[label] = np.array(poly)
                 else:
-                    warnings.warn(
+                    logger.warning(
                         f"Only labelme [polygon] shape are accepted, not [{shapes['shape_type']}] of [{shapes['label']}]")
         else:
             raise TypeError(f"It seems [{json_path}] is not a Labelme json file.")
@@ -831,7 +831,7 @@ class ROI(idp.Container):
             self[roi_name] = poly3d
 
         if len(nan_z_list) > 0:
-            warnings.warn(f"Z values contains empty attribute [{dsm.header['nodata']}] for {nan_z_list}, this may be caused by the ROI distribute inside the DSM no-value area, please double check the source shapefile and DOM in GIS software")
+            logger.warning(f"Z values contains empty attribute [{dsm.header['nodata']}] for {nan_z_list}, this may be caused by the ROI distribute inside the DSM no-value area, please double check the source shapefile and DOM in GIS software")
 
 
     def get_z_from_pcd(self, pcd, mode="face", kernel="mean", buffer=0):

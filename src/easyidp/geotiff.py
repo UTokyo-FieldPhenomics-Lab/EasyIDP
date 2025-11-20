@@ -2,10 +2,10 @@ import os
 import pyproj
 import numpy as np
 import tifffile as tf
-import warnings
 from tqdm import tqdm
 from pathlib import Path
 from pyproj.exceptions import CRSError
+from loguru import logger
 
 import easyidp as idp
 
@@ -174,7 +174,7 @@ class GeoTiff(object):
             self.file_path = tif_path
             self.header = get_header(str(tif_path))
         else:
-            warnings.warn(f"Can not find file [{tif_path}], skip loading")
+            logger.warning(f"Can not find file [{tif_path}], skip loading")
 
 
     def has_data(self):
@@ -447,7 +447,7 @@ class GeoTiff(object):
         else:
             if np.issubdtype(polygon_hv.dtype, np.floating):
                 poly_px = np.floor(polygon_hv).astype(int)
-                warnings.warn("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
+                logger.warning("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
             elif np.issubdtype(polygon_hv.dtype, np.integer):
                 poly_px = polygon_hv
             else:
@@ -1505,7 +1505,7 @@ def point_query(page, points_hv, header=None):
         # if float, converted to int by floor()
         else:
             px = np.floor(points_hv).astype(int)
-            warnings.warn("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
+            logger.warning("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
     else:
         px = geo2pixel(points_hv, header, return_index=True)
 

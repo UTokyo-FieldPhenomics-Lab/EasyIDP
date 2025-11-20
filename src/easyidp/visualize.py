@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as pts
 from matplotlib.collections import PatchCollection
 from tqdm import tqdm
-import warnings
+from loguru import logger
 
 
 def _view_poly2mask(poly, mask, pix_all, pix_in):
@@ -264,7 +264,7 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None
         if isinstance(title, list) and len(title) == 2:
             title_list = title
         else:
-            warnings.warn(f"Expected title like ['title1', 'title2'], not given '{title}', using default title instead")
+            logger.warning(f"Expected title like ['title1', 'title2'], not given '{title}', using default title instead")
 
     img_num = len(result_dict)
     grid_w = np.ceil(np.sqrt(img_num + 1)).astype(int)  # img_num + 1 ensures the column num > row num

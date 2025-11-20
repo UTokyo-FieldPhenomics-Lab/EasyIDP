@@ -3,8 +3,8 @@ import pyproj
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-import warnings
 from skimage.io import imread, imsave
+from loguru import logger
 
 import easyidp as idp
 
@@ -228,7 +228,7 @@ class Sensor:
                 if log: print(f'O  w[{x_min} ~ {x_max}], h[{y_min} ~ {y_max}]')
                 return polygon_hv
         elif ignore=='x':
-            warnings.warn(
+            logger.warning(
                 "This API `ignore` (str) will be enhanced and "
                 "changed to `ignore_overflow` (bool) in the future.", 
                 FutureWarning
@@ -243,7 +243,7 @@ class Sensor:
                 if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
                 return polygon_hv
         elif ignore=='y':
-            warnings.warn(
+            logger.warning(
                 "This API `ignore` (str) will be enhanced and "
                 "changed to `ignore_overflow` (bool) in the future.", 
                 FutureWarning

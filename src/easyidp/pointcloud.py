@@ -1,9 +1,9 @@
 import os
-import warnings
 from datetime import datetime
 from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
+from loguru import logger
 
 import numpy as np
 import numpy.lib.recfunctions as rfn
@@ -513,7 +513,7 @@ class PointCloud(object):
 
         """
         if not os.path.exists(pcd_path):
-            warnings.warn(f"Can not find file [{pcd_path}], skip loading")
+            logger.warning(f"Can not find file [{pcd_path}], skip loading")
             return
 
         if Path(pcd_path).suffix == ".ply":
@@ -607,7 +607,7 @@ class PointCloud(object):
         file_ext = pcd_path.suffix
 
         if file_ext == "":
-            warnings.warn(f"It seems file name [{pcd_path}] has no file suffix, using default suffix [{self.file_ext}] instead")
+            logger.warning(f"It seems file name [{pcd_path}] has no file suffix, using default suffix [{self.file_ext}] instead")
             out_path = pcd_path.with_name(f"{pcd_path.name}{self.file_ext}")
         else:
             if file_ext not in ['.ply', '.las', '.laz']:
@@ -825,7 +825,7 @@ class PointCloud(object):
             return crop_pcd
         # get empty crop
         else:
-            warnings.warn("Cropped 0 point in given polygon. Please check whether the coords is correct.")
+            logger.warning("Cropped 0 point in given polygon. Please check whether the coords is correct.")
             return None
 
 

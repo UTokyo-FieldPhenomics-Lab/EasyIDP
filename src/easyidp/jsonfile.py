@@ -6,6 +6,7 @@ import pyproj
 import warnings
 from tabulate import tabulate
 from tqdm import tqdm
+from loguru import logger
 
 import easyidp as idp
 
@@ -291,7 +292,7 @@ def read_geojson(geojson_path, name_field=-1, include_title=False, return_proj=F
             non_polygon_warning += 1
             # only warning at the first time
             if non_polygon_warning == 1:
-                warnings.warn(f"Currently only supports [Polygon] type geojson, but [{geometry['type']}] are used")
+                logger.warning(f"Currently only supports [Polygon] type geojson, but [{geometry['type']}] are used")
             
             coord_np = np.asarray(geometry['coordinates'])
 

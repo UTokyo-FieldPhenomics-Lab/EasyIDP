@@ -7,6 +7,8 @@ import subprocess
 import tqdm
 from pathlib import Path
 
+from loguru import logger
+
 GDOWN_TEST_URL = "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=share_link"
 
 from easyidp import user_data_dir

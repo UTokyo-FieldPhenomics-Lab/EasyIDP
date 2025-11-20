@@ -2,6 +2,8 @@ import numpy as np
 from skimage.draw import polygon2mask
 from shapely.geometry import MultiPoint, Polygon
 
+from loguru import logger
+
 # ignore the warning of shapely convert coordiante
 import warnings
 warnings.filterwarnings("ignore", message="The array interface is deprecated and will no longer work in Shapely 2.0")
@@ -293,7 +295,7 @@ def poly2mask(image_shape, poly_coord, engine="skimage"):
         raise ValueError(f"The polygon coords ({xmin}, {ymin}, {xmax}, {ymax}) is out of mask boundary [0, 0, {w}, {h}]")
 
     if engine != "skimage":
-        warnings.warn("The `shapely` and `pillow` engine has been deprecated, using only skimage as engine since easyidp 2.0.1")
+        logger.warning("The `shapely` and `pillow` engine has been deprecated, using only skimage as engine since easyidp 2.0.1")
     mask = polygon2mask((w, h), poly_coord).T
 
     return mask

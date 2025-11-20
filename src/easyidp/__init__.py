@@ -221,7 +221,7 @@ def parse_relative_path(root_path, relative_path):
         merge = os.path.join(frame_path, relative_path)
         return os.path.abspath(merge)
     else:
-        warnings.warn(f"Seems it is an absolute path [{relative_path}]")
+        logger.warning(f"Seems it is an absolute path [{relative_path}]")
         return relative_path
     
 def user_data_dir(file_name=""):

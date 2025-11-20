@@ -11,7 +11,7 @@ from loguru import logger
 
 GDOWN_TEST_URL = "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=share_link"
 
-from easyidp import user_data_dir
+from easyidp import user_data_dir, logged_input
 
 def show_data_dir():
     """open the cached data files in cross-platform system default viewer.
@@ -60,7 +60,7 @@ def url_checker(url):
 
     #Exception
     except requests.exceptions.RequestException as e:
-        # print URL with Errs
+        logger.warning(f"URL: {url} is not reachable, Err: {e}")
         return False
 
 def _can_access_google_cloud():
@@ -156,18 +156,18 @@ class AliYunDownloader():
             f"此费用由作者本人负担，请勿在非必要的情况下重复下载或将此数据存储仓库用于其他用途\n\n"
             f"如果同意以上内容，请在下方用输入法输入（复制无效)：\n{no_copy_confirm_str}{END}"
         )
-        print(notification)
+        logger.info(notification)
 
         retry_counter = 0
         matched = False
 
         while retry_counter < 5:
-            user_confirm = input(">>> ")
+            user_confirm = logged_input(">>> ")
             if user_confirm == confirm_str:
                 matched = True
                 break
             else:
-                print("输入的字符不匹配，请用输入法再次输入\n")
+                logger.warning("输入的字符不匹配，请用输入法再次输入\n")
                 retry_counter += 1
 
         if not matched:
@@ -258,6 +258,8 @@ class EasyidpDataSet():
         self.pix4d = self.ReconsProj()
         self.metashape = self.ReconsProj()
 
+        self.load_data()
+
     def load_data(self):
         r"""Download dataset from Google Drive to user AppData folder
         """
@@ -268,9 +270,9 @@ class EasyidpDataSet():
                 self._download_data()
 
             if os.path.exists(self.zip_file):
-                print("Successfully downloaded, start unzipping ...")
+                logger.success("Successfully downloaded, start unzipping ...")
                 self._unzip_data()
-                print("Successfully unzipped, the cache zip file has been removed.")
+                logger.success("Successfully unzipped, the cache zip file has been removed.")
             else:
                 raise FileNotFoundError(
                     f"Could not find the downloaded file [{self.zip_file}], "
@@ -312,7 +314,7 @@ class EasyidpDataSet():
                 )
         else:
             # high possibility in China Mainland, use aliyun OSS for downloading
-            is_mainland_user = input("Google Drive Unaccessable, are you locate in China Mainland? (Y/N)\n>>> ")
+            is_mainland_user = logged_input("Google Drive Unaccessable, are you locate in China Mainland? (Y/N)\n>>> ")
             if is_mainland_user in ["Yes", "Y", "y", "yes"]:
                 if idp.aliyun_down is None:
                     idp.aliyun_down = AliYunDownloader()

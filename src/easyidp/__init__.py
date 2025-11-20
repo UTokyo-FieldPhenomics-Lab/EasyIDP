@@ -317,10 +317,35 @@ logger.add(
     logger_file, 
     level="DEBUG", # 文件中记录更详细的 DEBUG 级别日志
     rotation="100 MB",  # 每 10 MB 切割一个新文件
-    format=logger_format
+    format=logger_format,
+    enqueue=True
 )
 
 logger.info(f"Welcome to use\n{banner}\nVersion: {__version__}")
+
+
+def logged_input(prompt: str, is_sensitive: bool = False) -> str:
+    """
+    一个包装了 loguru 日志记录功能的 input() 函数。
+    Args:
+        prompt (str): 显示给用户的提示信息。
+        is_sensitive (bool): 如果为 True，用户的输入将被屏蔽，不会记录到日志中。
+    Returns:
+        str: 用户输入的字符串。
+    """
+    # 1. 记录提示信息
+    logger.info(f"向用户显示输入提示: '{prompt}'")
+    
+    # 2. 调用原始的 input() 函数
+    user_response = input(prompt)
+    
+    # 3. 记录用户的输入 (处理敏感信息)
+    if is_sensitive:
+        logger.info("用户输入了敏感信息 [内容已屏蔽]")
+    else:
+        logger.info(f"用户输入内容: '{user_response}'")
+        
+    return user_response
 
 ###############
 # import APIs #

@@ -1,13 +1,14 @@
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 import os
 import sys
 import subprocess
 import warnings
-import numpy as np
 from pathlib import Path
-
 from copy import deepcopy
+
+import numpy as np
+from loguru import logger
 
 ##############
 # dict tools #
@@ -223,6 +224,104 @@ def parse_relative_path(root_path, relative_path):
         warnings.warn(f"Seems it is an absolute path [{relative_path}]")
         return relative_path
     
+def user_data_dir(file_name=""):
+    r"""Get OS specific data directory path for EasyIDP.
+    
+    Parameters
+    ----------
+    file_name : str
+        file to be fetched from the data dir
+
+    Returns
+    -------
+    str
+        full path to the user-specific data dir
+
+    Notes
+    -----
+    Typical user data directories are:
+
+    .. code-block:: text
+
+        macOS:    ~/Library/Application Support/easyidp.data
+        Unix:     ~/.local/share/easyidp.data   # or in $XDG_DATA_HOME, if defined
+        Win 10:   C:\Users\<username>\AppData\Local\easyidp.data
+
+    For Unix, we follow the XDG spec and support ``$XDG_DATA_HOME`` if defined.
+
+    Referenced from stackoverflow [1]_ then get github [2]_ .
+
+    References
+    ----------
+    .. [1] Python: Getting AppData folder in a cross-platform way https://stackoverflow.com/questions/19078969/python-getting-appdata-folder-in-a-cross-platform-way
+    .. [2] SwagLyrics-For-Spotify/swaglyrics/__init__.py https://github.com/SwagLyrics/SwagLyrics-For-Spotify/blob/master/swaglyrics/__init__.py#L8-L32
+
+    """
+    # get os specific path
+    if sys.platform.startswith("win"):
+        os_path = os.getenv("LOCALAPPDATA")
+    elif sys.platform.startswith("darwin"):
+        os_path = "~/Library/Application Support"
+    else:
+        # linux
+        os_path = os.getenv("XDG_DATA_HOME", "~/.local/share")
+
+    # join with easyidp.data dir
+    path = Path(os_path) / "easyidp.data"
+
+    add_usr = path.expanduser()
+
+    if not os.path.exists(str(add_usr)):
+        os.makedirs(str(add_usr))
+
+    return add_usr / file_name
+
+################
+# logger tools #
+################
+
+# Generated in ANSI Shadow by:
+# https://www.asciiart.eu/text-to-ascii-art
+
+banner = """
+███████╗ █████╗ ███████╗██╗   ██╗██╗██████╗ ██████╗ 
+██╔════╝██╔══██╗██╔════╝╚██╗ ██╔╝██║██╔══██╗██╔══██╗
+█████╗  ███████║███████╗ ╚████╔╝ ██║██║  ██║██████╔╝
+██╔══╝  ██╔══██║╚════██║  ╚██╔╝  ██║██║  ██║██╔═══╝ 
+███████╗██║  ██║███████║   ██║   ██║██████╔╝██║     
+╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝╚═════╝ ╚═╝     
+"""
+
+logger_format = (
+    "<level>{level:1.1}</level> "  # E for ERROR, I for INFO, etc.
+    "<green>{time:YYYY/MM/DD HH:mm:ss}</green> "  # YYYY/MM/DD HH:mm:ss
+    "{name}.{function}:{line}: "  # file.py:123
+    "<level>{message}</level>"  # The actual log message
+)
+
+logger_file = user_data_dir() / "easyidp.log"
+
+# 1. (可选但推荐) 移除所有默认的处理器，以便完全控制日志输出
+logger.remove()
+
+# 2. 添加一个新的处理器，配置你想要的格式、级别、输出位置等
+#    这里我们将日志输出到标准错误流 (stderr)
+logger.add(
+    sys.stderr, 
+    level="INFO",  # 设置最低日志级别为 INFO
+    format = logger_format
+)
+
+# 3. (可选) 你也可以添加一个文件处理器，将日志同时保存到文件
+logger.add(
+    logger_file, 
+    level="DEBUG", # 文件中记录更详细的 DEBUG 级别日志
+    rotation="100 MB",  # 每 10 MB 切割一个新文件
+    format=logger_format
+)
+
+logger.info(f"Welcome to use\n{banner}\nVersion: {__version__}")
+
 ###############
 # import APIs #
 ###############

@@ -9,57 +9,7 @@ from pathlib import Path
 
 GDOWN_TEST_URL = "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=share_link"
 
-def user_data_dir(file_name=""):
-    r"""Get OS specific data directory path for EasyIDP.
-    
-    Parameters
-    ----------
-    file_name : str
-        file to be fetched from the data dir
-
-    Returns
-    -------
-    str
-        full path to the user-specific data dir
-
-    Notes
-    -----
-    Typical user data directories are:
-
-    .. code-block:: text
-
-        macOS:    ~/Library/Application Support/easyidp.data
-        Unix:     ~/.local/share/easyidp.data   # or in $XDG_DATA_HOME, if defined
-        Win 10:   C:\Users\<username>\AppData\Local\easyidp.data
-
-    For Unix, we follow the XDG spec and support ``$XDG_DATA_HOME`` if defined.
-
-    Referenced from stackoverflow [1]_ then get github [2]_ .
-
-    References
-    ----------
-    .. [1] Python: Getting AppData folder in a cross-platform way https://stackoverflow.com/questions/19078969/python-getting-appdata-folder-in-a-cross-platform-way
-    .. [2] SwagLyrics-For-Spotify/swaglyrics/__init__.py https://github.com/SwagLyrics/SwagLyrics-For-Spotify/blob/master/swaglyrics/__init__.py#L8-L32
-
-    """
-    # get os specific path
-    if sys.platform.startswith("win"):
-        os_path = os.getenv("LOCALAPPDATA")
-    elif sys.platform.startswith("darwin"):
-        os_path = "~/Library/Application Support"
-    else:
-        # linux
-        os_path = os.getenv("XDG_DATA_HOME", "~/.local/share")
-
-    # join with easyidp.data dir
-    path = Path(os_path) / "easyidp.data"
-
-    add_usr = path.expanduser()
-
-    if not os.path.exists(str(add_usr)):
-        os.makedirs(str(add_usr))
-
-    return add_usr / file_name
+from easyidp import user_data_dir
 
 def show_data_dir():
     """open the cached data files in cross-platform system default viewer.

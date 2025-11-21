@@ -5,10 +5,11 @@ import pyproj
 
 import easyidp as idp
 
-test_data = idp.data.TestData()
-from . import roi_select
+from . import shared_data
 
-def test_read_cc_txt():
+def test_read_cc_txt(shared_data):
+    test_data = shared_data["test_data"]
+
     results = np.array([
         [-18.42576599, -16.10819054,  -0.63814539],
         [-18.00066757, -18.05295944,  -0.67380333],
@@ -37,7 +38,9 @@ def test_class_roi_init():
     assert len(roi) == 1
     assert "ddfge" in roi.item_label.keys()
 
-def test_class_roi_slice():
+def test_class_roi_slice(shared_data):
+    test_data = shared_data["test_data"]
+
     # solve the issue 58
     roi = idp.ROI()
 
@@ -52,7 +55,9 @@ def test_class_roi_slice():
     for func_name in ["crop", "back2raw", "get_z_from_dsm"]:
         assert func_name in dir(roi)
 
-def test_class_roi_copy():
+def test_class_roi_copy(shared_data):
+    test_data = shared_data["test_data"]
+
     roi = idp.ROI()
 
     roi.read_shp(test_data.shp.roi_shp, name_field=0)
@@ -67,7 +72,9 @@ def test_class_roi_copy():
     assert roi.crs == roi_copy.crs
     assert roi.source == roi_copy.source
 
-def test_class_roi_read_shp():
+def test_class_roi_read_shp(shared_data):
+    test_data = shared_data["test_data"]
+
     roi = idp.ROI()
 
     roi.read_shp(test_data.shp.roi_shp, name_field=0)
@@ -82,7 +89,9 @@ def test_class_roi_read_shp():
     assert roi.crs.name == "WGS 84"
     assert "N1W1" in roi.keys()
 
-def test_class_read_labelme_json():
+def test_class_read_labelme_json(shared_data):
+    test_data = shared_data["test_data"]
+
     json_path = test_data.json.labelme_demo
 
     roi = idp.ROI(json_path)
@@ -102,7 +111,9 @@ def test_class_read_labelme_json():
         assert len(roi) == 0
 
 
-def test_class_roi_change_crs():
+def test_class_roi_change_crs(shared_data):
+    test_data = shared_data["test_data"]
+
     roi = idp.ROI(test_data.shp.lotus_shp)
 
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
@@ -110,9 +121,11 @@ def test_class_roi_change_crs():
     roi.change_crs(obj.header["crs"])
     assert roi.crs.name == obj.header["crs"].name
 
-def test_class_roi_get_z_from_dsm():
+def test_class_roi_get_z_from_dsm(shared_data):
+    test_data = shared_data["test_data"]
+
     # only test whether works, not examine the value is true or not
-    roi = roi_select.copy()
+    roi = shared_data['roi'].copy()
 
     assert len(roi) == 4
     # have different CRS from shp file
@@ -178,7 +191,9 @@ def test_class_roi_get_z_from_dsm():
     np.testing.assert_almost_equal(roi_f_mean_0_f[0][0,1], 3955511.081022765)
 
 
-def test_class_roi_get_z_from_dsm_warns():
+def test_class_roi_get_z_from_dsm_warns(shared_data):
+    test_data = shared_data["test_data"]
+
     # the ROI outside the DSM ranges and cause nan values for z
     # bug report #69
     roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
@@ -192,7 +207,9 @@ def test_class_roi_get_z_from_dsm_warns():
         roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
         print(roi[0])
 
-def test_class_roi_get_z_from_dsm_errors():
+def test_class_roi_get_z_from_dsm_errors(shared_data):
+    test_data = shared_data["test_data"]
+
     roi = idp.ROI(test_data.shp.lotus_shp)
     lotus_full_dsm = test_data.pix4d.lotus_dsm
 
@@ -240,7 +257,9 @@ def test_func_insert_z_value_for_roi_error():
     with pytest.raises(ValueError, match=re.escape("The expected z_value shape should be either (n) or (n, 1), not given (5, 1, 1)")):
         out = idp.roi._insert_z_value_for_roi(val, z_value[:, None])
 
-def test_func_insert_z_value_for_roi_error_point_mode():
+def test_func_insert_z_value_for_roi_error_point_mode(shared_data):
+    test_data = shared_data["test_data"]
+
     # meet the error #72
     val = np.array(
        [[ 368017.7565143 , 3955511.08102277],
@@ -266,7 +285,9 @@ def test_func_insert_z_value_for_roi_error_point_mode():
     assert roi[0].shape == (5,3)
 
 
-def test_class_roi_get_z_from_dsm_duplicate_load():
+def test_class_roi_get_z_from_dsm_duplicate_load(shared_data):
+    test_data = shared_data["test_data"]
+
     # fix bug #60
     roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
     roi = roi[0:3]
@@ -281,7 +302,9 @@ def test_class_roi_get_z_from_dsm_duplicate_load():
 
     assert roi['N1W1'].shape == (5, 3)
 
-def test_class_roi_crop():
+def test_class_roi_crop(shared_data):
+    test_data = shared_data["test_data"]
+
     # just ensure it can run, the data examine please check corresponding modules' test
 
     # data prepare
@@ -290,7 +313,7 @@ def test_class_roi_crop():
     lotus_full_dom = test_data.pix4d.lotus_dom 
     lotus_full_shp = test_data.shp.lotus_shp 
 
-    roi = roi_select.copy()
+    roi = shared_data['roi'].copy()
     roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
 
     # crop geotiff
@@ -317,7 +340,9 @@ def test_class_roi_crop_error():
         roi.crop("aaa")
 
 
-def test_class_roi_back2raw():
+def test_class_roi_back2raw(shared_data):
+    test_data = shared_data["test_data"]
+
     # single chunk:
     p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
                     raw_img_folder=test_data.pix4d.lotus_photos,
@@ -325,7 +350,7 @@ def test_class_roi_back2raw():
 
     ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
 
-    roi = roi_select.copy()
+    roi = shared_data['roi'].copy()
     roi.get_z_from_dsm(test_data.pix4d.lotus_dsm)
 
     ms.crs = roi.crs
@@ -336,7 +361,9 @@ def test_class_roi_back2raw():
     assert len(out_p4d) == 4
     assert len(out_ms) == 4
 
-def test_class_roi_back2raw_error():
+def test_class_roi_back2raw_error(shared_data):
+    test_data = shared_data["test_data"]
+    
     ms = idp.Metashape(test_data.metashape.lotus_psx)
 
     roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)

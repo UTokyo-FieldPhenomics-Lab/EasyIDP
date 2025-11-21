@@ -5,10 +5,11 @@ import numpy as np
 import easyidp as idp
 import shutil
 
-test_data = idp.data.TestData()
-from . import roi_select
+from . import shared_data
 
-def test_class_recons_output_io():
+def test_class_recons_output_io(shared_data):
+    test_data = shared_data["test_data"]
+    
     # init return None
     recons = idp.reconstruct.Recons()
 
@@ -188,13 +189,15 @@ def test_class_container_photo():
     assert a[0] == p1
     assert a["bbb.jpg"] == p2
 
-def test_func_sort_img_by_distance_ms():
+def test_func_sort_img_by_distance_ms(shared_data):
+    test_data = shared_data["test_data"]
+
     # =================
     # metashape outputs
     # =================
     ms = idp.Metashape(project_path=test_data.metashape.lotus_psx, chunk_id=0)
 
-    roi = roi_select.copy()
+    roi = shared_data['roi'].copy()
     roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
     poly = roi["N1W2"]
@@ -226,26 +229,12 @@ def test_func_sort_img_by_distance_ms():
 # =============
 # pix4d outputs
 # =============
-# lotus = idp.data.Lotus()
 
-# p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
-#                 raw_img_folder=lotus.photo,
-#                 param_folder=lotus.pix4d.param)
-# ms = idp.Metashape(project_path=lotus.metashape.project, chunk_id=0)
+def test_func_sort_img_by_distance_p4d(shared_data):
+    p4d = shared_data["p4d"]
+    roi = shared_data["roi"]
+    out_all = shared_data["out_all"]
 
-p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
-                raw_img_folder=test_data.pix4d.lotus_photos,
-                param_folder=test_data.pix4d.lotus_param)
-ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
-
-roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-# only pick 1 plots as testing data
-roi = roi[0:1]
-roi.get_z_from_dsm(test_data.pix4d.lotus_dsm)
-
-out_all = p4d.back2raw(roi)
-
-def test_func_sort_img_by_distance_p4d():
     cam_pos = p4d.get_photo_position()
     filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W1"], roi["N1W1"], cam_pos, num=3)
     assert len(filter_3) == 3
@@ -264,7 +253,10 @@ def test_func_sort_img_by_distance_p4d():
     assert len(filter_3_all_self) == 1
 
 
-def test_func_save_back2raw_json_and_png():
+def test_func_save_back2raw_json_and_png(shared_data):
+    test_data = shared_data["test_data"]
+    p4d = shared_data["p4d"]
+    out_all = shared_data["out_all"]
 
     with pytest.raises(TypeError, match=re.escape("Only the string path is acceptable, not [12345 <class 'int'>]")):
         idp.reconstruct.save_back2raw_json_and_png(p4d, out_all, 12345)
@@ -288,8 +280,12 @@ def test_func_save_back2raw_json_and_png():
     assert "N1W1_DJI_0177_at_top_128_left_2428.png" in roi_folder_list
 
 # test on the other easy-to-use functions
-def test_func_save_back2raw_json_and_png_other_func():
-
+def test_func_save_back2raw_json_and_png_other_func(shared_data):
+    test_data = shared_data["test_data"]
+    p4d = shared_data["p4d"]
+    ms = shared_data["ms"]
+    roi = shared_data["roi"]
+    
     # this is very time costy, often no need to run...
 
     ms_out_path = test_data.b2r.out / "ms_back2raw"

@@ -6,7 +6,7 @@ from pathlib import Path
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import roi_select
+from . import shared_data
 
 def test_hidden_match_suffix():
     test_folder = test_data.pix4d.maize_empty / "2_densification" / "point_cloud"
@@ -217,12 +217,12 @@ def test_class_back2raw_single():
 
     np.testing.assert_almost_equal(out_dict["DJI_0177"], px_0177)
 
-def test_class_back2raw():
+def test_class_back2raw(shared_data):
     p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
                     raw_img_folder=test_data.pix4d.lotus_photos,
                     param_folder=test_data.pix4d.lotus_param)
 
-    roi = roi_select.copy()
+    roi = shared_data['roi'].copy()
     roi.get_z_from_dsm(test_data.pix4d.lotus_dsm)
 
     out_all = p4d.back2raw(roi)

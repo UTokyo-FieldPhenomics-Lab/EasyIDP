@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import roi_select
+from . import shared_data
 
 #########################
 # test math calculation #
@@ -412,7 +412,7 @@ def test_world2crs_and_on_raw_images():
     np.testing.assert_array_almost_equal(camera_pix_ans, idp_cam_pix_l)
 
 
-def test_class_back2raw_and_crs():
+def test_class_back2raw_and_crs(shared_data):
     ms = idp.Metashape(project_path=test_data.metashape.lotus_psx, chunk_id=0)
 
     # roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
@@ -423,7 +423,7 @@ def test_class_back2raw_and_crs():
     #         del roi[key]
     # roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
-    roi = roi_select.copy()
+    roi = shared_data['roi'].copy()
     roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
     poly = roi["N1W2"]

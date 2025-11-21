@@ -5,13 +5,15 @@ import re
 from pathlib import Path
 import easyidp as idp
 
-test_data = idp.data.TestData()
+from . import shared_data
 
 ##############################
 # Test back2raw_single based #
 ##############################
 
-def test_class_back2raw_single():
+def test_class_back2raw_single(shared_data):
+    test_data = shared_data["test_data"]
+
     # lotus example
     p4d = idp.Pix4D()
     param_folder = test_data.pix4d.lotus_param
@@ -40,13 +42,11 @@ def test_class_back2raw_single():
 #==============================
 # advanced wrapper for classes
 #==============================
-    
-# roi = idp.ROI(lotus.shp, name_field='plot_id')
-# roi.get_z_from_dsm(lotus.metashape.dsm)
-roi = idp.ROI(test_data.shp.lotus_shp, name_field='plot_id')
-roi.get_z_from_dsm(test_data.metashape.lotus_dsm, mode="point")
 
-def test_visualize_one_roi_on_img_p4d():
+def test_visualize_one_roi_on_img_p4d(shared_data):
+    test_data = shared_data["test_data"]
+    roi = shared_data["roi_vis"]
+
     # p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
     #                 raw_img_folder=lotus.photo,
     #                 param_folder=lotus.pix4d.param)
@@ -72,7 +72,10 @@ def test_visualize_one_roi_on_img_p4d():
             save_as=test_data.vis.out / "p4d_show_one_roi_all.png")
 
 
-def test_visualize_one_roi_on_img_ms():
+def test_visualize_one_roi_on_img_ms(shared_data):
+    test_data = shared_data["test_data"]
+    roi = shared_data["roi_vis"]
+
     ms = idp.Metashape(
         test_data.metashape.lotus_psx, 
         chunk_id=0, 
@@ -102,7 +105,10 @@ def test_visualize_one_roi_on_img_ms():
 # Test draw_backward_one_roi based #
 ####################################
 
-def test_draw_backward_one_roi():
+def test_draw_backward_one_roi(shared_data):
+    test_data = shared_data["test_data"]
+    roi = shared_data["roi_vis"]
+    
     # ms = idp.Metashape(lotus.metashape.project, chunk_id=0)
     ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
 

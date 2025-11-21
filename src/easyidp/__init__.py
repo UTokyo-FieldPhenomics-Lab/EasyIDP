@@ -312,14 +312,19 @@ logger.add(
     format = logger_format
 )
 
-# 3. (可选) 你也可以添加一个文件处理器，将日志同时保存到文件
-logger.add(
-    logger_file, 
-    level="DEBUG", # 文件中记录更详细的 DEBUG 级别日志
-    rotation="100 MB",  # 每 10 MB 切割一个新文件
-    format=logger_format,
-    enqueue=True
-)
+print(f"ENV: IS_TESTING = {os.environ.get('IS_TESTING')}")
+if not os.environ.get("IS_TESTING") == "True":
+    # 3. 你也可以添加一个文件处理器，将日志同时保存到文件
+    # 为解决vscode的test模块也会输出日志，使用环境变量进行区分
+    logger.add(
+        logger_file, 
+        level="DEBUG", # 文件中记录更详细的 DEBUG 级别日志
+        rotation="100 MB",  # 每 10 MB 切割一个新文件
+        format=logger_format,
+        enqueue=True,
+        backtrace=True, 
+        diagnose=True
+    )
 
 logger.info(f"Welcome to use\n{banner}\nVersion: {__version__}")
 

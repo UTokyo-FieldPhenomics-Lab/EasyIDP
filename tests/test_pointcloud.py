@@ -6,7 +6,7 @@ import shutil
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import roi_select
+from . import shared_data
 
 ##########################
 # test read point clouds #
@@ -494,8 +494,8 @@ def test_class_point_cloud_crop():
         cropped = pcd.crop_point_cloud(polygon + 10)
         assert cropped is None
 
-def test_class_crop():
-    roi = roi_select.copy()
+def test_class_crop(shared_data):
+    roi = shared_data['roi'].copy()
     roi.get_z_from_dsm(test_data.pix4d.lotus_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
 
     p4d = idp.Pix4D(

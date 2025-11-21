@@ -99,7 +99,7 @@ class Recons(object):
     def dom(self, p):
         if isinstance(p, (Path, str)):
             if Path(p).exists():
-                self._dom.read_geotiff(p)
+                self._dom.open(p)
             else:
                 raise FileNotFoundError(f"Given DOM file [{p}] does not exists")
         elif isinstance(p, idp.GeoTiff):
@@ -119,7 +119,7 @@ class Recons(object):
     def dsm(self, p):
         if isinstance(p, (Path, str)):
             if Path(p).exists():
-                self._dsm.read_geotiff(p)
+                self._dsm.open(p)
             else:
                 raise FileNotFoundError(f"Given DSM file [{p}] does not exists")
         elif isinstance(p, idp.GeoTiff):

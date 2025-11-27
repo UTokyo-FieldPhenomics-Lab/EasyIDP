@@ -312,7 +312,6 @@ logger.add(
     format = logger_format
 )
 
-print(f"ENV: IS_TESTING = {os.environ.get('IS_TESTING')}")
 if not os.environ.get("IS_TESTING") == "True":
     # 3. 你也可以添加一个文件处理器，将日志同时保存到文件
     # 为解决vscode的test模块也会输出日志，使用环境变量进行区分
@@ -328,6 +327,7 @@ if not os.environ.get("IS_TESTING") == "True":
 
 logger.info(f"Welcome to use\n{banner}\nVersion: {__version__}")
 
+logger.debug(f"ENV: IS_TESTING = {os.environ.get('IS_TESTING')}")
 
 def logged_input(prompt: str, is_sensitive: bool = False) -> str:
     """
@@ -384,7 +384,7 @@ if not data._can_access_google_cloud():
     try:
         import oss2
     except ImportError:
-        print("oss2 is not installed. Installing now...")
+        logger.info("oss2 is not installed. Installing now...")
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "oss2", "-i", "https://pypi.tuna.tsinghua.edu.cn/simple"],
             stdout=sys.stdout,
@@ -392,7 +392,7 @@ if not data._can_access_google_cloud():
         )
         if result.returncode != 0:
             raise RuntimeError(f"Failed to install oss2. pip exited with status {result.returncode}")
-        print("oss2 has been installed.")
+        logger.info("oss2 has been installed.")
 
         try:
             import oss2

@@ -658,8 +658,8 @@ class PointCloud(object):
 
             >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
             >>> roi = roi[0:3]
-            >>> header = idp.geotiff.get_header(test_data.pix4d.lotus_dom)
-            >>> roi.change_crs(header['crs'])
+            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            >>> roi.change_crs(dom.crs)
             <easyidp.ROI> with 3 items
             [0]     N1W1
             array([[ 368017.7565143 , 3955511.08102276],

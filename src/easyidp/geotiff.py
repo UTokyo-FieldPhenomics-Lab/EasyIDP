@@ -1,28 +1,36 @@
 import os
+from functools import wraps
 import pyproj
+import psutil
 import numpy as np
-import tifffile as tf
+import rasterio as rio
+from rasterio.mask import mask as riomask
 from tqdm import tqdm
 from pathlib import Path
 from pyproj.exceptions import CRSError
+from shapely.geometry import Polygon, mapping
 from loguru import logger
 
 import easyidp as idp
 
 
 class GeoTiff(object):
-    """A GeoTiff class, consisted by header information and file path to raw file.
+    """A easy GeoTiff class warpped on rasterio
     """
 
-    def __init__(self, tif_path="", transparent_layer=None):
+    def __init__(self, file_path:str|Path|None=None, imarray:np.ndarray=None, header:dict=None):
         """The method to initialize the GeoTiff class
 
         Parameters
         ----------
-        tif_path : str | pathlib.Path, optional
-            the path to geotiff file, by default ""
+        tif_path : None| str | pathlib.Path, optional
+            the path to geotiff file, by default None, specify if need to open existing geotiff file
+        imarray : np.ndarray
+            The pixel data of GeoTIFF if format of (height, width, bands)
+        header : dict
+            The profile / meta information of geotiff file, including size, bands, CRS, etc
         Transparent_layer: None | int, optional
-            the transparent | alpha layer of given GeoTiff file, by default None
+            the transparent or alpha layer of given GeoTiff file, by default None
             |    None: no alpha layer
             |    0-x : specific alpha layer
             |    -1  : the last layer
@@ -37,27 +45,26 @@ class GeoTiff(object):
             >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
         """
-        self.file_path = os.path.abspath(tif_path)
-        """The file path of current GeoTiff
-        
+
+        self.file_path = Path(file_path) if file_path is not None else None
+        """The file path of current GeoTiff, pathlib.Path object
+
         .. code-block:: python
-        
+
             >>> dom.file_path
             PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif')
         
         """
 
-        self.header = None
+        self.header = header
         """The Geotiff meta infomation
-        
+
         .. code-block:: python
-        
+
             >>> dom.header
             {'height': 5752, 'width': 5490, 'dim': 4, 'nodata': 0, 'dtype': dtype('uint8'), 
-            'tags': <tifffile.TiffTags @0x00007FB1E8C3FFD0>, 'photometric': <PHOTOMETRIC.RGB: 2>, 
-            'planarconfig': <PLANARCONFIG.CONTIG: 1>, 'compress': <COMPRESSION.LZW: 5>, 
-            'scale': [0.00738, 0.00738], 'tie_point': [368014.54157, 3955518.2747700005], 
-            'crs': <Derived Projected CRS: EPSG:32654>
+             'scale': [0.00738, 0.00738], 'tie_point': [368014.54157, 3955518.2747700005], 
+             'crs': <Derived Projected CRS: EPSG:32654>
                     Name: WGS 84 / UTM zone 54N
                     Axis Info [cartesian]:
                     - E[east]: Easting (metre)
@@ -71,20 +78,26 @@ class GeoTiff(object):
                     Datum: World Geodetic System 1984 ensemble
                     - Ellipsoid: WGS 84
                     - Prime Meridian: Greenwich
+             'profile': <dict `rasterio.io.DatasetReader.profile`>
             }
             >>> dom.header["height"]
             5752
 
+        .. caution::
+
+            Since v2.0.2, this function backend has been switched from `tifffile` to `rasterio` to improve the performance,
+            Some of the key tags in `header` like 'tags', 'photometric', 'planarconfig', 'compress' has been deprecated.
+
         """
 
-        #: The numpy ndarray of GeoTiff images
-        self.imarray = None
+        self._imarray = imarray
 
         #: The layer to represent transparency / alpha
-        self.transparent_layer = None
+        # self.transparent_layer = None
 
-        if tif_path != "":
-            self.read_geotiff(tif_path)
+        if self.file_path is not None:
+            self.open(self.file_path)
+
 
     @property
     def crs(self):
@@ -141,9 +154,40 @@ class GeoTiff(object):
             return self.header['tie_point']
         else:
             return None
+        
+    @property
+    def imarray(self):
+        """Access to the pixel values in the type of numpy ndarray"""
+        if self._imarray is None:
+            # no self stored data, need to read the file at disk
+            if not os.path.exists(self.file_path):
+                logger.warning(f"Could not find file [{self.file_path}], skip loading")
+                return None
+            else:
+                self._imarray = get_imarray(self.file_path)
 
+        return self._imarray
 
-    def read_geotiff(self, tif_path):
+    def _check_data(func):
+        """A warp to check if has data"""
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if self.header is None:
+                has_data = False
+            else:
+                has_data = True
+
+            if has_data:
+                return func(self, *args, **kwargs)
+            else:
+                raise FileNotFoundError(
+                    "Could not operate if not specify correct geotiff file"
+                )
+
+        return wrapper
+        
+
+    def open(self, tif_path: str | Path):
         """Open and get the meta information (header) from geotiff
 
         Parameters
@@ -172,49 +216,210 @@ class GeoTiff(object):
         tif_path = Path(tif_path)
         if tif_path.exists():
             self.file_path = tif_path
-            self.header = get_header(str(tif_path))
+            self.header = get_header(self.file_path)
+            self._imarray = None
         else:
             logger.warning(f"Can not find file [{tif_path}], skip loading")
 
+    @_check_data
+    def save(self, save_path: str | Path, overwrite: bool = False) -> bool:
+        """save GeoTiff as tiff file
 
-    def has_data(self):
-        """Return True if current objects has geotiff infomation
+        Parameters
+        ----------
+        save_path : str | Path
+            the save to geotiff file path
+        """
+        save_path = Path(save_path).absolute()
+        if save_path.suffix.lower() not in ['.tif', '.tiff']:
+            save_path = save_path.with_suffix('.tif') # 自动添加扩展名
+
+        # 确保目录存在
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        if save_path.exists() and not overwrite:
+            user_input = input(f"File [{save_path}] already exists. Do you want to overwrite it? (y/n): ")
+            if user_input.lower() != 'y':
+                logger.info("File save cancelled by user.")
+                return False
+
+        with rio.open(save_path, 'w', **self.header['profile']) as dst:
+            # rasterio requires (bands, height, width), while self._imarry (height, width, bands)
+            imarray_rasterio_order = np.moveaxis(self._imarray, -1, 0)
+            dst.write(imarray_rasterio_order)
+
+        logger.success(f"GeoTiff successfully saved to: {save_path}")
+        return True
+
+
+    @_check_data
+    def geo2pixel(self, polygon_hv: np.ndarray, return_index=False) -> np.ndarray:
+        """Convert geo coordinate (lon, lat) to geotiff pixel coordinate (horizontal, vertical). 
+        A warpper of `rasterio.io.DatasetReader.transform() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.transform>`_ 
+        and `rasterio.io.DatasetReader.index() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.index>`_
+
+        Parameters
+        ----------
+        points_hv : numpy nx2 array
+            [horizontal, vertical] points
+        return_index : bool, default false
+            if false: will get float coordinates -> (23.5, 27.8)
+            if true: will get int pixel index -> (23, 27)
 
         Returns
         -------
-        bool
+        The ndarray pixel position of these points (horizontal, vertical)
 
         Example
         -------
+        Prepare data:
 
         .. code-block:: python
 
             >>> import easyidp as idp
             >>> test_data = idp.data.TestData()
 
-            >>> aaa = idp.GeoTiff()
-            >>> aaa.has_data()
-            False
-            >>> aaa.read_geotiff(test_data.pix4d.lotus_dom)
-            >>> aaa.has_data()
-            True
+            # prepare the roi data
+            >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            >>> roi.change_crs(dom.crs)
+            >>> roi_test = roi[111]
+            array([[ 368051.75902187, 3955484.68169527],
+                   [ 368053.70441367, 3955485.09879908],
+                   [ 368054.11515079, 3955483.14704415],
+                   [ 368052.16020711, 3955482.73630818],
+                   [ 368051.75902187, 3955484.68169527]])
 
-            >>> bbb = idp.GeoTiff(test_data.pix4d.lotus_dom)
-            >>> bbb.has_data()
-            True
+        Use this function:
+
+        .. code-block:: python
+
+            >>> roi_test_pixel = dom.geo2pixel(roi_test)
+            array([[5043.01515811, 4551.90714551],
+                   [5306.6183839 , 4495.38901391],
+                   [5362.27381938, 4759.85445164],
+                   [5097.37630191, 4815.50973136],
+                   [5043.01515811, 4551.90714551]])
         """
-        if self.header is None or not os.path.exists(self.file_path):
-            return False
+        pixel_coords = []
+        with rio.open(self.file_path) as src:
+            # judge x, y order in crs:
+            crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
+
+            for geo_h, geo_v in polygon_hv:
+                if crs_xy_order == 'xy':
+                    # This CRS expects (x, y) order, our input is (h, v), nothing to do
+                    input_x = geo_h
+                    input_y = geo_v
+                else:   # 'yx' order
+                    # This CRS expects (y, x) order, our input is (h, v), need reverse
+                    input_x = geo_v
+                    input_y = geo_h
+
+                if return_index:
+                    # src.index(x, y) returns (row, col)
+                    row, col = src.index(input_x, input_y)
+                    pixel_coords.append((col, row))  # ensure is the (horizontal, vertical) order
+                else:
+                    # ~src.transform * (x, y) returns (col_float, row_float)
+                    col_float, row_float = ~src.transform * (input_x, input_y)
+                    pixel_coords.append((col_float, row_float)) # ensure is the (horizontal, vertical) order
+                       
+        return np.asarray(pixel_coords)
+        
+    
+    @_check_data
+    def pixel2geo(self, polygon_hv):
+        """Convert geotiff pixel coordinate or index (horizontal, vertical) to geo coordinate (x, y). 
+        A warpper of `rasterio.io.DatasetReader.xy() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.xy>`_
+        and `rasterio.io.DatasetReader.transform() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.transform>`_
+
+        Parameters
+        ----------
+        points_hv : numpy nx2 array
+            [horizontal, vertical] points
+            if dtype is np.floating, view as pixel coordinate
+            if dtype is np.integer, view as pixel index (return left upper corner of pixel)
+
+        Returns
+        -------
+        The ndarray pixel position of these points (horizontal, vertical)
+
+        Example
+        -------
+        Prepare data:
+
+        .. code-block:: python
+
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+
+            # prepare the roi data
+            >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            >>> roi.change_crs(dom.crs)
+            >>> roi_test = roi[111]
+            >>> roi_test_pixel = dom.geo2pixel(roi_test)
+            array([[5043.01515811, 4551.90714551],
+                   [5306.6183839 , 4495.38901391],
+                   [5362.27381938, 4759.85445164],
+                   [5097.37630191, 4815.50973136],
+                   [5043.01515811, 4551.90714551]])
+
+        Use this function:
+
+        .. code-block:: python
+
+            >>> roi_test_back = dom.pixel2geo(roi_test_pixel)
+            array([[ 368051.75902187, 3955484.68169527],
+                   [ 368053.70441367, 3955485.09879908],
+                   [ 368054.11515079, 3955483.14704415],
+                   [ 368052.16020711, 3955482.73630818],
+                   [ 368051.75902187, 3955484.68169527]])
+
+        """
+        geo_coords = []
+
+        # 判断输入像素坐标的类型
+        if np.issubdtype(polygon_hv.dtype, np.integer):
+            logger.info(f"The input dtype is {polygon_hv.dtype}, viewed as pixel INDEX (horizontal, vertical) rather than pixel coordinate")
+            is_integer_pixels = True
+        elif np.issubdtype(polygon_hv.dtype, np.floating):
+            logger.info(f"The input dtype is {polygon_hv.dtype}, viewed as pixel COORDINATE (horizontal, vertical) rather than pixel index")
+            is_integer_pixels = False
         else:
-            return True
+            err_info = f"The `points_hv` only accept numpy ndarray integer and float types, but got [{polygon_hv.dtype}] instead"
+            logger.error(err_info)
+            raise TypeError(err_info)
+        
+        with rio.open(self.file_path) as src:
+            # judge x, y order in crs:
+            crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
 
+            # src.xy(row, col) 返回该像素中心的地理坐标
+            # src.transform * (col, row) 返回的是该像素左上角的地理坐标
+            for col, row in polygon_hv:
+                if is_integer_pixels:
+                    # index coordinate, use src.xy to get the geo-coord
+                    # src.xy(row, col) returns (x_geo, y_geo)
+                    x_geo, y_geo = src.xy(row=row, col=col)
+                else:
+                    # pixel coordinate, use src.transform to get the geo-coord
+                    # src.transform * (col, row) returns (x_geo, y_geo)
+                    x_geo, y_geo = src.transform * (col, row)
 
-    def _not_empty(self):
-        # check before doing functions
-        if not self.has_data():
-            raise FileNotFoundError("Could not operate if not specify correct geotiff file")
+                # change order according to crs, ensure outputs order is (horzontal, vertical)
+                if crs_xy_order == 'xy':
+                    geo_coords.append((x_geo, y_geo))
+                else:  # == 'yx'
+                     # CRS 是 (y, x) 顺序，但我们想输出 (h, v)，
+                    # 此时 x_geo 实际上是 CRS 的 y 轴值，y_geo 实际上是 CRS 的 x 轴值。
+                    # 所以我们期望的 (h, v) 应该是 (y_geo, x_geo)
+                    geo_coords.append((y_geo, x_geo))
+                
+        return np.asarray(geo_coords)
 
-
+    @_check_data
     def point_query(self, points_hv, is_geo=True):
         """Get the pixel value of given point(s)
 
@@ -237,7 +442,7 @@ class GeoTiff(object):
         .. code-block:: python
 
             >>> import easyidp as idp
-            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
         Query one point by tuple
 
@@ -245,7 +450,7 @@ class GeoTiff(object):
         
             >>> # one point tuple
             >>> pts = (368023.004, 3955500.669)
-            >>> dom.point_query(pts, is_geo=True)
+            >>> dsm.point_query(pts, is_geo=True)
             array([97.45558])
 
         Query one point by list
@@ -254,7 +459,7 @@ class GeoTiff(object):
 
             >>> # one point list
             >>> pts = [368023.004, 3955500.669]
-            >>> dom.point_query(pts, is_geo=True)
+            >>> dsm.point_query(pts, is_geo=True)
             array([97.45558])
         
         
@@ -266,7 +471,7 @@ class GeoTiff(object):
             ...    [368022.581, 3955501.054], 
             ...    [368024.032, 3955500.465]
             ... ]
-            >>> dom.point_query(pts, is_geo=True)
+            >>> dsm.point_query(pts, is_geo=True)
             array([97.624344, 97.59617])
 
         Query several points by numpy
@@ -277,23 +482,48 @@ class GeoTiff(object):
             ...    [368022.581, 3955501.054], 
             ...    [368024.032, 3955500.465]
             ... ])
-            >>> dom.point_query(pts, is_geo=True)
+            >>> dsm.point_query(pts, is_geo=True)
             array([97.624344, 97.59617])
 
         See also
         --------
         easyidp.geotiff.point_query
         """
-        self._not_empty()
 
-        with tf.TiffFile(self.file_path) as tif:
-            page = tif.pages[0]
-            if is_geo:
-                return point_query(page, points_hv, self.header)
+        # processing the input points
+        if isinstance(points_hv, (tuple, list, np.ndarray)):
+            temp = np.array(points_hv)
+
+            dim = len(temp.shape)
+            if dim == 1 and temp.shape[0] == 2:
+                # fit the one point
+                points_hv = np.array([temp])
+            elif dim == 2 and temp.shape[1] == 2:
+                # fit the points
+                points_hv = temp
             else:
-                return point_query(page, points_hv)
+                raise IndexError("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")
+        else:
+            raise TypeError(f"Only tuple, list, ndarray are supported, not {type(points_hv)}")
+        
+        # convert to geo coordinate if input is pixel
+        if not is_geo:
+            points_hv_geo = self.pixel2geo(points_hv)
+        else:
+            points_hv_geo = points_hv
 
+        with rio.open(self.file_path) as src:
+            crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
+            
+            if crs_xy_order == 'xy':
+                adjusted_geo_points = points_hv_geo
+            else:
+                adjusted_geo_points = points_hv_geo[:, [1, 0]]
 
+            sample_gen = np.array(list(src.sample(adjusted_geo_points)))
+
+        return sample_gen
+    
     def crop_rois(self, roi, is_geo=True, save_folder=None):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
@@ -382,9 +612,71 @@ class GeoTiff(object):
             out_dict[k] = imarray
 
         return out_dict
+    
+    def crop_shapely_polygon(self, shapely_polygon: Polygon):
+        """Crop a given polygon from geotiff, the base function of cropping geotiff
+        
+        Parameters
+        ----------
+        shapely_polygon : shapely.geometry.Polygon
+            The polygon to crop, in geo coordinate
 
+        Returns
+        -------
+        idp.GeoTiff object
+        """
+        with rio.open(self.file_path) as src:
+            # 从地理边界计算窗口 (使用 from_bounds 创建一个新的 transform)
+            # mask 函数会处理 CRS 轴序，我们只需要提供正确的 GeoJSON 形状
+            shapes = [mapping(shapely_polygon)]
+            
+            out_image, out_transform = riomask(src, shapes, crop=True, nodata=src.nodata)
 
-    def crop_polygon(self, polygon_hv, is_geo=True, save_path=None):
+            # 更新 profile
+            out_profile = src.profile.copy()
+            out_profile.update({
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform
+            })
+            if src.nodata is not None:
+                out_profile['nodata'] = src.nodata
+
+            # out_profile all keys and values:
+            # {
+            #     'driver': 'GTiff', 'dtype': 'uint8', 'nodata': None, 'width': 320, 'height': 321, 
+            #     'count': 4, 'crs': CRS.from_wkt('PROJCS["WGS 84 / UTM zone 54N", ... ,AUTHORITY["EPSG","32654"]]'), 
+            #     'transform': Affine(0.00738, 0.0, 368017.74449, 0.0, -0.00738, 3955511.4999300004), 
+            #     'blockxsize': 5490, 'blockysize': 1, 'tiled': False, 'compress': 'lzw', 'interleave': 'pixel'
+            # }
+
+        # create header from profile
+        header = {}
+        # keys: 'width', 'height', 'dim', 'scale', 'tie_point',
+        #       'nodata', 'crs', 'dtype', 'band_num'
+        header["height"] = out_profile['height']
+        header["width"] = out_profile['width']
+        header["dim"] = out_profile['count']
+        header["nodata"] = out_profile['nodata']
+        header["dtype"] = np.dtype(out_profile['dtype'])
+
+        transform = out_profile['transform']
+        header["transform"] = transform
+        header["scale"] = [transform.a, abs(transform.e)]
+        header["tie_point"] = [transform.c, transform.f]
+
+        header['crs'] = self.crs
+        header['profile'] = out_profile.copy()
+
+        # rasterio 读取为 (bands, height, width)
+        # 需要转换为 (height, width, bands) 以保持与旧版本 tifffile 的兼容性
+        out_imarray = np.moveaxis(out_image, 0, -1)
+
+        out_geotiff = GeoTiff(imarray=out_imarray, header=header)
+        return out_geotiff
+
+    
+    def crop_polygon(self, polygon_hv, is_geo=True, save_path=None, return_geotiff=False):
         """Crop a given polygon from geotiff
 
         Parameters
@@ -395,6 +687,8 @@ class GeoTiff(object):
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_path : str, optional
             if given, will save the cropped as \*.tif file to path, by default None
+        return_geotiff : bool, optional
+            if specify to True, will return idp.GeoTiff object instead of ndarray
 
         Returns
         -------
@@ -440,57 +734,38 @@ class GeoTiff(object):
             >>> imarray = obj.crop_polygon(polygon_hv, is_geo=True, save_path=save_tiff)
             
         """
-        self._not_empty()
+        if not isinstance(polygon_hv, np.ndarray) or polygon_hv.ndim != 2 or polygon_hv.shape[1] != 2:
+            error_info = f"Polygon_hv must be a 2D numpy array of shape (N, 2), not current input {polygon_hv.shape}."
+            logger.error(error_info)
+            raise ValueError(error_info)
+        
+        crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
 
         if is_geo:
-            poly_px = geo2pixel(polygon_hv, self.header, return_index=True)
+            # 调整坐标顺序以匹配 CRS 期望的 (x, y) 或 (y, x)
+            adjusted_coords = []
+            for h_coord, v_coord in polygon_hv:
+                if crs_xy_order == 'xy':
+                    adjusted_coords.append((h_coord, v_coord)) # (x, y)
+                else: # 'yx'
+                    adjusted_coords.append((v_coord, h_coord)) # (y, x)
         else:
-            if np.issubdtype(polygon_hv.dtype, np.floating):
-                poly_px = np.floor(polygon_hv).astype(int)
-                logger.warning("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
-            elif np.issubdtype(polygon_hv.dtype, np.integer):
-                poly_px = polygon_hv
-            else:
-                raise TypeError("Only ndarray int and float dtype are acceptable for `polygon_hv`")
+            adjusted_coords = self.pixel2geo(polygon_hv)
+        
+        out_geotiff = self.crop_shapely_polygon( Polygon(adjusted_coords) )
 
-        # calculate the bbox of given region
-        bbox_left_top = poly_px.min(axis=0)
-        bbox_right_bottom = poly_px.max(axis=0)
-        bbox_size = bbox_right_bottom - bbox_left_top
-
-        # input order = horizontal, vertical 
-        # horizontal[0]-> left distance, width
-        # vertical[1] -> top distance, height
-        # need to reverse here
-        top = bbox_left_top[1]
-        left = bbox_left_top[0]
-        h = bbox_size[1]
-        w = bbox_size[0]
-
-        # crop by bbox from whole geotiff by tiffile_crop first (no need to load full image to memory)
-        # (page, top, left, h, w):
-        with tf.TiffFile(self.file_path) as tif:
-            page = tif.pages[0]
-            imarray_bbox = tifffile_crop(page, top, left, h, w)
-
-        # then crop the polygon from the imarray_bbox
-        poly_offseted_px = poly_px - bbox_left_top
-        imarray_out, _ = idp.cvtools.imarray_crop(
-            imarray_bbox, poly_offseted_px, 
-            nodata_value=self.header['nodata'],
-            transparent_layer=self.transparent_layer
-        )
-
-        # check if need save geotiff
         if save_path is not None:
-            save_path = Path(save_path)
-            if save_path.suffix  == ".tif":
-                save_geotiff(self.header, imarray_out, bbox_left_top, save_path)
+            out_geotiff.file_path = Path(save_path)
+            out_geotiff.save(save_path)
 
-        return imarray_out
+        if return_geotiff:
+            return out_geotiff
+        else:
+            return out_geotiff.imarray
 
 
-    def crop_rectangle(self, left, top, w, h, is_geo=True, save_path=None):
+    @_check_data
+    def crop_rectangle(self, left, top, w, h, is_geo=True, save_path=None, return_geotiff=False):
         """Extract a rectangle regeion crop from a GeoTIFF image file.
 
         .. code-block:: text
@@ -506,7 +781,6 @@ class GeoTiff(object):
             |           |             |  |
             |           o=============o  v
 
-        
         Parameters
         ----------
         top: int | float
@@ -521,6 +795,8 @@ class GeoTiff(object):
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_path : str, optional
             if given, will save the cropped as \*.tif file to path
+        return_geotiff : bool, optional
+            if specify to True, will return idp.GeoTiff object instead of ndarray
             
         Returns
         -------
@@ -548,26 +824,19 @@ class GeoTiff(object):
 
             It is hard to know the exactly order
 
-        .. caution::
-
-            subfunction :func:`easyidp.geotiff.tifffile_crop` has the order ``(top, left, h, w)`` which is too heavy to change it.
-
-        See also
-        --------
-        easyidp.geotiff.tifffile_crop
         """
+        crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
 
-        self._not_empty()
-
-        
         if is_geo:
-            polygon = np.array([[left, top], [left+w, top+h]])
-            polygon_px = geo2pixel(polygon, self.header, return_index=True)
+            # 输入是地理坐标和地理宽度/高度
+            # left, top 是 (horizontal, vertical)
+            # w, h 是地理宽度和高度
+            
+            # 计算裁剪区域的地理边界 (minx, miny, maxx, maxy)
+            # 注意：rasterio 的 transform 通常是 north-up，y 轴向下（行号增加方向），
+            # 所以 top 是北边界，top-h 是南边界。
+            # left 是西边界，left+w 是东边界。
 
-            left = polygon_px[0,0]
-            top  = polygon_px[0,1]
-            w    = polygon_px[1,0] - left
-            h    = top - polygon_px[1,1]
             '''
             the geotiff coordiate y axis is upward, so need to reverse top-h
             otherwise will get an negative value.
@@ -590,138 +859,63 @@ class GeoTiff(object):
             o--------------------------------------------------> X
             Geotiff coordinate
             '''
+            
+            # 根据 CRS 轴序调整地理坐标
+            if crs_xy_order == 'xy':
+                # CRS 也是 (x, y) 顺序，所以 left 是 x，top 是 y
+                minx_geo = left
+                maxx_geo = left + w
+                maxy_geo = top # top 是最高的 y 值
+                miny_geo = top - h # top - h 是最低的 y 值
+            else: # crs_xy_order == 'yx'
+                # CRS 是 (y, x) 顺序，所以 left 是 y，top 是 x
+                # 在这种情况下，我们假设用户输入的 (left, top) 仍然是 (horizontal, vertical)
+                # 那么 left 对应 CRS 的 y 轴，top 对应 CRS 的 x 轴
+                # 所以实际的 x 范围是 (top, top+h)
+                # 实际的 y 范围是 (left-w, left)
+                minx_geo = top # top 是 horizontal
+                maxx_geo = top + h # h 是 horizontal 宽度
+                maxy_geo = left # left 是 vertical
+                miny_geo = left - w # w 是 vertical 宽度
+                
+            # 从地理边界计算窗口 (使用 from_bounds 创建一个新的 transform)
+            # mask 函数会处理 CRS 轴序，我们只需要提供正确的 GeoJSON 形状
+            bbox_polygon = Polygon.from_bounds(minx_geo, miny_geo, maxx_geo, maxy_geo)
+            
 
-        # check if in the boundary
-        gw = self.header['width']
-        gh = self.header['height']
-        if left < 0 or top < 0 or left + w > gw or top + h > gh:
-            raise IndexError(
-                f"The given rectange [left {left}, top {top}, width {w}, height {h}] "
-                f"can not fit into geotiff shape [0, 0, {gw}, {gh}]. \n"
-                f"Please check is a geo coordinate or pixel coordinate and specify"
-                f" `is_geo=True|False` correctly"
+        else:
+            # 输入是像素坐标和像素宽度/高度
+            # left 是 col, top 是 row
+            # w 是像素宽度, h 是像素高度
+            # 1. 将像素坐标矩形转换为地理坐标多边形
+            # (col, row) -> (x, y)
+
+            polygon = np.array([
+                [left,   top], 
+                [left+w, top], 
+                [left+w, top+h], 
+                [left,   top+h], 
+                [left,   top]]
             )
 
-        with tf.TiffFile(self.file_path) as tif:
-            page = tif.pages[0]
-            out = tifffile_crop(page, top, left, h, w)
+            logger.debug(f"polygon (pixel coords): {polygon}")
 
-        # check if need save geotiff
+            polygon_geo = self.pixel2geo(polygon)
+            logger.debug(f"polygon_geo (geo coords): {polygon_geo}")
+            
+            bbox_polygon = Polygon(polygon_geo)
+
+        out_geotiff = self.crop_shapely_polygon(bbox_polygon)
+
         if save_path is not None:
-            save_path = Path(save_path)
-            if save_path.suffix  == ".tif":
-                save_geotiff(self.header, out, np.array([left, top]), save_path)
+            out_geotiff.file_path = Path(save_path)
+            out_geotiff.save(save_path)
 
-        return out
-
-
-    def geo2pixel(self, polygon_hv):
-        """Convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
-
-        Parameters
-        ----------
-        points_hv : numpy nx2 array
-            [horizontal, vertical] points
-
-        Returns
-        -------
-        The ndarray pixel position of these points (horizontal, vertical)
-
-        Example
-        -------
-        Prepare data:
-
-        .. code-block:: python
-
-            >>> import easyidp as idp
-            >>> test_data = idp.data.TestData()
-
-            # prepare the roi data
-            >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-            >>> roi.change_crs(dom.crs)
-            >>> roi_test = roi[111]
-            array([[ 368051.75902187, 3955484.68169527],
-                   [ 368053.70441367, 3955485.09879908],
-                   [ 368054.11515079, 3955483.14704415],
-                   [ 368052.16020711, 3955482.73630818],
-                   [ 368051.75902187, 3955484.68169527]])
-
-        Use this function:
-
-        .. code-block:: python
-
-            >>> roi_test_pixel = dom.geo2pixel(roi_test)
-            array([[5043.01515811, 4551.90714551],
-                   [5306.6183839 , 4495.38901391],
-                   [5362.27381938, 4759.85445164],
-                   [5097.37630191, 4815.50973136],
-                   [5043.01515811, 4551.90714551]])
-
-        See also
-        --------
-        easyidp.geotiff.geo2pixel
-        """
-        return geo2pixel(polygon_hv, self.header)
-
-
-    def pixel2geo(self, polygon_hv):
-        """Convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
-
-        Parameters
-        ----------
-        points_hv : numpy nx2 array
-            [horizontal, vertical] points
-
-        Returns
-        -------
-        The ndarray pixel position of these points (horizontal, vertical)
-
-        Example
-        -------
-        Prepare data:
-
-        .. code-block:: python
-
-            >>> import easyidp as idp
-            >>> test_data = idp.data.TestData()
-
-            # prepare the roi data
-            >>> roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-            >>> roi.change_crs(dom.crs)
-            >>> roi_test = roi[111]
-            >>> roi_test_pixel = dom.geo2pixel(roi_test)
-            array([[5043.01515811, 4551.90714551],
-                   [5306.6183839 , 4495.38901391],
-                   [5362.27381938, 4759.85445164],
-                   [5097.37630191, 4815.50973136],
-                   [5043.01515811, 4551.90714551]])
-
-        Use this function:
-
-        .. code-block:: python
-
-            >>> roi_test_back = dom.pixel2geo(roi_test_pixel)
-            array([[ 368051.75902187, 3955484.68169527],
-                   [ 368053.70441367, 3955485.09879908],
-                   [ 368054.11515079, 3955483.14704415],
-                   [ 368052.16020711, 3955482.73630818],
-                   [ 368051.75902187, 3955484.68169527]])
-
-        See also
-        --------
-        easyidp.geotiff.pixel2geo
-        """
-
-        return pixel2geo(polygon_hv, self.header)
-
-
-    # def save_geotiff(self, save_path):
-    #     self._not_empty()
-    #     pass
-
-
+        if return_geotiff:
+            return out_geotiff
+        else:
+            return out_geotiff.imarray
+        
     def polygon_math(self, polygon_hv, is_geo=True, kernel="mean"):
         """Calculate the valus inside given polygon
 
@@ -853,12 +1047,12 @@ class GeoTiff(object):
         else:
             raise KeyError(f"Could not find kernel [{kernel}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")
 
-    # def create_grid(self, w, h, extend=False, grid_buffer=0):
-    #     self._not_empty()
-    #     raise NotImplementedError("This function will be provided in the future.")
-        
 
-def get_header(tif_path):
+##############
+# Func tools #
+##############
+
+def get_header(tif_path: str | Path) -> dict:
     """Read the necessary meta infomation from TIFF file
 
     Parameters
@@ -871,9 +1065,14 @@ def get_header(tif_path):
     header: dict
         the container of acquired meta info
 
+    .. caution::
+
+        Since v2.0.2, this function backend has been switched from `tifffile` to `rasterio` to improve the performance,
+        Some of the key tags in `header` like 'tags', 'photometric', 'planarconfig', 'compress' has been deprecated.
+
     Example
     -------
-    
+
     .. code-block:: python
 
         >>> import easyidp as idp
@@ -882,10 +1081,8 @@ def get_header(tif_path):
         >>> lotus_full = idp.geotiff.get_header(test_data.pix4d.lotus_dom)
         >>> lotus_full
         {'height': 5752, 'width': 5490, 'dim': 4, 'nodata': 0, 'dtype': dtype('uint8'), 
-        'tags': <tifffile.TiffTags @0x00007FD358947160>, 'photometric': <PHOTOMETRIC.RGB: 2>, 
-        'planarconfig': <PLANARCONFIG.CONTIG: 1>, 'compress': <COMPRESSION.LZW: 5>, 
-        'scale': [0.00738, 0.00738], 'tie_point': [368014.54157, 3955518.2747700005], 
-        'crs': <Derived Projected CRS: EPSG:32654>
+            'scale': [0.00738, 0.00738], 'tie_point': [368014.54157, 3955518.2747700005], 
+            'crs': <Derived Projected CRS: EPSG:32654>
                 Name: WGS 84 / UTM zone 54N
                 Axis Info [cartesian]:
                 - E[east]: Easting (metre)
@@ -901,88 +1098,64 @@ def get_header(tif_path):
                 - Ellipsoid: WGS 84
                 - Prime Meridian: Greenwich
         }
+
+            
     """
-    with tf.TiffFile(tif_path) as tif:
+    if isinstance(tif_path, str):
+        file_path = Path(tif_path)
+    elif isinstance(tif_path, Path):
+        file_path = tif_path
+    else:
+        logger.error(f"Input should be either [str] or [pathlib.Path], but got [{type(tif_path)}]")
+
+    with rio.open(file_path) as src:
         header = {}
         # keys: 'width', 'height', 'dim', 'scale', 'tie_point',
         #       'nodata', 'crs', 'dtype', 'band_num'
-        # for export:
-        #       'tags', 'photometric', 'planarconfig', 'compression'
-        page = tif.pages[0]
 
-        header["height"] = page.shape[0]
-        header["width"] = page.shape[1]
-        if len(page.shape) > 2:
-            # header["dim"] = page.shape[2] 
-            # `band_num` used in other functions in the old version
-            header["dim"] = page.samplesperpixel
+        header["height"] = src.height
+        header["width"] = src.width
+        header["dim"] = src.count
+        header["nodata"] = src.nodata
+        header["dtype"] = np.dtype(src.dtypes[0])
+
+        # for save geotiff (deprecated since v2.0.2, rasterio handles this)
+        # header["tags"] = None
+        # header["photometric"] = None
+        # header["planarconfig"] = None
+        # header["compress"] = None
+
+        header["transform"] = src.transform
+        header["scale"] = [src.transform.a, abs(src.transform.e)]
+        header["tie_point"] = [src.transform.c, src.transform.f]
+        
+        if src.crs:
+            header['crs'] = pyproj.CRS.from_wkt(src.crs.to_wkt())
         else:
-            header["dim"] = 1
-        header["nodata"] = page.nodata
-        header["dtype"] = page.dtype
+            header['crs'] = None
+            logger.warning(f"[io][geotiff][get_header] Could not find Coordinate Reference System (CRS) for [{tif_path}]\n"
+                            f"but you can still manual specify it by \n"
+                            f">>> import pyproj \n"
+                            f">>> proj = pyproj.CRS.from_epsg() # or from_string() or refer official documents:\n"
+                            f"https://pyproj4.github.io/pyproj/dev/api/crs/coordinate_operation.html")
+            
+        header['profile'] = src.profile.copy()
 
-        # for save geotiff
-        header["tags"] = page.tags
-        header["photometric"] = page.photometric
-        header["planarconfig"] = page.planarconfig
-        header["compress"] = page.compression
-        
-        # page.geotiff_tags
-        # -> 'ModelPixelScale': [0.0034900000000000005, 0.0034900000000000005, 0.0]
-        header["scale"] = page.geotiff_tags["ModelPixelScale"][0:2]
-        
-        # page.geotiff_tags
-        # -> 'ModelTiepoint': [0.0, 0.0, 0.0, 419509.89816000004, 3987344.8286, 0.0]
-        header["tie_point"] = page.geotiff_tags["ModelTiepoint"][3:5]
-        
-        # pix4d UTM CRS:
-        #    page.geotiff_tags
-        #    -> 'GTCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        if "GTCitationGeoKey" in page.geotiff_tags.keys():
-            proj_str = page.geotiff_tags["GTCitationGeoKey"]
-        # metashape UTM CRS:
-        #     page.geotiff_tags
-        #     -> 'PCSCitationGeoKey': 'WGS 84 / UTM zone 54N'
-        #     -> 'GeogCitationGeoKey': 'WGS 84'
-        elif "PCSCitationGeoKey" in page.geotiff_tags.keys():
-            proj_str = page.geotiff_tags["PCSCitationGeoKey"]
-        else:
-            # metashape: wgs 84
-            #    page.geotiff_tags
-            #    -> 'GeogCitationGeoKey': 'WGS 84'
-            for k, v in page.geotiff_tags.items():
-                if "CitationGeoKey" in k:
-                    proj_str = v
-                    print(f"Could not find prefered [GTCitationGeoKey, PCSCItationGeoKey], but find [{k}]={v} instead for Coordinate Reference System (CRS)")
-                    break
-            else:
-                raise KeyError(f"Can not find Coordinate Reference System (CRS) keys '**CitationGeoKey' in Geotiff tages {page.geotiff_tags}")
-        
-        try:
-            crs = pyproj.CRS.from_string(proj_str)
-            header['crs'] = crs
-        except CRSError as e:
-            print(f'[io][geotiff][GeoCorrd] Generation failed, because [{e}], but you can manual specify it later by \n'
-                    '>>> import pyproj \n'
-                    '>>> proj = pyproj.CRS.from_epsg() # or from_string() or refer official documents:\n'
-                    'https://pyproj4.github.io/pyproj/dev/api/crs/coordinate_operation.html')
-            pass
-
+    
     return header
 
-
-def get_imarray(tif_path):
+def get_imarray(tif_path: str | Path) -> np.ndarray:
     """Read full map data as numpy array (time and RAM costy, not recommended, often requires ``4 x file_size`` of RAM)
 
     Parameters
     ----------
-    tif_path : str
+    tif_path : str | Path
         the path to geotiff file
 
     Returns
     -------
     data: ndarray
-        the obtained image data
+        the obtained image data, in shape of ()
 
     Example
     -------
@@ -992,19 +1165,61 @@ def get_imarray(tif_path):
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
-        >>> maize_part_np = idp.geotiff.get_imarray(test_data.pix4d.maize_dom)
+        >>> maize_dom = idp.GeoTiff(test_data.pix4d.maize_dom)
+        >>> maize_part_np = maize_dom.get_imarray()
         >>> maize_part_np.shape
         (722, 836, 4)
 
     """
-    with tf.TiffFile(tif_path) as tif:
-        data = tif.pages[0].asarray()
+    if isinstance(tif_path, str):
+        file_path = Path(tif_path)
+    elif isinstance(tif_path, Path):
+        file_path = tif_path
+    else:
+        logger.error(f"Input should be either [str] or [pathlib.Path], but got [{type(tif_path)}]")
+        return None
+        
+    with rio.open(file_path) as src:
+        # Estimate the required memeory
+        height = src.height
+        width = src.width
+        count = src.count
+        dtype = np.dtype(src.dtypes[0])
+        required_memory_gb = (height * width * count * dtype.itemsize) / (1024**3)
 
-    return data
+        # Check available RAM
+        available_memory_gb = psutil.virtual_memory().available / (1024**3)
 
+        logger.debug(f"Available RAM: {available_memory_gb:.2f} GB | Required RAM: {required_memory_gb:.2f} GB")
+
+        if required_memory_gb > available_memory_gb * 0.99:
+            logger.warning(
+                f"No enough memory to load this geotiff ({file_path.name})."
+                f"{required_memory_gb:.2f} GB RAM, but only {available_memory_gb:.2f} GB available."
+            )
+            return None
+    
+        if required_memory_gb > available_memory_gb * 0.8:
+            logger.warning(
+                f"Fully loal this geotiff ({file_path.name}) requires "
+                f"{required_memory_gb:.2f} GB RAM, but only {available_memory_gb:.2f} GB available."
+            )
+
+        # 读取数据
+        imarray = src.read()
+        # rasterio 读取为 (bands, height, width)
+        # 需要转换为 (height, width, bands) 以保持与旧版本 tifffile 的兼容性
+        return np.moveaxis(imarray, 0, -1)
+    
 
 def geo2pixel(points_hv, header, return_index=False):
-    """Convert point cloud xyz coordinate to geotiff pixel coordinate (horizontal, vertical)
+    """[Deprecated] Convert geo coordinate (lon, lat) to geotiff pixel coordinate (horizontal, vertical)
+
+    ..caution::
+
+        Since v2.0.2, this function is deprecated, the conversion method is old and may not accurate.
+        Please use `:func:`easyidp.geotiff.GeoTiff.geo2pixel <easyidp.geotiff.GeoTiff.geo2pixel>` instead,
+        a warpper for `rasterio.io.DatasetReader.index()` function
 
     Parameters
     ----------
@@ -1015,7 +1230,6 @@ def geo2pixel(points_hv, header, return_index=False):
     return_index : bool, default false
         if false: will get float coordinates -> (23.5, 27.8)
         if true: will get int pixel index -> (23, 27)
-
     Returns
     -------
     ndarray 
@@ -1063,6 +1277,15 @@ def geo2pixel(points_hv, header, return_index=False):
     :func:`easyidp.GeoTiff.geo2pixel <easyidp.geotiff.GeoTiff.geo2pixel>`
 
     """
+    logger.warning(
+        "Since v2.0.2, function `idp.geotiff.geo2pixel()` is deprecated, "
+        "the conversion method is old and may not accurate. "
+        "Please use `easyidp.GeoTiff.geo2pixel()` instead, "
+        "a wrapper for `rasterio.io.DatasetReader.index()` function.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
     gis_ph = points_hv[:, 0]
     gis_pv = points_hv[:, 1]
 
@@ -1089,7 +1312,13 @@ def geo2pixel(points_hv, header, return_index=False):
 
 
 def pixel2geo(points_hv, header):
-    """Convert geotiff pixel coordinate (horizontal, vertical) to point cloud xyz coordinate (x, y, z)
+    """[Deprecated] Convert geotiff pixel coordinate (horizontal, vertical) to geo coordinate (x, y)
+
+    ..caution::W
+
+        Since v2.0.2, this function is deprecated,  the conversion method is old and may not accurate.
+        Please use `:func:`easyidp.geotiff.GeoTiff.pixel2geo <easyidp.geotiff.GeoTiff.pixel2geo>` instead,
+        a warpper for `rasterio.io.DatasetReader.xy()` function
 
     Parameters
     ----------
@@ -1127,8 +1356,17 @@ def pixel2geo(points_hv, header):
     --------
     :func:`easyidp.GeoTiff.pixel2geo <easyidp.geotiff.GeoTiff.pixel2geo>`
     """
-    gis_ph = points_hv[:, 0]
-    gis_pv = points_hv[:, 1]
+    logger.warning(
+        "Since v2.0.2, function `idp.geotiff.pixel2geo()` is deprecated, "
+        "the conversion method is old and may not accurate. "
+        "Please use `easyidp.GeoTiff.pixel2geo()` instead, "
+        "a wrapper for `rasterio.io.DatasetReader.xy()` function.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    if not np.issubdtype(points_hv.dtype, np.number):
+        raise TypeError(f"The `points_hv` only accept numpy ndarray float and int types")
 
     gis_xmin = header['tie_point'][0]
     gis_ymax = header['tie_point'][1]
@@ -1137,25 +1375,7 @@ def pixel2geo(points_hv, header):
     scale_y = header['scale'][1]
 
     # the px is numpy axis0 (vertical, h)
-    # py is numpy axis1 (horizontal, w)
-    if np.issubdtype(points_hv.dtype, np.integer):
-        # all integer possible means the pixel index 
-        #    rather than specific coordinates
-        # +0.5 to get the pixel center rather than edge
-        # but in QGIS, this will cause 0.5 pixel shift
-        # pix_ph = points_hv[:, 0]  # + 0.5
-        # pix_pv = points_hv[:, 1]  # + 0.5
-        pass
-    elif np.issubdtype(points_hv.dtype, np.floating):
-        # all floats possible means it is the pixel coordinates
-        #    rather than pixel index
-        # no need to +0.5 as image center
-        # pix_ph = points_hv[:, 0]
-        # pix_pv = points_hv[:, 1]
-        pass
-    else:
-        raise TypeError(f"The `points_hv` only accept numpy ndarray integer and float types")
-
+    #     py is numpy axis1 (horizontal, w)
     pix_ph = points_hv[:, 0]
     pix_pv = points_hv[:, 1]
 
@@ -1165,579 +1385,3 @@ def pixel2geo(points_hv, header):
     gis_geo = np.vstack([gis_px, gis_py]).T
 
     return gis_geo
-
-
-def tifffile_crop(page, top, left, h, w):  
-    """Extract a crop from a TIFF image file directory (IFD) by partial loading.
-
-    Only the tiles englobing the crop area are loaded and not the whole page.
-
-    This is usefull for large geotiff that unableto load into RAM.
-
-    .. code-block:: text
-
-        (0,0)
-        o--------------------------
-        |           ^
-        |           | top
-        |           v
-        | <-------> o=============o  ^
-        |   left    |<---- w ---->|  |
-        |           |             |  h
-        |           |             |  |
-        |           o=============o  v
-
-    Parameters
-    ----------
-    page : TiffPage
-        TIFF image file directory (IFD) from which the crop must be extracted.
-    top, left: int
-        Coordinates of the top left corner of the desired crop.
-        top = i0 = height_st
-        left = j0 = w_st
-    h: int
-        Desired crop height.
-    w: int
-        Desired crop width.
-        
-    Returns
-    -------
-    out : ndarray of shape (h, w, sampleperpixel)
-        Extracted crop.
-
-    Notes
-    -----
-    Modified from [1]_ , 
-    
-    In EasyIDP v1.0, the function is ``caas_lite.get_crop(page, i0, j0, h, w)``
-
-    References
-    ----------
-    .. [1] https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
-
-    Example
-    -------
-
-    .. code-block:: python
-
-        with tf.TiffFile(maize_part_dom) as tif:
-            page = tif.pages[0]
-
-            cropped = idp.geotiff.tifffile_crop(page, top=30, left=40, h=100, w=150)
-
-    .. caution::
-        It is not recommended to use without specifying parameters like this:
-        
-        ``crop_rectiange(434, 918, 320, 321)``
-
-        It is hard to know the parameter order immediately.
-
-    See also
-    --------
-    :func:`easyidp.GeoTiff.crop_rectangle <easyidp.geotiff.GeoTiff.crop_rectangle>`
-    """
-    if page.is_tiled:
-        out = _get_tiled_crop(page, top, left, h, w)
-    else:
-        out = _get_untiled_crop(page, top, left, h, w)
-
-    return out
-
-
-def _get_tiled_crop(page, i0, j0, h, w):
-    """The submodule of self.get_crop() for those tiled geotiff
-
-    Copied from: 
-    https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
-    """
-    if not page.is_tiled:
-        raise ValueError("Input page must be tiled")
-
-    im_width = page.imagewidth
-    im_height = page.imagelength
-    im_pyramid = page.imagedepth
-    im_dim = page.samplesperpixel
-
-    if h < 1 or w < 1:
-        raise ValueError("h and w must be strictly positive.")
-        
-    i1, j1 = i0 + h, j0 + w
-    if i0 < 0 or j0 < 0 or i1 >= im_height or j1 >= im_width:
-        raise ValueError(f"Requested crop area [({i0}, {i1}), ({j0}, {j1})] is out of image bounds ({im_height}, {im_width})")
-
-    tile_width, tile_height = page.tilewidth, page.tilelength
-
-    tile_i0, tile_j0 = i0 // tile_height, j0 // tile_width
-    tile_i1, tile_j1 = np.ceil([i1 / tile_height, j1 / tile_width]).astype(int)
-
-    tile_per_line = int(np.ceil(im_width / tile_width))
-
-    # older version: (img_depth, h, w, dim)
-    out = np.empty((im_pyramid,
-                    (tile_i1 - tile_i0) * tile_height,
-                    (tile_j1 - tile_j0) * tile_width,
-                    im_dim), dtype=page.dtype)
-
-    fh = page.parent.filehandle
-
-    for i in range(tile_i0, tile_i1):
-        for j in range(tile_j0, tile_j1):
-            index = int(i * tile_per_line + j)
-
-            offset = page.dataoffsets[index]
-            bytecount = page.databytecounts[index]
-
-            fh.seek(offset)
-            data = fh.read(bytecount)
-            tile, indices, shape = page.decode(data, index, jpegtables=page.jpegtables)
-
-            im_i = (i - tile_i0) * tile_height
-            im_j = (j - tile_j0) * tile_width
-            out[:, im_i: im_i + tile_height, im_j: im_j + tile_width, :] = tile
-
-    im_i0 = i0 - tile_i0 * tile_height
-    im_j0 = j0 - tile_j0 * tile_width
-
-    # old version: out[:, im_i0: im_i0 + h, im_j0: im_j0 + w, :]
-    return out[0, im_i0: im_i0 + h, im_j0: im_j0 + w, :]
-
-def _get_untiled_crop(page, i0, j0, h, w):
-    """The submodule of self.get_crop(), for those untiled geotiff
-
-    Copied from: 
-    https://gist.github.com/rfezzani/b4b8852c5a48a901c1e94e09feb34743#file-get_crop-py-L60
-    """
-    if page.is_tiled:
-        raise ValueError("Input page must not be tiled")
-
-    im_width = page.imagewidth
-    im_height = page.imagelength
-    im_pyramid = page.imagedepth
-    im_dim = page.samplesperpixel
-
-    if h < 1 or w < 1:
-        raise ValueError("h and w must be strictly positive.")
-
-    i1, j1 = i0 + h, j0 + w
-    if i0 < 0 or j0 < 0 or i1 >= im_height or j1 >= im_width:
-        raise ValueError(f"Requested crop area [({i0}, {i1}), ({j0}, {j1})] is out of image bounds ({im_height}, {im_width})")
-    
-    fh = page.parent.filehandle
-
-    # -------------------------------------------------
-    # for data/pix4d/maize_tanashi dom:
-    # dom shape: (722, 836)
-    # >>> page.dataoffsets
-    # (2554, 9242, 15930, 22618,  ...)  # 6688 interval
-    # >>> page.databytecounts
-    # (6688, 6688, 6688, 6688,  ...)
-    # >>> len(page.dataoffsets)
-    # 361  # = dom.h / 2 -> read 2 row once
-    # -------------------------------------------------
-    # no need to calculate previous part, the geotiff tag 278
-    # already have this value:
-    # TiffTag 278 RowsPerStrip @94 SHORT @102 = 1
-    rows_per_strip = page.tags[278].value
-
-    # commonly, it read 1 row once,
-    # no need to do extra things
-    if rows_per_strip == 1: 
-        read_tile_idx = np.arange(i0, i1)
-
-    # sometime it not read once per row, it reads two rows once, etc...
-    # e.g. tile.shape = (1, 2, full_width, channel_num)
-    #      expected ->  (1, 1, full_width, channel_num)
-    # if still just picking the first row, will
-    # result in a horzontal zoom 50% result
-    else:
-        # recalculate the row id to read
-        # >>> idx = array([10, 11, 12, 13, 14])   # orignal line index
-        # >>> idx_dv = np.floor(idx / row_step).astype(int)
-        # array([5, 5, 6, 6, 7])
-        # >>> np.unique(idx_dv)
-        # array([5, 6, 7])   -> known which index to read
-        read_row_id = np.arange(i0, i1)
-        read_tile_idx = np.unique(np.floor(read_row_id / rows_per_strip).astype(int))
-
-        # Then decide the start line and end line
-        # >>> idx % 2
-        # array([0, 1, 0, 1, 0], dtype=int32)
-        # # get start id
-        st_line_id = read_row_id[0] % rows_per_strip
-        # # get reversed id
-        # line id
-        #  3  |  |  |  |...
-        #  -------------------  last read
-        #  0  |  |  |  |
-        #  1  |  |  |  |...
-        #  2  |  |  |  |
-        #  -> get the [:, 0], [:, -1] or [:, -2] index
-        #     as the `ed_line_id`
-        ed_line_id = read_row_id[-1] % rows_per_strip - (rows_per_strip-1)
-
-    # crop them vertically first, then crop
-    temp_out = np.empty((im_pyramid, 0, w, im_dim), dtype=page.dtype)
-    for index in read_tile_idx:
-        offset = page.dataoffsets[index]
-        bytecount = page.databytecounts[index]
-
-        fh.seek(offset)
-        data = fh.read(bytecount)
-
-        tile, indices, shape = page.decode(data, index, jpegtables=page.jpegtables)
-
-        # double check if is row_step per read
-        # shape -> (1, 2, full_width, channel_num)
-        if shape[1] != rows_per_strip:
-            raise LookupError(f"the calculated {rows_per_strip} row per read does not match {shape[1]} of tifffile decoded.")
-
-        temp_out = np.concatenate([temp_out, tile[:, :,j0:j1,:]], axis=1)
-
-    # return cropped result
-    if rows_per_strip == 1:
-        if im_dim == 1:
-            # is dsm -> shape (w, h)
-            return temp_out[0,:,:,0]
-        else:  
-            # is dom -> shape (w, h, d)         
-            return temp_out[0,:,:,0:im_dim] 
-    else:
-        if ed_line_id == 0:
-            if im_dim == 1:  
-                # is dsm -> shape (w, h)
-                return temp_out[0, st_line_id:, :, 0]
-            else:
-                # is dom -> shape (w, h, d)
-                return temp_out[0, st_line_id:, :, 0:im_dim]
-        else:
-            if im_dim == 1:
-                # is dsm -> shape (w, h)
-                return temp_out[0, st_line_id:ed_line_id, :, 0]
-            else:
-                # is dom -> shape (w, h, d)
-                return temp_out[0, st_line_id:ed_line_id, :, 0:im_dim]
-
-
-def point_query(page, points_hv, header=None):
-    """Get the pixel value of given point(s)
-
-    Parameters
-    ----------
-    page : TiffPage
-        TIFF image file directory (IFD) from which the crop must be extracted.
-    points_hv : tuple | list | nx2 ndarray
-        | 1. one point tuple
-        |     e.g. (34.57, 45.62)
-        | 2. one point list
-        |     e.g. [34.57, 45.62]
-        | 3. points lists
-        |     e.g. [[34.57, 45.62],[35.57, 46.62]]
-        | 4. 2d numpy array
-        |     e.g. np.array([[34.57, 45.62],[35.57, 46.62]])
-    header : dict, optional
-        | the geotiff head dictionary from get_header()
-        | if specified, will view the `points_hv` as geo position
-        |     e.g. [longtitude, latitude]
-        | if not specified, will view as pixel index
-        |     e.g. [1038, 567] -> pixel id
-
-    Returns
-    -------
-    values: ndarray
-        the obtained pixel value (RGB or height) 
-
-    Example
-    -------
-
-    .. code-block:: python
-
-        >>> import easyidp as idp
-        >>> test_data = idp.data.TestData()
-        >>> header = idp.geotiff.get_header(test_data.pix4d.lotus_dsm)
-
-        >>> point1 = (368023.004, 3955500.669)
-        >>> idp.geotiff.point_query(page, point1, header)
-        [97.45558]
-
-        >>> point2 = [368023.004, 3955500.669]
-        >>> idp.geotiff.point_query(page, point1, header)
-        [97.45558]
-
-        >>> points3 = [
-        ...     [368022.581, 3955501.054], 
-        ...     [368024.032, 3955500.465]
-        ... ]
-        >>> idp.geotiff.point_query(page, point3, header)
-        array([97.624344, 97.59617])
-
-        >>> point4 = np.array([
-        ...     [368022.581, 3955501.054], 
-        ...     [368024.032, 3955500.465]
-        ... ])
-        >>> idp.geotiff.point_query(page, point4, header)
-        array([97.624344, 97.59617])
-
-    See also
-    --------
-    :func:`easyidp.GeoTiff.point_query <easyidp.geotiff.GeoTiff.point_query>`
-    """
-
-    if isinstance(points_hv, (tuple, list, np.ndarray)):
-        temp = np.array(points_hv)
-
-        dim = len(temp.shape)
-        if dim == 1 and temp.shape[0] == 2:
-            # fit the one point
-            points_hv = np.array([temp])
-        elif dim == 2 and temp.shape[1] == 2:
-            # fit the points
-            points_hv = temp
-        else:
-            raise IndexError("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")
-    else:
-        raise TypeError(f"Only tuple, list, ndarray are supported, not {type(points_hv)}")
-
-    # convert to pixel index
-    if header is None:   # means point hv is pixel id
-        # check if is integer
-        if np.issubdtype(points_hv.dtype, np.integer):
-            px = points_hv
-        # if float, converted to int by floor()
-        else:
-            px = np.floor(points_hv).astype(int)
-            logger.warning("The given pixel coordinates is not integer and is converted, if it is geo_coordinate, please specfiy `header=get_header()`")
-    else:
-        px = geo2pixel(points_hv, header, return_index=True)
-
-    # get values
-    # - prepare container
-    values_list = []
-    for p in px:
-        '''
-        if dom:
-            cropped.shape = (1, 1, 4)
-            cropped -> array([[[0, 0, 0, rgba]]], dtype=uint8)
-            wanted = cropped[0,0,:]
-        if dsm:
-            cropped.shape = (1, 1, 1)
-            cropped -> array([[-10000.]], dtype=np.float32)
-            wanted = cropped[0,0]
-        '''
-        cropped = tifffile_crop(page, top=p[1], left=p[0], h=1, w=1)
-
-        if page.samplesperpixel == 1:
-            values_list.append(cropped[0,0])
-        else:
-            values_list.append(cropped[0,0,:])
-
-    return np.array(values_list)
-
-def _make_empty_imarray(header, h, w, layer_num=None):
-    """Produce a empty image, suit the requirement for nodata
-    """
-    # possible dsm with only one band
-    if header["dim"] == 1:
-        
-        # old version: np.ones((self.img_depth, h, w, 1))
-        empty_template = np.ones((h, w)) * header["nodata"]
-        
-    # possible RGB band
-    elif header["dim"] == 3 and header["dtype"] == np.uint8:
-        if layer_num == 4:
-            # old version: np.ones((self.img_depth, h, w, 1))
-            empty_template = np.ones((h, w, 4)).astype(np.uint8) * 255
-            empty_template[:,:,3] = empty_template[:,:,3] * 0
-        else:
-            # old version: np.ones((self.img_depth, h, w, 1))
-            empty_template = np.ones((h, w, 3)).astype(np.uint8) * 255
-        
-    # possible RGBA band, empty defined by alpha = 0
-    elif header["dim"] == 4 and header["dtype"] == np.uint8:
-        # old version: np.ones((h, w, 1))
-        empty_template = np.ones((h, w, 4)).astype(np.uint8) * 255
-        empty_template[:,:,3] = empty_template[:,:,3] * 0
-    else:
-        raise ValueError(f"Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [{header['dim']}], dtype=np.uint8; get [{header['dtype']}])")
-        
-    return empty_template
-
-def _is_empty_imarray(header, imarray):
-    """Judge if current img_array is empty grids
-    e.g. dsm=-10000, # (page.nodata)
-            rgb=[255,255,255], [0,0,0] # pure white and black
-            or RGBA with full empty alpha layer  # alpha all=0
-    
-    Parameters
-    ----------
-    img_array: np.ndarray
-        the outputs of self.get_crop()
-    
-    Returns
-    -------
-    bool: True is empty image.
-    
-    """
-    is_empty = False
-    if len(imarray.shape) == 2:
-        imarray_dim = 1
-    elif len(imarray.shape) == 3:
-        _, _, imarray_dim = imarray.shape
-
-    if imarray_dim != header["dim"]:
-        raise IndexError(f"The imarray dimention [{imarray_dim}] does not match with header dimention [{header['dim']}]")
-    
-    if header["dim"] == 1:
-        if np.all(imarray==header["nodata"]):
-            is_empty = True
-    elif header["dim"] == 3:
-        # for the case that use (255, 255, 255) white as background
-        if np.all(imarray==255):
-            is_empty = True
-        # in case some use (0, 0, 0) black as background
-        if np.all(imarray==0):
-            is_empty = True
-        # in case some header specify nodata rather than 255 and 0
-        if np.all(imarray==header["nodata"]):
-            is_empty = True
-    # for those RGBA with alpha layers, assume alpha=0 as empty
-    elif header["dim"] == 4:
-        if np.all(imarray[:,:,3]==0):
-            is_empty = True
-    else:
-        raise ValueError(f"Current version only support DSM, RGB and RGBA images (band expect: 1,3,4; get [{header['dim']}], dtype=np.uint8; get [{header['dtype']}])")
-
-    return is_empty
-
-
-def save_geotiff(header, imarray, left_top_corner, save_path):
-    """Save cropped region to geotiff file
-
-    Parameters
-    ----------
-    header : dict
-        the geotiff head dictionary from get_header()
-    imarray : ndarray
-        (m, n, d) image ndarray cropped from `crop_polygon`
-    left_top_corner : ndarray
-        | the pixel position of image top left cornder, 
-        | the order is (left, top)
-    save_path : str
-        the save to geotiff file path
-
-    Example
-    -------
-    Prepare data:
-
-    .. code-block:: python
-    
-        >>> import easyidp as idp
-        >>> test_data = idp.data.TestData()
-
-        >>> dom = idp.GeoTiff(test_data.tiff.soyweed_part)
-        >>> dom_imarray = idp.geotiff.get_imarray(test_data.tiff.soyweed_part)
-
-    If want to move each 20 pixels of this geotiff to right and bottom
-
-    .. code-block:: python
-
-        >>> left_top_corner = [200, 200]    # add 20 and 20 offsets
-        >>> save_tiff = "path/to/save/output.tif"
-        >>> idp.geotiff.save_geotiff(dom_test.header, dom_imarray, left_top_corner, save_tiff)
-    
-    Then using the QGIS to compare between input and output:
-
-    .. image:: ../../_static/images/python_api/save_geotiff_offset.png
-        :alt: save_geotiff_offset.png
-    """
-    extratags = _offset_geotiff_extratags(header, left_top_corner)
-
-    if not isinstance(save_path, Path):
-        save_path = Path(save_path)
-
-    # create folder if parent folder not exists
-    file_ext = save_path.suffix
-    parent_folder = save_path.parent
-
-    if file_ext == ".tif":
-        # create folder
-        if not parent_folder.exists():
-            parent_folder.mkdir()
-
-        # write geotiff
-        with tf.TiffWriter(save_path) as wtif:
-            wtif.write(data=imarray, 
-                       software=f"EasyIDP {idp.__version__}", 
-                       photometric=header["photometric"], 
-                       planarconfig=header["planarconfig"], 
-                       #compression=self.header["compress"], 
-                       resolution=header["scale"], 
-                       extratags=extratags)
-    else:
-        raise TypeError(f"only *.tif file name is supported, not [{file_ext}]")
-        
-
-def _offset_geotiff_extratags(header, left_top_corner):
-    """Calculate the extratags part of geotiff header when the left-top corner moved
-
-    Parameters
-    ----------
-    header : dict
-        the geotiff head dictionary from get_header()
-    left_top_corner : ndarray
-        | the pixel position of image top left cornder, 
-        | the order is (left, top)
-
-    Returns
-    -------
-    list
-        The container for calculated extratag values
-    """
-    geo_corner = pixel2geo(np.array([left_top_corner]), header)
-    geo_h = geo_corner[0, 0]
-    geo_v = geo_corner[0, 1]
-
-    model_tie_point = (0, 0, 0, geo_h, geo_v, 0)
-
-    extratags = []
-    for k, t in header["tags"].items():
-        '''
-        TiffTag 256 ImageWidth @10 SHORT @18 = 5490
-        TiffTag 257 ImageLength @22 SHORT @30 = 5752
-        TiffTag 258 BitsPerSample @34 SHORT[4] @230 = (8, 8, 8, 8)
-        TiffTag 259 Compression @46 SHORT @54 = LZW
-        TiffTag 262 PhotometricInterpretation @58 SHORT @66 = RGB
-        TiffTag 273 StripOffsets @70 LONG[5752] @23246 = (46439, 46678, 46934, 47207, 4
-        TiffTag 277 SamplesPerPixel @82 SHORT @90 = 4
-        TiffTag 278 RowsPerStrip @94 SHORT @102 = 1
-        TiffTag 279 StripByteCounts @106 LONG[5752] @238 = (239, 256, 273, 278, 296, 30
-        TiffTag 284 PlanarConfiguration @118 SHORT @126 = CONTIG
-        TiffTag 305 Software @130 ASCII[12] @46262 = pix4dmapper
-        TiffTag 317 Predictor @142 SHORT @150 = HORIZONTAL
-        TiffTag 338 ExtraSamples @154 SHORT @162 = (<EXTRASAMPLE.UNASSALPHA: 2>,)
-        TiffTag 339 SampleFormat @166 SHORT[4] @46254 = ('UINT', 'UINT', 'UINT', 'UINT'
-        TiffTag 33550 ModelPixelScaleTag @178 DOUBLE[3] @46274 = (0.00738, 0.00738, 0.0
-        TiffTag 33922 ModelTiepointTag @190 DOUBLE[6] @46298 = (0.0, 0.0, 0.0, 368014.5
-        TiffTag 34735 GeoKeyDirectoryTag @202 SHORT[32] @46346 = (1, 1, 0, 7, 1024, 0,
-        TiffTag 34737 GeoAsciiParamsTag @214 ASCII[29] @46410 = WGS84 / UTM zone 54N|WG
-        '''
-        if k < 30000:
-            # this will be automatically added by wtif.save(data=imarray) in save_geotiff function
-            # the key of this step is extract "hidden" tags
-            continue
-
-        if tf.__version__ < "2020.11.26" and t.dtype[0] == '1':
-            dtype = t.dtype[-1]
-        else:
-            dtype = t.dtype
-
-        # <tifffile.TiffTag 33922 ModelTiepointTag @190>
-        if k == 33922:
-            # replace the value for this tag
-            value = model_tie_point
-        else:
-            # other just using parent value.
-            value = t.value
-
-        extratags.append((t.code, dtype, t.count, value, True))
-
-    return extratags

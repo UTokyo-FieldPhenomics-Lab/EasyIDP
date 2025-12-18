@@ -37,15 +37,15 @@ def imarray_crop(
     nodata : float | int | None, optional
         Value to use for pixels outside the polygon/mask, by default None.
         If None, the original values are preserved (no masking applied).
-        
+
     Returns
     -------
-    imarray_out : np.ndarray
+    imarray_out : np.ndarray(W, H, 3).dtype=uint8
         The cropped image array. If nodata is not None, pixels outside 
         the mask are set to nodata value.
-    roi_offset : np.ndarray
+    roi_offset : np.ndarray(2,). dtype=int32
         The (horizontal, vertical) pixel offset of the crop region's top-left corner.
-    mask_out : np.ndarray
+    mask_out : np.ndarray(W, H). dtype=bool
         The (height, width) boolean mask for the cropped region.
         True values indicate pixels inside the polygon/mask.
         
@@ -65,6 +65,11 @@ def imarray_crop(
         >>> 
         >>> # Crop preserving original values (nodata=None)
         >>> cropped, offset, mask = idp.cvtools.imarray_crop(imarray, polygon, nodata=None)
+        >>>
+        >>> # save cropped to rgba png file
+        >>> cropped_png = np.dstack((cropped, mask.astype(np.uint8)*255))
+        >>> skimage.io.imsave("save_path.png", cropped_png)
+
     """
     # Input validation for imarray
     if not isinstance(imarray, np.ndarray):

@@ -165,13 +165,15 @@ def test_class_roi_get_z_from_dsm(shared_data):
     # using full map as results
     roi_p_mean_m1_f = roi_select.copy()
     roi_p_mean_m1_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=-1, keep_crs=False)
-    # all the z values should be the same
-    assert all(np.all(i[:,2] == map_ht) for i in roi_p_mean_m1_f.values())
+    # all the z values should be the same (use allclose for float comparison)
+    for i in roi_p_mean_m1_f.values():
+        np.testing.assert_allclose(i[:,2], map_ht, rtol=1e-6)
 
     roi_p_mean_m1d0_f = roi_select.copy()
     roi_p_mean_m1d0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=-1.0, keep_crs=False)
-    # all the z values should be the same
-    assert all(np.all(i[:,2] == map_ht) for i in roi_p_mean_m1d0_f.values())
+    # all the z values should be the same (use allclose for float comparison)
+    for i in roi_p_mean_m1d0_f.values():
+        np.testing.assert_allclose(i[:,2], map_ht, rtol=1e-6)
 
     #####################
     # test mode == face #

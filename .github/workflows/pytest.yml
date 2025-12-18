@@ -36,4 +36,4 @@ jobs:
         python ./tests/__init__.py
     - name: Run pytest
       run: | 
-        pytest -n auto
+        pytest

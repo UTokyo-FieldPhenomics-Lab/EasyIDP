@@ -87,3 +87,38 @@ if __name__ == "__main__":
     print("Downloading test data...")
     test_data = idp.data.TestData()
     print(f"Test data downloaded to: {test_data.data_dir}")
+
+    # Verify critical test files exist
+    import shapefile
+    
+    critical_files = [
+        test_data.shp.lotus_shp,
+        test_data.shp.lotus_shp.with_suffix('.dbf'),
+        test_data.shp.lotus_shp.with_suffix('.shx'),
+        test_data.shp.lotus_shp.with_suffix('.prj'),
+    ]
+    
+    print("\n=== Verifying test data integrity ===")
+    all_exist = True
+    for f in critical_files:
+        exists = f.exists()
+        size = f.stat().st_size if exists else 0
+        status = f"✓ {size} bytes" if exists else "✗ MISSING"
+        print(f"  {f.name}: {status}")
+        if not exists:
+            all_exist = False
+    
+    if all_exist:
+        # Try to read the shapefile
+        shp = shapefile.Reader(str(test_data.shp.lotus_shp))
+        print(f"\n=== Shapefile info ===")
+        print(f"  shp.fields: {shp.fields}")
+        print(f"  Number of shapes: {len(shp.shapes())}")
+        print(f"  Number of records: {len(shp.records())}")
+    else:
+        print("\n!!! Some critical files are missing !!!")
+        # List all files in shp_test directory
+        shp_dir = test_data.shp.lotus_shp.parent
+        print(f"\nFiles in {shp_dir}:")
+        for f in sorted(shp_dir.iterdir()):
+            print(f"  {f.name}: {f.stat().st_size} bytes")

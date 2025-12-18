@@ -262,12 +262,6 @@ class EasyidpDataSet():
 
     def load_data(self):
         r"""Download dataset from Google Drive to user AppData folder
-        
-        Notes
-        -----
-        This method handles race conditions when running with pytest-xdist
-        parallel workers. Multiple workers may try to download/extract data
-        simultaneously.
         """
 
         if not os.path.exists(self.data_dir):
@@ -275,25 +269,11 @@ class EasyidpDataSet():
             if not os.path.exists(self.zip_file):
                 self._download_data()
 
-            # Re-check data_dir after download - another worker may have 
-            # completed extraction while we were downloading
-            if os.path.exists(self.data_dir):
-                # Another worker finished extraction, clean up zip if exists
-                if os.path.exists(self.zip_file):
-                    try:
-                        os.remove(self.zip_file)
-                    except (OSError, FileNotFoundError):
-                        pass  # Another worker may have removed it
-                return
-
             if os.path.exists(self.zip_file):
                 logger.success("Successfully downloaded, start unzipping ...")
                 self._unzip_data()
                 logger.success("Successfully unzipped, the cache zip file has been removed.")
             else:
-                # Check one more time if data_dir exists (race condition)
-                if os.path.exists(self.data_dir):
-                    return  # Another worker completed extraction
                 raise FileNotFoundError(
                     f"Could not find the downloaded file [{self.zip_file}], "
                     f"please call ().load_data() to download again.\n"
@@ -348,31 +328,14 @@ class EasyidpDataSet():
 
     def _unzip_data(self):
         """Unzip downloaded zip data and remove after decompression
-        
-        Notes
-        -----
-        This method handles race conditions when running with pytest-xdist
-        parallel workers. The zip file may already be removed by another worker.
         """
-        # Check if zip file still exists (may have been processed by parallel worker)
-        if not os.path.exists(self.zip_file):
-            # Another worker may have already processed it, check if data_dir exists
-            if os.path.exists(self.data_dir):
-                return  # Data already extracted by another worker
-            else:
-                raise FileNotFoundError(
-                    f"Zip file [{self.zip_file}] not found and data directory "
-                    f"[{self.data_dir}] does not exist."
-                )
-        
         with zipfile.ZipFile(self.zip_file, 'r') as zip_ref:
             zip_ref.extractall(self.data_dir)
 
-        # Remove zip file after extraction, but check existence first
-        # to handle race condition with parallel workers
-        if os.path.exists(self.data_dir) and os.path.exists(self.zip_file):
+        # already extracted
+        if os.path.exists(self.data_dir):
             os.remove(self.zip_file)
-        elif not os.path.exists(self.data_dir):
+        else:
             raise FileNotFoundError("Seems fail to unzip, please check whether the zip file is fully downloaded.")
         
 

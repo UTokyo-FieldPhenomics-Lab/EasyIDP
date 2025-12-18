@@ -79,3 +79,11 @@ def report_loguru_to_caplog(caplog):
     yield caplog
     # 测试结束后移除 handler，避免污染其他测试
     logger.remove(handler_id)
+
+
+if __name__ == "__main__":
+    # Download test data when running this script directly
+    # Used by GitHub Actions workflow to pre-download test data
+    print("Downloading test data...")
+    test_data = idp.data.TestData()
+    print(f"Test data downloaded to: {test_data.data_dir}")

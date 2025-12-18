@@ -16,4 +16,3 @@ easyidp.egg-info/*
 dev.notes/*
 tests/out/*
 .pypirc
-*.old

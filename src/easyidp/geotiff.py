@@ -1,15 +1,17 @@
 import os
 from functools import wraps
-import pyproj
-import psutil
-import numpy as np
-import rasterio as rio
-from rasterio.mask import mask as riomask
-from tqdm import tqdm
 from pathlib import Path
-from pyproj.exceptions import CRSError
-from shapely.geometry import Polygon, mapping
+
 from loguru import logger
+import numpy as np
+import psutil
+import pyproj
+from pyproj.exceptions import CRSError
+import rasterio as rio
+from rasterio.enums import ColorInterp
+from rasterio.mask import mask as riomask
+from shapely.geometry import mapping, Polygon
+from tqdm import tqdm
 
 import easyidp as idp
 
@@ -18,7 +20,7 @@ class GeoTiff(object):
     """A easy GeoTiff class warpped on rasterio
     """
 
-    def __init__(self, file_path:str|Path|None=None, imarray:np.ndarray=None, header:dict=None):
+    def __init__(self, file_path:str|Path|None=None, imarray:np.ndarray|None=None, header:dict=None, mask:np.ndarray|None=None):
         """The method to initialize the GeoTiff class
 
         Parameters
@@ -91,6 +93,7 @@ class GeoTiff(object):
         """
 
         self._imarray = imarray
+        self._mask = mask
 
         #: The layer to represent transparency / alpha
         # self.transparent_layer = None
@@ -156,6 +159,38 @@ class GeoTiff(object):
             return None
         
     @property
+    def has_alpha(self) -> bool:
+        """Check if this GeoTiff has an alpha channel.
+        
+        This property reads the colorinterp (color interpretation) from the 
+        GeoTiff header to determine if an alpha mask is present. The colorinterp 
+        field is extracted from the TIFF metadata by rasterio, which maps to
+        the GDAL/TIFF PHOTOMETRIC and EXTRASAMPLES tags.
+        
+        Returns
+        -------
+        bool
+            True if the GeoTiff has an alpha band, False otherwise.
+        
+        Example
+        -------
+        .. code-block:: python
+        
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            >>> dom.has_alpha
+            True
+            >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
+            >>> dsm.has_alpha
+            False
+        """
+        if isinstance(self.header, dict) and 'has_alpha' in self.header.keys():
+            return self.header['has_alpha']
+        else:
+            return False
+        
+    @property
     def imarray(self):
         """Access to the pixel values in the type of numpy ndarray"""
         if self._imarray is None:
@@ -167,6 +202,167 @@ class GeoTiff(object):
                 self._imarray = get_imarray(self.file_path)
 
         return self._imarray
+
+    @property
+    def mask(self) -> np.ndarray | None:
+        """Boolean mask where True indicates valid (non-nodata) pixels.
+        
+        Shape is (height, width). For multi-band images with alpha channel,
+        a pixel is considered valid if alpha > 0. For DSM (single band), 
+        a pixel is valid if value != nodata.
+        
+        This property is lazy-computed and cached for efficiency.
+        
+        Returns
+        -------
+        np.ndarray | None
+            Boolean mask array with shape (height, width), or None if no data.
+        
+        Example
+        -------
+        .. code-block:: python
+        
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+            >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
+            >>> mask = dsm.mask
+            >>> mask.shape
+            (5752, 5490)
+            >>> mask.dtype
+            dtype('bool')
+        """
+        if self._mask is None:
+            if self.header is None:
+                logger.warning("No header loaded, cannot compute mask")
+                return None
+            # Compute mask from imarray (this will load imarray if needed)
+            imarray = self.imarray
+            if imarray is None:
+                return None
+            self._mask = self._compute_mask(imarray)
+        return self._mask
+
+    def _compute_mask(self, imarray: np.ndarray) -> np.ndarray:
+        """Compute the valid pixel mask from imarray.
+        
+        Supports three mechanisms for reading mask:
+        1. GDAL internal mask (per-dataset mask)
+        2. Alpha channel (RGBA/MSA images)
+        3. Nodata value (DSM/multispectral)
+        
+        Parameters
+        ----------
+        imarray : np.ndarray
+            The image array with shape (height, width) or (height, width, bands)
+        
+        Returns
+        -------
+        np.ndarray
+            Boolean mask with shape (height, width), True for valid pixels
+        """
+        # 1. Try reading GDAL internal mask
+        if self.file_path is not None and self.file_path.exists():
+            try:
+                with rio.open(self.file_path) as src:
+                    mask_flags = src.mask_flag_enums
+                    # Check if has per-dataset mask (not just nodata/all_valid)
+                    has_internal = any('per_dataset' in str(f).lower() for f in mask_flags[0])
+                    if has_internal:
+                        internal_mask = src.read_masks(1)
+                        return internal_mask > 0
+            except Exception:
+                pass
+        
+        # 2. Fallback: compute from data (nodata value / alpha channel)
+        imarray = np.squeeze(imarray)
+        ndim = len(imarray.shape)
+        nodata = self.header.get("nodata", None)
+        
+        if ndim == 2:
+            # Single band (DSM): valid if != nodata
+            if nodata is not None:
+                # Handle NaN comparison
+                if np.isnan(nodata) if isinstance(nodata, float) else False:
+                    return ~np.isnan(imarray)
+                return imarray != nodata
+            else:
+                # If no nodata defined, all pixels are valid
+                return np.ones(imarray.shape, dtype=bool)
+        
+        elif ndim == 3:
+            height, width, bands = imarray.shape
+            data_type = self._get_data_type()
+            
+            # For types with alpha channel
+            if data_type in ('rgba', 'msa'):
+                # Alpha > 0 means valid
+                return imarray[:, :, -1] > 0
+            elif nodata is not None:
+                # For other multi-band (e.g., RGB, MS), check any band != nodata
+                return np.any(imarray != nodata, axis=2)
+            else:
+                # No alpha, no nodata: all pixels are valid
+                return np.ones((height, width), dtype=bool)
+        else:
+            raise ValueError(f"Unsupported imarray shape: {imarray.shape}")
+
+    def _get_data_type(self) -> str:
+        """Detect the data type of this GeoTiff.
+        
+        Returns
+        -------
+        str
+            One of 'dsm', 'rgb', 'rgba', 'ms', 'msa'
+            
+            - dsm: single band elevation data
+            - rgb: 3-band uint8 visual imagery
+            - rgba: 4-band uint8 visual imagery with alpha
+            - ms: multi-spectral imagery (>4 bands or non-uint8)
+            - msa: multi-spectral imagery with alpha channel
+        
+        Notes
+        -----
+        This method reads the colorinterp (color interpretation) from the 
+        GeoTiff header to determine if an alpha mask is present. The colorinterp 
+        field is extracted from the TIFF metadata by rasterio, which maps to
+        the GDAL/TIFF PHOTOMETRIC and EXTRASAMPLES tags.
+        
+        Example
+        -------
+        .. code-block:: python
+        
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+            >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
+            >>> dsm._get_data_type()
+            'dsm'
+            >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            >>> dom._get_data_type()
+            'rgba'
+        """
+        if self.header is None:
+            return 'dsm'  # default
+            
+        dim = self.header.get('dim', 1)
+        dtype = self.header.get('dtype', np.dtype('float32'))
+        has_alpha = self.header.get('has_alpha', False)
+        
+        if dim == 1:
+            return 'dsm'
+        elif dim == 3 and dtype == np.dtype('uint8'):
+            # RGB without alpha (has_alpha should be False for 3-band)
+            return 'rgb'
+        elif dim == 4 and dtype == np.dtype('uint8'):
+            # Standard RGBA image  
+            return 'rgba'
+        else:
+            # Multi-spectral: use has_alpha flag from colorinterp to determine
+            # if an alpha band is present, instead of relying on heuristics
+            if has_alpha:
+                return 'msa'
+            else:
+                return 'ms'
+
 
     def _check_data(func):
         """A warp to check if has data"""
@@ -222,31 +418,87 @@ class GeoTiff(object):
             logger.warning(f"Can not find file [{tif_path}], skip loading")
 
     @_check_data
-    def save(self, save_path: str | Path, overwrite: bool = False) -> bool:
-        """save GeoTiff as tiff file
+    def save(self, save_path: str | Path, overwrite: bool = False, apply_mask: bool = True) -> bool:
+        """Save GeoTiff as tiff file with proper nodata/mask handling.
+
+        Mask is only applied during save. Previous crop operations preserve 
+        full rectangular data, allowing further calculations on edge pixels.
+
+        The save strategy depends on data type:
+        - DSM: uses nodata value (-32767.0)
+        - RGB/RGBA: uses alpha channel
+        - MS/MSA (multispectral): adds alpha channel to protect original data
 
         Parameters
         ----------
         save_path : str | Path
-            the save to geotiff file path
+            The file path to save the geotiff
+        overwrite : bool, optional
+            If True, overwrite existing file without prompting, by default False
+        apply_mask : bool, optional
+            If True and mask exists, apply mask appropriately, by default True
+            
+        Returns
+        -------
+        bool
+            True if save succeeded, False if cancelled
+            
+        Example
+        -------
+        .. code-block:: python
+        
+            >>> import easyidp as idp
+            >>> test_data = idp.data.TestData()
+            >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
+            >>> dsm.save('output_dsm.tif', overwrite=True)
+            True
         """
         save_path = Path(save_path).absolute()
         if save_path.suffix.lower() not in ['.tif', '.tiff']:
-            save_path = save_path.with_suffix('.tif') # 自动添加扩展名
+            save_path = save_path.with_suffix('.tif')
 
-        # 确保目录存在
+        # Ensure directory exists
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
         if save_path.exists() and not overwrite:
-            user_input = input(f"File [{save_path}] already exists. Do you want to overwrite it? (y/n): ")
+            user_input = input(f"File [{save_path}] already exists. Overwrite? (y/n): ")
             if user_input.lower() != 'y':
                 logger.info("File save cancelled by user.")
                 return False
 
-        with rio.open(save_path, 'w', **self.header['profile']) as dst:
-            # rasterio requires (bands, height, width), while self._imarry (height, width, bands)
-            imarray_rasterio_order = np.moveaxis(self._imarray, -1, 0)
-            dst.write(imarray_rasterio_order)
+        # Prepare data and profile
+        data_type = self._get_data_type()
+        imarray = self._imarray.copy()
+        mask = self._mask
+        profile = self.header['profile'].copy()
+
+        if data_type == 'dsm':
+            # DSM: use nodata value -32767.0
+            if apply_mask and mask is not None:
+                imarray = imarray.astype(np.float32)  # Ensure float for -32767.0
+                imarray[~mask] = -32767.0
+                profile['nodata'] = -32767.0
+                profile['dtype'] = 'float32'
+        
+        elif data_type in ('rgb', 'rgba', 'ms', 'msa'):
+            # RGB/Multispectral: use alpha band to protect original data
+            if apply_mask and mask is not None:
+                alpha = (mask * 255).astype('uint8')
+                if data_type in ('rgb', 'ms'):
+                    # Add new alpha band
+                    imarray = np.dstack([imarray, alpha])
+                    profile['count'] = imarray.shape[2]
+                else:  # rgba / msa - merge with existing alpha
+                    imarray[:, :, -1] = np.where(mask, imarray[:, :, -1], 0)
+            # Remove nodata for images with alpha
+            profile.pop('nodata', None)
+
+        # Write to file
+        # rasterio requires (bands, height, width), self._imarray is (height, width, bands)
+        imarray_rio = np.moveaxis(imarray, -1, 0)
+        
+        with rio.open(save_path, 'w', **profile) as dst:
+            dst.write(imarray_rio)
 
         logger.success(f"GeoTiff successfully saved to: {save_path}")
         return True
@@ -524,7 +776,8 @@ class GeoTiff(object):
 
         return sample_gen
     
-    def crop_rois(self, roi, is_geo=True, save_folder=None):
+    @_check_data
+    def crop_rois(self, roi, is_geo=True, save_folder=None, return_geotiff:bool=False):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
         Parameters
@@ -593,9 +846,6 @@ class GeoTiff(object):
             >>> out_dict = obj.crop_rois(roi, save_folder=tif_out_folder)
 
         """
-
-        self._not_empty()
-        
         if not isinstance(roi, (dict, idp.ROI)):
             raise TypeError(f"Only <dict> and <easyidp.ROI> with multiple polygons are accepted, not {type(roi)}. If it is 2D ndarray coordiante for just one polygon, please use `GeoTiff.crop_polygon()` instead.")
 
@@ -607,19 +857,24 @@ class GeoTiff(object):
             else:
                 save_path = None
 
-            imarray = self.crop_polygon(polygon_hv, is_geo, save_path)
+            imarray = self.crop_polygon(polygon_hv, is_geo, save_path, return_geotiff)
 
             out_dict[k] = imarray
 
         return out_dict
     
-    def crop_shapely_polygon(self, shapely_polygon: Polygon):
+    @_check_data
+    def crop_shapely_polygon(self, shapely_polygon: Polygon, save_path:str|Path|None=None, return_geotiff:bool=False):
         """Crop a given polygon from geotiff, the base function of cropping geotiff
         
         Parameters
         ----------
         shapely_polygon : shapely.geometry.Polygon
             The polygon to crop, in geo coordinate
+        save_path : str, optional
+            if given, will save the cropped as \*.tif file to path
+        return_geotiff : bool, optional
+            if specify to True, will return idp.GeoTiff object instead of ndarray
 
         Returns
         -------
@@ -673,10 +928,23 @@ class GeoTiff(object):
         out_imarray = np.moveaxis(out_image, 0, -1)
 
         out_geotiff = GeoTiff(imarray=out_imarray, header=header)
-        return out_geotiff
+        
+        # Compute mask for cropped region (记录有效区域，不应用到数据)
+        # This preserves full rectangular data for further calculations
+        out_geotiff._mask = out_geotiff._compute_mask(out_imarray)
 
-    
-    def crop_polygon(self, polygon_hv, is_geo=True, save_path=None, return_geotiff=False):
+        if save_path is not None:
+            out_geotiff.file_path = Path(save_path)
+            out_geotiff.save(save_path)
+
+        if return_geotiff:
+            return out_geotiff
+        else:
+            return out_geotiff.imarray
+
+
+    @_check_data
+    def crop_polygon(self, polygon_hv, is_geo=True, save_path:str|Path|None=None, return_geotiff:bool=False):
         """Crop a given polygon from geotiff
 
         Parameters
@@ -685,7 +953,7 @@ class GeoTiff(object):
             (horizontal, vertical) points
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
-        save_path : str, optional
+        save_path : str | pathlib.Path, optional
             if given, will save the cropped as \*.tif file to path, by default None
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
@@ -752,20 +1020,11 @@ class GeoTiff(object):
         else:
             adjusted_coords = self.pixel2geo(polygon_hv)
         
-        out_geotiff = self.crop_shapely_polygon( Polygon(adjusted_coords) )
-
-        if save_path is not None:
-            out_geotiff.file_path = Path(save_path)
-            out_geotiff.save(save_path)
-
-        if return_geotiff:
-            return out_geotiff
-        else:
-            return out_geotiff.imarray
+        return self.crop_shapely_polygon( Polygon(adjusted_coords), save_path=save_path, return_geotiff=return_geotiff)
 
 
     @_check_data
-    def crop_rectangle(self, left, top, w, h, is_geo=True, save_path=None, return_geotiff=False):
+    def crop_rectangle(self, left:int, top:int, w:int, h:int, is_geo:bool=True, save_path:str|Path|None=None, return_geotiff:bool=False):
         """Extract a rectangle regeion crop from a GeoTIFF image file.
 
         .. code-block:: text
@@ -783,17 +1042,17 @@ class GeoTiff(object):
 
         Parameters
         ----------
-        top: int | float
-            Coordinates of 
-        left: int | float
+        top: int 
             Coordinates of the top left corner of the desired crop.
-        h: int | float
+        left: int
+            Coordinates of the top left corner of the desired crop.
+        h: int
             Desired crop height.
-        w: int | float
+        w: int
             Desired crop width.
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
-        save_path : str, optional
+        save_path : str | pathlib.Path, optional
             if given, will save the cropped as \*.tif file to path
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
@@ -905,24 +1164,17 @@ class GeoTiff(object):
             
             bbox_polygon = Polygon(polygon_geo)
 
-        out_geotiff = self.crop_shapely_polygon(bbox_polygon)
-
-        if save_path is not None:
-            out_geotiff.file_path = Path(save_path)
-            out_geotiff.save(save_path)
-
-        if return_geotiff:
-            return out_geotiff
-        else:
-            return out_geotiff.imarray
+        return self.crop_shapely_polygon(bbox_polygon, save_path=save_path, return_geotiff=return_geotiff)
         
-    def polygon_math(self, polygon_hv, is_geo=True, kernel="mean"):
+    @_check_data
+    def polygon_math(self, polygon_hv: np.ndarray | None = None, is_geo=True, kernel="mean"):
         """Calculate the valus inside given polygon
 
         Parameters
         ----------
-        polygon_hv : numpy nx2 array | 'all'
-            (horizontal, vertical) points
+        polygon_hv : numpy nx2 array | None, optional
+            (horizontal, vertical) points. 
+            If None, the calculation will be performed on the entire image. Defaults to None.
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         kernel : str, optional
@@ -986,29 +1238,36 @@ class GeoTiff(object):
             The four values are RGBA four color channels.
 
         """
-        self._not_empty()
 
-        if isinstance(polygon_hv, str):  # == full_map
-            imarray = get_imarray(self.file_path)
+        if polygon_hv is None:  # == full_map
+            imarray = self.imarray.copy()
         else:
-            imarray = self.crop_polygon(polygon_hv, is_geo)
+            imarray = self.crop_polygon(polygon_hv, is_geo, return_geotiff=False)
 
-        # remove outside values
-        if len(imarray.shape) == 2:  # seems dsm
-            # dim = 2
-            inside_value = imarray[imarray != self.header["nodata"]]
-            # all nodata
-            # fix bug #69
+        # Squeeze to remove single dimensions (e.g., (h, w, 1) -> (h, w))
+        imarray = np.squeeze(imarray)
+        
+        # Compute mask for valid pixels using the unified mask method
+        # Create a temporary header-like dict for _compute_mask
+        mask = self._compute_mask(imarray)
+        
+        # Extract valid values based on mask
+        if len(imarray.shape) == 2:
+            # Single band (DSM)
+            inside_value = imarray[mask]
+            # Handle case where all pixels are nodata (fix bug #69)
             if len(inside_value) == 0:
-                inside_value = np.array([self.header["nodata"]])
-        elif len(imarray.shape) == 3 and imarray.shape[2]==4:  
-            # RGBA dom
-            # crop_polygon function only returns RGBA 4 layer data
-            # dim = 3
-            mask = imarray[:, :, 3] == 255
-            inside_value = imarray[mask, :]   # (mxn-o, 4)
+                nodata_val = self.header.get("nodata", np.nan)
+                inside_value = np.array([nodata_val])
+        elif len(imarray.shape) == 3:
+            # Multi-band image
+            inside_value = imarray[mask, :]  # shape: (valid_pixels, bands)
+            # Handle case where all pixels are masked out
+            if len(inside_value) == 0:
+                nodata_val = self.header.get("nodata", 0)
+                inside_value = np.array([[nodata_val] * imarray.shape[2]])
         else:
-            raise IndexError("Only support (m,n) dsm and (m,n,4) RGBA dom")
+            raise IndexError(f"Unsupported imarray shape: {imarray.shape}")
 
         def _get_idx(group, thresh, compare="<="):
             if thresh.shape == ():  # single value
@@ -1141,6 +1400,14 @@ def get_header(tif_path: str | Path) -> dict:
             
         header['profile'] = src.profile.copy()
 
+        # Read colorinterp to detect alpha band
+        # colorinterp is a tuple of ColorInterp enums for each band
+        header['colorinterp'] = tuple(src.colorinterp)
+        
+        # Check if any band is marked as alpha
+        # Using rasterio.enums.ColorInterp to check for alpha
+        header['has_alpha'] = ColorInterp.alpha in src.colorinterp
+
     
     return header
 
@@ -1207,7 +1474,7 @@ def get_imarray(tif_path: str | Path) -> np.ndarray:
 
         # 读取数据
         imarray = src.read()
-        # rasterio 读取为 (bands, height, width)
+        # rasterio 读取为 (bands, height, width)dom
         # 需要转换为 (height, width, bands) 以保持与旧版本 tifffile 的兼容性
         return np.moveaxis(imarray, 0, -1)
     

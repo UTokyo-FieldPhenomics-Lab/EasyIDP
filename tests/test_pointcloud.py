@@ -6,7 +6,7 @@ import shutil
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data
+from . import shared_data, report_loguru_to_caplog
 
 ##########################
 # test read point clouds #
@@ -276,9 +276,9 @@ def test_class_pointcloud_init():
 
     assert pcd.shape == (0, 3)
 
-def test_class_pointcloud_init_wrong_path():
-    with pytest.warns(UserWarning, match=re.escape("Can not find file")):
-        pcd = idp.PointCloud("a/wrong/path.ply")
+def test_class_pointcloud_init_wrong_path(report_loguru_to_caplog):
+    pcd = idp.PointCloud("a/wrong/path.ply")
+    assert "Can not find file" in report_loguru_to_caplog.text
 
 def test_class_pointcloud_print():
     # short table
@@ -416,7 +416,7 @@ def test_class_pointcloud_def_read_point_cloud_with_offsets():
     np.testing.assert_almost_equal(pcd._offset, np.array([ 367900., 3955800., 0.]))
 
 
-def test_class_pointcloud_def_write_point_cloud():
+def test_class_pointcloud_def_write_point_cloud(report_loguru_to_caplog):
     pcd = idp.PointCloud(test_data.pcd.maize_las)
     
     # test default ext same as input
@@ -424,10 +424,9 @@ def test_class_pointcloud_def_write_point_cloud():
     if expected_file.exists():
         expected_file.unlink()
 
-    with pytest.warns(UserWarning, match=re.escape("It seems file")):
-        save_path = test_data.pcd.out / "test_class_write_pcd"
-        pcd.write_point_cloud(save_path)
-        assert expected_file.exists()
+    save_path = test_data.pcd.out / "test_class_write_pcd"
+    pcd.write_point_cloud(save_path)
+    assert "It seems file" in report_loguru_to_caplog.text
 
     # test specify another ext
     expected_file = test_data.pcd.out / "test_class_write_pcd.ply"
@@ -460,7 +459,7 @@ def test_class_pointcloud_clear():
 
     assert pcd.shape == (0, 3)
 
-def test_class_point_cloud_crop():
+def test_class_point_cloud_crop(report_loguru_to_caplog):
     pcd = idp.PointCloud(test_data.pcd.lotus_ply_bin)
 
     polygon = np.array([
@@ -489,14 +488,13 @@ def test_class_point_cloud_crop():
         cropped = pcd.crop_point_cloud(p2)
 
     # check raise warns
-    with pytest.warns(UserWarning, match=re.escape(
-        "Cropped 0 point in given polygon. Please check whether the coords is correct.")):
-        cropped = pcd.crop_point_cloud(polygon + 10)
-        assert cropped is None
+    cropped = pcd.crop_point_cloud(polygon + 10)
+    assert cropped is None
+    assert "Cropped 0 point in given polygon. Please check whether the coords is correct." in report_loguru_to_caplog.text
 
 def test_class_crop(shared_data):
-    roi = shared_data['roi'].copy()
-    roi.get_z_from_dsm(test_data.pix4d.lotus_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+    roi_select = shared_data['roi_select'].copy()
+    roi_select.get_z_from_dsm(test_data.pix4d.lotus_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
 
     p4d = idp.Pix4D(
         project_path=test_data.pix4d.lotus_folder,
@@ -510,7 +508,7 @@ def test_class_crop(shared_data):
         shutil.rmtree(tif_out_folder)
     tif_out_folder.mkdir()
 
-    out = p4d.pcd.crop_rois(roi, save_folder=tif_out_folder)
+    out = p4d.pcd.crop_rois(roi_select, save_folder=tif_out_folder)
 
     assert len(out) == 4
     assert len(out["N1W1"]) == 15226

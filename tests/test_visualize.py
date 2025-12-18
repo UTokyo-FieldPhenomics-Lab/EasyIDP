@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 import easyidp as idp
 
-from . import shared_data
+from . import shared_data, report_loguru_to_caplog
 
 ##############################
 # Test back2raw_single based #
@@ -105,7 +105,7 @@ def test_visualize_one_roi_on_img_ms(shared_data):
 # Test draw_backward_one_roi based #
 ####################################
 
-def test_draw_backward_one_roi(shared_data):
+def test_draw_backward_one_roi(shared_data, report_loguru_to_caplog):
     test_data = shared_data["test_data"]
     roi = shared_data["roi_vis"]
     
@@ -114,10 +114,11 @@ def test_draw_backward_one_roi(shared_data):
 
     img_dict_ms = roi.back2raw(ms)
 
-    with pytest.warns(UserWarning, match=re.escape(
-            "Expected title like ['title1', 'title2'], not given 'sdedf', using default title instead")):
-        idp.visualize.draw_backward_one_roi(
-            ms, img_dict_ms['N1W1'], buffer=40, title='sdedf',
-            save_as=test_data.vis.out / "draw_backward_one_roi.png",
-            color='blue', show=False
-        )
+    idp.visualize.draw_backward_one_roi(
+        ms, img_dict_ms['N1W1'], buffer=40, title='sdedf',
+        save_as=test_data.vis.out / "draw_backward_one_roi.png",
+        color='blue', show=False
+    )
+    
+    # Check that warning was logged via loguru
+    assert "Expected title like ['title1', 'title2']" in report_loguru_to_caplog.text

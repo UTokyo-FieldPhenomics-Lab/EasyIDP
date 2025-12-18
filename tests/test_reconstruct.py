@@ -197,31 +197,30 @@ def test_func_sort_img_by_distance_ms(shared_data):
     # =================
     ms = idp.Metashape(project_path=test_data.metashape.lotus_psx, chunk_id=0)
 
-    roi = shared_data['roi'].copy()
-    roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
+    roi_select = shared_data['roi_select'].copy()
+    roi_select.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
-    poly = roi["N1W2"]
-    ms.crs = roi.crs
+    ms.crs = roi_select.crs
 
-    out_all = ms.back2raw(roi)
+    out_all = ms.back2raw(roi_select)
 
     # test one roi
     cam_pos = ms.get_photo_position()
-    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi["N1W2"], cam_pos, num=3)
+    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi_select["N1W2"], cam_pos, num=3)
     assert len(filter_3) == 3
 
-    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi["N1W2"], cam_pos, distance_thresh=0.1, num=3)
+    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi_select["N1W2"], cam_pos, distance_thresh=0.1, num=3)
     assert len(filter_3_dis_01) == 0
 
     # test all roi
-    filter_3_all = idp.reconstruct.sort_img_by_distance(ms, out_all, roi, num=3)
+    filter_3_all = idp.reconstruct.sort_img_by_distance(ms, out_all, roi_select, num=3)
     assert len(filter_3_all) == 4
     for v in filter_3_all.values():
         assert len(v) == 3
 
     # on self
     filter_num = 3
-    filter_3_all_self = ms.sort_img_by_distance(out_all, roi, num=filter_num)
+    filter_3_all_self = ms.sort_img_by_distance(out_all, roi_select, num=filter_num)
     assert len(filter_3_all_self) == 4
     for values in filter_3_all_self.values():
         assert len(values) == filter_num

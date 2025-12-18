@@ -6,7 +6,7 @@ from pathlib import Path
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data
+from . import shared_data, report_loguru_to_caplog
 
 def test_hidden_match_suffix():
     test_folder = test_data.pix4d.maize_empty / "2_densification" / "point_cloud"
@@ -55,14 +55,12 @@ def test_parse_p4d_project_structure():
         (test_folder2 / "3_dsm_ortho" / "2_mosaic" / "ccc_dom.tif").resolve()
 
 
-def test_parse_p4d_project_warning():
+def test_parse_p4d_project_warning(report_loguru_to_caplog):
     # can not find output file
     test_folder = str(test_data.pix4d.maize_noout)
     
-    with pytest.warns(UserWarning, 
-        match=re.escape("Unable to find any")
-    ):
-        p4d2 = idp.pix4d.parse_p4d_project(test_folder)
+    p4d2 = idp.pix4d.parse_p4d_project(test_folder)
+    assert "Unable to find any" in report_loguru_to_caplog.text
 
 
 def test_parse_p4d_project_structure_error():
@@ -222,10 +220,10 @@ def test_class_back2raw(shared_data):
                     raw_img_folder=test_data.pix4d.lotus_photos,
                     param_folder=test_data.pix4d.lotus_param)
 
-    roi = shared_data['roi'].copy()
-    roi.get_z_from_dsm(test_data.pix4d.lotus_dsm)
+    roi_select = shared_data['roi_select'].copy()
+    roi_select.get_z_from_dsm(test_data.pix4d.lotus_dsm)
 
-    out_all = p4d.back2raw(roi)
+    out_all = p4d.back2raw(roi_select)
 
     assert len(out_all) == 4
 

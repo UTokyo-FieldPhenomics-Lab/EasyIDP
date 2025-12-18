@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data
+from . import shared_data, report_loguru_to_caplog
 
 #########################
 # test math calculation #
@@ -152,18 +152,18 @@ def test_class_init_metashape_multi_folder():
     assert ms.photos[0].label == "[0]100MEDIA-DJI_0001"
     assert len(ms.photos) == 218
 
-def test_class_init_metashape_warns_errors():
+def test_class_init_metashape_warns_errors(report_loguru_to_caplog):
     # warning init with chunk_id without project_path
-    with pytest.warns(UserWarning, match=re.escape("Unable to open chunk_id [0] for empty project with project_path=None")):
-        m3 = idp.Metashape(chunk_id=0)
+    m3 = idp.Metashape(chunk_id=0)
+    assert "Unable to open chunk_id [0] for empty project with project_path=None" in report_loguru_to_caplog.text
 
     # warning with multiple chunks:
-    with pytest.warns(UserWarning, match=re.escape("The project has [4] chunks, however no chunk_id has been specified, open the first chunk [1] 'multiple_bbb' by default.")):
-        m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
+    m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
+    assert "The project has [4] chunks, however no chunk_id has been specified, open the first chunk [1] 'multiple_bbb' by default." in report_loguru_to_caplog.text
 
     # warning with unable for further anaylsys
-    with pytest.warns(UserWarning, match=re.escape("Current chunk missing required ['transform', 'sensors', 'photos'] information (is it an empty chunk without finishing SfM tasks?) and unable to do further analysis.")):
-        m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id=1)
+    m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id=1)
+    assert "Current chunk missing required ['transform', 'sensors', 'photos'] information (is it an empty chunk without finishing SfM tasks?) and unable to do further analysis." in report_loguru_to_caplog.text
         
     m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
 
@@ -181,13 +181,13 @@ def test_class_init_metashape_warns_errors():
     m5 = idp.Metashape(test_data.metashape.lotus_psx)
     plot = np.ones((5,3)) * np.array([360000, 3950000, 100])
 
-    with pytest.warns(UserWarning, match=re.escape("Have not specify the CRS of output DOM/DSM/PCD, ")):
-        m5.back2raw_crs(plot)
+    m5.back2raw_crs(plot)
+    assert "Have not specify the CRS of output DOM/DSM/PCD, " in report_loguru_to_caplog.text
 
-    with pytest.warns(UserWarning, match=re.escape("Have not specify the CRS of output DOM/DSM/PCD, ")):
-        roi = idp.ROI()
-        roi['plot1'] = plot
-        m5.back2raw(roi)
+    roi = idp.ROI()
+    roi['plot1'] = plot
+    m5.back2raw(roi)
+    assert "Have not specify the CRS of output DOM/DSM/PCD, " in report_loguru_to_caplog.text
 
 
 def test_class_init_metashape_with_missing_chunk_folders():     
@@ -203,12 +203,12 @@ def test_class_fetch_by_label():
     assert m2.label == 'Chunk 1'
 
 
-def test_class_fetch_by_label_error():
+def test_class_fetch_by_label_error(report_loguru_to_caplog):
     with pytest.raises(KeyError, match=re.escape("Could not find chunk_id [21] in")):
         m2 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id="21")
 
-    with pytest.warns(UserWarning, match=re.escape("This project only has one chunk named [0] 'Chunk 1', ignore the wrong chunk_id [21] specified by user.")):
-        m3 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="21")
+    m3 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="21")
+    assert "This project only has one chunk named [0] 'Chunk 1', ignore the wrong chunk_id [21] specified by user." in report_loguru_to_caplog.text
 
 def test_class_show_chunk():
     m1 = idp.Metashape()
@@ -423,11 +423,11 @@ def test_class_back2raw_and_crs(shared_data):
     #         del roi[key]
     # roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
-    roi = shared_data['roi'].copy()
-    roi.get_z_from_dsm(test_data.metashape.lotus_dsm)
+    roi_select = shared_data['roi_select'].copy()
+    roi_select.get_z_from_dsm(test_data.metashape.lotus_dsm)
 
-    poly = roi["N1W2"]
-    ms.crs = roi.crs
+    poly = roi_select["N1W2"]
+    ms.crs = roi_select.crs
 
     out = ms.back2raw_crs(poly)
 
@@ -435,7 +435,7 @@ def test_class_back2raw_and_crs(shared_data):
 
     assert len(out) == 21
 
-    out_all = ms.back2raw(roi)
+    out_all = ms.back2raw(roi_select)
 
     assert len(out_all) == 4
     assert isinstance(out_all["N1W2"], dict)
@@ -521,7 +521,7 @@ def test_debug_discussion_12():
     out = ms._world2crs(pos)
     np.testing.assert_almost_equal(out, np.array([139.54053245,  35.73458169, 130.09433649]))
 
-def test_debug_calibration_tag_error():
+def test_debug_calibration_tag_error(report_loguru_to_caplog):
     # test ishii san's <calibration> out of index error (has one sensor tag without <calibration>)
     wrong_sensor = """
     <sensors next_id="2">
@@ -588,10 +588,9 @@ def test_debug_calibration_tag_error():
     for i, sensor_tag in enumerate(sensors_search):
 
         if i == 0:
-            with pytest.warns(UserWarning, match=re.escape('No expected <calibration class="adjusted"> tag found in <sensor label=Test_Pro (10.26mm)> tag')):
-                sensor = idp.metashape._decode_sensor_tag(sensor_tag)
-
+            sensor = idp.metashape._decode_sensor_tag(sensor_tag)
             assert sensor.calibration is None
+            assert 'No expected <calibration class="adjusted"> tag found in <sensor label=Test_Pro (10.26mm)> tag' in report_loguru_to_caplog.text
         else:
             sensor = idp.metashape._decode_sensor_tag(sensor_tag)
 
@@ -716,7 +715,7 @@ def test_metashape_disordered_image_xml():
     assert ms.photos[1].label == '80m/e-w/card01/101MEDIA/DJI_0538.JPG'
 
 
-def test_parse_sensor_tags_with_multiple_calibration():
+def test_parse_sensor_tags_with_multiple_calibration(report_loguru_to_caplog):
     """
     <calibration type="frame" class="initial">
         <resolution width="5280" height="3956"/>
@@ -742,8 +741,8 @@ def test_parse_sensor_tags_with_multiple_calibration():
         <p2>-0.0011496526754087306</p2>
       </calibration>
     """
-    with pytest.warns(UserWarning, match=re.escape('Detect 2 <calibration> tags in <sensor label=M3M (12.29mm)> tag, using <calibration class="adjusted">')):
-        m6 = idp.Metashape(project_path=test_data.metashape.two_calib_psx)
+    m6 = idp.Metashape(project_path=test_data.metashape.two_calib_psx)
+    assert 'Detect 2 <calibration> tags in <sensor label=M3M (12.29mm)> tag, using <calibration class="adjusted">' in report_loguru_to_caplog.text
 
     assert m6.sensors[0].calibration.f == 4758.8543529678982
     assert m6.sensors[0].calibration.cx == 14.842273128715597

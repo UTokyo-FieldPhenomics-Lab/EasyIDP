@@ -6,7 +6,6 @@ from loguru import logger
 import numpy as np
 import psutil
 import pyproj
-from pyproj.exceptions import CRSError
 import rasterio as rio
 from rasterio.enums import ColorInterp
 from rasterio.mask import mask as riomask
@@ -376,19 +375,16 @@ class GeoTiff(object):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             if self.header is None:
-                has_data = False
-            else:
-                has_data = True
-
-            if has_data:
-                return func(self, *args, **kwargs)
-            else:
                 raise FileNotFoundError(
                     "Could not operate if not specify correct geotiff file"
                 )
+            return func(self, *args, **kwargs)
 
         return wrapper
-        
+
+    def has_data(self) -> bool:
+        """Check if the geotiff has data"""
+        return self.header is not None
 
     def open(self, tif_path: str | Path):
         """Open and get the meta information (header) from geotiff
@@ -870,6 +866,11 @@ class GeoTiff(object):
             else:
                 save_path = None
 
+            if polygon_hv.shape[1] == 3:
+                # probably xyz coordinates
+                polygon_hv = polygon_hv[:, :2]
+                logger.info(f"Polygon coordinates are in xyz format {polygon_hv.shape}, only horizontal and vertical coordinates are used for cropping roi.")
+
             imarray = self.crop_polygon(polygon_hv, is_geo, save_path, return_geotiff)
 
             out_dict[k] = imarray
@@ -1016,7 +1017,8 @@ class GeoTiff(object):
             
         """
         if not isinstance(polygon_hv, np.ndarray) or polygon_hv.ndim != 2 or polygon_hv.shape[1] != 2:
-            error_info = f"Polygon_hv must be a 2D numpy array of shape (N, 2), not current input {polygon_hv.shape}."
+            actual_info = polygon_hv.shape if hasattr(polygon_hv, "shape") else type(polygon_hv)
+            error_info = f"Polygon_hv must be a 2D numpy array of shape (N, 2), not current input {actual_info}."
             logger.error(error_info)
             raise ValueError(error_info)
         

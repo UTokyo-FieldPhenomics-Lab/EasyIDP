@@ -769,7 +769,11 @@ def save_back2raw_json_and_png(recons, results_dict, save_folder):
 
         for roi_name, img_pos in tqdm(img_rois.items(), leave=False):
 
-            cropped_png, off = idp.cvtools.imarray_crop(img_array, img_pos)
+            # cropped_rgb shape=(W, H, 3); off shape=(2,); mask shape=(W, H)
+            cropped_rgb, off, mask = idp.cvtools.imarray_crop(img_array, img_pos)
+
+            # Merge RGB and mask into RGBA; cropped_png: ndarray (W, H, 4)
+            cropped_png = np.dstack((cropped_rgb, mask))
 
             png_save_path = os.path.join(save_folder, roi_name, f"{roi_name}_{img_name}_at_top_{off[0]}_left_{off[1]}.png")
 

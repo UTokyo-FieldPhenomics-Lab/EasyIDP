@@ -771,7 +771,8 @@ class ROI(idp.Container):
 
         # using the full map to calculate
         if buffer == -1 or buffer == -1.0:
-            global_z = dsm.polygon_math(polygon_hv="full_map", kernel=kernel)
+            # using the full map to calculate
+            global_z = dsm.polygon_math(polygon_hv=None, kernel=kernel)
         else:
             global_z = None
 

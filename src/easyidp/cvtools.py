@@ -11,14 +11,13 @@ from loguru import logger
 
 def imarray_crop(
     imarray: np.ndarray, 
-    polygon_hv: np.ndarray, 
-    nodata_value: float | int = 0, 
-    input_mask: np.ndarray | None = None,
-    return_mask: bool = True
-) -> tuple:
-    """Crop a given ndarray image by given polygon pixel positions.
+    mask: np.ndarray,
+    nodata: float | int | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Crop a given ndarray image by given polygon or mask.
     
-    This is a basic numpy processing tool for cropping images with polygon regions.
+    This is a basic numpy processing tool for cropping images with polygon 
+    or mask regions.
     
     Parameters
     ----------
@@ -26,34 +25,29 @@ def imarray_crop(
         The image data in numpy ndarray.
         Shape can be (height, width) for DSM or (height, width, bands) for DOM.
         
-    polygon_hv : np.ndarray
-        2D ndarray of shape (n, 2) containing pixel positions of polygon boundary.
-        Coordinates are in (horizontal, vertical) order.
+    mask : np.ndarray
+        Either:
+        - Polygon coordinates with shape (N, 2) in (horizontal, vertical) order
+        - Boolean mask with shape (H, W) matching imarray dimensions
         
         .. caution::
-            Coordinate order is reversed from numpy indexing.
+            For polygon, coordinate order is reversed from numpy indexing.
             horizontal = numpy axis 1, vertical = numpy axis 0.
             
-    nodata_value : float | int, optional
-        Value to use for pixels outside the polygon, by default 0.
-        For DSM geotiffs, this is typically -10000.0.
-        
-    input_mask : np.ndarray | None, optional
-        Optional input mask with shape matching imarray's first two dimensions.
-        If provided, the polygon mask will be combined (AND) with this mask.
-        
-    return_mask : bool, optional
-        If True, return the polygon mask along with cropped data, by default True.
+    nodata : float | int | None, optional
+        Value to use for pixels outside the polygon/mask, by default None.
+        If None, the original values are preserved (no masking applied).
         
     Returns
     -------
     imarray_out : np.ndarray
-        The cropped image array with pixels outside polygon set to nodata_value.
+        The cropped image array. If nodata is not None, pixels outside 
+        the mask are set to nodata value.
     roi_offset : np.ndarray
         The (horizontal, vertical) pixel offset of the crop region's top-left corner.
-    mask : np.ndarray, optional
-        The (height, width) boolean mask if return_mask=True.
-        True values indicate pixels inside the polygon.
+    mask_out : np.ndarray
+        The (height, width) boolean mask for the cropped region.
+        True values indicate pixels inside the polygon/mask.
         
     Example
     -------
@@ -66,41 +60,21 @@ def imarray_crop(
         >>> imarray = np.random.rand(100, 100)
         >>> polygon = np.array([[20, 20], [80, 20], [80, 80], [20, 80], [20, 20]])
         >>> 
-        >>> # Crop with mask output
-        >>> cropped, offset, mask = idp.cvtools.imarray_crop(
-        ...     imarray, polygon, nodata_value=-1, return_mask=True
-        ... )
+        >>> # Crop with nodata applied
+        >>> cropped, offset, mask = idp.cvtools.imarray_crop(imarray, polygon, nodata=0)
+        >>> 
+        >>> # Crop preserving original values (nodata=None)
+        >>> cropped, offset, mask = idp.cvtools.imarray_crop(imarray, polygon, nodata=None)
     """
-    # Input validation
+    # Input validation for imarray
     if not isinstance(imarray, np.ndarray):
         raise TypeError(f"The `imarray` must be numpy ndarray, not {type(imarray)}")
     
     if not (np.issubdtype(imarray.dtype, np.integer) or np.issubdtype(imarray.dtype, np.floating)):
         raise TypeError(f"The `imarray` only accept numpy ndarray integer and float types, not {imarray.dtype}")
     
-    if not isinstance(polygon_hv, np.ndarray):
-        raise TypeError(f"Only numpy 2d array is accepted for polygon_hv, not {type(polygon_hv)}")
-    
-    if len(polygon_hv.shape) != 2 or polygon_hv.shape[1] != 2:
-        raise AttributeError(f"polygon_hv must have shape (n, 2), not {polygon_hv.shape}")
-    
-    # Convert polygon to integer if float
-    if np.issubdtype(polygon_hv.dtype, np.floating):
-        polygon_hv = polygon_hv.astype(np.int32)
-    elif not np.issubdtype(polygon_hv.dtype, np.integer):
-        raise TypeError(f"polygon_hv must have integer or float dtype, not {polygon_hv.dtype}")
-
-    # Calculate bounding box
-    roi_min = polygon_hv.min(axis=0)  # (horizontal_min, vertical_min)
-    roi_max = polygon_hv.max(axis=0)  # (horizontal_max, vertical_max)
-    roi_size = roi_max - roi_min
-    
-    # Offset polygon to local coordinates
-    polygon_local = polygon_hv - roi_min
-    
-    # Handle edge case: polygon points on maximum boundary need to be inside
-    polygon_local[polygon_local[:, 0] == roi_size[0], 0] -= 1
-    polygon_local[polygon_local[:, 1] == roi_size[1], 1] -= 1
+    if not isinstance(mask, np.ndarray):
+        raise TypeError(f"Only numpy array is accepted for mask, not {type(mask)}")
     
     # Squeeze to handle (h, w, 1) -> (h, w)
     imarray = np.squeeze(imarray)
@@ -109,28 +83,76 @@ def imarray_crop(
     if ndim not in [2, 3]:
         raise ValueError(f"imarray must be 2D or 3D, got shape {imarray.shape}")
 
-    # Crop to bounding box
-    # Note: numpy uses (row, col) = (vertical, horizontal)
-    roi_cropped = imarray[roi_min[1]:roi_max[1], roi_min[0]:roi_max[0]]
+    img_height, img_width = imarray.shape[:2]
     
-    # Generate polygon mask
-    crop_height, crop_width = roi_cropped.shape[:2]
-    polygon_mask = poly2mask((crop_width, crop_height), polygon_local)
-    
-    # Combine with input mask if provided
-    if input_mask is not None:
-        # Crop input mask to match
-        input_mask_cropped = input_mask[roi_min[1]:roi_max[1], roi_min[0]:roi_max[0]]
-        polygon_mask = polygon_mask & input_mask_cropped
-    
-    # Apply mask: set outside pixels to nodata
-    imarray_out = roi_cropped.copy()
-    imarray_out[~polygon_mask] = nodata_value
-    
-    if return_mask:
-        return imarray_out, roi_min, polygon_mask
+    # Determine mask type: polygon (N, 2) or boolean mask (H, W)
+    if len(mask.shape) == 2 and mask.shape[1] == 2:
+        # Polygon coordinates (N, 2)
+        polygon_hv = mask
+        
+        # Convert polygon to integer if float
+        if np.issubdtype(polygon_hv.dtype, np.floating):
+            polygon_hv = polygon_hv.astype(np.int32)
+        elif not np.issubdtype(polygon_hv.dtype, np.integer):
+            raise TypeError(f"polygon must have integer or float dtype, not {polygon_hv.dtype}")
+        
+        # Calculate bounding box
+        roi_min = polygon_hv.min(axis=0)  # (horizontal_min, vertical_min)
+        roi_max = polygon_hv.max(axis=0)  # (horizontal_max, vertical_max)
+        roi_size = roi_max - roi_min
+        
+        # Offset polygon to local coordinates
+        polygon_local = polygon_hv - roi_min
+        
+        # Handle edge case: polygon points on maximum boundary
+        polygon_local[polygon_local[:, 0] == roi_size[0], 0] -= 1
+        polygon_local[polygon_local[:, 1] == roi_size[1], 1] -= 1
+        
+        # Crop to bounding box (numpy: row=vertical, col=horizontal)
+        roi_cropped = imarray[roi_min[1]:roi_max[1], roi_min[0]:roi_max[0]]
+        
+        # Generate polygon mask
+        crop_height, crop_width = roi_cropped.shape[:2]
+        polygon_mask = poly2mask((crop_width, crop_height), polygon_local)
+        
+    elif len(mask.shape) == 2 and mask.shape[0] == img_height and mask.shape[1] == img_width:
+        # Boolean mask (H, W)
+        if not np.issubdtype(mask.dtype, np.bool_):
+            # Convert to boolean if needed
+            mask = mask.astype(bool)
+        
+        # Find bounding box of True values
+        rows = np.any(mask, axis=1)
+        cols = np.any(mask, axis=0)
+        
+        if not rows.any():
+            # Empty mask - return minimal crop
+            roi_min = np.array([0, 0], dtype=np.int32)
+            roi_cropped = imarray[:1, :1].copy()
+            polygon_mask = np.zeros((1, 1), dtype=bool)
+        else:
+            row_min, row_max = np.where(rows)[0][[0, -1]]
+            col_min, col_max = np.where(cols)[0][[0, -1]]
+            
+            roi_min = np.array([col_min, row_min], dtype=np.int32)  # (horizontal, vertical)
+            
+            # Crop to bounding box (+1 because slicing is exclusive on end)
+            roi_cropped = imarray[row_min:row_max+1, col_min:col_max+1]
+            polygon_mask = mask[row_min:row_max+1, col_min:col_max+1]
     else:
-        return imarray_out, roi_min
+        raise ValueError(
+            f"mask must be polygon coordinates (N, 2) or boolean mask ({img_height}, {img_width}), "
+            f"got shape {mask.shape}"
+        )
+    
+    # Apply nodata if specified
+    if nodata is not None:
+        imarray_out = roi_cropped.copy()
+        imarray_out[~polygon_mask] = nodata
+    else:
+        imarray_out = roi_cropped.copy()
+    
+    return imarray_out, roi_min, polygon_mask
 
 
 def poly2mask(image_shape, poly_coord, engine="skimage"):

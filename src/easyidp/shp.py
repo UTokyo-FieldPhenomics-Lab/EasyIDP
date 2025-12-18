@@ -353,23 +353,34 @@ def _get_field_key(shp):
     dict
         Format: {"Column": int_id}; 
         Example: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
+    
+    Notes
+    -----
+    This function is compatible with both old and new versions of pyshp:
+    - Old pyshp  <3.0.3: fields are list/tuple, e.g. ['plot_id', 'C', 80, 0]
+    - New pyshp >=3.0.3: fields are Field namedtuple, e.g. Field(name='plot_id', ...)
     """
     shp_fields = {}
     f_count = 0
-    for l in shp.fields:
-        if isinstance(l, list):
-            '''
-            the fields 0 -> delection flags, and is a tuple type, ignore this tag
-            [('DeletionFlag', 'C', 1, 0),
-             ['ID', 'C', 36, 0],
-             ['MASSIFID', 'C', 19, 0],
-             ['CROPTYPE', 'C', 36, 0],
-             ['CROPDATE', 'D', 8, 0],
-             ['CROPAREA', 'N', 13, 5],
-             ['ATTID', 'C', 36, 0]]
-            '''
-            shp_fields[l[0]] = f_count
-            f_count += 1
+    for field in shp.fields:
+        # Skip DeletionFlag field (first field)
+        # In old pyshp: DeletionFlag is a tuple, other fields are lists
+        # In new pyshp: all fields are Field namedtuples
+        
+        # Get field name - works for both list/tuple and namedtuple
+        if hasattr(field, 'name'):
+            # New pyshp: Field namedtuple with 'name' attribute
+            field_name = field.name
+        else:
+            # Old pyshp: list or tuple, first element is name
+            field_name = field[0]
+        
+        # Skip DeletionFlag
+        if field_name == 'DeletionFlag':
+            continue
+            
+        shp_fields[field_name] = f_count
+        f_count += 1
 
     return shp_fields
     

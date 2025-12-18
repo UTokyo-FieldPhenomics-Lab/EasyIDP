@@ -5,226 +5,132 @@ from shapely.geometry import MultiPoint, Polygon
 from loguru import logger
 
 # ignore the warning of shapely convert coordiante
-import warnings
-warnings.filterwarnings("ignore", message="The array interface is deprecated and will no longer work in Shapely 2.0")
+# import warnings
+# warnings.filterwarnings("ignore", message="The array interface is deprecated and will no longer work in Shapely 2.0")
 
 
-def imarray_crop(imarray, polygon_hv, nodata_value=0, transparent_layer=None, return_mask=False):
-    """crop a given ndarray image by given polygon pixel positions
-
+def imarray_crop(
+    imarray: np.ndarray, 
+    polygon_hv: np.ndarray, 
+    nodata_value: float | int = 0, 
+    input_mask: np.ndarray | None = None,
+    return_mask: bool = True
+) -> tuple:
+    """Crop a given ndarray image by given polygon pixel positions.
+    
+    This is a basic numpy processing tool for cropping images with polygon regions.
+    
     Parameters
     ----------
-    imarray : ndarray
-        | the image data in numpy ndarray
-        | if the shape is (height, width), view it as DSM data, the data type should be float.
-        | if the shape is (height, width, dimen), view it as RGB DOM data (dimen=3 means RGB and dimen=4 means RGBA).
-        |     the data type for this case should be either 0-1 float, or 0-255 int.
-
-        .. caution::
-
-            Currently, the EasyIDP package does not have the ability to handle multi-spectral image data directly.
-            If you really want to use this function to crop multi-spectral image with multiple layers, please send each layer one by one.
-
-            For example, you have a multi-spectral imarray with 6 bands:
-
-            .. code-block:: python
-
-                >>> multi_spect_imarray.shape
-                (1028, 800, 6)
-
-            Then using the following for loops to iteratively process each band 
-            (please modify it by yourself, can not guarantee it works directly)
-
-            .. code-block:: python
-
-                >>> band_container = []
-                >>> for i in range(0, 6):
-                >>>     band = multi_spect_imarray[:,:,i]
-                >>>     out, offset = idp.cvtools.imarray_crop(band, polygon_hv, nodata_value=your_geotiff.header['nodata'])
-                >>>     band_container.append(out)
-                >>> final_out = np.dstack(band_container)
-
-    polygon_hv : 2D ndarray
-        | pixel position of boundary point, the order is (horizontal, vertical)
+    imarray : np.ndarray
+        The image data in numpy ndarray.
+        Shape can be (height, width) for DSM or (height, width, bands) for DOM.
+        
+    polygon_hv : np.ndarray
+        2D ndarray of shape (n, 2) containing pixel positions of polygon boundary.
+        Coordinates are in (horizontal, vertical) order.
         
         .. caution::
-
-            it is reverted to the numpy imarray axis. 
-            horzontal = numpy axis 1, vertical = numpy axis 0.
-
-    nodata_value: int | float
-        | specify exact value outside the polgyon, default 0.
-        | But for some DSM geotiff, it could be -10000.0, depends on the geotiff meta infomation
-
-    transparent_layer: None | int
-        | specify one layer to store transparency | outside polygon region, default None
-        |    None: no alpha layer
-        |    0-x : specific alpha layer
-        |    -1  : the last layer
-
-    return_mask: bool
-        | return the cooresponding binary mask for further usage, default False
-
-    returns
-    -------
-    imarray_out : ndarray
-        the (m,n,d) ndrray to store pixel info
-    roi_top_left_offset : ndarray
-        the (h, v) pixel index that represent the polygon bbox left top corner
-    mask: ndarray
-        the (m, n) binary img ndarray of polgyon masks
-
-    """
-    # check if the imarray is correct imarray
-    if not isinstance(imarray, np.ndarray) or \
-        not (
-            np.issubdtype(imarray.dtype, np.integer) \
-                or \
-            np.issubdtype(imarray.dtype, np.floating)
-            ):
-        raise TypeError(f"The `imarray` only accept numpy ndarray integer and float types")
-
-
-    # check if the polygon_hv is float or int, or in proper shape
-    # fix the roi is float cause indexing error: github issue #61
-    if not isinstance(polygon_hv, np.ndarray):
-        raise TypeError(f"Only the numpy 2d array is accepted, not {type(polygon_hv)}")
-    if len(polygon_hv.shape) != 2 or polygon_hv.shape[1] !=2:
-        raise AttributeError(f"Only the 2d array (xy) is accepted, expected shape like (n, 2),  not current {polygon_hv.shape}")
-
-    if np.issubdtype(polygon_hv.dtype, np.integer):
-        pass
-    elif np.issubdtype(polygon_hv.dtype, np.floating):
-        polygon_hv = polygon_hv.astype(np.uint32)
-    else:
-        raise TypeError(f"Only polygon coordinates with [np.interger] and [np.floating]"
-                        f" are accepted, not dtype('{polygon_hv.dtype}')")
-
-    # (horizontal, vertical) remember to revert in all the following codes
-    roi_top_left_offset = polygon_hv.min(axis=0)
-    roi_max = polygon_hv.max(axis=0)
-    roi_length = roi_max - roi_top_left_offset
-
-    roi_rm_offset = polygon_hv - roi_top_left_offset
-    # the polygon will generate index outside the image
-    # this will cause out of index error in the `poly2mask`
-    # so need to find out the point locates on the maximum edge and minus 1 
-    # >>> a = np.array([217, 468])  # roi_max
-    # >>> b  # polygon
-    # array([[217, 456],
-    #        [ 30, 468],
-    #        [  0,  12],
-    #        [187,   0],
-    #        [217, 456]])
-    # >>> b[:,0] == a[0]
-    # array([ True, False, False, False,  True])
-    # >>> b[b[:,0] == a[0], 0] -= 1
-    # >>> b
-    # array([[216, 456],
-    #        [ 30, 468],
-    #        [  0,  12],
-    #        [187,   0],
-    #        [216, 456]])
-    roi_rm_offset[roi_rm_offset[:,0] == roi_length[0], 0] -= 1
-    roi_rm_offset[roi_rm_offset[:,1] == roi_length[1], 1] -= 1
-
-    # remove (160, 160, 1) such fake 3 dimention
-    imarray = np.squeeze(imarray)
-    dim = len(imarray.shape)
-
-    if dim == 2:
-        # only has x-y 2 axis, one layer image
-        layer_num = 1
-    elif dim == 3:
-        # has x-y-z 3 axis, the most common geotiff image
-        layer_num = imarray.shape[2]
-    else:
-        raise ValueError(
-            f"Current image shape {imarray.shape} is not standard image array, "
-            f", please check your input image source or whether ROI is smaller than one pixel.")
-    
-    #################
-    # doing croping #
-    #################
-    # coordinate xy reverted between easyidp and numpy
-    # imarray.shape -> (h, w), but poly2mask need <- (w, h)
-    roi_cropped = imarray[roi_top_left_offset[1]:roi_max[1], 
-                            roi_top_left_offset[0]:roi_max[0]]
-
-    rh = roi_cropped.shape[0]
-    rw = roi_cropped.shape[1]
-    mask = poly2mask((rw, rh), roi_rm_offset)
-
-    im_dtype = roi_cropped.dtype
-    if np.issubdtype(im_dtype, np.integer):  # 整数类型
-        mask_max_value = np.iinfo(im_dtype).max
-    elif np.issubdtype(im_dtype, np.floating):  # 浮点类型
-        mask_max_value = 1.0
-    else:
-        raise TypeError(f"Unsupported dtype: {im_dtype}")
-
-    #######################################
-    # combining image data with mask data #
-    #######################################
-    # using extra layer to store outside
-    #   keep original data, outside using alpha to represent
-    if transparent_layer is not None:
-        # -------------
-        #   Layer 0    -> transparent_layer 0 | Layer_num = 1
-        # -------------
-        #   Layer 1    -> transparent_layer 1 | Layer_num = 2
-        # -------------
-        #   Layer 2    -> transparent_layer 2 | Layer_num = 3
-        # -------------
-
-        # check layers
-        #    input has alpha layer (img.dim == transparent_layer)
-        #    input not has alpha layer, add new layer (img.dim + 1 == transparent_layer)
-        # raise warning transparent layer not the last layer (img.dim > transparent layer)
-        if transparent_layer == -1:
-            transparent_layer = layer_num - 1
-
-        if transparent_layer == layer_num - 1:
-            # input already has alpha layer, need to mix two alpha layers
-            # for example, input is RGBA image
-
-            # merge orginal mask with polygon_hv mask
-            original_mask = roi_cropped[:, :, transparent_layer].copy()
-            original_mask = original_mask > 0    # change type to bool
-            merged_mask = original_mask * mask   # bool = bool * bool
-
-            mask_converted = merged_mask.astype(im_dtype) * mask_max_value
-
-            imarray_out = roi_cropped.copy()
-            imarray_out[:,:, transparent_layer] = mask_converted
-
+            Coordinate order is reversed from numpy indexing.
+            horizontal = numpy axis 1, vertical = numpy axis 0.
             
-        elif transparent_layer == layer_num: # layer_num -1 + 1
-            # input not has alpha layer, add new layer
-            mask_converted = mask.astype(im_dtype) * mask_max_value
+    nodata_value : float | int, optional
+        Value to use for pixels outside the polygon, by default 0.
+        For DSM geotiffs, this is typically -10000.0.
+        
+    input_mask : np.ndarray | None, optional
+        Optional input mask with shape matching imarray's first two dimensions.
+        If provided, the polygon mask will be combined (AND) with this mask.
+        
+    return_mask : bool, optional
+        If True, return the polygon mask along with cropped data, by default True.
+        
+    Returns
+    -------
+    imarray_out : np.ndarray
+        The cropped image array with pixels outside polygon set to nodata_value.
+    roi_offset : np.ndarray
+        The (horizontal, vertical) pixel offset of the crop region's top-left corner.
+    mask : np.ndarray, optional
+        The (height, width) boolean mask if return_mask=True.
+        True values indicate pixels inside the polygon.
+        
+    Example
+    -------
+    .. code-block:: python
+    
+        >>> import numpy as np
+        >>> import easyidp as idp
+        >>> 
+        >>> # Create sample image and polygon
+        >>> imarray = np.random.rand(100, 100)
+        >>> polygon = np.array([[20, 20], [80, 20], [80, 80], [20, 80], [20, 20]])
+        >>> 
+        >>> # Crop with mask output
+        >>> cropped, offset, mask = idp.cvtools.imarray_crop(
+        ...     imarray, polygon, nodata_value=-1, return_mask=True
+        ... )
+    """
+    # Input validation
+    if not isinstance(imarray, np.ndarray):
+        raise TypeError(f"The `imarray` must be numpy ndarray, not {type(imarray)}")
+    
+    if not (np.issubdtype(imarray.dtype, np.integer) or np.issubdtype(imarray.dtype, np.floating)):
+        raise TypeError(f"The `imarray` only accept numpy ndarray integer and float types, not {imarray.dtype}")
+    
+    if not isinstance(polygon_hv, np.ndarray):
+        raise TypeError(f"Only numpy 2d array is accepted for polygon_hv, not {type(polygon_hv)}")
+    
+    if len(polygon_hv.shape) != 2 or polygon_hv.shape[1] != 2:
+        raise AttributeError(f"polygon_hv must have shape (n, 2), not {polygon_hv.shape}")
+    
+    # Convert polygon to integer if float
+    if np.issubdtype(polygon_hv.dtype, np.floating):
+        polygon_hv = polygon_hv.astype(np.int32)
+    elif not np.issubdtype(polygon_hv.dtype, np.integer):
+        raise TypeError(f"polygon_hv must have integer or float dtype, not {polygon_hv.dtype}")
 
-            imarray_out = np.dstack([roi_cropped, mask_converted])
+    # Calculate bounding box
+    roi_min = polygon_hv.min(axis=0)  # (horizontal_min, vertical_min)
+    roi_max = polygon_hv.max(axis=0)  # (horizontal_max, vertical_max)
+    roi_size = roi_max - roi_min
+    
+    # Offset polygon to local coordinates
+    polygon_local = polygon_hv - roi_min
+    
+    # Handle edge case: polygon points on maximum boundary need to be inside
+    polygon_local[polygon_local[:, 0] == roi_size[0], 0] -= 1
+    polygon_local[polygon_local[:, 1] == roi_size[1], 1] -= 1
+    
+    # Squeeze to handle (h, w, 1) -> (h, w)
+    imarray = np.squeeze(imarray)
+    ndim = len(imarray.shape)
+    
+    if ndim not in [2, 3]:
+        raise ValueError(f"imarray must be 2D or 3D, got shape {imarray.shape}")
 
-        else:
-            raise IndexError(f"Transparent layer (index={transparent_layer}) is not the last layer (layer number: {layer_num})")
-
-
-    # not using extra layer to store outside values, 
-    #   override each layer with nodata
-    else:
-        imarray_out = roi_cropped.copy()
-        # loop each layer, change values
-        # if layer_num == 1:
-        #      imarray_out[~mask] = nodata_value
-        # else:
-        #     for i in range(layer_num):
-        #         imarray_out[~mask, i] = nodata_value
-        imarray_out[~mask] = nodata_value
-
+    # Crop to bounding box
+    # Note: numpy uses (row, col) = (vertical, horizontal)
+    roi_cropped = imarray[roi_min[1]:roi_max[1], roi_min[0]:roi_max[0]]
+    
+    # Generate polygon mask
+    crop_height, crop_width = roi_cropped.shape[:2]
+    polygon_mask = poly2mask((crop_width, crop_height), polygon_local)
+    
+    # Combine with input mask if provided
+    if input_mask is not None:
+        # Crop input mask to match
+        input_mask_cropped = input_mask[roi_min[1]:roi_max[1], roi_min[0]:roi_max[0]]
+        polygon_mask = polygon_mask & input_mask_cropped
+    
+    # Apply mask: set outside pixels to nodata
+    imarray_out = roi_cropped.copy()
+    imarray_out[~polygon_mask] = nodata_value
+    
     if return_mask:
-        return imarray_out, roi_top_left_offset, mask
+        return imarray_out, roi_min, polygon_mask
     else:
-        return imarray_out, roi_top_left_offset
+        return imarray_out, roi_min
 
 
 def poly2mask(image_shape, poly_coord, engine="skimage"):

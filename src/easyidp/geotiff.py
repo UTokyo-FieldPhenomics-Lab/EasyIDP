@@ -261,18 +261,25 @@ class GeoTiff(object):
             Boolean mask with shape (height, width), True for valid pixels
         """
         # 1. Try reading GDAL internal mask
-        if self.file_path is not None and self.file_path.exists():
+        # Only read from file if imarray matches the file dimensions
+        if self.file_path is not None and Path(self.file_path).exists():
             try:
                 with rio.open(self.file_path) as src:
-                    mask_flags = src.mask_flag_enums
-                    # Check if has per-dataset mask (not just nodata/all_valid)
-                    has_internal = any('per_dataset' in str(f).lower() for f in mask_flags[0])
-                    if has_internal:
-                        internal_mask = src.read_masks(1)
-                        return internal_mask > 0
+                    # Check if imarray size matches file size (for full image only)
+                    file_shape = (src.height, src.width)
+                    imarray_squeezed = np.squeeze(imarray)
+                    imarray_shape = imarray_squeezed.shape[:2]  # (height, width)
+                    
+                    if imarray_shape == file_shape:
+                        mask_flags = src.mask_flag_enums
+                        # Check if has per-dataset mask (not just nodata/all_valid)
+                        has_internal = any('per_dataset' in str(f).lower() for f in mask_flags[0])
+                        if has_internal:
+                            internal_mask = src.read_masks(1)
+                            return internal_mask > 0
             except Exception:
                 pass
-        
+            
         # 2. Fallback: compute from data (nodata value / alpha channel)
         imarray = np.squeeze(imarray)
         ndim = len(imarray.shape)
@@ -773,6 +780,12 @@ class GeoTiff(object):
                 adjusted_geo_points = points_hv_geo[:, [1, 0]]
 
             sample_gen = np.array(list(src.sample(adjusted_geo_points)))
+
+        # For single-band images (DSM), flatten to 1D array for convenience
+        # rasterio returns (n_points, n_bands), e.g., [[val1], [val2]] for DSM
+        # We want [val1, val2] for single band
+        if sample_gen.shape[1] == 1:
+            sample_gen = sample_gen.flatten()
 
         return sample_gen
     

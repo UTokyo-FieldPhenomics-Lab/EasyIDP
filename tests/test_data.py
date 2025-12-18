@@ -152,6 +152,10 @@ def test_download_auth_failure(mock_requests_get):
 # GDownDataset class
 #--------------------
 
+@pytest.mark.skipif(
+    os.environ.get("PYTEST_XDIST_WORKER") is not None,
+    reason="Skipped during parallel execution, run separately with: pytest tests/test_data.py::test_gdown_ali_oss"
+)
 def test_gdown_ali_oss():
     # the default EasyIDPDataset using system cache folder
     # it conflits when pytest parallel 

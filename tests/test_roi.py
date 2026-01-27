@@ -375,3 +375,86 @@ def test_class_roi_back2raw_error(shared_data):
         match=re.escape(
             "The back2raw function requires 3D roi with shape=(n, 3), but [N1W1] is (5, 2)")):
         out_ms = roi_select.back2raw(ms)
+        
+def test_class_roi_get_z_from_pcd_synthetic():
+    # 1. Prepare Data
+    # ROI: 10x10 square at 0,0
+    roi = idp.ROI()
+    roi["test_square"] = np.array([
+        [0, 0],
+        [10, 0],
+        [10, 10],
+        [0, 10],
+        [0, 0]
+    ], dtype=float)
+    roi.crs = pyproj.CRS.from_epsg(32654) # UTM 54N
+
+    # PCD: 
+    # Pt1: 5, 5, 100 (Center)
+    # Pt2: 15, 15, 50 (Outside)
+    # Pt3: 1, 1, 10 (Corner inside)
+    pcd = idp.PointCloud()
+    pcd.points = np.array([
+        [5, 5, 100],
+        [15, 15, 50],
+        [1, 1, 10]
+    ], dtype=float)
+    pcd.crs = pyproj.CRS.from_epsg(32654)
+
+    # 2. Test Face Mode (Mean) = (100 + 10) / 2 = 55
+    roi_face = roi.copy()
+    roi_face.get_z_from_pcd(pcd, mode="face", kernel="mean")
+    # Expected: 55
+    assert len(roi_face["test_square"][0]) == 3
+    np.testing.assert_almost_equal(roi_face["test_square"][:,-1], 55.0)
+
+    # 3. Test Face Mode (Max) = 100
+    roi_face_max = roi.copy()
+    roi_face_max.get_z_from_pcd(pcd, mode="face", kernel="max")
+    np.testing.assert_almost_equal(roi_face_max["test_square"][:,-1], 100.0)
+
+    # 4. Test Buffer (Expand to include 15,15)
+    # Buffer = 10 -> Square becomes approx -10,-10 to 20,20
+    # Should include 15,15 (50)
+    # Mean = (100 + 10 + 50) / 3 = 53.333
+    roi_buffer = roi.copy()
+    roi_buffer.get_z_from_pcd(pcd, mode="face", buffer=10.0)
+    np.testing.assert_almost_equal(roi_buffer["test_square"][:,-1], 53.3333333)
+
+    # 5. Test CRS Mismatch Warning
+    pcd_wgs84 = idp.PointCloud()
+    pcd_wgs84.points = pcd.points
+    pcd_wgs84.crs = pyproj.CRS.from_epsg(4326) # WGS84
+
+    roi_warn = roi.copy()
+    # Should log warning
+    # with pytest.warns(UserWarning, match="are not equal"): # Loguru might need caplog
+    roi_warn.get_z_from_pcd(pcd_wgs84)
+
+def test_class_roi_get_z_from_pcd_point_mode():
+    roi = idp.ROI()
+    # ROI is just a point (formatted as polygon for structure, but treating vertices)
+    roi["test_pt"] = np.array([
+        [5, 5],
+        [5.15, 5.15]
+    ])
+    roi.crs = pyproj.CRS.from_epsg(32654)
+    
+    pcd = idp.PointCloud()
+    pcd.points = np.array([
+        [5, 5, 100],
+        [5.2, 5.2, 200]
+    ])
+    
+    # Mode Point with buffer=0 -> Nearest Neighbor
+    roi.get_z_from_pcd(pcd, mode="point", buffer=0)
+    
+    # 5,5 -> Nearest is 5,5,100 -> 100
+    # 5.1,5.1 -> Nearest is 5.2,5.2,200 (dist ~0.14) vs 5,5 (dist ~0.14)... 
+    # Actually sqrt(0.1^2+0.1^2) = 0.1414
+    # 5.2-5.1 = 0.1. 
+    # So 5.2 is closer. -> 200
+    
+    expected = np.array([100, 200])
+    np.testing.assert_almost_equal(roi["test_pt"][:, 2], expected)
+

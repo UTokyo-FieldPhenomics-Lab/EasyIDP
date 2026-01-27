@@ -7,6 +7,8 @@ from loguru import logger
 
 import numpy as np
 import numpy.lib.recfunctions as rfn
+import pyproj
+from scipy.spatial import cKDTree
 
 import laspy
 from plyfile import PlyData, PlyElement
@@ -20,6 +22,60 @@ class PointCloud(object):
 
     """EasyIDP defined PointCloud class, consists by point coordinates, and optionally point colors and point normals.
     """
+
+    @property
+    def points(self):
+        """The xyz values of point cloud
+        """
+        if self._points is None:
+            return None
+        else:
+            return self._points + self._offset
+
+    @points.setter
+    def points(self, p):
+        if not isinstance(p, np.ndarray):
+            raise TypeError(f"Only numpy ndarray object are acceptable for setting values")
+        elif self.shape != p.shape and self.shape != (0,3):
+            raise IndexError(f"The given shape [{p.shape}] does not match current point cloud shape [{self.shape}]")
+        else:
+            self._points = p - self._offset
+            self.shape = p.shape
+            self._tree = None   # clear tree cache
+            self._update_btf_print()
+
+    @property
+    def crs(self):
+        """The Coordinate Reference System (CRS) of point cloud
+        """
+        return self._crs
+
+    @crs.setter
+    def crs(self, c):
+        if c is None:
+            self._crs = None
+        elif isinstance(c, pyproj.CRS):
+            self._crs = c
+        else:
+            try:
+                self._crs = pyproj.CRS.from_user_input(c)
+            except pyproj.exceptions.CRSError:
+                raise TypeError(f"Only pyproj.CRS object or valid CRS string/int are acceptable, not {type(c)} [{c}]")
+
+    @property
+    def tree(self):
+        """The 2D KDTree of point cloud for fast spatial query
+        """
+        if self._tree is None:
+            if self.has_points():
+                # self.points is property, will calculated with offset, it is slow
+                # using self._points + self._offset to avoid data copy? 
+                # cKDTree need data copy? -> yes, it seems
+                # build on 2D
+                self._tree = cKDTree(self.points[:, 0:2])
+            else:
+                return None
+        return self._tree
 
     def __init__(self, pcd_path="", offset=[0.,0.,0.]):
         """The method to initialize the PointCloud class
@@ -191,6 +247,10 @@ class PointCloud(object):
         self.normals = None
         #: The size of point cloud (xyz)
         self.shape = (0,3)
+        #: The CRS of point cloud
+        self._crs = None
+        #: The KDTree of point cloud
+        self._tree = None
 
         self.offset = self._offset_type_check(offset)
         # BeatTiFul print strings for calling print() function
@@ -450,6 +510,39 @@ class PointCloud(object):
         else:
             return True
 
+    def change_crs(self, target_crs):
+        """Change the point cloud coordinate system
+        
+        Parameters
+        ----------
+        target_crs : pyproj.CRS
+        """
+        if self._crs is None:
+            raise TypeError("Current PointCloud has no CRS, please specify it by `pcd.crs = 'current_EPSG'` first.")
+
+        if not isinstance(target_crs, pyproj.CRS):
+            target_crs = pyproj.CRS.from_user_input(target_crs)
+
+        # check if same
+        if self._crs.equals(target_crs):
+            logger.warning(f"The current CRS [{self._crs.name}] is same as target CRS [{target_crs.name}], skip converting")
+            return
+
+        # convert
+        transformer = pyproj.Transformer.from_crs(self.crs, target_crs, always_xy=True)
+        # update points
+        # points -> property -> get with offset
+        # use self._points + self._offset to avoid data copy in getter
+        x, y, z = transformer.transform(
+            self._points[:, 0] + self._offset[0],
+            self._points[:, 1] + self._offset[1],
+            self._points[:, 2] + self._offset[2]
+        )
+
+        self.points = np.vstack([x, y, z]).T
+        self.crs = target_crs
+        self._tree = None
+
     def clear(self):
         """Delete all points and make an empty point cloud
         """
@@ -457,6 +550,8 @@ class PointCloud(object):
         self.colors = None
         self.normals = None
         self.shape = (0,3)
+        self._crs = None
+        self._tree = None
 
         self.offset = np.array([0.,0.,0.])
 
@@ -541,6 +636,21 @@ class PointCloud(object):
         self.shape = pts.shape
 
         self._update_btf_print()
+
+        # check crs:
+        # 1. check sidecar file
+        pcd_path_obj = Path(pcd_path)
+        crs_path = pcd_path_obj.with_suffix(".crs")
+        if crs_path.exists():
+            try:
+                with open(crs_path, 'r') as f:
+                    crs_str = f.read().strip()
+                self.crs = pyproj.CRS.from_user_input(crs_str)
+                logger.info(f"Loaded CRS from sidecar file [{crs_path}]")
+            except Exception as e:
+                logger.warning(f"Found CRS file [{crs_path}] but failed to load: {e}")
+        
+        # 2. check metadata (TODO: implement later if laspy/plyfile supports it reliably)
 
     def save(self, pcd_path):
         """Save current point cloud to a file, support ply, las, laz format.

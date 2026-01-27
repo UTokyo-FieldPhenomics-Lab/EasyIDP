@@ -3,6 +3,7 @@ import pyproj
 import numpy as np
 from tqdm import tqdm
 from shapely.geometry import Point, Polygon
+from matplotlib.path import Path as mplPath
 from pathlib import Path
 from loguru import logger
 
@@ -506,11 +507,11 @@ class ROI(idp.Container):
         else:
             if func == "dsm":
                 raise TypeError(
-                    f"Only geotiff path <str> and <easyidp.GeoTiff> object"
+                    f"Only geotiff path <str> and <easyidp.GeoTiff> object "
                     f"are accepted, not {type(obj)}")
             else:
                 raise TypeError(
-                    f"Only geotiff path <str> and <easyidp.PointCloud> object"
+                    f"Only point cloud path <str> and <easyidp.PointCloud> object "
                     f"are accepted, not {type(obj)}")
 
 
@@ -835,18 +836,189 @@ class ROI(idp.Container):
             logger.warning(f"Z values contains empty attribute [{dsm.header['nodata']}] for {nan_z_list}, this may be caused by the ROI distribute inside the DSM no-value area, please double check the source shapefile and DOM in GIS software")
 
 
-    def get_z_from_pcd(self, pcd, mode="face", kernel="mean", buffer=0):
-        """Get the z values (heights) from Point cloud for 2D polygon
+    def get_z_from_pcd(self, pcd, mode="face", kernel="mean", buffer=0, keep_crs=False):
+        """Get the z values (heights) from PointCloud for 2D polygon
 
-        .. attention:: This function has not been implemented.
+        Parameters
+        ----------
+        pcd : str | <PointCloud> object
+            the path of point cloud, or the PointCloud object from idp.PointCloud()
+        mode : str, optional
+            the mode to calculate z values, by default "face".
+            
+            - ``point``: get height on each vertex, result in different values for each vertex
+            - ``face``: get height on polygon face, result in the same value for each vertex
 
-        See also
-        --------
-        get_z_from_dsm
+        kernel : str, optional
+            The math kernel to calculate the z value, by default 'mean'
+
+            - ``mean``: the mean value inside polygon
+            - ``min``: the minimum value inside polygon
+            - ``max``: the maximum value inside polygon
+            - ``pmin5``: 5th *percentile mean* inside polygon
+            - ``pmin10``: 10th *percentile mean* inside polygon
+            - ``pmax5``: 95th *percentile mean* inside polygon
+            - ``pmax10``: 90th *percentile mean* inside polygon
+        
+        buffer : float, optional
+            | the buffer of ROI, by default 0 (no buffer),
+
+            - ``0``: not using buffer
+            - ``-1``: ignore given polygon, using the full point cloud to calculate the height
+            - ``float``: buffer distance, the unit of buffer follows the PCD coordinates, usually meter.
+
+        keep_crs : bool, optional
+            When the crs is not the save with PCD crs, where change the ROI crs to fit PCD.
+
+            - ``False`` (default): change ROI's CRS;
+            - ``True``: not change ROI's CRS, only attach the z value to current coordinate. 
+
         """
-        # if mode = point, buffer > 0, otherwise raise error
         pcd = self._get_z_input_check(pcd, mode, kernel, buffer, func="pcd")
-        raise NotImplementedError("Will be implemented in the future.")
+
+        if not pcd.has_points():
+            raise ValueError("The provided point cloud is empty")
+
+        # Check CRS match
+        # If both have CRS, they must match
+        if self.crs is not None and pcd.crs is not None:
+             # loose check for name or strict check for data?
+             # pyproj.CRS.equals is strict
+            if not self.crs.equals(pcd.crs):
+                logger.warning(
+                    f"ROI CRS [{self.crs.name}] and PCD CRS [{pcd.crs.name}] are not equal. "
+                    f"This may lead to incorrect results. "
+                    f"Please use `roi.change_crs(pcd.crs)` or `pcd.change_crs(roi.crs)` to align them first."
+                )
+        elif self.crs is None and pcd.crs is not None:
+             logger.warning(f"ROI has no CRS but PCD has CRS [{pcd.crs.name}]. Assuming they align.")
+        elif self.crs is not None and pcd.crs is None:
+             logger.warning(f"ROI has CRS [{self.crs.name}] but PCD has no CRS. Assuming they align.")
+        
+        # Determine global Z if applicable
+        if buffer == -1 or buffer == -1.0:
+            # use full point cloud z
+            all_z = pcd.points[:, 2]
+            global_z_val = calculate_kernel_stats(all_z, kernel)
+        else:
+            global_z_val = None
+
+        # Helper to get z from points inside polygon
+        def _get_z_in_poly(poly_pts_xy, pcd_tree, pcd_points):
+            # 1. Bounding Box Filter
+            xmin, ymin = poly_pts_xy.min(axis=0)
+            xmax, ymax = poly_pts_xy.max(axis=0)
+            
+            # center
+            cx = (xmin + xmax) / 2
+            cy = (ymin + ymax) / 2
+            
+            # radius (Chebyshev / box)
+            rw = (xmax - xmin) / 2
+            rh = (ymax - ymin) / 2
+            r = max(rw, rh)
+            
+            # Query KDTree (p=inf for Chebyshev distance -> square box)
+            # This is much faster than circular query for BBox
+            # returns tuple of (distances, indices) or just indices if we query for index
+            # query_ball_point returns indices
+            candidate_idx = pcd_tree.query_ball_point([cx, cy], r, p=np.inf)
+            
+            if len(candidate_idx) == 0:
+                return np.array([])
+                
+            candidate_pts = pcd_points[candidate_idx] # these are [x, y, z] (with offset applied if access via .points)
+            
+            # 2. Exact Polygon Filter (Matplotlib is fast enough for 2D PIP)
+            # candidate_pts is (N, 3), we need (N, 2)
+            mpl_poly = mplPath(poly_pts_xy)
+            mask = mpl_poly.contains_points(candidate_pts[:, 0:2])
+            
+            final_z = candidate_pts[mask, 2]
+            return final_z
+
+        nan_z_list = []
+        pbar = tqdm(self.items(), desc=f"Read z values of roi from PCD [{Path(pcd.file_path).name}]")
+        
+        # Pre-fetch tree to avoid property lookup overhead in loop
+        pcd_tree = pcd.tree
+        # Use pcd.points once to verify access, but accessing it inside loop many times involves offset calc
+        # pcd.points returns (pts + offset)
+        # To optimize, we can get the full array once if memory allows, OR rely on property caching if implemented?
+        # In current implementation pcd.points calculates on fly: return self._points + self._offset
+        # We can cache it locally
+        pcd_pts_all = pcd.points # This creates a copy with offset applied.
+        
+        for roi_name, val in pbar:
+            poly = self.id_item[self.item_label[roi_name]]
+            # val is the same as poly usually, but let's stick to what other func does
+            
+            # only x, y
+            poly_xy = poly[:, 0:2]
+
+             # using the full map
+            if global_z_val is not None:
+                poly3d = _insert_z_value_for_roi(val, global_z_val)
+            else:
+                if mode == "face":
+                    # buffer handling
+                    if buffer != 0 and buffer != 0.0:
+                        poly_cal = Polygon(val).buffer(buffer)
+                        poly_cal = np.array(poly_cal.exterior.coords)
+                    else:
+                        poly_cal = poly_xy
+
+                    z_vals = _get_z_in_poly(poly_cal, pcd_tree, pcd_pts_all)
+                    
+                    if len(z_vals) > 0:
+                        stat_z = calculate_kernel_stats(z_vals, kernel)
+                    else:
+                        stat_z = np.nan
+                        
+                    poly3d = _insert_z_value_for_roi(val, stat_z)
+                    
+                else: # mode == "point"
+                    # For each vertex, apply buffer if needed
+                    # If buffer=0, in DSM mode it just reads pixel value. 
+                    # For PCD mode, getting Z from a single point coordinate is tricky because exact match is rare.
+                    # Usually "point" mode in PCD implies finding nearest neighbor or points within small radius.
+                    # But keeping consistent with DSM signature:
+                    # If buffer=0, we can try NN.
+                    
+                    z_result_list = []
+                    for pt in val:
+                        pt_xy = pt[0:2]
+                        if buffer != 0 and buffer != 0.0:
+                             # Buffer point -> Circle (well, Polygon approximation)
+                             # Shapely point buffer produces circle-like polygon
+                             poly_cal_geom = Point(pt_xy).buffer(buffer)
+                             poly_cal = np.array(poly_cal_geom.exterior.coords)
+                             z_vals = _get_z_in_poly(poly_cal, pcd_tree, pcd_pts_all)
+                             if len(z_vals) > 0:
+                                 z_result_list.append(calculate_kernel_stats(z_vals, kernel))
+                             else:
+                                 z_result_list.append(np.nan)
+                        else:
+                            # Buffer is 0 -> Nearest Neighbor
+                            dist, idx = pcd_tree.query(pt_xy, k=1)
+                            # dist is L2 distance
+                            # We should probably respect some tolerance, but typically NN is what's expected for point query
+                            z_result_list.append(pcd_pts_all[idx, 2])
+                            
+                    poly3d = _insert_z_value_for_roi(val, np.asarray(z_result_list))
+
+            # NaN check
+            if len(poly3d.shape) == 1 or np.isnan(poly3d[:, 2]).any():
+                nan_z_list.append(roi_name)
+            else:
+                self[roi_name] = poly3d
+
+        if len(nan_z_list) > 0:
+            logger.warning(
+                f"Z values contains empty attribute (e.g. NaN) in item "
+                f"{nan_z_list}. This might be because no points were found in the ROI "
+                f"(check ROI bounds vs PCD bounds, or try increasing buffer)."
+            )
 
     def crop(self, target, save_folder=None):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
@@ -1183,3 +1355,63 @@ def load_detections(path):
         raise IOError("{} is expected to be a .csv with columns, xmin, ymin, xmax, ymax, image_path, label for each detection")
         
     return None
+
+def calculate_kernel_stats(z_values, kernel="mean"):
+    """Calculate kernel statistics for a list of z values
+
+    Parameters
+    ----------
+    z_values : array_like
+        List of z values
+    kernel : str, optional, default="mean"
+        The method to calculate polygon summary, options are: ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"], please check notes section for more details.
+
+    Notes
+    -----
+    Option details for ``kernel`` parameter:
+
+    - "mean": the mean value inside polygon
+    - "min": the minimum value inside polygon
+    - "max": the maximum value inside polygon
+    - "pmin5": 5th [percentile mean]_ inside polygon
+    - "pmin10": 10th [percentile mean]_ inside polygon
+    - "pmax5": 95th [percentile mean]_ inside polygon
+    - "pmax10": 90th [percentile mean]_ inside polygon
+
+    .. [percentile mean] the mean value of all pixels over/under xth percentile threshold
+        
+    """
+    if len(z_values) == 0:
+        return np.nan
+        
+    if kernel == "mean":
+        return np.mean(z_values)
+    elif kernel == "min":
+        return np.min(z_values)
+    elif kernel == "max":
+        return np.max(z_values)
+    elif kernel == "pmin5":
+        # 5th percentile mean: mean of values < 5th percentile
+        p5 = np.percentile(z_values, 5)
+        # fallback if all values are same
+        mask = z_values <= p5
+        if not mask.any(): return np.nan
+        return np.mean(z_values[mask])
+    elif kernel == "pmin10":
+        p10 = np.percentile(z_values, 10)
+        mask = z_values <= p10
+        if not mask.any(): return np.nan
+        return np.mean(z_values[mask])
+    elif kernel == "pmax5":
+        # 95th percentile mean: mean of values > 95th percentile
+        p95 = np.percentile(z_values, 95)
+        mask = z_values >= p95
+        if not mask.any(): return np.nan
+        return np.mean(z_values[mask])
+    elif kernel == "pmax10":
+        p90 = np.percentile(z_values, 90)
+        mask = z_values >= p90
+        if not mask.any(): return np.nan
+        return np.mean(z_values[mask])
+    else:
+        raise KeyError(f"Could not find kernel [{kernel}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")

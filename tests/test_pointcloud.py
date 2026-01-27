@@ -2,6 +2,7 @@ import re
 import numpy as np
 import pytest
 import shutil
+import pyproj
 
 import easyidp as idp
 
@@ -520,3 +521,47 @@ def test_class_crop(shared_data):
     # but previous function have no pix4d offset
     np.testing.assert_almost_equal(out["N1W1"].offset, p4d.pcd.offset)
     assert np.all(out["N1W1"]._points[:, 0:2] < 300)
+    
+def test_class_pointcloud_crs_property():
+    pcd = idp.PointCloud()
+    assert pcd.crs is None
+
+    # Test setting CRS with pyproj.CRS
+    crs = pyproj.CRS.from_epsg(4326)
+    pcd.crs = crs
+    assert pcd.crs.equals(crs)
+
+    # Test setting CRS with string
+    pcd.crs = "EPSG:32654"
+    assert pcd.crs.to_epsg() == 32654
+
+    # Test setting invalid CRS
+    with pytest.raises(TypeError, match="valid CRS string"):
+        pcd.crs = "Invalid CRS"
+
+def test_class_pointcloud_change_crs():
+    # create synthetic pcd
+    pcd = idp.PointCloud()
+    # 3 points
+    pcd.points = np.array([
+        [0, 0, 0],
+        [1, 1, 1],
+        [10, 10, 10]
+    ])
+    pcd.crs = "EPSG:4326" # WGS84
+
+    # target: EPSG:3857 (Web Mercator)
+    target_crs = pyproj.CRS.from_epsg(3857)
+    
+    pcd.change_crs(target_crs)
+    
+    assert pcd.crs.equals(target_crs)
+    
+    # Check transformed values (approximate)
+    # 0,0 -> 0,0
+    np.testing.assert_almost_equal(pcd.points[0, 0:2], [0, 0], decimal=1)
+    
+    # Check warning on same CRS
+    with pytest.raises(TypeError, match="Current PointCloud has no CRS"):
+        pcd.crs = None
+        pcd.change_crs(target_crs)

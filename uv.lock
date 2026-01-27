@@ -459,9 +459,11 @@ dependencies = [
     { name = "pyshp" },
     { name = "rasterio" },
     { name = "scikit-image" },
+    { name = "scipy" },
     { name = "shapely" },
     { name = "tabulate" },
     { name = "tqdm" },
+    { name = "trimesh" },
 ]
 
 [package.dev-dependencies]
@@ -495,12 +497,14 @@ requires-dist = [
     { name = "plyfile", specifier = ">=1.1" },
     { name = "psutil", specifier = ">=7.1.3" },
     { name = "pyproj", specifier = ">=3.7.1" },
-    { name = "pyshp", specifier = "==3.0.3" },
+    { name = "pyshp", specifier = ">=3.0.3" },
     { name = "rasterio", specifier = ">=1.4.3" },
     { name = "scikit-image", specifier = ">=0.25.2" },
+    { name = "scipy", specifier = ">=1.15.3" },
     { name = "shapely", specifier = ">=2.1.0" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "trimesh", specifier = ">=4.11.1" },
 ]
 
 [package.metadata.requires-dev]
@@ -2379,6 +2383,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/eb/79/72064e6a701c2183016abbbfedaba506d81e30e232a68c9f0d6f6fcd1574/traitlets-5.14.3.tar.gz", hash = "sha256:9ed0579d3502c94b4b3732ac120375cda96f923114522847de4b3bb98b96b6b7", size = 161621, upload-time = "2024-04-19T11:11:49.746Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl", hash = "sha256:b74e89e397b1ed28cc831db7aea759ba6640cb3de13090ca145426688ff1ac4f", size = 85359, upload-time = "2024-04-19T11:11:46.763Z" },
+]
+
+[[package]]
+name = "trimesh"
+version = "4.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4c/6e/e905f84b31e6f3a7957f26a91c6d2c6337def5a888e55ac89fe2b790241b/trimesh-4.11.1.tar.gz", hash = "sha256:9a10040ca5d1c4438e0b7af94433edf6b043f5204393fc97bb85c9159a8bf21e", size = 835062, upload-time = "2026-01-17T16:38:02.67Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/be/69fffc97b78f52a5d1372e5d56a0599291e96996a47089fb6312bc023d88/trimesh-4.11.1-py3-none-any.whl", hash = "sha256:bcc082ced94610ecd2c09b031431d0f3ad74352525e23a41b5688a2897b3e3e0", size = 740352, upload-time = "2026-01-17T16:38:00.716Z" },
 ]
 
 [[package]]

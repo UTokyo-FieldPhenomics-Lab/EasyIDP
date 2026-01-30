@@ -740,22 +740,34 @@ class Pix4D(idp.reconstruct.Recons):
             return self._photo_position_cache.copy()
         else:
             out = {}
-            pbar = tqdm(self.photos, desc=f"Getting photo positions")
-            for p in pbar:
-                if p.enabled:
-                    # it has the same crs of DOM/DSM, project_default_crs, the pix4d feature
-                    # it is different with metashape project logic, check Metashape.get_photo_position for more info
-                    pos = p.location + self.meta["p4d_offset"]
-
-                    # if specify the output crs: (to_crs is not None)
-                    if isinstance(to_crs, pyproj.CRS):
-                        if not self._proj_crs.equals(to_crs):  # need do proj convertion
-                            pos = idp.geotools.convert_proj3d(pos, self._proj_crs, to_crs)
-                    # not specify the output crs, then check the self.crs is the same with project default crs
-                    else:
-                        if not self._proj_crs.equals(self.crs):  # need do proj convertion
-                            pos = idp.geotools.convert_proj3d(pos, self._proj_crs, self.crs)
-
+            # Vectorized implementation
+            
+            # 1. Collect all enabled photos
+            enabled_photos = [p for p in self.photos.values() if p.enabled]
+            
+            if len(enabled_photos) > 0:
+                # 2. Collect location vectors (t) and add offset
+                # shape: (N, 3)
+                locs = np.array([p.location for p in enabled_photos])
+                # Pix4D logic: pos = p.location + self.meta["p4d_offset"]
+                # Broadcast offset addition
+                pos_vecs = locs + self.meta["p4d_offset"] # (N, 3)
+                
+                # 3. Determine target CRS
+                target_crs = self.crs
+                if isinstance(to_crs, pyproj.CRS):
+                    target_crs = to_crs
+                    
+                # 4. Perform batch projection if needed
+                if not self._proj_crs.equals(target_crs):
+                    # convert_proj3d is vectorized
+                    pos_vecs = idp.geotools.convert_proj3d(pos_vecs, self._proj_crs, target_crs)
+                    
+                # 5. Assign back to dict and photo objects
+                # Using simple loop for assignment
+                pbar = tqdm(enabled_photos, desc=f"Getting photo positions")
+                for i, p in enumerate(pbar):
+                    pos = pos_vecs[i]
                     out[p.label] = pos
                     p.position = pos
 

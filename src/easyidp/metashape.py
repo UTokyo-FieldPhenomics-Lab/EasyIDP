@@ -1066,13 +1066,25 @@ class Metashape(idp.reconstruct.Recons):
                 self.crs = ccopy(to_crs)
 
             out = {}
-            pbar = tqdm(self.photos, desc=f"Getting photo positions")
-            for p in pbar:
-                if p.enabled:
-                    # the metashape logic, did the convertion based on self.crs in the following functions
-                    # this is different with the pix4d project, check Pix4D.get_photo_position() for more info
-                    pos = self._world2crs(self._local2world(p.transform[0:3, 3]))
-
+            # Vectorized implementation
+            # 1. Filter enabled photos
+            enabled_photos = [p for p in self.photos.values() if p.enabled]
+            
+            if len(enabled_photos) > 0:
+                # 2. Collect local coordinates (N, 3)
+                # p.transform [0:3, 3] is the translation vector T
+                t_vecs = np.array([p.transform[0:3, 3] for p in enabled_photos])
+                
+                # 3. Batch transform local -> world -> crs
+                # _local2world and _world2crs are already vectorized
+                world_points = self._local2world(t_vecs)
+                crs_points = self._world2crs(world_points)
+                
+                # 4. Assign back to photos and output dict
+                # Iteration is still needed for assignment but much faster than calc
+                pbar = tqdm(enabled_photos, desc=f"Getting photo positions")
+                for i, p in enumerate(pbar):
+                    pos = crs_points[i]
                     out[p.label] = pos
                     p.position = pos
 

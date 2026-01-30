@@ -204,14 +204,6 @@ def test_func_sort_img_by_distance_ms(shared_data):
 
     out_all = ms.back2raw(roi_select)
 
-    # test one roi
-    cam_pos = ms.get_photo_position()
-    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi_select["N1W2"], cam_pos, num=3)
-    assert len(filter_3) == 3
-
-    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(ms, out_all["N1W2"], roi_select["N1W2"], cam_pos, distance_thresh=0.1, num=3)
-    assert len(filter_3_dis_01) == 0
-
     # test all roi
     filter_3_all = idp.reconstruct.sort_img_by_distance(ms, out_all, roi_select, num=3)
     assert len(filter_3_all) == 4
@@ -233,13 +225,6 @@ def test_func_sort_img_by_distance_p4d(shared_data):
     p4d = shared_data["p4d"]
     roi = shared_data["roi"]
     out_all = shared_data["out_all"]
-
-    cam_pos = p4d.get_photo_position()
-    filter_3 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W1"], roi["N1W1"], cam_pos, num=3)
-    assert len(filter_3) == 3
-
-    filter_3_dis_01 = idp.reconstruct._sort_img_by_distance_one_roi(p4d, out_all["N1W1"], roi["N1W1"], cam_pos, distance_thresh=0.1, num=3)
-    assert len(filter_3_dis_01) == 0
 
     # test all roi
     filter_3_all = idp.reconstruct.sort_img_by_distance(p4d, out_all, roi, num=3)

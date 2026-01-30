@@ -623,64 +623,6 @@ class ChunkTransform:
         self.matrix_inv = None
 
 
-def _sort_img_by_distance_one_roi(recons, img_dict, plot_geo, cam_pos, distance_thresh=None, num=None):
-    """Sort the back2raw img_dict results by distance from photo to roi
-
-    Parameters
-    ----------
-    recons: idp.Metashape or idp.Pix4D
-        The reconsturction project class
-    img_dict : dict
-        One ROI output dict of roi.back2raw()
-        e.g. img_dict = roi.back2raw(ms) -> img_dict["N1W1"]
-    plot_geo : nx3 ndarray
-        The plot boundary polygon vertex coordinates
-    num : None or int
-        Keep the closest {x} images
-    distance_thresh : None or float
-        If given, filter the images smaller than this distance first
-
-    Returns
-    -------
-    dict
-        the same structure as output of roi.back2raw()
-    """
-    dist_geo = []
-    dist_name = []
-
-    img_dict_sort = {}
-
-    for img_name in img_dict.keys():
-        xmin_geo, ymin_geo = plot_geo[:,0:2].min(axis=0)
-        xmax_geo, ymax_geo = plot_geo[:,0:2].max(axis=0)
-
-        xctr_geo = (xmax_geo + xmin_geo) / 2
-        yctr_geo = (ymax_geo + ymin_geo) / 2
-
-        ximg_geo, yimg_geo, _ = cam_pos[img_name]
-
-        image_plot_dist = np.sqrt((ximg_geo-xctr_geo) ** 2 + (yimg_geo - yctr_geo) ** 2)
-
-        if distance_thresh is not None and image_plot_dist > distance_thresh:
-            # skip those image-plot geo distance greater than threshold
-            continue
-        else:
-            # if not given dist_thresh, record all
-            dist_geo.append(image_plot_dist)
-            dist_name.append(img_name)
-
-    if num is None:
-        # not specify num, use all
-        num = len(dist_name)
-    else:
-        num = min(len(dist_name), num)
-
-    dist_geo_idx = np.asarray(dist_geo).argsort()[:num]
-    img_dict_sort = {dist_name[idx]:img_dict[dist_name[idx]] for idx in dist_geo_idx}
-
-    return img_dict_sort
-
-
 def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=None, save_folder=None):
     """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
 
@@ -705,17 +647,88 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
     dict
         the same structure as output of roi.back2raw()
     """
+    # Optimized version using vectorization (numpy) to separate calculation and filtering
+    
+    # 1. Pre-calculate all camera positions (N_cam, 2)
+    #    get_photo_position returns {img_name: [x, y, z]}
     cam_pos = recons.get_photo_position(to_crs=roi.crs)
+    
+    cam_names = list(cam_pos.keys())
+    # Handle empty case
+    if not cam_names:
+        return {r: {} for r in img_dict_all.keys()}
 
+    # Extract x, y from [x, y, z] for all cameras
+    # shape: (N_cam, 2)
+    cam_coords = np.array([cam_pos[n][0:2] for n in cam_names])
+    
+    # Map name to index for fast lookup
+    cam_name_to_idx = {n: i for i, n in enumerate(cam_names)}
+
+    # 2. Pre-calculate all ROI centers (N_roi, 2)
+    #    We iterate over roi.keys() to ensure alignment
+    roi_names = list(roi.keys())
+    roi_centers = []
+    
+    for r_name in roi_names:
+        plot_geo = roi[r_name]
+        # Calculate BBox center: (min + max) / 2
+        # plot_geo shape expected: (N_points, 3)
+        geo_min = plot_geo[:, 0:2].min(axis=0)
+        geo_max = plot_geo[:, 0:2].max(axis=0)
+        center = (geo_min + geo_max) / 2.0
+        roi_centers.append(center)
+        
+    roi_centers = np.array(roi_centers) # (N_roi, 2)
+
+    # 3. Calculate Distance Matrix (N_roi, N_cam)
+    #    Use broadcasting: (N_roi, 1, 2) - (1, N_cam, 2)
+    if len(roi_centers) > 0 and len(cam_coords) > 0:
+        diff = roi_centers[:, np.newaxis, :] - cam_coords[np.newaxis, :, :]
+        # Sum squared differences along the coordinate axis (axis 2)
+        dists = np.sqrt(np.sum(diff**2, axis=2))
+    else:
+        dists = np.zeros((len(roi_centers), len(cam_coords)))
+
+    # 4. Construct Result Dictionary
     img_dict_sort_all = {}
-    pbar = tqdm(roi.keys(), desc=f"Filter by distance to ROI")
-    for roi_name in pbar:
-        sort_dict = _sort_img_by_distance_one_roi(
-            recons, img_dict_all[roi_name], roi[roi_name], 
-            cam_pos, distance_thresh, num
-        )
-        img_dict_sort_all[roi_name] = sort_dict
+    
+    pbar = tqdm(enumerate(roi_names), total=len(roi_names), desc=f"Filter by distance to ROI")
+    for i, roi_name in pbar:
+        # If this ROI is not in the input dict, skip or add empty
+        if roi_name not in img_dict_all:
+            img_dict_sort_all[roi_name] = {}
+            continue
 
+        current_roi_imgs = img_dict_all[roi_name]
+        
+        # Prepare list of (distance, img_name) for sorting
+        valid_candidates = []
+        
+        for img_name in current_roi_imgs.keys():
+            # Only process images where we have position data
+            if img_name in cam_name_to_idx:
+                idx = cam_name_to_idx[img_name]
+                dist = dists[i, idx]
+                
+                # Apply distance threshold if specified
+                if distance_thresh is None or dist <= distance_thresh:
+                    valid_candidates.append((dist, img_name))
+        
+        # Sort by distance (ascending)
+        valid_candidates.sort(key=lambda x: x[0])
+        
+        # Apply strict number limit
+        if num is not None:
+            valid_candidates = valid_candidates[:num]
+            
+        # Rebuild dictionary for this ROI
+        # Preserving the original values from img_dict_all
+        img_dict_sort_all[roi_name] = {
+            name: current_roi_imgs[name] for _, name in valid_candidates
+        }
+
+    # 5. Save results if requested
     if save_folder is not None:
         save_back2raw_json_and_png(recons, img_dict_sort_all, save_folder)
 

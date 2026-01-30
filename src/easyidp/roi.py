@@ -770,21 +770,60 @@ class ROI(idp.Container):
                 f"Only one layer geotiff (DSM) are accepted, current "
                 f"layer is {dsm.header['dim']}")
 
+        # Handle CRS conversion based on self.crs and dsm.header["crs"] combinations
+        # Case 1A: self.crs=None, dsm.crs=None
+        # Case 1B: self.crs=None, dsm.crs=has CRS  
+        # Case 2A: self.crs=has CRS, dsm.crs=None
+        # -> All above: give warning, no conversion
+        # Case 2B: both have CRS
+        #   - CRS is same: no conversion
+        #   - CRS is different:
+        #     - keep_crs=False: change self.crs to dsm.crs
+        #     - keep_crs=True: make a converted copy, don't touch self.crs
+        dsm_crs = dsm.header["crs"]
+        if self.crs is None or dsm_crs is None:
+            # Case 1A, 1B, 2A: at least one CRS is None
+            if self.crs is None and dsm_crs is None:
+                logger.warning(
+                    "Both ROI and DSM have no CRS defined. "
+                    "Assuming they are in the same coordinate system."
+                )
+            elif self.crs is None:
+                logger.warning(
+                    f"ROI has no CRS but DSM has CRS [{dsm_crs.name}]. "
+                    "Assuming they align, no coordinate conversion applied."
+                )
+            else:  # dsm_crs is None
+                logger.warning(
+                    f"ROI has CRS [{self.crs.name}] but DSM has no CRS. "
+                    "Assuming they align, no coordinate conversion applied."
+                )
+            poly_dict = self.id_item.copy()
+        elif self.crs.equals(dsm_crs):
+            # Case 2B: both have CRS, and they are the same
+            logger.debug("ROI CRS is same as DSM CRS, no conversion needed")
+            poly_dict = self.id_item.copy()
+        else:
+            # Case 2B: both have CRS, but different
+            if not keep_crs:
+                logger.debug(
+                    f"ROI CRS [{self.crs.name}] is different from DSM CRS [{dsm_crs.name}], "
+                    "changing ROI CRS to match DSM CRS"
+                )
+                self.change_crs(dsm_crs)
+                poly_dict = self.id_item.copy()
+            else:
+                logger.debug(
+                    f"ROI CRS [{self.crs.name}] is different from DSM CRS [{dsm_crs.name}], "
+                    "converting coordinates for query but keeping original ROI CRS"
+                )
+                poly_dict = idp.geotools.convert_proj(self.id_item, self.crs, dsm_crs)
+
         # using the full map to calculate
         if buffer == -1 or buffer == -1.0:
-            # using the full map to calculate
             global_z = dsm.polygon_math(polygon_hv=None, kernel=kernel)
         else:
             global_z = None
-
-        # convert CRS if necessary
-        if self.crs.name == dsm.header["crs"].name:
-            poly_dict = self.id_item.copy()
-        elif self.crs.name != dsm.header["crs"].name and not keep_crs:
-            self.change_crs(dsm.header["crs"])
-            poly_dict = self.id_item.copy()
-        else:
-            poly_dict = idp.geotools.convert_proj(self.id_item, self.crs, dsm.header["crs"])
 
         nan_z_list = []
         pbar = tqdm(self.items(), desc=f"Read z values of roi from DSM [{dsm.file_path.name}]")
@@ -876,24 +915,57 @@ class ROI(idp.Container):
         """
         pcd = self._get_z_input_check(pcd, mode, kernel, buffer, func="pcd")
 
+        # check if pcd is not empty
         if not pcd.has_points():
             raise ValueError("The provided point cloud is empty")
 
-        # Check CRS match
-        # If both have CRS, they must match
-        if self.crs is not None and pcd.crs is not None:
-             # loose check for name or strict check for data?
-             # pyproj.CRS.equals is strict
-            if not self.crs.equals(pcd.crs):
+        # Handle CRS conversion based on self.crs and pcd.crs combinations
+        # Case 1A: self.crs=None, pcd.crs=None
+        # Case 1B: self.crs=None, pcd.crs=has CRS  
+        # Case 2A: self.crs=has CRS, pcd.crs=None
+        # -> All above: give warning, no conversion
+        # Case 2B: both have CRS
+        #   - CRS is same: no conversion
+        #   - CRS is different:
+        #     - keep_crs=False: change self.crs to pcd.crs
+        #     - keep_crs=True: make a converted copy, don't touch self.crs
+        if self.crs is None or pcd.crs is None:
+            # Case 1A, 1B, 2A: at least one CRS is None
+            if self.crs is None and pcd.crs is None:
                 logger.warning(
-                    f"ROI CRS [{self.crs.name}] and PCD CRS [{pcd.crs.name}] are not equal. "
-                    f"This may lead to incorrect results. "
-                    f"Please use `roi.change_crs(pcd.crs)` or `pcd.change_crs(roi.crs)` to align them first."
+                    "Both ROI and PCD have no CRS defined. "
+                    "Assuming they are in the same coordinate system."
                 )
-        elif self.crs is None and pcd.crs is not None:
-             logger.warning(f"ROI has no CRS but PCD has CRS [{pcd.crs.name}]. Assuming they align.")
-        elif self.crs is not None and pcd.crs is None:
-             logger.warning(f"ROI has CRS [{self.crs.name}] but PCD has no CRS. Assuming they align.")
+            elif self.crs is None:
+                logger.warning(
+                    f"ROI has no CRS but PCD has CRS [{pcd.crs.name}]. "
+                    "Assuming they align, no coordinate conversion applied."
+                )
+            else:  # pcd.crs is None
+                logger.warning(
+                    f"ROI has CRS [{self.crs.name}] but PCD has no CRS. "
+                    "Assuming they align, no coordinate conversion applied."
+                )
+            poly_dict = self.id_item.copy()
+        elif self.crs.equals(pcd.crs):
+            # Case 2B: both have CRS, and they are the same
+            logger.debug("ROI CRS is same as PCD CRS, no conversion needed")
+            poly_dict = self.id_item.copy()
+        else:
+            # Case 2B: both have CRS, but different
+            if not keep_crs:
+                logger.debug(
+                    f"ROI CRS [{self.crs.name}] is different from PCD CRS [{pcd.crs.name}], "
+                    "changing ROI CRS to match PCD CRS"
+                )
+                self.change_crs(pcd.crs)
+                poly_dict = self.id_item.copy()
+            else:
+                logger.debug(
+                    f"ROI CRS [{self.crs.name}] is different from PCD CRS [{pcd.crs.name}], "
+                    "converting coordinates for query but keeping original ROI CRS"
+                )
+                poly_dict = idp.geotools.convert_proj(self.id_item, self.crs, pcd.crs)
         
         # Determine global Z if applicable
         if buffer == -1 or buffer == -1.0:
@@ -903,60 +975,16 @@ class ROI(idp.Container):
         else:
             global_z_val = None
 
-        # Helper to get z from points inside polygon
-        def _get_z_in_poly(poly_pts_xy, pcd_tree, pcd_points):
-            # 1. Bounding Box Filter
-            xmin, ymin = poly_pts_xy.min(axis=0)
-            xmax, ymax = poly_pts_xy.max(axis=0)
-            
-            # center
-            cx = (xmin + xmax) / 2
-            cy = (ymin + ymax) / 2
-            
-            # radius (Chebyshev / box)
-            rw = (xmax - xmin) / 2
-            rh = (ymax - ymin) / 2
-            r = max(rw, rh)
-            
-            # Query KDTree (p=inf for Chebyshev distance -> square box)
-            # This is much faster than circular query for BBox
-            # returns tuple of (distances, indices) or just indices if we query for index
-            # query_ball_point returns indices
-            candidate_idx = pcd_tree.query_ball_point([cx, cy], r, p=np.inf)
-            
-            if len(candidate_idx) == 0:
-                return np.array([])
-                
-            candidate_pts = pcd_points[candidate_idx] # these are [x, y, z] (with offset applied if access via .points)
-            
-            # 2. Exact Polygon Filter (Matplotlib is fast enough for 2D PIP)
-            # candidate_pts is (N, 3), we need (N, 2)
-            mpl_poly = mplPath(poly_pts_xy)
-            mask = mpl_poly.contains_points(candidate_pts[:, 0:2])
-            
-            final_z = candidate_pts[mask, 2]
-            return final_z
-
         nan_z_list = []
         pbar = tqdm(self.items(), desc=f"Read z values of roi from PCD [{Path(pcd.file_path).name}]")
-        
-        # Pre-fetch tree to avoid property lookup overhead in loop
-        pcd_tree = pcd.tree
-        # Use pcd.points once to verify access, but accessing it inside loop many times involves offset calc
-        # pcd.points returns (pts + offset)
-        # To optimize, we can get the full array once if memory allows, OR rely on property caching if implemented?
-        # In current implementation pcd.points calculates on fly: return self._points + self._offset
-        # We can cache it locally
-        pcd_pts_all = pcd.points # This creates a copy with offset applied.
-        
+
         for roi_name, val in pbar:
-            poly = self.id_item[self.item_label[roi_name]]
-            # val is the same as poly usually, but let's stick to what other func does
-            
+            poly = poly_dict[self.item_label[roi_name]]
+
             # only x, y
             poly_xy = poly[:, 0:2]
 
-             # using the full map
+            # using the full map
             if global_z_val is not None:
                 poly3d = _insert_z_value_for_roi(val, global_z_val)
             else:
@@ -968,43 +996,44 @@ class ROI(idp.Container):
                     else:
                         poly_cal = poly_xy
 
-                    z_vals = _get_z_in_poly(poly_cal, pcd_tree, pcd_pts_all)
-                    
+                    # Use pcd.crop_polygon() to get xyz points inside polygon
+                    xyz_vals = pcd.crop_polygon(poly_cal)
+                    z_vals = xyz_vals[:, 2] if len(xyz_vals) > 0 else np.array([])
+
                     if len(z_vals) > 0:
                         stat_z = calculate_kernel_stats(z_vals, kernel)
                     else:
                         stat_z = np.nan
-                        
+
                     poly3d = _insert_z_value_for_roi(val, stat_z)
-                    
-                else: # mode == "point"
+
+                else:  # mode == "point"
                     # For each vertex, apply buffer if needed
-                    # If buffer=0, in DSM mode it just reads pixel value. 
-                    # For PCD mode, getting Z from a single point coordinate is tricky because exact match is rare.
-                    # Usually "point" mode in PCD implies finding nearest neighbor or points within small radius.
-                    # But keeping consistent with DSM signature:
+                    # If buffer=0, in DSM mode it just reads pixel value.
+                    # For PCD mode, getting Z from a single point coordinate is
+                    # tricky because exact match is rare.
+                    # Usually "point" mode in PCD implies finding nearest
+                    # neighbor or points within small radius.
                     # If buffer=0, we can try NN.
-                    
+
                     z_result_list = []
                     for pt in val:
                         pt_xy = pt[0:2]
                         if buffer != 0 and buffer != 0.0:
-                             # Buffer point -> Circle (well, Polygon approximation)
-                             # Shapely point buffer produces circle-like polygon
-                             poly_cal_geom = Point(pt_xy).buffer(buffer)
-                             poly_cal = np.array(poly_cal_geom.exterior.coords)
-                             z_vals = _get_z_in_poly(poly_cal, pcd_tree, pcd_pts_all)
-                             if len(z_vals) > 0:
-                                 z_result_list.append(calculate_kernel_stats(z_vals, kernel))
-                             else:
-                                 z_result_list.append(np.nan)
+                            # Buffer point -> Circle (Polygon approximation)
+                            poly_cal_geom = Point(pt_xy).buffer(buffer)
+                            poly_cal = np.array(poly_cal_geom.exterior.coords)
+                            xyz_vals = pcd.crop_polygon(poly_cal)
+                            z_vals = xyz_vals[:, 2] if len(xyz_vals) > 0 else np.array([])
+                            if len(z_vals) > 0:
+                                z_result_list.append(calculate_kernel_stats(z_vals, kernel))
+                            else:
+                                z_result_list.append(np.nan)
                         else:
                             # Buffer is 0 -> Nearest Neighbor
-                            dist, idx = pcd_tree.query(pt_xy, k=1)
-                            # dist is L2 distance
-                            # We should probably respect some tolerance, but typically NN is what's expected for point query
-                            z_result_list.append(pcd_pts_all[idx, 2])
-                            
+                            dist, idx = pcd.tree.query(pt_xy, k=1)
+                            z_result_list.append(pcd.points[idx, 2])
+
                     poly3d = _insert_z_value_for_roi(val, np.asarray(z_result_list))
 
             # NaN check
@@ -1381,37 +1410,54 @@ def calculate_kernel_stats(z_values, kernel="mean"):
     .. [percentile mean] the mean value of all pixels over/under xth percentile threshold
         
     """
-    if len(z_values) == 0:
+    z_values = np.asarray(z_values)
+    if z_values.size == 0:
         return np.nan
-        
+
+    # Helper function to get index mask (ported from geotiff.py)
+    def _get_idx(group, thresh, compare="<="):
+        if thresh.shape == ():  # single value (scalar) derived from 1D array
+            if compare == "<=":
+                return group <= thresh
+            else:
+                return group >= thresh
+        else: # array threshold derived from 2D array
+            if compare == "<=":
+                # For multi-band, require condition met in ALL bands?
+                # This logic is from original geotiff.py
+                return np.all(group <= thresh, axis=1)
+            else:
+                return np.all(group >= thresh, axis=1)
+
+    # Use axis=0 for aggregation to support multi-band inputs (N, C) -> (C,)
+    # For 1D input (N,) -> scalar
+    agg_axis = 0
+
     if kernel == "mean":
-        return np.mean(z_values)
+        return np.mean(z_values, axis=agg_axis)
     elif kernel == "min":
-        return np.min(z_values)
+        return np.min(z_values, axis=agg_axis)
     elif kernel == "max":
-        return np.max(z_values)
+        return np.max(z_values, axis=agg_axis)
     elif kernel == "pmin5":
-        # 5th percentile mean: mean of values < 5th percentile
-        p5 = np.percentile(z_values, 5)
-        # fallback if all values are same
-        mask = z_values <= p5
-        if not mask.any(): return np.nan
-        return np.mean(z_values[mask])
+        thresh = np.percentile(z_values, 5, axis=agg_axis)
+        idx = _get_idx(z_values, thresh, "<=")
+        if not idx.any(): return np.nan
+        return np.mean(z_values[idx], axis=agg_axis)
     elif kernel == "pmin10":
-        p10 = np.percentile(z_values, 10)
-        mask = z_values <= p10
-        if not mask.any(): return np.nan
-        return np.mean(z_values[mask])
+        thresh = np.percentile(z_values, 10, axis=agg_axis)
+        idx = _get_idx(z_values, thresh, "<=")
+        if not idx.any(): return np.nan
+        return np.mean(z_values[idx], axis=agg_axis)
     elif kernel == "pmax5":
-        # 95th percentile mean: mean of values > 95th percentile
-        p95 = np.percentile(z_values, 95)
-        mask = z_values >= p95
-        if not mask.any(): return np.nan
-        return np.mean(z_values[mask])
+        thresh = np.percentile(z_values, 95, axis=agg_axis)
+        idx = _get_idx(z_values, thresh, ">=")
+        if not idx.any(): return np.nan
+        return np.mean(z_values[idx], axis=agg_axis)
     elif kernel == "pmax10":
-        p90 = np.percentile(z_values, 90)
-        mask = z_values >= p90
-        if not mask.any(): return np.nan
-        return np.mean(z_values[mask])
+        thresh = np.percentile(z_values, 90, axis=agg_axis)
+        idx = _get_idx(z_values, thresh, ">=")
+        if not idx.any(): return np.nan
+        return np.mean(z_values[idx], axis=agg_axis)
     else:
         raise KeyError(f"Could not find kernel [{kernel}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")

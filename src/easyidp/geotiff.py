@@ -1284,42 +1284,7 @@ class GeoTiff(object):
         else:
             raise IndexError(f"Unsupported imarray shape: {imarray.shape}")
 
-        def _get_idx(group, thresh, compare="<="):
-            if thresh.shape == ():  # single value
-                if compare == "<=":
-                    return group <= thresh
-                else:
-                    return group >= thresh
-            else:
-                if compare == "<=":
-                    return np.all(group <= thresh, axis=1)
-                else:
-                    return np.all(group >= thresh, axis=1)
-
-        if kernel == "mean":
-            return np.mean(inside_value, axis=0)
-        elif kernel == "min":
-            return np.min(inside_value, axis=0)
-        elif kernel == "max":
-            return np.max(inside_value, axis=0)
-        elif kernel == "pmin5":
-            thresh = np.percentile(inside_value, 5, axis=0)
-            idx = _get_idx(inside_value, thresh, "<=")
-            return np.mean(inside_value[idx], axis=0)
-        elif kernel == "pmin10":
-            thresh = np.percentile(inside_value, 10, axis=0)
-            idx = _get_idx(inside_value, thresh, "<=")
-            return np.mean(inside_value[idx], axis=0)
-        elif kernel == "pmax5":
-            thresh = np.percentile(inside_value, 95, axis=0)
-            idx = _get_idx(inside_value, thresh, ">=")
-            return np.mean(inside_value[idx], axis=0)
-        elif kernel == "pmax10":
-            thresh = np.percentile(inside_value, 90, axis=0)
-            idx = _get_idx(inside_value, thresh, ">=")
-            return np.mean(inside_value[idx], axis=0)
-        else:
-            raise KeyError(f"Could not find kernel [{kernel}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")
+        return idp.roi.calculate_kernel_stats(inside_value, kernel)
 
 
 ##############

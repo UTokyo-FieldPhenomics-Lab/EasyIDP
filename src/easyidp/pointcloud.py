@@ -14,6 +14,7 @@ import laspy
 from plyfile import PlyData, PlyElement
 
 from matplotlib.patches import Polygon
+from matplotlib.path import Path as mplPath
 
 import easyidp as idp
 
@@ -22,60 +23,6 @@ class PointCloud(object):
 
     """EasyIDP defined PointCloud class, consists by point coordinates, and optionally point colors and point normals.
     """
-
-    @property
-    def points(self):
-        """The xyz values of point cloud
-        """
-        if self._points is None:
-            return None
-        else:
-            return self._points + self._offset
-
-    @points.setter
-    def points(self, p):
-        if not isinstance(p, np.ndarray):
-            raise TypeError(f"Only numpy ndarray object are acceptable for setting values")
-        elif self.shape != p.shape and self.shape != (0,3):
-            raise IndexError(f"The given shape [{p.shape}] does not match current point cloud shape [{self.shape}]")
-        else:
-            self._points = p - self._offset
-            self.shape = p.shape
-            self._tree = None   # clear tree cache
-            self._update_btf_print()
-
-    @property
-    def crs(self):
-        """The Coordinate Reference System (CRS) of point cloud
-        """
-        return self._crs
-
-    @crs.setter
-    def crs(self, c):
-        if c is None:
-            self._crs = None
-        elif isinstance(c, pyproj.CRS):
-            self._crs = c
-        else:
-            try:
-                self._crs = pyproj.CRS.from_user_input(c)
-            except pyproj.exceptions.CRSError:
-                raise TypeError(f"Only pyproj.CRS object or valid CRS string/int are acceptable, not {type(c)} [{c}]")
-
-    @property
-    def tree(self):
-        """The 2D KDTree of point cloud for fast spatial query
-        """
-        if self._tree is None:
-            if self.has_points():
-                # self.points is property, will calculated with offset, it is slow
-                # using self._points + self._offset to avoid data copy? 
-                # cKDTree need data copy? -> yes, it seems
-                # build on 2D
-                self._tree = cKDTree(self.points[:, 0:2])
-            else:
-                return None
-        return self._tree
 
     def __init__(self, pcd_path="", offset=[0.,0.,0.]):
         """The method to initialize the PointCloud class
@@ -310,7 +257,7 @@ class PointCloud(object):
             data.insert(3, ['...'] * 10)
             
         self._btf_print = tabulate(data, headers=head, tablefmt='plain', colalign=col_align)
-
+    
     @property
     def points(self):
         """The xyz values of point cloud
@@ -329,7 +276,112 @@ class PointCloud(object):
         else:
             self._points = p - self._offset
             self.shape = p.shape
+            self._tree = None   # clear tree cache
             self._update_btf_print()
+
+    @property
+    def crs(self):
+        """The Coordinate Reference System (CRS) of point cloud
+        """
+        return self._crs
+
+    @crs.setter
+    def crs(self, c):
+        if c is None:
+            self._crs = None
+        elif isinstance(c, pyproj.CRS):
+            self._crs = c
+        else:
+            try:
+                self._crs = pyproj.CRS.from_user_input(c)
+            except pyproj.exceptions.CRSError:
+                raise TypeError(f"Only pyproj.CRS object or valid CRS string/int are acceptable, not {type(c)} [{c}]")
+
+    @property
+    def tree(self):
+        """The 2D KDTree of point cloud for fast spatial query
+        """
+        if self._tree is None:
+            if self.has_points():
+                # self.points is property, will calculated with offset, it is slow
+                # using self._points + self._offset to avoid data copy? 
+                # cKDTree need data copy? -> yes, it seems
+                # build on 2D
+                self._tree = cKDTree(self.points[:, 0:2])
+            else:
+                return None
+        return self._tree
+
+    def crop_polygon(self, polygon_xy):
+        """Get all points inside a 2D polygon.
+
+        Uses KDTree with bounding box pre-filtering for fast spatial query,
+        then applies exact polygon containment test.
+
+        Parameters
+        ----------
+        polygon_xy : np.ndarray
+            A 2D polygon coordinates with shape (n, 2), representing the
+            boundary vertices in XY plane. The polygon should be closed
+            (first and last point can be same or different).
+
+        Returns
+        -------
+        np.ndarray
+            The xyz coordinates of points inside the polygon, shape (m, 3).
+            Returns empty array with shape (0, 3) if no points found.
+
+        Examples
+        --------
+        >>> import easyidp as idp
+        >>> pcd = idp.PointCloud("path/to/pointcloud.ply")
+        >>> polygon = np.array([
+        ...     [100.0, 200.0],
+        ...     [110.0, 200.0],
+        ...     [110.0, 210.0],
+        ...     [100.0, 210.0],
+        ...     [100.0, 200.0]
+        ... ])
+        >>> xyz_inside = pcd.crop_polygon(polygon)
+        >>> z_values = xyz_inside[:, 2]
+        """
+        if not self.has_points():
+            return np.array([]).reshape(0, 3)
+
+        # Ensure polygon is 2D
+        poly_pts_xy = np.asarray(polygon_xy)
+        if poly_pts_xy.ndim != 2 or poly_pts_xy.shape[1] < 2:
+            raise ValueError(
+                f"polygon_xy must have shape (n, 2), got {poly_pts_xy.shape}"
+            )
+        poly_pts_xy = poly_pts_xy[:, 0:2]
+
+        # 1. Bounding Box Filter using KDTree
+        xmin, ymin = poly_pts_xy.min(axis=0)
+        xmax, ymax = poly_pts_xy.max(axis=0)
+
+        # center and radius for Chebyshev (box) query
+        cx = (xmin + xmax) / 2
+        cy = (ymin + ymax) / 2
+        rw = (xmax - xmin) / 2
+        rh = (ymax - ymin) / 2
+        r = max(rw, rh)
+
+        # Query KDTree (p=inf for Chebyshev distance -> square box)
+        candidate_idx = self.tree.query_ball_point([cx, cy], r, p=np.inf)
+
+        if len(candidate_idx) == 0:
+            return np.array([]).reshape(0, 3)
+
+        # Get candidate points (with offset applied via .points property)
+        pcd_pts_all = self.points
+        candidate_pts = pcd_pts_all[candidate_idx]
+
+        # 2. Exact Polygon Filter using matplotlib Path
+        mpl_poly = mplPath(poly_pts_xy)
+        mask = mpl_poly.contains_points(candidate_pts[:, 0:2])
+
+        return candidate_pts[mask]
 
     @property
     def offset(self):

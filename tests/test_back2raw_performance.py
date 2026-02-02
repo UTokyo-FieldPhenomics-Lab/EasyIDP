@@ -45,10 +45,10 @@ class TestBack2rawBatchConsistency:
         roi = roi_with_z
 
         # Run original method
-        result_orig = ms.back2raw(roi)
+        result_orig = ms.back2raw_old(roi)
 
         # Run batch method
-        result_batch = ms.back2raw_batch(roi)
+        result_batch = ms.back2raw(roi)
 
         # Compare structure
         assert set(result_orig.keys()) == set(result_batch.keys()), \
@@ -135,21 +135,21 @@ class TestBack2rawBatchPerformance:
             Benchmark results with times and speedup.
         """
         # Warm up
+        _ = ms.back2raw_old(roi)
         _ = ms.back2raw(roi)
-        _ = ms.back2raw_batch(roi)
 
         # Benchmark original
         times_orig = []
         for _ in range(iterations):
             start = time.perf_counter()
-            _ = ms.back2raw(roi)
+            _ = ms.back2raw_old(roi)
             times_orig.append(time.perf_counter() - start)
 
         # Benchmark batch
         times_batch = []
         for _ in range(iterations):
             start = time.perf_counter()
-            _ = ms.back2raw_batch(roi)
+            _ = ms.back2raw(roi)
             times_batch.append(time.perf_counter() - start)
 
         mean_orig = np.mean(times_orig)
@@ -240,7 +240,7 @@ class TestBack2rawBatchEdgeCases:
         roi["test"] = np.array([[0, 0, 0], [1, 1, 1]])
 
         with pytest.raises(TypeError, match="Unable to process disabled chunk"):
-            ms.back2raw_batch(roi)
+            ms.back2raw(roi)
 
     def test_2d_roi_raises(self):
         """Test that 2D ROI raises error."""
@@ -250,4 +250,4 @@ class TestBack2rawBatchEdgeCases:
         # Don't add Z values - should raise error
 
         with pytest.raises(ValueError, match="requires 3D roi"):
-            ms.back2raw_batch(roi)
+            ms.back2raw(roi)

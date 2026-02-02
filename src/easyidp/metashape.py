@@ -608,7 +608,7 @@ class Metashape(idp.reconstruct.Recons):
         return out_dict
 
 
-    def back2raw(self, roi, save_folder=None, **kwargs):
+    def back2raw_old(self, roi, save_folder=None, **kwargs):
         """Projects several GIS coordintates ROIs (polygons) to all images
 
         Parameters
@@ -836,7 +836,7 @@ class Metashape(idp.reconstruct.Recons):
 
         return uv, valid
 
-    def back2raw_batch(self, roi, save_folder=None, **kwargs) -> dict:
+    def back2raw(self, roi, save_folder=None, **kwargs) -> dict:
         """
         Projects ROIs to raw images using batch matrix operations.
 
@@ -875,7 +875,7 @@ class Metashape(idp.reconstruct.Recons):
         >>> roi.get_z_from_dsm(dsm_path)
         >>>
         >>> # Optimized batch processing
-        >>> out = ms.back2raw_batch(roi)
+        >>> out = ms.back2raw(roi)
         >>> # Same output structure as ms.back2raw(roi)
 
         See Also
@@ -910,7 +910,7 @@ class Metashape(idp.reconstruct.Recons):
             points_xyz = roi[roi_name]
             if points_xyz.shape[1] != 3:
                 raise ValueError(
-                    f"back2raw_batch requires 3D roi with shape=(n, 3), "
+                    f"The back2raw function requires 3D roi with shape=(n, 3), "
                     f"but [{roi_name}] is {points_xyz.shape}"
                 )
 

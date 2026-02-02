@@ -1,6 +1,7 @@
 import os
 from functools import wraps
 from pathlib import Path
+import warnings
 
 from loguru import logger
 import numpy as np
@@ -1744,7 +1745,13 @@ def one_raw_roi2geotiff(
 
     # Create projective transform from source (local px) to destination (geo px)
     pt = ProjectiveTransform()
-    pt.estimate(src=roi_local_px, dst=geo_px)
+    # deprecate future warning for from_estimate
+    try:
+        pt = ProjectiveTransform.from_estimate(src=roi_local_px, dst=geo_px)
+    except AttributeError:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            pt.estimate(src=roi_local_px, dst=geo_px)
 
     # Step 6: Warp cropped image to geo-referenced space
     output_shape = (out_height, out_width)

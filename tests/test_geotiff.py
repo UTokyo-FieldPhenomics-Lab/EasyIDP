@@ -8,7 +8,7 @@ from pathlib import Path
 
 import easyidp as idp
 
-from . import shared_data, report_loguru_to_caplog
+from . import shared_data, report_loguru_to_caplog, out_dir
 
 def test_def_get_header(shared_data):
     test_data = shared_data['test_data']
@@ -582,3 +582,160 @@ def test_crop_preserves_full_data(shared_data):
     
     # Data should NOT have nodata applied yet
     # (The original values should still be there, not replaced by nodata)
+
+
+# ============================================================================
+# Tests for one_raw_roi2geotiff and back2raw2geotiff
+# ============================================================================
+
+def test_one_raw_roi2geotiff(shared_data):
+    """Test one_raw_roi2geotiff() basic functionality."""
+    test_data = shared_data['test_data']
+    p4d = shared_data['p4d']
+    roi = shared_data['roi']
+    out_all = shared_data['out_all']
+    
+    # Get first ROI and first image
+    roi_id = list(out_all.keys())[0]
+    img_dict = out_all[roi_id]
+    img_id = list(img_dict.keys())[0]
+    roi_raw_px = img_dict[img_id]
+    
+    # Get geo coordinates (need 2D only)
+    roi_geo_coords = roi[roi_id][:, :2]
+    
+    # Find raw image path
+    raw_img_path = test_data.pix4d.lotus_photos / f"{img_id}.JPG"
+    
+    # Call the function
+    gtiff = idp.geotiff.one_raw_roi2geotiff(
+        roi_crs=roi.crs,
+        roi_geo_coords=roi_geo_coords,
+        raw_img_path=raw_img_path,
+        roi_raw_px=roi_raw_px,
+        nodata=0,
+        has_alpha=True,
+    )
+    
+    # Verify GeoTiff object
+    assert gtiff is not None
+    assert isinstance(gtiff, idp.GeoTiff)
+    assert gtiff.crs == roi.crs
+    assert gtiff.width > 0
+    assert gtiff.height > 0
+    assert gtiff._mask is not None
+    assert gtiff._mask.shape == (gtiff.height, gtiff.width)
+    
+    # Verify imarray is 3D (RGB image)
+    assert len(gtiff.imarray.shape) == 3
+    
+    # Save and verify file
+    save_path = out_dir / "tiff_test" /  "test_one_raw2geotiff.tif"
+    gtiff.save(save_path, overwrite=True)
+    assert save_path.exists()
+    
+    # Reload and verify
+    reloaded = idp.GeoTiff(save_path)
+    assert reloaded.crs == roi.crs
+
+
+def test_one_raw_roi2geotiff_options(shared_data):
+    """Test one_raw_roi2geotiff() with different options."""
+    test_data = shared_data['test_data']
+    roi = shared_data['roi']
+    out_all = shared_data['out_all']
+    
+    # Get first ROI and first image
+    roi_id = list(out_all.keys())[0]
+    img_dict = out_all[roi_id]
+    img_id = list(img_dict.keys())[0]
+    roi_raw_px = img_dict[img_id]
+    roi_geo_coords = roi[roi_id][:, :2]
+    raw_img_path = test_data.pix4d.lotus_photos / f"{img_id}.JPG"
+    
+    # Test with has_alpha=False
+    gtiff_noalpha = idp.geotiff.one_raw_roi2geotiff(
+        roi_crs=roi.crs,
+        roi_geo_coords=roi_geo_coords,
+        raw_img_path=raw_img_path,
+        roi_raw_px=roi_raw_px,
+        nodata=255,
+        has_alpha=False,
+    )
+    
+    assert gtiff_noalpha.nodata == 255
+    
+    # Test with has_alpha=True (default)
+    gtiff_alpha = idp.geotiff.one_raw_roi2geotiff(
+        roi_crs=roi.crs,
+        roi_geo_coords=roi_geo_coords,
+        raw_img_path=raw_img_path,
+        roi_raw_px=roi_raw_px,
+        nodata=0,
+        has_alpha=True,
+    )
+    
+    assert gtiff_alpha.nodata is None  # No nodata when using alpha
+
+
+def test_back2raw2geotiff(shared_data):
+    """Test back2raw2geotiff() batch processing with save_folder."""
+    p4d = shared_data['p4d']
+    roi = shared_data['roi']
+    out_all = shared_data['out_all']
+    
+    output_folder = out_dir / "tiff_test" / "back2raw2geotiff_test"
+    if output_folder.exists():
+        shutil.rmtree(output_folder)
+    output_folder.mkdir()
+    
+    # Call the function
+    result = idp.geotiff.back2raw2geotiff(
+        recons=p4d,
+        back2raw_result=out_all,
+        roi=roi,
+        output_folder=output_folder,
+        nodata=0,
+        has_alpha=True,
+    )
+    
+    # Verify result structure matches input
+    assert len(result) == len(out_all)
+    
+    for roi_id in out_all.keys():
+        assert roi_id in result
+        assert len(result[roi_id]) > 0
+        
+        # Check that files were saved
+        roi_folder = output_folder / str(roi_id)
+        assert roi_folder.exists()
+        
+        for img_id, gtiff in result[roi_id].items():
+            assert isinstance(gtiff, idp.GeoTiff)
+            save_path = roi_folder / f"{img_id}.tif"
+            assert save_path.exists()
+
+
+def test_back2raw2geotiff_no_save(shared_data):
+    """Test back2raw2geotiff() without saving files."""
+    p4d = shared_data['p4d']
+    roi = shared_data['roi']
+    out_all = shared_data['out_all']
+    
+    # Call without output_folder (no save)
+    result = idp.geotiff.back2raw2geotiff(  
+        recons=p4d,
+        back2raw_result=out_all,
+        roi=roi,
+        output_folder=None,  # No save
+    )
+    
+    # Verify result structure matches input
+    assert len(result) == len(out_all)
+    
+    for roi_id in out_all.keys():
+        assert roi_id in result
+        for img_id, gtiff in result[roi_id].items():
+            assert isinstance(gtiff, idp.GeoTiff)
+            assert gtiff.crs == roi.crs
+

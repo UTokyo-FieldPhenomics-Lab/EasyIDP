@@ -10,9 +10,12 @@ import rasterio as rio
 from rasterio.enums import ColorInterp
 from rasterio.mask import mask as riomask
 from shapely.geometry import mapping, Polygon
+from skimage.io import imread
+from skimage.transform import ProjectiveTransform, warp
 from tqdm import tqdm
 
 import easyidp as idp
+
 
 
 class GeoTiff(object):
@@ -1632,3 +1635,283 @@ def pixel2geo(points_hv, header):
     gis_geo = np.vstack([gis_px, gis_py]).T
 
     return gis_geo
+
+
+def one_raw_roi2geotiff(
+    roi_crs: pyproj.CRS,
+    roi_geo_coords: np.ndarray,
+    raw_img_path: str | Path,
+    roi_raw_px: np.ndarray,
+    nodata: float | int = 0,
+    has_alpha: bool = True,
+) -> GeoTiff:
+    """Transform a single ROI's raw image region to a GeoTiff with the same CRS.
+
+    This function takes a ROI defined by both geo coordinates and raw image
+    pixel coordinates, crops the raw image, and warps it to create a
+    geo-referenced GeoTiff.
+
+    Parameters
+    ----------
+    roi_crs : pyproj.CRS
+        The coordinate reference system of the ROI.
+    roi_geo_coords : np.ndarray
+        GIS geo coordinates of ROI polygon, shape (n, 2) or (n, 3).
+        Only first n-1 points are used (last point is duplicate for closure).
+        Z values are ignored if present.
+    raw_img_path : str | Path
+        Path to the raw image file.
+    roi_raw_px : np.ndarray
+        ROI pixel coordinates on the raw image, shape (n, 2).
+    nodata : float | int, optional
+        Value to use for pixels outside the ROI, by default 0.
+    has_alpha : bool, optional
+        If True, use alpha layer for mask storage.
+        If False, apply nodata to mask regions.
+        GeoTiff class always stores mask and imarray separately.
+        By default True.
+
+    Returns
+    -------
+    GeoTiff
+        A GeoTiff object containing the warped image with proper geo-referencing.
+        Call `.save()` to write to file.
+
+    Example
+    -------
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> # After running roi.back2raw(recons)
+        >>> roi_geo = roi['N1W1'][:, :2]  # Get 2D geo coords
+        >>> roi_px = back2raw_result['N1W1']['IMG_0001']
+        >>> gtiff = idp.geotiff.one_raw_roi2geotiff(
+        ...     roi_crs=roi.crs,
+        ...     roi_geo_coords=roi_geo,
+        ...     raw_img_path='path/to/IMG_0001.JPG',
+        ...     roi_raw_px=roi_px
+        ... )
+        >>> gtiff.save('output.tif')
+
+    Notes
+    -----
+    This function uses skimage.transform.ProjectiveTransform and assumes the
+    ROI region is relatively flat. For terrain with significant elevation
+    variations, the transformation may produce distortions.
+    """
+    raw_img_path = Path(raw_img_path)
+    if not raw_img_path.exists():
+        raise FileNotFoundError(f"Raw image not found: {raw_img_path}")
+
+    # Prepare coordinates: use only first n-1 points (remove closure point)
+    roi_geo_2d = roi_geo_coords[:, :2].copy()
+    if np.allclose(roi_geo_2d[0], roi_geo_2d[-1]):
+        roi_geo_2d = roi_geo_2d[:-1]
+        roi_raw_px = roi_raw_px[:-1].copy()
+
+    # Step 1: Read raw image
+    raw_img = imread(raw_img_path)
+
+    # Step 2: Crop raw image by ROI pixel coordinates
+    roi_px_closed = np.vstack([roi_raw_px, roi_raw_px[0]])  # Re-close for crop
+    cropped_img, offset, crop_mask = idp.cvtools.imarray_crop(
+        raw_img, roi_px_closed, nodata=None
+    )
+
+    # Adjust ROI pixel coords to local crop coordinates
+    roi_local_px = roi_raw_px - offset
+
+    # Step 3: Calculate GeoTiff scale from correspondence
+    geo_width = roi_geo_2d[:, 0].max() - roi_geo_2d[:, 0].min()
+    geo_height = roi_geo_2d[:, 1].max() - roi_geo_2d[:, 1].min()
+    px_width = roi_raw_px[:, 0].max() - roi_raw_px[:, 0].min()
+    px_height = roi_raw_px[:, 1].max() - roi_raw_px[:, 1].min()
+
+    scale_x = geo_width / px_width if px_width > 0 else 1.0
+    scale_y = geo_height / px_height if px_height > 0 else 1.0
+    scale = [scale_x, scale_y]
+
+    # Step 4: Calculate GeoTiff dimensions
+    tie_point = [roi_geo_2d[:, 0].min(), roi_geo_2d[:, 1].max()]
+    out_width = int(np.ceil(geo_width / scale_x))
+    out_height = int(np.ceil(geo_height / scale_y))
+
+    # Step 5: Compute projective transform (raw local px -> geo pixel)
+    # Target geo pixel coordinates for each ROI vertex
+    geo_px = np.zeros_like(roi_geo_2d)
+    geo_px[:, 0] = (roi_geo_2d[:, 0] - tie_point[0]) / scale_x
+    geo_px[:, 1] = (tie_point[1] - roi_geo_2d[:, 1]) / scale_y
+
+    # Create projective transform from source (local px) to destination (geo px)
+    pt = ProjectiveTransform()
+    pt.estimate(src=roi_local_px, dst=geo_px)
+
+    # Step 6: Warp cropped image to geo-referenced space
+    output_shape = (out_height, out_width)
+    if len(cropped_img.shape) == 3:
+        output_shape = (out_height, out_width, cropped_img.shape[2])
+
+    warped_img = warp(
+        cropped_img,
+        pt.inverse,
+        output_shape=output_shape,
+        preserve_range=True,
+        cval=nodata,
+    ).astype(cropped_img.dtype)
+
+    # Step 7: Generate mask from ROI geo coords polygon
+    geo_px_closed = np.vstack([geo_px, geo_px[0]])
+    roi_mask = idp.cvtools.poly2mask((out_width, out_height), geo_px_closed)
+
+    # Step 8: Create GeoTiff header
+    n_bands = warped_img.shape[2] if len(warped_img.shape) == 3 else 1
+    header = {
+        'height': out_height,
+        'width': out_width,
+        'dim': n_bands,
+        'dtype': warped_img.dtype,
+        'nodata': nodata if not has_alpha else None,
+        'scale': scale,
+        'tie_point': tie_point,
+        'crs': roi_crs,
+        'has_alpha': False,
+        'profile': {
+            'driver': 'GTiff',
+            'height': out_height,
+            'width': out_width,
+            'count': n_bands,
+            'dtype': str(warped_img.dtype),
+            'crs': roi_crs,
+            'transform': rio.transform.from_bounds(
+                tie_point[0],
+                tie_point[1] - out_height * scale_y,
+                tie_point[0] + out_width * scale_x,
+                tie_point[1],
+                out_width,
+                out_height,
+            ),
+        },
+    }
+
+    # Create GeoTiff object
+    gtiff = GeoTiff(imarray=warped_img, header=header, mask=roi_mask)
+    return gtiff
+
+
+def back2raw2geotiff(
+    recons: idp.reconstruct.Recons,
+    back2raw_result: dict,
+    roi,
+    output_folder: str | Path | None = None,
+    nodata: float | int = 0,
+    has_alpha: bool = True,
+    img_suffix: str = '.JPG',
+) -> dict:
+    """Convert back2raw results to GeoTiff objects.
+
+    A higher-level wrapper that processes the output of roi.back2raw() or
+    sort_img_by_distance(), transforming each ROI's raw image regions
+    into geo-referenced GeoTiff files.
+
+    Parameters
+    ----------
+    recons: easyidp.reconstruct.Recons
+        the reconstruction object like <easyidp.Metashape> or <easyidp.Pix4D> object (support both) 
+    back2raw_result : dict
+        Output from `roi.back2raw()` or `sort_img_by_distance()`.
+        Structure: {roi_id: {img_id: roi_pixel_coords, ...}, ...}
+    roi : easyidp.ROI
+        The ROI object with geo coordinates and CRS.
+    output_folder : str | Path, optional
+        Folder to save GeoTiff files. If specified, files are saved as
+        'output_folder/roi_id/img_id.tif'. By default None (no saving).
+    nodata : float | int, optional
+        Value for pixels outside ROI, by default 0.
+    has_alpha : bool, optional
+        If True, use alpha layer for mask. By default True.
+    img_suffix : str, optional
+        File suffix for raw images, by default '.JPG'.
+
+    Returns
+    -------
+    dict
+        Dictionary with same structure as input:
+        {roi_id: {img_id: GeoTiff, ...}, ...}
+
+    Example
+    -------
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> roi = idp.ROI('plots.shp')
+        >>> roi.get_z_from_dsm('dsm.tif')
+        >>> ms = idp.Metashape('project.psx')
+        >>> back2raw_out = roi.back2raw(ms)
+        >>>
+        >>> geotiffs = idp.geotiff.back2raw2geotiff(
+        ...     back2raw_result=back2raw_out,
+        ...     roi=roi,
+        ...     raw_img_folder='./photos',
+        ...     output_folder='./geotiff_output'
+        ... )
+        >>> # Access specific GeoTiff
+        >>> geotiffs['N1W1']['IMG_0001'].save('custom_path.tif')
+
+    See Also
+    --------
+    easyidp.ROI.back2raw : Generate back2raw results
+    one_raw_roi2geotiff : Process single ROI-image pair
+    """
+    if output_folder is not None:
+        output_folder = Path(output_folder)
+        output_folder.mkdir(parents=True, exist_ok=True)
+
+    result = {}
+    total_items = sum(len(imgs) for imgs in back2raw_result.values())
+
+    with tqdm(total=total_items, desc="Converting to GeoTiff") as pbar:
+        for roi_id, img_dict in back2raw_result.items():
+            result[roi_id] = {}
+
+            # Get ROI geo coordinates (use only xy, remove z if present)
+            roi_geo_coords = roi[roi_id][:, :2]
+
+            for img_id, roi_raw_px in img_dict.items():
+                pbar.set_postfix_str(f"{roi_id}/{img_id}")
+
+                # Construct raw image path
+                try:
+                    raw_img = recons.photos[img_id]
+                    img_path = raw_img.path
+
+                    if not Path(img_path).exists():
+                        logger.warning(f"Image file not found at {img_path}, skipping")
+                        pbar.update(1)
+                        continue
+                except:
+                    logger.warning(f"Image not found: {img_id}, skipping")
+                    pbar.update(1)
+                    continue
+
+                # Convert to GeoTiff
+                gtiff = one_raw_roi2geotiff(
+                    roi_crs=roi.crs,
+                    roi_geo_coords=roi_geo_coords,
+                    raw_img_path=img_path,
+                    roi_raw_px=roi_raw_px,
+                    nodata=nodata,
+                    has_alpha=has_alpha,
+                )
+
+                result[roi_id][img_id] = gtiff
+
+                # Save if output folder specified
+                if output_folder is not None:
+                    roi_folder = output_folder / str(roi_id)
+                    roi_folder.mkdir(parents=True, exist_ok=True)
+                    save_path = roi_folder / f"{img_id}.tif"
+                    gtiff.save(save_path, overwrite=True)
+
+                pbar.update(1)
+
+    return result

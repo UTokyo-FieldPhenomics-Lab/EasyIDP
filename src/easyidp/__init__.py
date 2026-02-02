@@ -362,9 +362,10 @@ from . import (
     geotools,
     shp, 
     jsonfile, 
+    reconstruct,
     data, 
 )
-from .reconstruct import ProjectPool
+
 from .pointcloud import PointCloud
 from .geotiff import GeoTiff
 from .pix4d import Pix4D

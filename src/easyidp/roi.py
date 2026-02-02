@@ -1155,11 +1155,13 @@ class ROI(idp.Container):
 
         return out
 
-    def back2raw(self, recons, **kwargs):
+    def back2raw(self, recons: idp.reconstruct.Recons, **kwargs):
         """Projects several GIS coordintates ROIs (polygons) to all images
 
         Parameters
         ----------
+        recons: easyidp.reconstruct.Recons
+            the reconstruction object like <easyidp.Metashape> or <easyidp.Pix4D> object (support both) 
         roi : easyidp.ROI | dict
             the <ROI> object created by easyidp.ROI() or dictionary
         save_folder : str, optional

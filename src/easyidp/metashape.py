@@ -608,7 +608,7 @@ class Metashape(idp.reconstruct.Recons):
         return out_dict
 
 
-    def back2raw(self, roi, save_folder=None, **kwargs):
+    def back2raw_old(self, roi, save_folder=None, **kwargs):
         """Projects several GIS coordintates ROIs (polygons) to all images
 
         Parameters
@@ -836,7 +836,7 @@ class Metashape(idp.reconstruct.Recons):
 
         return uv, valid
 
-    def back2raw_batch(self, roi, save_folder=None, **kwargs) -> dict:
+    def back2raw(self, roi, save_folder=None, **kwargs) -> dict:
         """
         Projects ROIs to raw images using batch matrix operations.
 
@@ -875,7 +875,7 @@ class Metashape(idp.reconstruct.Recons):
         >>> roi.get_z_from_dsm(dsm_path)
         >>>
         >>> # Optimized batch processing
-        >>> out = ms.back2raw_batch(roi)
+        >>> out = ms.back2raw(roi)
         >>> # Same output structure as ms.back2raw(roi)
 
         See Also
@@ -895,22 +895,32 @@ class Metashape(idp.reconstruct.Recons):
         before_crs = ccopy(self.crs)
         self.crs = ccopy(roi.crs)
 
-        # Initialize progress bar
-        pbar = tqdm(total=5, desc="Step 1/5: Collect ROI points", leave=True)
+        # Calculate total progress units:
+        # - Step 1: n_roi items (deduplication loop)
+        # - Step 2: 1 unit (coordinate conversion)
+        # - Step 3: 1 unit (prepare transforms)
+        # - Step 4: 1 unit (batch projection)
+        # - Step 5: n_roi items (reconstruct loop)
+        # Total = 2 * n_roi + 3
+        roi_names = list(roi.keys())
+        n_roi = len(roi_names)
+        total_units = 2 * n_roi + 3
+
+        # Initialize single progress bar
+        pbar = tqdm(total=total_units, desc="Step 1/5: Collecting ROI points", leave=True)
 
         # Step 1: Collect all ROI points with deduplication
-        roi_names = list(roi.keys())
         all_points = []
         split_indices = [0]  # Start indices for each ROI
         point_to_idx = {}  # For deduplication: tuple(point) -> unified index
         unified_points = []  # Deduplicated points
         roi_point_mapping = []  # List of lists: roi_idx -> [unified_idx, ...]
 
-        for roi_name in tqdm(roi_names, desc="Deduplicating", leave=False):
+        for roi_name in roi_names:
             points_xyz = roi[roi_name]
             if points_xyz.shape[1] != 3:
                 raise ValueError(
-                    f"back2raw_batch requires 3D roi with shape=(n, 3), "
+                    f"The back2raw function requires 3D roi with shape=(n, 3), "
                     f"but [{roi_name}] is {points_xyz.shape}"
                 )
 
@@ -926,12 +936,12 @@ class Metashape(idp.reconstruct.Recons):
             roi_point_mapping.append(roi_indices)
             all_points.append(points_xyz)
             split_indices.append(split_indices[-1] + len(points_xyz))
+            pbar.update(1)  # Update for each ROI processed in step 1
 
         # Convert to numpy array
         unified_points_np = np.array(unified_points)  # (M_unique, 3)
         n_unique = len(unified_points)
 
-        pbar.update(1)
         pbar.set_description("Step 2/5: Coordinate conversion")
 
         # Step 2: CRS to Local coordinate conversion (done once for all points)
@@ -964,11 +974,11 @@ class Metashape(idp.reconstruct.Recons):
         # uv: (N_photos, M_unique, 2), valid: (N_photos, M_unique)
 
         pbar.update(1)
-        pbar.set_description("Step 5/5: Reconstruct results")
+        pbar.set_description("Step 5/5: Reconstructing results")
 
         # Step 5: Reconstruct results per ROI
         out_dict = {}
-        for roi_idx, roi_name in enumerate(tqdm(roi_names, desc="Reconstructing", leave=False)):
+        for roi_idx, roi_name in enumerate(roi_names):
             roi_result = {}
             point_indices = roi_point_mapping[roi_idx]  # Unified indices
 
@@ -983,8 +993,8 @@ class Metashape(idp.reconstruct.Recons):
                     roi_result[photo_name] = coords
 
             out_dict[roi_name] = roi_result
+            pbar.update(1)  # Update for each ROI processed in step 5
 
-        pbar.update(1)
         pbar.close()
 
         # Restore CRS

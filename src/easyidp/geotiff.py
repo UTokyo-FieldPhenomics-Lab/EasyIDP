@@ -1712,12 +1712,25 @@ def one_raw_roi2geotiff(
 
     # Step 1: Read raw image
     raw_img = imread(raw_img_path)
+    img_height, img_width = raw_img.shape[:2]
 
-    # Step 2: Crop raw image by ROI pixel coordinates
-    roi_px_closed = np.vstack([roi_raw_px, roi_raw_px[0]])  # Re-close for crop
-    cropped_img, offset, crop_mask = idp.cvtools.imarray_crop(
-        raw_img, roi_px_closed, nodata=None
-    )
+    # Step 2: Crop raw image by ROI pixel coordinates with 10% buffer
+    # Buffer helps avoid black edges from projective transform interpolation
+    roi_min = roi_raw_px.min(axis=0)  # (min_x, min_y)
+    roi_max = roi_raw_px.max(axis=0)  # (max_x, max_y)
+    roi_size = roi_max - roi_min  # (width, height)
+    buffer_size = roi_size * 0.1  # 10% buffer
+
+    # Calculate buffered bounding box, clamped to image boundaries
+    buffered_min = np.maximum(roi_min - buffer_size, [0, 0]).astype(np.int32)
+    buffered_max = np.minimum(
+        roi_max + buffer_size, [img_width, img_height]
+    ).astype(np.int32)
+
+    # Crop with buffer (using bounding box directly, not polygon)
+    cropped_img = raw_img[buffered_min[1]:buffered_max[1], 
+                          buffered_min[0]:buffered_max[0]]
+    offset = buffered_min  # Offset is the top-left corner of buffered region
 
     # Adjust ROI pixel coords to local crop coordinates
     roi_local_px = roi_raw_px - offset

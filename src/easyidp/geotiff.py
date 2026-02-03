@@ -900,13 +900,17 @@ class GeoTiff(object):
         cos_a, sin_a = np.cos(rad), np.sin(rad)
         
         # Create output coordinate grids
-        # For each output pixel, find corresponding input pixel
+        # For each output pixel (row, col), find corresponding geo coordinate
         out_rows, out_cols = np.mgrid[0:out_height, 0:out_width]
         
         # Transform output pixels to geo coordinates
-        # Output image: origin at polygon origin, rotated by angle
-        geo_x = origin_x + out_cols * pixel_size_x * cos_a - out_rows * pixel_size_y * sin_a
-        geo_y = origin_y + out_cols * pixel_size_x * sin_a + out_rows * pixel_size_y * cos_a
+        # Note: In GeoTiff, rows increase downward but geo Y increases upward
+        # So we need to go along the rectangle edges:
+        # - Column direction: along first edge (angle direction)
+        # - Row direction: perpendicular to first edge (angle + 90 degrees)
+        # For row, we subtract because row 0 is at origin (top of rectangle in geo)
+        geo_x = origin_x + out_cols * pixel_size_x * cos_a + out_rows * pixel_size_y * sin_a
+        geo_y = origin_y + out_cols * pixel_size_x * sin_a - out_rows * pixel_size_y * cos_a
         
         # Transform geo coordinates to input pixel coordinates
         inv_transform = ~old_transform

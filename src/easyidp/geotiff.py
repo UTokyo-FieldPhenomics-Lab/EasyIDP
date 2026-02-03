@@ -299,6 +299,194 @@ class GeoTiff(object):
         self._mask_polygon_is_geo = is_geo
         # Clear cached binary mask when polygon changes
         self._mask = None
+    
+    def convert_to_affine(self) -> 'GeoTiff':
+        """Convert from standard storage to affine rotation storage.
+        
+        Returns a NEW GeoTiff object with imarray aligned to the mask polygon
+        rectangle, and transform including rotation. The original object is
+        not modified.
+        
+        Requires mask_polygon to be a valid rectangle (4 vertices, 90° angles).
+        
+        Returns
+        -------
+        GeoTiff
+            New GeoTiff object in affine mode. Returns self if already affine.
+        
+        Raises
+        ------
+        ValueError
+            If no mask polygon is set or polygon is not a valid rectangle.
+        
+        Example
+        -------
+        .. code-block:: python
+        
+            >>> gtiff = idp.GeoTiff('input.tif')
+            >>> gtiff.set_mask_polygon(rect_coords, is_geo=True)
+            >>> affine_gtiff = gtiff.convert_to_affine()
+            >>> affine_gtiff.use_affine
+            True
+            >>> gtiff.use_affine  # Original unchanged
+            False
+        """
+        if self._use_affine:
+            logger.warning("Already in affine mode, returning self")
+            return self
+        
+        if self._mask_polygon is None:
+            raise ValueError("No mask polygon set. Use set_mask_polygon first.")
+        
+        polygon_geo = self.mask_polygon_geo
+        is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
+        
+        if not is_rect:
+            raise ValueError(
+                "Polygon is not a valid rectangle. Cannot convert to affine mode."
+            )
+        
+        # Perform the transformation
+        profile = self.header['profile'].copy()
+        new_imarray, new_profile = self._prepare_affine_storage(
+            self._imarray.copy(), profile, polygon_geo, angle, bounds
+        )
+        
+        # Build new header
+        new_header = self.header.copy()
+        new_header['profile'] = new_profile
+        new_header['width'] = new_profile['width']
+        new_header['height'] = new_profile['height']
+        new_header['transform'] = new_profile['transform']
+        new_header['scale'] = [abs(new_profile['transform'].a), 
+                               abs(new_profile['transform'].e)]
+        
+        # Create new GeoTiff object
+        new_gtiff = GeoTiff(imarray=new_imarray, header=new_header)
+        new_gtiff._mask_polygon = self._mask_polygon.copy()
+        new_gtiff._mask_polygon_is_geo = self._mask_polygon_is_geo
+        new_gtiff._use_affine = True
+        
+        logger.info(f"Converted to affine mode with {angle:.1f}° rotation")
+        return new_gtiff
+    
+    def convert_from_affine(self, target_bounds: tuple | None = None) -> 'GeoTiff':
+        """Convert from affine rotation storage to standard storage.
+        
+        Returns a NEW GeoTiff object with the rotated imarray transformed back
+        to axis-aligned coordinates, with a mask for the valid region.
+        The original object is not modified.
+        
+        Parameters
+        ----------
+        target_bounds : tuple, optional
+            (min_x, min_y, max_x, max_y) for the output image bounds.
+            If None, uses the bounding box of mask_polygon.
+        
+        Returns
+        -------
+        GeoTiff
+            New GeoTiff object in standard mode. Returns self if already standard.
+        
+        Raises
+        ------
+        ValueError
+            If no mask polygon is available for conversion.
+        
+        Example
+        -------
+        .. code-block:: python
+        
+            >>> gtiff = idp.GeoTiff('affine_file.tif')
+            >>> gtiff.use_affine
+            True
+            >>> standard_gtiff = gtiff.convert_from_affine()
+            >>> standard_gtiff.use_affine
+            False
+            >>> gtiff.use_affine  # Original unchanged
+            True
+        """
+        if not self._use_affine:
+            logger.warning("Already in standard mode, returning self")
+            return self
+        
+        if self._mask_polygon is None:
+            raise ValueError("No mask polygon available for conversion.")
+        
+        from rasterio.transform import Affine
+        from scipy.ndimage import map_coordinates
+        
+        polygon_geo = self.mask_polygon_geo
+        old_transform = self.header['profile']['transform']
+        
+        # Calculate target bounds
+        if target_bounds is None:
+            min_x, max_x = polygon_geo[:, 0].min(), polygon_geo[:, 0].max()
+            min_y, max_y = polygon_geo[:, 1].min(), polygon_geo[:, 1].max()
+        else:
+            min_x, min_y, max_x, max_y = target_bounds
+        
+        # Use same pixel size
+        pixel_size_x = abs(old_transform.a)
+        pixel_size_y = abs(old_transform.e)
+        
+        # Calculate output dimensions
+        out_width = int(np.ceil((max_x - min_x) / pixel_size_x))
+        out_height = int(np.ceil((max_y - min_y) / pixel_size_y))
+        
+        # New axis-aligned transform
+        new_transform = Affine.translation(min_x, max_y) * Affine.scale(pixel_size_x, -pixel_size_y)
+        
+        # Create output coordinate grids
+        out_rows, out_cols = np.mgrid[0:out_height, 0:out_width]
+        
+        # Output pixels to geo coordinates (axis-aligned)
+        geo_x = min_x + out_cols * pixel_size_x
+        geo_y = max_y - out_rows * pixel_size_y
+        
+        # Geo coordinates to input (rotated) pixel coordinates
+        inv_old = ~old_transform
+        in_cols = inv_old.a * geo_x + inv_old.b * geo_y + inv_old.c
+        in_rows = inv_old.d * geo_x + inv_old.e * geo_y + inv_old.f
+        
+        # Sample from rotated image
+        imarray = self._imarray
+        ndim = len(imarray.shape)
+        if ndim == 2:
+            new_imarray = map_coordinates(
+                imarray, [in_rows, in_cols], order=1, mode='constant', cval=0
+            ).astype(imarray.dtype)
+        else:
+            bands = imarray.shape[2]
+            new_imarray = np.zeros((out_height, out_width, bands), dtype=imarray.dtype)
+            for b in range(bands):
+                new_imarray[:, :, b] = map_coordinates(
+                    imarray[:, :, b], [in_rows, in_cols],
+                    order=1, mode='constant', cval=0
+                ).astype(imarray.dtype)
+        
+        # Build new header
+        new_profile = self.header['profile'].copy()
+        new_profile['width'] = out_width
+        new_profile['height'] = out_height
+        new_profile['transform'] = new_transform
+        
+        new_header = self.header.copy()
+        new_header['profile'] = new_profile
+        new_header['width'] = out_width
+        new_header['height'] = out_height
+        new_header['transform'] = new_transform
+        new_header['scale'] = [pixel_size_x, pixel_size_y]
+        new_header['tie_point'] = [min_x, max_y]
+        
+        # Create new GeoTiff object
+        new_gtiff = GeoTiff(imarray=new_imarray, header=new_header)
+        new_gtiff._mask_polygon = self._mask_polygon.copy()
+        new_gtiff._mask_polygon_is_geo = self._mask_polygon_is_geo
+        new_gtiff._use_affine = False
+        
+        logger.info("Converted from affine to standard mode")
+        return new_gtiff
         
     def _polygon_pixel_to_geo(self, polygon: np.ndarray) -> np.ndarray:
         """Convert pixel polygon to geo coordinates using transform."""
@@ -743,12 +931,11 @@ class GeoTiff(object):
             if use_affine:
                 is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
                 if is_rect:
-                    # Prepare affine rotated storage
+                    # Prepare affine rotated storage (only for saved file)
                     imarray, profile = self._prepare_affine_storage(
                         imarray, profile, polygon_geo, angle, bounds
                     )
                     logger.info(f"Affine mode: saved with {angle:.1f}° rotation")
-                    self._use_affine = True
                     apply_mask = False  # No mask needed in affine mode
                 else:
                     logger.warning(
@@ -811,8 +998,8 @@ class GeoTiff(object):
         bounds : tuple
             (origin_x, origin_y, width, height) of the rectangle.
         """
-        # Remove closure point if present
-        pts = polygon[:-1] if np.allclose(polygon[0], polygon[-1]) else polygon
+        # Remove closure point if present (use strict atol for geo coords)
+        pts = polygon[:-1] if np.allclose(polygon[0], polygon[-1], rtol=0, atol=1e-6) else polygon
         
         if len(pts) != 4:
             return False, 0.0, ()

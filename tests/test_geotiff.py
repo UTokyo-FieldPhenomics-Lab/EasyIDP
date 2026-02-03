@@ -1058,3 +1058,177 @@ class TestMaskPolygon:
         assert gtiff.mask_polygon is not None
         # Polygon should match input (approximately closed)
         assert len(gtiff.mask_polygon) >= len(roi_geo) - 1
+
+
+class TestAffineConversion:
+    """Tests for affine mode conversion functions."""
+    
+    def test_convert_to_affine_returns_new_object(self, shared_data):
+        """convert_to_affine returns a new GeoTiff, original unchanged."""
+        test_data = shared_data['test_data']
+        
+        # Load and set polygon
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray  # Force load
+        original_shape = gtiff.imarray.shape
+        
+        # Set axis-aligned rectangle
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+        
+        # Convert to affine
+        affine_gtiff = gtiff.convert_to_affine()
+        
+        # Verify new object
+        assert affine_gtiff is not gtiff
+        assert affine_gtiff.use_affine is True
+        
+        # Verify original unchanged
+        assert gtiff.use_affine is False
+        assert gtiff.imarray.shape == original_shape
+    
+    def test_convert_from_affine_returns_new_object(self, shared_data):
+        """convert_from_affine returns a new GeoTiff, original unchanged."""
+        test_data = shared_data['test_data']
+        
+        # Load, set polygon, convert to affine
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+        
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+        
+        affine_gtiff = gtiff.convert_to_affine()
+        affine_shape = affine_gtiff.imarray.shape
+        
+        # Convert back from affine
+        standard_gtiff = affine_gtiff.convert_from_affine()
+        
+        # Verify new object
+        assert standard_gtiff is not affine_gtiff
+        assert standard_gtiff.use_affine is False
+        
+        # Verify affine original unchanged
+        assert affine_gtiff.use_affine is True
+        assert affine_gtiff.imarray.shape == affine_shape
+    
+    def test_convert_roundtrip_data_consistency(self, shared_data):
+        """Roundtrip conversion preserves polygon and basic properties."""
+        test_data = shared_data['test_data']
+        
+        # Load original image
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+        original_shape = gtiff.imarray.shape
+        
+        # Set axis-aligned rectangle
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+        
+        # Convert to affine
+        affine_gtiff = gtiff.convert_to_affine()
+        assert affine_gtiff.use_affine is True
+        # Affine should be smaller (cropped to rectangle)
+        assert affine_gtiff.width <= gtiff.width
+        assert affine_gtiff.height <= gtiff.height
+        
+        # Convert back
+        roundtrip_gtiff = affine_gtiff.convert_from_affine()
+        assert roundtrip_gtiff.use_affine is False
+        
+        # Polygon should be preserved through both conversions
+        assert roundtrip_gtiff.mask_polygon is not None
+        np.testing.assert_allclose(
+            roundtrip_gtiff.mask_polygon_geo[:4], 
+            polygon, 
+            atol=1e-6
+        )
+        
+        # Roundtrip should have data (not all zeros)
+        assert roundtrip_gtiff.imarray.sum() > 0
+    
+    def test_convert_preserves_original(self, shared_data):
+        """Verify original GeoTiff is completely unchanged after conversion."""
+        test_data = shared_data['test_data']
+        
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+        
+        # Store original state
+        original_imarray = gtiff.imarray.copy()
+        original_use_affine = gtiff.use_affine
+        original_width = gtiff.width
+        original_height = gtiff.height
+        
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+        
+        # Convert to affine
+        _ = gtiff.convert_to_affine()
+        
+        # Verify original is unchanged
+        assert gtiff.use_affine == original_use_affine
+        assert gtiff.width == original_width
+        assert gtiff.height == original_height
+        np.testing.assert_array_equal(gtiff.imarray, original_imarray)
+    
+    def test_convert_non_rectangle_raises(self, shared_data):
+        """convert_to_affine raises error for non-rectangle polygons."""
+        test_data = shared_data['test_data']
+        
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+        
+        # Set triangle (not rectangle)
+        triangle = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368026.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(triangle, is_geo=True)
+        
+        # Should raise ValueError
+        with pytest.raises(ValueError, match="not a valid rectangle"):
+            gtiff.convert_to_affine()
+    
+    def test_already_affine_returns_self(self, shared_data):
+        """convert_to_affine returns self if already in affine mode."""
+        test_data = shared_data['test_data']
+        
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+        
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+        
+        # Convert twice
+        affine1 = gtiff.convert_to_affine()
+        affine2 = affine1.convert_to_affine()
+        
+        # Second call should return same object
+        assert affine2 is affine1

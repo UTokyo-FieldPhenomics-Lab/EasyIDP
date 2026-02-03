@@ -623,8 +623,9 @@ def test_one_raw_roi2geotiff(shared_data):
     assert gtiff.crs == roi.crs
     assert gtiff.width > 0
     assert gtiff.height > 0
-    assert gtiff._mask is not None
-    assert gtiff._mask.shape == (gtiff.height, gtiff.width)
+    assert gtiff.mask is not None  # Computed from mask_polygon
+    assert gtiff.mask.shape == (gtiff.height, gtiff.width)
+    assert gtiff.mask_polygon is not None  # Polygon stored
     
     # Verify imarray is 3D (RGB image)
     assert len(gtiff.imarray.shape) == 3
@@ -1000,3 +1001,60 @@ class TestMaskPolygon:
         
         # Should be close to original
         np.testing.assert_allclose(geo_back, test_point, atol=0.1)
+    
+    def test_crop_polygon_stores_mask(self, shared_data, tmp_path):
+        """crop_polygon() stores mask_polygon in result."""
+        test_data = shared_data['test_data']
+        
+        # Load source image
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        
+        # Crop a polygon region
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        
+        result = gtiff.crop_polygon(polygon, is_geo=True, return_geotiff=True)
+        
+        # Verify mask_polygon is stored
+        assert result.mask_polygon is not None
+        assert len(result.mask_polygon) >= 4
+        
+        # Verify mask works
+        assert result.mask is not None
+        assert result.mask.dtype == bool
+    
+    def test_one_raw_roi2geotiff_stores_polygon(self, shared_data):
+        """one_raw_roi2geotiff stores mask_polygon from input ROI."""
+        p4d = shared_data['p4d']
+        roi = shared_data['roi']
+        
+        # Get a single ROI
+        roi_id = list(roi.keys())[0]
+        roi_geo = roi[roi_id][:, :2]
+        
+        # Get back2raw result
+        out_all = shared_data['out_all']
+        img_dict = out_all[roi_id]
+        img_id = list(img_dict.keys())[0]
+        roi_px = img_dict[img_id]
+        
+        # Get image path
+        raw_img = p4d.photos[img_id]
+        img_path = raw_img.path
+        
+        # Call one_raw_roi2geotiff
+        gtiff = idp.geotiff.one_raw_roi2geotiff(
+            roi_crs=roi.crs,
+            roi_geo_coords=roi_geo,
+            raw_img_path=img_path,
+            roi_raw_px=roi_px,
+        )
+        
+        # Verify polygon is stored
+        assert gtiff.mask_polygon is not None
+        # Polygon should match input (approximately closed)
+        assert len(gtiff.mask_polygon) >= len(roi_geo) - 1

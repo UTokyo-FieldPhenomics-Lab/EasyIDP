@@ -1381,6 +1381,10 @@ class GeoTiff(object):
 
         out_geotiff = GeoTiff(imarray=out_imarray, header=header)
         
+        # Store mask polygon (geo coordinates) for precision preservation
+        polygon_coords = np.array(shapely_polygon.exterior.coords)
+        out_geotiff.set_mask_polygon(polygon_coords, is_geo=True)
+        
         # Compute mask for cropped region (记录有效区域，不应用到数据)
         # This preserves full rectangular data for further calculations
         out_geotiff._mask = out_geotiff._compute_mask(out_imarray)
@@ -2247,8 +2251,13 @@ def one_raw_roi2geotiff(
         },
     }
 
-    # Create GeoTiff object
+    # Create GeoTiff object with mask polygon for precision preservation
     gtiff = GeoTiff(imarray=warped_img, header=header, mask=roi_mask)
+    
+    # Store original ROI polygon (geo coords) for precise boundary
+    roi_geo_closed = np.vstack([roi_geo_2d, roi_geo_2d[0]])
+    gtiff.set_mask_polygon(roi_geo_closed, is_geo=True)
+    
     return gtiff
 
 
@@ -2259,7 +2268,7 @@ def back2raw2geotiff(
     output_folder: str | Path | None = None,
     nodata: float | int = 0,
     has_alpha: bool = True,
-    img_suffix: str = '.JPG',
+    use_affine: bool = False,
 ) -> dict:
     """Convert back2raw results to GeoTiff objects.
 
@@ -2285,6 +2294,10 @@ def back2raw2geotiff(
         If True, use alpha layer for mask. By default True.
     img_suffix : str, optional
         File suffix for raw images, by default '.JPG'.
+    use_affine : bool, optional
+        If True, save with affine rotation for rectangular ROIs.
+        Produces smaller files with rotation in transform.
+        By default False.
 
     Returns
     -------
@@ -2364,7 +2377,7 @@ def back2raw2geotiff(
                     roi_folder = output_folder / str(roi_id)
                     roi_folder.mkdir(parents=True, exist_ok=True)
                     save_path = roi_folder / f"{img_id}.tif"
-                    gtiff.save(save_path, overwrite=True)
+                    gtiff.save(save_path, overwrite=True, use_affine=use_affine)
 
                 pbar.update(1)
 

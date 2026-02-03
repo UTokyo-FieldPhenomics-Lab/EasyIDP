@@ -370,6 +370,7 @@ from .pointcloud import PointCloud
 from .geotiff import GeoTiff
 from .pix4d import Pix4D
 from .metashape import Metashape
+from .reconstruct import ProjectPool
 from .roi import ROI
 
 ########################

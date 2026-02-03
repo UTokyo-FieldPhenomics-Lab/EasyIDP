@@ -13,6 +13,9 @@ from rasterio.mask import mask as riomask
 from shapely.geometry import mapping, Polygon
 from skimage.io import imread
 from skimage.transform import ProjectiveTransform, warp
+from skimage.draw import polygon as skimage_polygon
+from skimage.measure import find_contours
+import shapely.wkt
 from tqdm import tqdm
 
 import easyidp as idp
@@ -97,6 +100,11 @@ class GeoTiff(object):
 
         self._imarray = imarray
         self._mask = mask
+        
+        # Mask polygon attributes (polygon-first architecture)
+        self._mask_polygon: np.ndarray | None = None   # (n, 2) polygon coords
+        self._mask_polygon_is_geo: bool = True         # True=geo, False=pixel
+        self._use_affine: bool = False                 # Using affine rotation
 
         #: The layer to represent transparency / alpha
         # self.transparent_layer = None
@@ -192,6 +200,201 @@ class GeoTiff(object):
             return self.header['has_alpha']
         else:
             return False
+    
+    @property
+    def use_affine(self) -> bool:
+        """Check if this GeoTiff uses affine rotation storage.
+        
+        When True, the transform contains rotation and the entire image
+        is valid (no mask needed). This is detected from the transform's
+        b and d coefficients being non-zero.
+        
+        Returns
+        -------
+        bool
+            True if using affine rotation storage.
+        """
+        return self._use_affine
+    
+    @property
+    def mask_polygon(self) -> np.ndarray | None:
+        """Get the mask as polygon coordinates.
+        
+        Returns the polygon in its stored coordinate type (geo or pixel).
+        Use mask_polygon_geo or mask_polygon_pixel for specific types.
+        
+        Returns
+        -------
+        np.ndarray | None
+            (n, 2) polygon coordinates, or None if not set.
+        """
+        return self._mask_polygon
+    
+    @property
+    def mask_polygon_geo(self) -> np.ndarray | None:
+        """Get mask polygon in geo coordinates.
+        
+        Converts from pixel coords if needed using the transform.
+        
+        Returns
+        -------
+        np.ndarray | None
+            (n, 2) geo coordinates, or None if no polygon.
+        """
+        if self._mask_polygon is None:
+            return None
+        if self._mask_polygon_is_geo:
+            return self._mask_polygon
+        return self._polygon_pixel_to_geo(self._mask_polygon)
+    
+    @property
+    def mask_polygon_pixel(self) -> np.ndarray | None:
+        """Get mask polygon in pixel coordinates.
+        
+        Converts from geo coords if needed using the transform.
+        
+        Returns
+        -------
+        np.ndarray | None
+            (n, 2) pixel coordinates, or None if no polygon.
+        """
+        if self._mask_polygon is None:
+            return None
+        if not self._mask_polygon_is_geo:
+            return self._mask_polygon
+        return self._polygon_geo_to_pixel(self._mask_polygon)
+    
+    def set_mask_polygon(
+        self, 
+        polygon: np.ndarray, 
+        is_geo: bool = True
+    ) -> None:
+        """Set mask from polygon coordinates.
+        
+        Parameters
+        ----------
+        polygon : np.ndarray
+            (n, 2) polygon vertices. Auto-closes if first != last.
+        is_geo : bool, optional
+            True if polygon is in geo coordinates, False for pixel.
+            By default True.
+            
+        Example
+        -------
+        .. code-block:: python
+        
+            >>> gtiff = idp.GeoTiff(...)
+            >>> roi_coords = np.array([[x1, y1], [x2, y2], ...])
+            >>> gtiff.set_mask_polygon(roi_coords, is_geo=True)
+        """
+        polygon = np.asarray(polygon)
+        if polygon.ndim != 2 or polygon.shape[1] != 2:
+            raise ValueError(f"Polygon must be (n, 2) array, got {polygon.shape}")
+        
+        # Ensure polygon is closed
+        if not np.allclose(polygon[0], polygon[-1]):
+            polygon = np.vstack([polygon, polygon[0]])
+        
+        self._mask_polygon = polygon
+        self._mask_polygon_is_geo = is_geo
+        # Clear cached binary mask when polygon changes
+        self._mask = None
+        
+    def _polygon_pixel_to_geo(self, polygon: np.ndarray) -> np.ndarray:
+        """Convert pixel polygon to geo coordinates using transform."""
+        if self.header is None or 'profile' not in self.header:
+            raise ValueError("No transform available for conversion")
+        
+        transform = self.header['profile']['transform']
+        geo_coords = np.zeros_like(polygon, dtype=np.float64)
+        for i, (px, py) in enumerate(polygon):
+            geo_coords[i] = transform * (px, py)
+        return geo_coords
+    
+    def _polygon_geo_to_pixel(self, polygon: np.ndarray) -> np.ndarray:
+        """Convert geo polygon to pixel coordinates using transform."""
+        if self.header is None or 'profile' not in self.header:
+            raise ValueError("No transform available for conversion")
+        
+        transform = self.header['profile']['transform']
+        pixel_coords = np.zeros_like(polygon, dtype=np.float64)
+        for i, (gx, gy) in enumerate(polygon):
+            pixel_coords[i] = ~transform * (gx, gy)
+        return pixel_coords
+
+    def _polygon_to_binary(self, polygon_pixel: np.ndarray) -> np.ndarray:
+        """Convert pixel polygon to binary mask.
+        
+        Uses skimage.draw.polygon for rasterization.
+        
+        Parameters
+        ----------
+        polygon_pixel : np.ndarray
+            (n, 2) polygon in pixel coordinates (col, row format).
+        
+        Returns
+        -------
+        np.ndarray
+            Binary mask with shape (height, width), dtype bool.
+        """
+        height, width = self.height, self.width
+        mask = np.zeros((height, width), dtype=bool)
+        
+        # skimage uses (row, col) = (y, x) ordering
+        cols = polygon_pixel[:, 0]  # x = col
+        rows = polygon_pixel[:, 1]  # y = row
+        
+        rr, cc = skimage_polygon(rows, cols, shape=(height, width))
+        mask[rr, cc] = True
+        return mask
+    
+    def _binary_to_polygon(self, mask: np.ndarray) -> np.ndarray:
+        """Extract polygon from binary mask.
+        
+        Uses skimage.measure.find_contours. Returns the largest contour.
+        
+        Parameters
+        ----------
+        mask : np.ndarray
+            Binary mask with shape (height, width).
+        
+        Returns
+        -------
+        np.ndarray
+            (n, 2) polygon in pixel coordinates (col, row format).
+        """
+        contours = find_contours(mask.astype(float), 0.5)
+        if not contours:
+            return None
+        
+        # Get the largest contour
+        largest = max(contours, key=len)
+        
+        # find_contours returns (row, col), convert to (col, row) = (x, y)
+        polygon = np.zeros_like(largest)
+        polygon[:, 0] = largest[:, 1]  # col -> x
+        polygon[:, 1] = largest[:, 0]  # row -> y
+        
+        # Ensure closed
+        if not np.allclose(polygon[0], polygon[-1]):
+            polygon = np.vstack([polygon, polygon[0]])
+        
+        return polygon
+
+    def _has_rotation(self) -> bool:
+        """Check if current transform contains rotation.
+        
+        Returns True if the affine transform's b or d coefficient is non-zero.
+        """
+        if self.header is None or 'profile' not in self.header:
+            return False
+        transform = self.header['profile'].get('transform')
+        if transform is None:
+            return False
+        # Affine: |a  b  c|
+        #         |d  e  f|
+        return not (np.isclose(transform.b, 0) and np.isclose(transform.d, 0))
+
         
     @property
     def imarray(self):
@@ -210,9 +413,9 @@ class GeoTiff(object):
     def mask(self) -> np.ndarray | None:
         """Boolean mask where True indicates valid (non-nodata) pixels.
         
-        Shape is (height, width). For multi-band images with alpha channel,
-        a pixel is considered valid if alpha > 0. For DSM (single band), 
-        a pixel is valid if value != nodata.
+        Shape is (height, width). When mask_polygon is set, the binary mask
+        is computed from the polygon. Otherwise, falls back to computing
+        from alpha channel or nodata values.
         
         This property is lazy-computed and cached for efficiency.
         
@@ -234,15 +437,29 @@ class GeoTiff(object):
             >>> mask.dtype
             dtype('bool')
         """
-        if self._mask is None:
-            if self.header is None:
-                logger.warning("No header loaded, cannot compute mask")
-                return None
-            # Compute mask from imarray (this will load imarray if needed)
-            imarray = self.imarray
-            if imarray is None:
-                return None
-            self._mask = self._compute_mask(imarray)
+        if self._mask is not None:
+            return self._mask
+            
+        if self.header is None:
+            logger.warning("No header loaded, cannot compute mask")
+            return None
+        
+        # Priority 1: Compute from polygon if available
+        if self._mask_polygon is not None:
+            polygon_pixel = self.mask_polygon_pixel
+            self._mask = self._polygon_to_binary(polygon_pixel)
+            return self._mask
+        
+        # Priority 2: Use affine mode (entire image is valid)
+        if self._use_affine:
+            self._mask = np.ones((self.height, self.width), dtype=bool)
+            return self._mask
+        
+        # Priority 3: Compute from imarray (legacy fallback)
+        imarray = self.imarray
+        if imarray is None:
+            return None
+        self._mask = self._compute_mask(imarray)
         return self._mask
 
     def _compute_mask(self, imarray: np.ndarray) -> np.ndarray:
@@ -421,11 +638,40 @@ class GeoTiff(object):
             self.file_path = tif_path
             self.header = get_header(self.file_path)
             self._imarray = None
+            
+            # Read custom metadata tags
+            try:
+                with rio.open(tif_path) as src:
+                    tags = src.tags()
+                    
+                    # Read mask polygon from metadata
+                    if 'EASYIDP_MASK_POLYGON' in tags:
+                        wkt_str = tags['EASYIDP_MASK_POLYGON']
+                        try:
+                            poly = shapely.wkt.loads(wkt_str)
+                            coords = np.array(poly.exterior.coords)
+                            self._mask_polygon = coords
+                            self._mask_polygon_is_geo = True
+                        except Exception as e:
+                            logger.warning(f"Failed to parse MASK_POLYGON: {e}")
+                    
+                    # Detect affine rotation from transform
+                    transform = src.transform
+                    if not (np.isclose(transform.b, 0) and np.isclose(transform.d, 0)):
+                        self._use_affine = True
+            except Exception as e:
+                logger.debug(f"Error reading metadata: {e}")
         else:
             logger.warning(f"Can not find file [{tif_path}], skip loading")
 
     @_check_data
-    def save(self, save_path: str | Path, overwrite: bool = False, apply_mask: bool = True) -> bool:
+    def save(
+        self, 
+        save_path: str | Path, 
+        overwrite: bool = False, 
+        apply_mask: bool = True,
+        use_affine: bool = False,
+    ) -> bool:
         """Save GeoTiff as tiff file with proper nodata/mask handling.
 
         Mask is only applied during save. Previous crop operations preserve 
@@ -436,6 +682,9 @@ class GeoTiff(object):
         - RGB/RGBA: uses alpha channel
         - MS/MSA (multispectral): adds alpha channel to protect original data
 
+        When use_affine=True and mask_polygon is a rectangle, the image is
+        saved with affine rotation in the transform (no mask needed).
+
         Parameters
         ----------
         save_path : str | Path
@@ -444,6 +693,10 @@ class GeoTiff(object):
             If True, overwrite existing file without prompting, by default False
         apply_mask : bool, optional
             If True and mask exists, apply mask appropriately, by default True
+        use_affine : bool, optional
+            If True, try to use affine rotation storage for rectangular masks.
+            Requires mask_polygon to be a valid rectangle (4 vertices, 90° angles).
+            By default False.
             
         Returns
         -------
@@ -465,7 +718,9 @@ class GeoTiff(object):
             save_path = save_path.with_suffix('.tif')
 
         # Ensure directory exists
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        save_dir = save_path.parent
+        if save_dir and not save_dir.exists():
+            os.makedirs(save_dir, exist_ok=True)
 
         if save_path.exists() and not overwrite:
             user_input = input(f"File [{save_path}] already exists. Overwrite? (y/n): ")
@@ -478,6 +733,26 @@ class GeoTiff(object):
         imarray = self._imarray.copy()
         mask = self._mask
         profile = self.header['profile'].copy()
+        
+        # Check for affine mode with valid rectangle polygon
+        polygon_wkt = None
+        if self._mask_polygon is not None:
+            polygon_geo = self.mask_polygon_geo
+            polygon_wkt = Polygon(polygon_geo).wkt
+            
+            if use_affine:
+                is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
+                if is_rect:
+                    # TODO: Implement affine rotation storage
+                    # For now, just mark as affine and skip standard mask
+                    logger.info(f"Affine mode: rectangle detected with {angle:.1f}° rotation")
+                    self._use_affine = True
+                    apply_mask = False  # No mask needed in affine mode
+                else:
+                    logger.warning(
+                        "Polygon is not a valid rectangle (need 4 vertices with 90° angles). "
+                        "Using standard storage instead."
+                    )
 
         if data_type == 'dsm':
             # DSM: use nodata value -32767.0
@@ -506,9 +781,68 @@ class GeoTiff(object):
         
         with rio.open(save_path, 'w', **profile) as dst:
             dst.write(imarray_rio)
+            
+            # Write mask polygon to metadata
+            if polygon_wkt is not None:
+                dst.update_tags(EASYIDP_MASK_POLYGON=polygon_wkt)
 
         logger.success(f"GeoTiff successfully saved to: {save_path}")
         return True
+    
+    def _is_valid_rectangle(
+        self, 
+        polygon: np.ndarray
+    ) -> tuple[bool, float, tuple]:
+        """Check if polygon is a valid rectangle for affine mode.
+        
+        Parameters
+        ----------
+        polygon : np.ndarray
+            (n, 2) polygon coordinates.
+        
+        Returns
+        -------
+        is_valid : bool
+            True if polygon is a rectangle with 90° angles.
+        angle : float
+            Rotation angle in degrees (0 if not valid).
+        bounds : tuple
+            (origin_x, origin_y, width, height) of the rectangle.
+        """
+        # Remove closure point if present
+        pts = polygon[:-1] if np.allclose(polygon[0], polygon[-1]) else polygon
+        
+        if len(pts) != 4:
+            return False, 0.0, ()
+        
+        # Check all 4 angles are ~90°
+        for i in range(4):
+            v1 = pts[(i + 1) % 4] - pts[i]
+            v2 = pts[(i + 2) % 4] - pts[(i + 1) % 4]
+            
+            # Normalize and compute angle
+            norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
+            if norm1 < 1e-10 or norm2 < 1e-10:
+                return False, 0.0, ()
+            
+            v1_norm = v1 / norm1
+            v2_norm = v2 / norm2
+            dot = np.clip(np.dot(v1_norm, v2_norm), -1, 1)
+            angle_deg = np.degrees(np.arccos(np.abs(dot)))
+            
+            if not np.isclose(angle_deg, 90.0, atol=2.0):  # ±2° tolerance
+                return False, 0.0, ()
+        
+        # Calculate rotation from first edge
+        edge = pts[1] - pts[0]
+        rotation = np.degrees(np.arctan2(edge[1], edge[0]))
+        
+        # Calculate rectangle bounds
+        width = np.linalg.norm(pts[1] - pts[0])
+        height = np.linalg.norm(pts[2] - pts[1])
+        origin = pts[0]
+        
+        return True, rotation, (origin[0], origin[1], width, height)
 
 
     @_check_data

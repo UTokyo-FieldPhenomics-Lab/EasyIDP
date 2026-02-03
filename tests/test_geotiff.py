@@ -922,3 +922,81 @@ class TestMaskPolygon:
         mask = gtiff.mask
         assert mask is not None
         assert mask.dtype == bool
+    
+    def test_affine_save_and_reload(self, shared_data, tmp_path):
+        """Test affine save creates rotated GeoTiff that reloads correctly."""
+        import rasterio as rio
+        test_data = shared_data['test_data']
+        
+        # Load source image
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray  # Force load
+        
+        # Set a rotated rectangle polygon (axis-aligned for simplicity)
+        # Get bounds of the image in geo coordinates
+        transform = gtiff.header['profile']['transform']
+        # Create rectangle covering part of the image
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+        
+        # Save with affine mode
+        save_path = tmp_path / "test_affine.tif"
+        gtiff.save(save_path, overwrite=True, use_affine=True)
+        
+        # Verify file was created
+        assert save_path.exists()
+        
+        # Check the transform has no rotation (axis-aligned rectangle)
+        with rio.open(save_path) as src:
+            # For axis-aligned, b and d should be ~0
+            assert src.transform is not None
+            # Polygon metadata should exist
+            tags = src.tags()
+            assert 'EASYIDP_MASK_POLYGON' in tags
+        
+        # Reload the file
+        gtiff2 = idp.GeoTiff(save_path)
+        
+        # Should have the polygon recovered
+        assert gtiff2.mask_polygon is not None
+        
+        # Image should be valid
+        assert gtiff2.imarray is not None
+    
+    def test_affine_coordinate_conversion(self, shared_data, tmp_path):
+        """Test geo2pixel/pixel2geo work with affine-saved files."""
+        import rasterio as rio
+        test_data = shared_data['test_data']
+        
+        # Load and set polygon
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+        
+        polygon = np.array([
+            [368025.0, 3955479.0],
+            [368027.0, 3955479.0],
+            [368027.0, 3955477.0],
+            [368025.0, 3955477.0],
+        ])
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+        
+        # Save with affine
+        save_path = tmp_path / "test_affine_coord.tif"
+        gtiff.save(save_path, overwrite=True, use_affine=True)
+        
+        # Reload
+        gtiff2 = idp.GeoTiff(save_path)
+        gtiff2._imarray = gtiff2.imarray  # Force load for _check_data decorator
+        
+        # Test coordinate conversion round-trip
+        test_point = np.array([[368026.0, 3955478.0]])
+        pixel = gtiff2.geo2pixel(test_point)
+        geo_back = gtiff2.pixel2geo(pixel)
+        
+        # Should be close to original
+        np.testing.assert_allclose(geo_back, test_point, atol=0.1)

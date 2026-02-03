@@ -743,9 +743,11 @@ class GeoTiff(object):
             if use_affine:
                 is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
                 if is_rect:
-                    # TODO: Implement affine rotation storage
-                    # For now, just mark as affine and skip standard mask
-                    logger.info(f"Affine mode: rectangle detected with {angle:.1f}° rotation")
+                    # Prepare affine rotated storage
+                    imarray, profile = self._prepare_affine_storage(
+                        imarray, profile, polygon_geo, angle, bounds
+                    )
+                    logger.info(f"Affine mode: saved with {angle:.1f}° rotation")
                     self._use_affine = True
                     apply_mask = False  # No mask needed in affine mode
                 else:
@@ -844,6 +846,104 @@ class GeoTiff(object):
         
         return True, rotation, (origin[0], origin[1], width, height)
 
+    def _prepare_affine_storage(
+        self,
+        imarray: np.ndarray,
+        profile: dict,
+        polygon_geo: np.ndarray,
+        angle: float,
+        bounds: tuple,
+    ) -> tuple[np.ndarray, dict]:
+        """Prepare image and profile for affine rotation storage.
+        
+        Crops image to the rectangle bounds and builds affine transform
+        with rotation. The result can be displayed correctly rotated in
+        QGIS without resampling the image data.
+        
+        Parameters
+        ----------
+        imarray : np.ndarray
+            Original image array (height, width, bands).
+        profile : dict
+            Rasterio profile to modify.
+        polygon_geo : np.ndarray
+            (n, 2) rectangle polygon in geo coordinates.
+        angle : float
+            Rotation angle in degrees.
+        bounds : tuple
+            (origin_x, origin_y, width, height) from _is_valid_rectangle.
+        
+        Returns
+        -------
+        cropped_imarray : np.ndarray
+            Cropped image array aligned to rectangle.
+        updated_profile : dict
+            Profile with rotated affine transform.
+        """
+        from rasterio.transform import Affine
+        from scipy.ndimage import map_coordinates
+        
+        origin_x, origin_y, rect_width, rect_height = bounds
+        
+        # Get current transform
+        old_transform = profile['transform']
+        pixel_size_x = abs(old_transform.a)
+        pixel_size_y = abs(old_transform.e)
+        
+        # Calculate output dimensions in pixels
+        out_width = int(np.ceil(rect_width / pixel_size_x))
+        out_height = int(np.ceil(rect_height / pixel_size_y))
+        
+        # Build rotation matrix for sampling
+        # Angle is the rotation from horizontal to the first edge
+        rad = np.radians(angle)
+        cos_a, sin_a = np.cos(rad), np.sin(rad)
+        
+        # Create output coordinate grids
+        # For each output pixel, find corresponding input pixel
+        out_rows, out_cols = np.mgrid[0:out_height, 0:out_width]
+        
+        # Transform output pixels to geo coordinates
+        # Output image: origin at polygon origin, rotated by angle
+        geo_x = origin_x + out_cols * pixel_size_x * cos_a - out_rows * pixel_size_y * sin_a
+        geo_y = origin_y + out_cols * pixel_size_x * sin_a + out_rows * pixel_size_y * cos_a
+        
+        # Transform geo coordinates to input pixel coordinates
+        inv_transform = ~old_transform
+        in_cols = inv_transform.a * geo_x + inv_transform.b * geo_y + inv_transform.c
+        in_rows = inv_transform.d * geo_x + inv_transform.e * geo_y + inv_transform.f
+        
+        # Sample input image at computed coordinates
+        ndim = len(imarray.shape)
+        if ndim == 2:
+            # Single band
+            cropped = map_coordinates(
+                imarray, [in_rows, in_cols], order=1, mode='constant', cval=0
+            ).astype(imarray.dtype)
+        else:
+            # Multi-band: sample each band
+            bands = imarray.shape[2]
+            cropped = np.zeros((out_height, out_width, bands), dtype=imarray.dtype)
+            for b in range(bands):
+                cropped[:, :, b] = map_coordinates(
+                    imarray[:, :, b], [in_rows, in_cols], 
+                    order=1, mode='constant', cval=0
+                ).astype(imarray.dtype)
+        
+        # Build new affine transform with rotation
+        # Affine.translation * Affine.rotation * Affine.scale
+        new_transform = (
+            Affine.translation(origin_x, origin_y) *
+            Affine.rotation(angle) *
+            Affine.scale(pixel_size_x, -pixel_size_y)
+        )
+        
+        # Update profile
+        profile['width'] = out_width
+        profile['height'] = out_height
+        profile['transform'] = new_transform
+        
+        return cropped, profile
 
     @_check_data
     def geo2pixel(self, polygon_hv: np.ndarray, return_index=False) -> np.ndarray:

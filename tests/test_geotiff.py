@@ -1,6 +1,7 @@
 import pytest
 import pyproj
 import re
+import math
 import numpy as np
 import random
 import shutil
@@ -1232,3 +1233,158 @@ class TestAffineConversion:
         
         # Second call should return same object
         assert affine2 is affine1
+
+
+class TestAffineCrop:
+    
+    def test_crop_polygon_use_affine(self, shared_data, tmp_path):
+        """Test crop_polygon with use_affine=True"""
+        test_data = shared_data['test_data']
+        # Use DSM as it has 1 band, simpler
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dsm)
+        
+        # Create a rotated rectangular polygon (approx 45 degrees) in geo coordinates
+        # Center around a known point in Lotus field
+        # Tie point: [368014.54, 3955518.27]
+        # Pixel Scale: 0.00738
+        
+        # Let's use a small area 
+        # Center: 368020.0, 3955510.0
+        cx, cy = 368020.0, 3955510.0
+        w, h = 1.0, 0.5  # meters
+        angle_deg = 45.0
+        angle_rad = math.radians(angle_deg)
+        
+        # Calculate corners
+        dx = w / 2
+        dy = h / 2
+        
+        # Local corners (unrotated)
+        # TL, TR, BR, BL
+        corners_local = np.array([
+            [-dx, dy],
+            [dx, dy],
+            [dx, -dy],
+            [-dx, -dy]
+        ])
+        
+        # Rotate
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+        rot_mat = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
+        
+        corners_rot = corners_local @ rot_mat.T
+        
+        # Translate
+        corners_geo = corners_rot + np.array([cx, cy])
+        
+        # Crop with affine
+        out_gtiff = gtiff.crop_polygon(corners_geo, is_geo=True, use_affine=True)
+        
+        assert isinstance(out_gtiff, idp.GeoTiff)
+        assert out_gtiff.use_affine is True
+        
+        # Verify transform has rotation
+        transform = out_gtiff.header['profile']['transform']
+        assert not (np.isclose(transform.b, 0) and np.isclose(transform.d, 0))
+        
+        # Check size roughly (in pixels)
+        # Width should correspond to w=1.0m, Height to h=0.5m
+        # Pixel size ~ 0.00738
+        expected_w_px = int(w / 0.00738)
+        expected_h_px = int(h / 0.00738)
+        
+        # Allow some margin due to rounding and padding
+        assert abs(out_gtiff.width - expected_w_px) < 5
+        assert abs(out_gtiff.height - expected_h_px) < 5
+        
+        # Verify we can save and load it
+        save_path = tmp_path / "affine_crop.tif"
+        out_gtiff.save(save_path)
+        
+        reloaded = idp.GeoTiff(save_path)
+        assert reloaded.use_affine is True
+
+    def test_crop_rectangle_use_affine_returns_affine(self, shared_data):
+        """Test crop_rectangle with use_affine=True"""
+        test_data = shared_data['test_data']
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom)
+        
+        # Crop a standard rectangle but request affine storage
+        # It should result in specific affine (rotation 0) but use_affine=True
+        out_gtiff = gtiff.crop_rectangle(left=100, top=100, w=50, h=50, is_geo=False, use_affine=True)
+        
+        assert isinstance(out_gtiff, idp.GeoTiff)
+        assert out_gtiff.use_affine is True
+        assert out_gtiff.width == 50
+        assert out_gtiff.height == 50
+
+    def test_roi_crop_lotus(self, shared_data, tmp_path):
+        """Test roi.crop with Lotus dataset and use_affine=True"""
+        # Data preparation
+        test_data = shared_data['test_data']
+        
+        dom = idp.GeoTiff(test_data.pix4d.lotus_dom) 
+        roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
+        
+        # Ensure ROI CRS matches DOM CRS
+        roi.change_crs(dom.crs)
+        
+        # Pick 3 ROIs
+        roi_subset = roi[0:3]
+        
+        # Crop with standard mode first for comparison
+        out_std = roi_subset.crop(dom, use_affine=False)
+        assert isinstance(out_std, dict)
+        assert isinstance(next(iter(out_std.values())), np.ndarray)
+        
+        # Crop with affine mode
+        out_affine = roi_subset.crop(dom, use_affine=True)
+        
+        assert isinstance(out_affine, dict)
+        assert len(out_affine) == 3
+        
+        first_key = list(out_affine.keys())[0]  # e.g. N1W1
+        first_gtiff = out_affine[first_key]
+        
+        assert isinstance(first_gtiff, idp.GeoTiff)
+        assert first_gtiff.use_affine is True
+        
+        # Verify polygon match
+        # The ROI polygon (N1W1) is a rectangle but rotated in UTM
+        # So the affine crop should have smaller bounding box than standard AABB crop
+        
+        # Get standard crop as GeoTiff to compare bounds
+        # We need to manually call crop_polygon with return_geotiff=True to get bounds
+        poly_geo = roi_subset[first_key]
+        std_gtiff_crop = dom.crop_polygon(poly_geo, is_geo=True, return_geotiff=True)
+        
+        # Calculate areas (in pixels)
+        area_std = std_gtiff_crop.width * std_gtiff_crop.height
+        area_affine = first_gtiff.width * first_gtiff.height
+        
+        # Affine crop should be more compact for rotated ROI
+        # N1W1 in Lotus is indeed rotated
+        assert area_affine < area_std
+        
+        # Verify data consistency (approximate)
+        # Sample center point of polygon
+        poly_center = np.mean(poly_geo[:-1], axis=0) # (x, y)
+        
+        # Query values
+        val_orig = dom.point_query(poly_center, is_geo=True)
+        
+        # point_query requires file on disk in current easyidp implementation
+        temp_affine_path = tmp_path / "temp_affine.tif"
+        first_gtiff.save(temp_affine_path)
+        first_gtiff.file_path = temp_affine_path
+        
+        val_affine = first_gtiff.point_query(poly_center, is_geo=True)
+        
+        # Should be close (resampling might introduce slight diffs)
+        # For DOM (RGB), point_query returns (1, Bands) e.g. [R, G, B, A]
+        # But point_query implementation might vary for multi-band
+        
+        # Should be close (resampling might introduce slight diffs)
+        # Relax tolerance due to different interpolation methods (GDAL vs Scipy)
+        np.testing.assert_allclose(val_orig, val_affine, atol=10)

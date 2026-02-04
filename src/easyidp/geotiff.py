@@ -1078,8 +1078,18 @@ class GeoTiff(object):
         pixel_size_y = abs(old_transform.e)
         
         # Calculate output dimensions in pixels
-        out_width = int(np.ceil(rect_width / pixel_size_x))
-        out_height = int(np.ceil(rect_height / pixel_size_y))
+        # Use tolerance for floating point errors (e.g. 50.00000001 -> 50)
+        pixel_width = rect_width / pixel_size_x
+        pixel_height = rect_height / pixel_size_y
+        
+        # If very close to integer, round it to avoid ceil increasing it by 1
+        if abs(pixel_width - round(pixel_width)) < 1e-4:
+            pixel_width = round(pixel_width)
+        if abs(pixel_height - round(pixel_height)) < 1e-4:
+            pixel_height = round(pixel_height)
+            
+        out_width = int(np.ceil(pixel_width))
+        out_height = int(np.ceil(pixel_height))
         
         # Build rotation matrix for sampling
         # Angle is the rotation from horizontal to the first edge
@@ -1415,7 +1425,7 @@ class GeoTiff(object):
         return sample_gen
     
     @_check_data
-    def crop_rois(self, roi, is_geo=True, save_folder=None, return_geotiff:bool=False):
+    def crop_rois(self, roi, is_geo=True, save_folder=None, return_geotiff:bool=False, use_affine:bool=False):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
         Parameters
@@ -1427,11 +1437,17 @@ class GeoTiff(object):
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
             the folder to save cropped images, use ROI indices as file_names, by default "", means not save.
+        return_geotiff : bool, optional
+            if specify to True, will return idp.GeoTiff object in dictionary values instead of ndarray.
+            Note that if `use_affine=True`, this will be forced to True.
+        use_affine : bool, optional
+            if True, use affine rotation storage for cropped results (only if ROI is a rectangle).
+            Forces return_geotiff=True.
 
         Returns
         -------
         dict,
-            The dictionary with key=id and value=ndarray data
+            The dictionary with key=id and value=ndarray data (or GeoTiff object)
 
         Example
         -------
@@ -1500,7 +1516,7 @@ class GeoTiff(object):
                 polygon_hv = polygon_hv[:, :2]
                 logger.info(f"Polygon coordinates are in xyz format {polygon_hv.shape}, only horizontal and vertical coordinates are used for cropping roi.")
 
-            imarray = self.crop_polygon(polygon_hv, is_geo, save_path, return_geotiff)
+            imarray = self.crop_polygon(polygon_hv, is_geo, save_path, return_geotiff, use_affine=use_affine)
 
             out_dict[k] = imarray
 
@@ -1511,7 +1527,8 @@ class GeoTiff(object):
         self, 
         shapely_polygon: Polygon, 
         save_path:str|Path|None=None, 
-        return_geotiff:bool=False
+        return_geotiff:bool=False,
+        use_affine:bool=False,
     ):
         """Crop a given polygon from geotiff, the base function of cropping geotiff
         
@@ -1523,11 +1540,18 @@ class GeoTiff(object):
             if given, will save the cropped as \*.tif file to path
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
+        use_affine : bool, optional
+            if True, use affine rotation storage for cropped results (only if ROI is a rectangle).
+            Forces return_geotiff=True.
 
         Returns
         -------
         idp.GeoTiff object
         """
+        # If use_affine is requested, we must return a GeoTiff object to hold the transform
+        if use_affine:
+            return_geotiff = True
+
         with rio.open(self.file_path) as src:
             # 从地理边界计算窗口 (使用 from_bounds 创建一个新的 transform)
             # mask 函数会处理 CRS 轴序，我们只需要提供正确的 GeoJSON 形状
@@ -1585,8 +1609,33 @@ class GeoTiff(object):
         # This preserves full rectangular data for further calculations
         out_geotiff._mask = out_geotiff._compute_mask(out_imarray)
 
+        if use_affine:
+            try:
+                # Convert to affine storage if requested
+                # logic check handled inside convert_to_affine (valid rectangle check)
+                out_geotiff = out_geotiff.convert_to_affine()
+            except ValueError as e:
+                # If conversion failed (e.g. not a rectangle), we should warn but fallback?
+                # Or user expects affine so we should fail?
+                # Let's fallback to standard storage but warn user
+                logger.warning(f"Could not use affine storage: {e}. Falling back to standard standard storage.")
+
         if save_path is not None:
             out_geotiff.file_path = Path(save_path)
+            # if we successfully converted to affine, save() will respect that
+            # but we need to pass use_affine=False because convert_to_affine already did current object modification
+            # well, save() accepts use_affine parameter.. 
+            # if out_geotiff.use_affine is True, save() writes affine transform regardless of param?
+            # actually save() checks use_affine param. 
+            # But if object is already affine, it just dumps data?
+            # Let's check save() implementation again or just let it dump metadata.
+            
+            # If the object IS affine mode (out_geotiff.use_affine == True), 
+            # save() logic:
+            # - standard save just writes imarray and header['transform']
+            # - since convert_to_affine updated imarray and transform, standard save is enough!
+            # - The use_affine param in save() is for "convert AND save" workflow on a STANDARD objects.
+            
             out_geotiff.save(save_path)
 
         if return_geotiff:
@@ -1596,7 +1645,7 @@ class GeoTiff(object):
 
 
     @_check_data
-    def crop_polygon(self, polygon_hv, is_geo=True, save_path:str|Path|None=None, return_geotiff:bool=False):
+    def crop_polygon(self, polygon_hv, is_geo=True, save_path:str|Path|None=None, return_geotiff:bool=False, use_affine:bool=False):
         """Crop a given polygon from geotiff
 
         Parameters
@@ -1609,6 +1658,9 @@ class GeoTiff(object):
             if given, will save the cropped as \*.tif file to path, by default None
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
+        use_affine : bool, optional
+            if True, use affine rotation storage for cropped results (only if ROI is a rectangle).
+            Forces return_geotiff=True.
 
         Returns
         -------
@@ -1673,11 +1725,11 @@ class GeoTiff(object):
         else:
             adjusted_coords = self.pixel2geo(polygon_hv)
         
-        return self.crop_shapely_polygon( Polygon(adjusted_coords), save_path=save_path, return_geotiff=return_geotiff)
+        return self.crop_shapely_polygon( Polygon(adjusted_coords), save_path=save_path, return_geotiff=return_geotiff, use_affine=use_affine)
 
 
     @_check_data
-    def crop_rectangle(self, left:int, top:int, w:int, h:int, is_geo:bool=True, save_path:str|Path|None=None, return_geotiff:bool=False):
+    def crop_rectangle(self, left:int, top:int, w:int, h:int, is_geo:bool=True, save_path:str|Path|None=None, return_geotiff:bool=False, use_affine:bool=False):
         """Extract a rectangle regeion crop from a GeoTIFF image file.
 
         .. code-block:: text
@@ -1709,6 +1761,9 @@ class GeoTiff(object):
             if given, will save the cropped as \*.tif file to path
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
+        use_affine : bool, optional
+            if True, use affine rotation storage for cropped results (only if ROI is a rectangle).
+            Forces return_geotiff=True.
             
         Returns
         -------
@@ -1817,7 +1872,7 @@ class GeoTiff(object):
             
             bbox_polygon = Polygon(polygon_geo)
 
-        return self.crop_shapely_polygon(bbox_polygon, save_path=save_path, return_geotiff=return_geotiff)
+        return self.crop_shapely_polygon(bbox_polygon, save_path=save_path, return_geotiff=return_geotiff, use_affine=use_affine)
         
     @_check_data
     def polygon_math(self, polygon_hv: np.ndarray | None = None, is_geo=True, kernel="mean"):

@@ -1049,17 +1049,21 @@ class ROI(idp.Container):
                 f"(check ROI bounds vs PCD bounds, or try increasing buffer)."
             )
 
-    def crop(self, target, save_folder=None):
+    def crop(self, target, save_folder=None, **kwargs):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
         Parameters
         ----------
         target : str | <GeoTiff> object
             the path of dsm, or the GeoTiff object from idp.GeoTiff()
-        is_geo : bool, optional
-            whether the given polygon is pixel coords on imarray or geo coords (default)
         save_folder : str, optional
             the folder to save cropped images, use ROI indices as file_names, by default None, means not save.
+        **kwargs : dict
+            Additional arguments passed to the underlying crop method (e.g. `GeoTiff.crop_rois`):
+            
+            - use_affine (bool): If True, use affine rotation storage for GeoTiff crops.
+            - return_geotiff (bool): If True, return GeoTiff objects instead of ndarrays.
+            - is_geo (bool): Coordinate system flag (usually automated, but can be forced).
 
         Returns
         -------
@@ -1123,6 +1127,14 @@ class ROI(idp.Container):
         .. code-block:: python
 
             >>> out_dom = roi.crop(lotus_full_dom, save_folder=r"path/to/save/outputs")
+            
+        You can also use ``use_affine=True`` to get affine rotated crops (GeoTiff only).
+        
+        .. code-block:: python
+        
+            >>> out_dom = roi.crop(lotus_full_dom, use_affine=True)
+            >>> type(out_dom['N1W1'])
+            <class 'easyidp.geotiff.GeoTiff'>
 
         See also
         --------
@@ -1149,7 +1161,7 @@ class ROI(idp.Container):
             )
 
         if isinstance(target, idp.GeoTiff):
-            out = target.crop_rois(self, is_geo=True, save_folder=save_folder)
+            out = target.crop_rois(self, is_geo=True, save_folder=save_folder, **kwargs)
         elif isinstance(target, idp.PointCloud):
             out = target.crop_rois(self, save_folder=save_folder)
 

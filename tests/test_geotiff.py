@@ -612,8 +612,8 @@ def test_one_raw_roi2geotiff(shared_data):
     gtiff = idp.geotiff.one_raw_roi2geotiff(
         roi_crs=roi.crs,
         roi_geo_coords=roi_geo_coords,
-        raw_img_path=raw_img_path,
-        roi_raw_px=roi_raw_px,
+        raw_img=raw_img_path,
+        roi_raw_px_coords=roi_raw_px,
         nodata=0,
         has_alpha=True,
     )
@@ -659,8 +659,8 @@ def test_one_raw_roi2geotiff_options(shared_data):
     gtiff_noalpha = idp.geotiff.one_raw_roi2geotiff(
         roi_crs=roi.crs,
         roi_geo_coords=roi_geo_coords,
-        raw_img_path=raw_img_path,
-        roi_raw_px=roi_raw_px,
+        raw_img=raw_img_path,
+        roi_raw_px_coords=roi_raw_px,
         nodata=255,
         has_alpha=False,
     )
@@ -671,8 +671,8 @@ def test_one_raw_roi2geotiff_options(shared_data):
     gtiff_alpha = idp.geotiff.one_raw_roi2geotiff(
         roi_crs=roi.crs,
         roi_geo_coords=roi_geo_coords,
-        raw_img_path=raw_img_path,
-        roi_raw_px=roi_raw_px,
+        raw_img=raw_img_path,
+        roi_raw_px_coords=roi_raw_px,
         nodata=0,
         has_alpha=True,
     )
@@ -1051,8 +1051,8 @@ class TestMaskPolygon:
         gtiff = idp.geotiff.one_raw_roi2geotiff(
             roi_crs=roi.crs,
             roi_geo_coords=roi_geo,
-            raw_img_path=img_path,
-            roi_raw_px=roi_px,
+            raw_img=img_path,
+            roi_raw_px_coords=roi_px,
         )
         
         # Verify polygon is stored

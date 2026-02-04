@@ -2335,8 +2335,8 @@ def pixel2geo(points_hv, header):
 def one_raw_roi2geotiff(
     roi_crs: pyproj.CRS,
     roi_geo_coords: np.ndarray,
-    raw_img_path: str | Path,
-    roi_raw_px: np.ndarray,
+    raw_img: str | Path | np.ndarray,
+    roi_raw_px_coords: np.ndarray,
     nodata: float | int = 0,
     has_alpha: bool = True,
 ) -> GeoTiff:
@@ -2354,9 +2354,9 @@ def one_raw_roi2geotiff(
         GIS geo coordinates of ROI polygon, shape (n, 2) or (n, 3).
         Only first n-1 points are used (last point is duplicate for closure).
         Z values are ignored if present.
-    raw_img_path : str | Path
-        Path to the raw image file.
-    roi_raw_px : np.ndarray
+    raw_img : str | Path | np.ndarray
+        Path to the raw image file or the pre-loaded image array (H, W, C) or (H, W).
+    roi_raw_px_coords : np.ndarray
         ROI pixel coordinates on the raw image, shape (n, 2).
     nodata : float | int, optional
         Value to use for pixels outside the ROI, by default 0.
@@ -2383,8 +2383,8 @@ def one_raw_roi2geotiff(
         >>> gtiff = idp.geotiff.one_raw_roi2geotiff(
         ...     roi_crs=roi.crs,
         ...     roi_geo_coords=roi_geo,
-        ...     raw_img_path='path/to/IMG_0001.JPG',
-        ...     roi_raw_px=roi_px
+        ...     raw_img='path/to/IMG_0001.JPG',
+        ...     roi_raw_px_coords=roi_px
         ... )
         >>> gtiff.save('output.tif')
 
@@ -2394,18 +2394,22 @@ def one_raw_roi2geotiff(
     ROI region is relatively flat. For terrain with significant elevation
     variations, the transformation may produce distortions.
     """
-    raw_img_path = Path(raw_img_path)
-    if not raw_img_path.exists():
-        raise FileNotFoundError(f"Raw image not found: {raw_img_path}")
-
+    if isinstance(raw_img, (str, Path)):
+        raw_img_path = Path(raw_img)
+        if not raw_img_path.exists():
+            raise FileNotFoundError(f"Raw image not found: {raw_img_path}")
+        # Step 1: Read raw image
+        raw_img = imread(raw_img_path)
+    # else: raw_img is already np.ndarray
+ 
     # Prepare coordinates: use only first n-1 points (remove closure point)
     roi_geo_2d = roi_geo_coords[:, :2].copy()
     if np.allclose(roi_geo_2d[0], roi_geo_2d[-1]):
         roi_geo_2d = roi_geo_2d[:-1]
-        roi_raw_px = roi_raw_px[:-1].copy()
+        roi_raw_px = roi_raw_px_coords[:-1].copy()
+    else:
+        roi_raw_px = roi_raw_px_coords.copy()
 
-    # Step 1: Read raw image
-    raw_img = imread(raw_img_path)
     img_height, img_width = raw_img.shape[:2]
 
     # Step 2: Crop raw image by ROI pixel coordinates with 10% buffer
@@ -2525,12 +2529,17 @@ def back2raw2geotiff(
     nodata: float | int = 0,
     has_alpha: bool = True,
     use_affine: bool = False,
+    num_workers: int | None = None,
 ) -> dict:
     """Convert back2raw results to GeoTiff objects.
 
     A higher-level wrapper that processes the output of roi.back2raw() or
     sort_img_by_distance(), transforming each ROI's raw image regions
     into geo-referenced GeoTiff files.
+
+    This function is optimized for performance by grouping ROIs by image
+    to minimize disk I/O (loading each image only once) and utilizing
+    multiprocessing for parallel execution.
 
     Parameters
     ----------
@@ -2548,12 +2557,13 @@ def back2raw2geotiff(
         Value for pixels outside ROI, by default 0.
     has_alpha : bool, optional
         If True, use alpha layer for mask. By default True.
-    img_suffix : str, optional
-        File suffix for raw images, by default '.JPG'.
     use_affine : bool, optional
         If True, save with affine rotation for rectangular ROIs.
         Produces smaller files with rotation in transform.
         By default False.
+    num_workers : int, optional
+        Number of parallel workers. If None, automatically calculated based
+        on available RAM and estimated image size to prevent OOM errors.
 
     Returns
     -------
@@ -2574,7 +2584,7 @@ def back2raw2geotiff(
         >>> geotiffs = idp.geotiff.back2raw2geotiff(
         ...     back2raw_result=back2raw_out,
         ...     roi=roi,
-        ...     raw_img_folder='./photos',
+        ...     recons=ms,
         ...     output_folder='./geotiff_output'
         ... )
         >>> # Access specific GeoTiff
@@ -2585,59 +2595,186 @@ def back2raw2geotiff(
     easyidp.ROI.back2raw : Generate back2raw results
     one_raw_roi2geotiff : Process single ROI-image pair
     """
+    import concurrent.futures
+    import multiprocessing
+    
     if output_folder is not None:
         output_folder = Path(output_folder)
         output_folder.mkdir(parents=True, exist_ok=True)
 
-    result = {}
-    total_items = sum(len(imgs) for imgs in back2raw_result.values())
+    # 1. Pivot dictionary: {roi_id: {img_id: px}} -> {img_id: {roi_id: px}}
+    # Also prepare static data for worker to avoid pickling heavy objects
+    img_tasks = {}
+    roi_static_data = {}  # {roi_id: geo_coords}
+    
+    # Pre-cache ROI geo coords
+    for roi_id in back2raw_result.keys():
+        roi_static_data[roi_id] = roi[roi_id][:, :2]
 
-    with tqdm(total=total_items, desc="Converting to GeoTiff") as pbar:
-        for roi_id, img_dict in back2raw_result.items():
-            result[roi_id] = {}
+    for roi_id, img_dict in back2raw_result.items():
+        for img_id, px_coords in img_dict.items():
+            if img_id not in img_tasks:
+                img_tasks[img_id] = {}
+            img_tasks[img_id][roi_id] = px_coords
 
-            # Get ROI geo coordinates (use only xy, remove z if present)
-            roi_geo_coords = roi[roi_id][:, :2]
+    if not img_tasks:
+        logger.warning("No back2raw results to process.")
+        return {}
 
-            for img_id, roi_raw_px in img_dict.items():
-                pbar.set_postfix_str(f"{roi_id}/{img_id}")
+    # 2. Add image paths to tasks
+    final_tasks = []
+    skipped_images = 0
+    
+    for img_id, rois_on_img in img_tasks.items():
+        try:
+            raw_img_obj = recons.photos[img_id]
+            img_path = raw_img_obj.path
+            
+            if not Path(img_path).exists():
+                logger.warning(f"Image file not found at {img_path}, skipping associated ROIs")
+                skipped_images += 1
+                continue
+                
+            final_tasks.append({
+                'img_id': img_id,
+                'img_path': img_path,
+                'rois': rois_on_img
+            })
+        except KeyError:
+            logger.warning(f"Image ID {img_id} not found in reconstruction project, skipping")
+            skipped_images += 1
+            continue
 
-                # Construct raw image path
+    if not final_tasks:
+        return {}
+
+    # 3. Determine worker count safely
+    if num_workers is None:
+        try:
+            # Estimate image size from sensor metadata
+            first_img_id = final_tasks[0]['img_id']
+            sensor_id = recons.photos[first_img_id].sensor_id
+            sensor = recons.sensors[sensor_id]
+            
+            # Estimate bytes: W * H * 3 (RGB) * 1 (uint8)
+            # Add safety factor 2.0x for overhead during processing
+            estimated_img_bytes = sensor.width * sensor.height * 3 * 1.5
+            
+            mem = psutil.virtual_memory()
+            available_mem = mem.available
+            
+            # Use at most 75% of available RAM
+            max_safe_workers = int((available_mem * 0.75) // estimated_img_bytes)
+            
+            cpu_count = multiprocessing.cpu_count()
+            # Cap at CPU count, but at least 1, and max 32 (too many creates overhead)
+            num_workers = max(1, min(cpu_count, max_safe_workers, 32))
+
+            logger.info(
+                f"Auto-configured workers: {num_workers} "
+                f"(Img: {estimated_img_bytes/1024**2:.1f}MB, "
+                f"Avail RAM: {available_mem/1024**3:.1f}GB)"
+            )
+        except Exception as e:
+            logger.warning(f"Could not auto-calculate worker count ({e}), defaulting to 1.")
+            num_workers = 1
+
+    # 4. Prepare shared arguments for worker
+    worker_args_base = {
+        'roi_static_data': roi_static_data,
+        'roi_crs': roi.crs,
+        'nodata': nodata,
+        'has_alpha': has_alpha,
+        'output_folder': str(output_folder) if output_folder else None,
+        'use_affine': use_affine
+    }
+
+    # 5. Execute in parallel
+    results = {}  # {roi_id: {img_id: GeoTiff}}
+    # Initialize result structure
+    for roi_id in back2raw_result.keys():
+        results[roi_id] = {}
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+        # Submit all tasks
+        futures = {
+            executor.submit(_process_single_image_task, task, worker_args_base): task['img_id']
+            for task in final_tasks
+        }
+        
+        with tqdm(total=len(final_tasks), desc="Processing Images") as pbar:
+            for future in concurrent.futures.as_completed(futures):
+                img_id = futures[future]
                 try:
-                    raw_img = recons.photos[img_id]
-                    img_path = raw_img.path
-
-                    if not Path(img_path).exists():
-                        logger.warning(f"Image file not found at {img_path}, skipping")
-                        pbar.update(1)
-                        continue
-                except:
-                    logger.warning(f"Image not found: {img_id}, skipping")
-                    pbar.update(1)
-                    continue
-
-                # Convert to GeoTiff
-                gtiff = one_raw_roi2geotiff(
-                    roi_crs=roi.crs,
-                    roi_geo_coords=roi_geo_coords,
-                    raw_img_path=img_path,
-                    roi_raw_px=roi_raw_px,
-                    nodata=nodata,
-                    has_alpha=has_alpha,
-                )
-
-                result[roi_id][img_id] = gtiff
-
-                # Save if output folder specified
-                if output_folder is not None:
-                    roi_folder = output_folder / str(roi_id)
-                    roi_folder.mkdir(parents=True, exist_ok=True)
-                    save_path = roi_folder / f"{img_id}.tif"
-                    gtiff.save(save_path, overwrite=True, use_affine=use_affine)
-
+                    # Result is {roi_id: GeoTiff} for this image
+                    img_results = future.result()
+                    
+                    # Merge back into main results
+                    for r_id, gtiff in img_results.items():
+                        results[r_id][img_id] = gtiff
+                        
+                except Exception as e:
+                    logger.error(f"Error processing image {img_id}: {e}")
+                
                 pbar.update(1)
 
-    return result
+    return results
+
+
+def _process_single_image_task(task, common_args):
+    """Worker function to process all ROIs on a single image.
+    
+    This function is designed to run in a separate process.
+    It loads the image ONCE and generates GeoTiffs for all ROIs on it.
+    """
+    img_path = task['img_path']
+    rois_on_img = task['rois']  # {roi_id: px_coords}
+    
+    # Unpack common args
+    roi_static_data = common_args['roi_static_data']
+    roi_crs = common_args['roi_crs']
+    nodata = common_args['nodata']
+    has_alpha = common_args['has_alpha']
+    output_folder = common_args['output_folder']
+    use_affine = common_args['use_affine']
+    
+    results = {}
+    
+    try:
+        # Load image once (IO intensive part)
+        full_image = imread(img_path)
+        
+        for roi_id, px_coords in rois_on_img.items():
+            roi_geo_coords = roi_static_data[roi_id]
+            
+            # Process in memory
+            gtiff = one_raw_roi2geotiff(
+                roi_crs=roi_crs,
+                roi_geo_coords=roi_geo_coords,
+                raw_img=full_image,  # Pass array directly!
+                roi_raw_px_coords=px_coords,
+                nodata=nodata,
+                has_alpha=has_alpha
+            )
+            
+            results[roi_id] = gtiff
+            
+            # Save if needed (IO intensive part 2)
+            if output_folder:
+                out_path_base = Path(output_folder) / str(roi_id)
+                # Create directory eagerly here or rely on ensure_dir checks
+                # Since multiple workers might try to create the same roi folder 
+                # (if rois are distributed across imgs), race conditions are handled by exist_ok=True
+                out_path_base.mkdir(parents=True, exist_ok=True)
+                
+                save_path = out_path_base / f"{task['img_id']}.tif"
+                gtiff.save(save_path, overwrite=True, use_affine=use_affine)
+                
+    except Exception as e:
+        logger.error(f"Worker failed for image {img_path}: {e}")
+        raise e
+        
+    return results
 
 
 def create_binary_mask_for_geotiff(

@@ -1507,7 +1507,12 @@ class GeoTiff(object):
         return out_dict
     
     @_check_data
-    def crop_shapely_polygon(self, shapely_polygon: Polygon, save_path:str|Path|None=None, return_geotiff:bool=False):
+    def crop_shapely_polygon(
+        self, 
+        shapely_polygon: Polygon, 
+        save_path:str|Path|None=None, 
+        return_geotiff:bool=False
+    ):
         """Crop a given polygon from geotiff, the base function of cropping geotiff
         
         Parameters

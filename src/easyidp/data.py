@@ -739,6 +739,12 @@ class TestData(EasyidpDataSet):
             # for multi-spectral testing
             self.mlayer_shp  = data_dir / "shp_test" / "mlayer_roi.shp"
 
+            # for convert shapefile to geotiff mask
+            self.mask_rice_roi      = data_dir / "shp_test" / "mask_rice_grid_32.shp"
+            self.mask_rice_prj      = data_dir / "shp_test" / "mask_rice_grid_32.prj"
+            self.mask_rice_gt_shp   = data_dir / "shp_test" / "mask_rice_train_true_value.shp"
+            self.mask_rice_gt_prj   = data_dir / "shp_test" / "mask_rice_train_true_value.prj"
+
             if isinstance(test_out, str):
                 test_out = Path(test_out)
             self.out = test_out / "shp_test"
@@ -794,6 +800,10 @@ class TestData(EasyidpDataSet):
             # for multi-spectral testing
             self.mlayer_ndvi = data_dir / "tiff_test" / "mlayer_yamato_ndvi.tif"
             self.mlayer_multi = data_dir / "tiff_test" / "mlayer_yamato_multi.tif"
+
+            # for convert shapefile to geotiff mask
+            self.mask_rice_geotiff_empty_polygon = data_dir / "tiff_test" / "mask_rice_grid_48.tif"
+            self.mask_rice_geotiff_with_polygon = data_dir / "tiff_test" / "mask_rice_grid_77.tif"
 
             if isinstance(test_out, str):
                 test_out = Path(test_out)

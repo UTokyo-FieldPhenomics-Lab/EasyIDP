@@ -1388,3 +1388,90 @@ class TestAffineCrop:
         # Should be close (resampling might introduce slight diffs)
         # Relax tolerance due to different interpolation methods (GDAL vs Scipy)
         np.testing.assert_allclose(val_orig, val_affine, atol=10)
+
+
+# =============================================================================
+# create_binary_mask_for_geotiff Tests
+# =============================================================================
+
+class TestCreateBinaryMaskForGeoTiff:
+    """Tests for create_binary_mask_for_geotiff function."""
+
+    def test_create_binary_mask_with_polygon(self, shared_data):
+        """Test binary mask creation where polygons intersect (Expected non-empty)."""
+        test_data = shared_data['test_data']
+        
+        # 1. Prepare Data
+        # Path to reference GeoTIFF (affine rotated) - using the one with polygons
+        target_tif_path = test_data.tiff.mask_rice_geotiff_with_polygon
+        # Path to Ground Truth Shapefile
+        gt_shp_path = test_data.shp.mask_rice_gt_shp
+        
+        # Check if files exist
+        assert target_tif_path.exists(), f"Target GeoTIFF not found: {target_tif_path}"
+        assert gt_shp_path.exists(), f"Shapefile not found: {gt_shp_path}"
+
+        # Load target
+        target_gt = idp.GeoTiff(target_tif_path)
+        
+        # 2. Test Path Input with all_touched=True
+        # Note: We use the new renamed function
+        mask_1 = idp.geotiff.create_binary_mask_for_geotiff(
+            target_gt, gt_shp_path, all_touched=True
+        )
+        
+        assert isinstance(mask_1, idp.GeoTiff)
+        assert mask_1.width == target_gt.width
+        assert mask_1.height == target_gt.height
+        # Check transform match
+        assert mask_1.header['profile']['transform'] == target_gt.header['profile']['transform']
+        
+        # Check values are binary
+        unique_vals = np.unique(mask_1.imarray)
+        assert np.all(np.isin(unique_vals, [0, 1]))
+        
+        # Verify Content (Basic Check)
+        # Check if we have some 1s (intersection expected)
+        assert np.sum(mask_1.imarray) > 0, "Mask should not be empty for this test case"
+
+        # 3. Test Output saving
+        out_path = test_data.tiff.out / "mask_test_output_poly.tif"
+        mask_1.save(out_path, overwrite=True)
+        assert out_path.exists()
+        
+        # Reload and check
+        loaded = idp.GeoTiff(out_path)
+        np.testing.assert_array_equal(loaded.imarray[:, :, 0], mask_1.imarray[:, :, 0])
+
+
+    def test_create_binary_mask_empty_polygon(self, shared_data):
+        """Test binary mask creation where NO polygons intersect (Expected empty)."""
+        test_data = shared_data['test_data']
+        
+        # 1. Prepare Data
+        # Path to reference GeoTIFF - using the one WITHOUT polygons
+        target_tif_path = test_data.tiff.mask_rice_geotiff_empty_polygon
+        gt_shp_path = test_data.shp.mask_rice_gt_shp
+        
+        assert target_tif_path.exists()
+        
+        target_gt = idp.GeoTiff(target_tif_path)
+        
+        # 2. Create Mask
+        mask_empty = idp.geotiff.create_binary_mask_for_geotiff(
+            target_gt, gt_shp_path, all_touched=True
+        )
+        
+        # 3. Verification
+        assert isinstance(mask_empty, idp.GeoTiff)
+        # Should be all zeros
+        assert np.sum(mask_empty.imarray) == 0, "Mask should be empty (all zeros) for this test case"
+        
+        # Verify it has correct dimensions
+        assert mask_empty.width == target_gt.width
+        assert mask_empty.height == target_gt.height
+        
+        # Test saving
+        out_path = test_data.tiff.out / "mask_test_output_empty.tif"
+        mask_empty.save(out_path, overwrite=True)
+        assert out_path.exists()

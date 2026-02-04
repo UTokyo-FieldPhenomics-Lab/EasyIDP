@@ -10,6 +10,7 @@ import pyproj
 import rasterio as rio
 from rasterio.enums import ColorInterp
 from rasterio.mask import mask as riomask
+from rasterio.features import rasterize as rio_rasterize
 from shapely.geometry import mapping, Polygon
 from skimage.io import imread
 from skimage.transform import ProjectiveTransform, warp
@@ -966,7 +967,11 @@ class GeoTiff(object):
 
         # Write to file
         # rasterio requires (bands, height, width), self._imarray is (height, width, bands)
-        imarray_rio = np.moveaxis(imarray, -1, 0)
+        if imarray.ndim == 3:
+            imarray_rio = np.moveaxis(imarray, -1, 0)
+        else:
+            # 2D array (height, width) -> (1, height, width)
+            imarray_rio = imarray[np.newaxis, :, :]
         
         with rio.open(save_path, 'w', **profile) as dst:
             dst.write(imarray_rio)
@@ -2633,3 +2638,152 @@ def back2raw2geotiff(
                 pbar.update(1)
 
     return result
+
+
+def create_binary_mask_for_geotiff(
+    target_geotiff: GeoTiff, 
+    roi: "easyidp.ROI | str | Path", 
+    output_path: str | Path | None = None, 
+    inside_value: int = 1, 
+    outside_value: int = 0,
+    all_touched: bool = False,
+    **kwargs
+) -> GeoTiff:
+    """
+    Create a binary mask GeoTiff from a shapefile (ROI) matching the target GeoTiff's grid.
+
+    Parameters
+    ----------
+    target_geotiff : easyidp.GeoTiff
+        The reference GeoTiff defining the grid, CRS, and transform.
+    roi : easyidp.ROI | str | Path
+        The region of interest (polygons) to rasterize. 
+        Can be an existing ROI object or path to a shapefile/geojson.
+    output_path : str | Path, optional
+        Path to save the generated mask GeoTiff. If None, it is not saved to disk.
+    inside_value : int, optional
+        Pixel value for areas inside the polygons, by default 1.
+    outside_value : int, optional
+        Pixel value for areas outside the polygons, by default 0.
+    all_touched : bool, optional
+        If True, all pixels touched by geometries will be burned in. 
+        If False (default), only pixels whose center is within the polygon or that 
+        are selected by Bresenham's line algorithm will be burned in.
+    **kwargs : dict
+        Additional arguments passed to easyidp.ROI() if roi is a file path.
+
+    Returns
+    -------
+    easyidp.GeoTiff
+        A new GeoTiff object containing the binary mask.
+
+    Example
+    -------
+    .. code-block:: python
+
+        >>> import easyidp as idp
+        >>> target = idp.GeoTiff("template.tif")
+        >>> mask_gt = idp.geotiff.create_binary_mask(target, "ground_truth.shp")
+        >>> mask_gt.save("mask.tif")
+
+    """
+    # 1. Handle ROI input
+    if isinstance(roi, (str, Path)):
+        roi_obj = idp.ROI(roi, **kwargs)
+    elif isinstance(roi, idp.ROI):
+        # Create a shallow copy to safely modifying CRS without side effects on original object
+        roi_obj = idp.ROI()
+        roi_obj.source = roi.source
+        roi_obj.crs = roi.crs
+        roi_obj.id_item = roi.id_item.copy()
+        roi_obj.item_label = roi.item_label.copy() 
+    else:
+        raise TypeError(f"roi must be easyidp.ROI or path strings, got {type(roi)}")
+
+    # 2. Ensure CRS consistency
+    if target_geotiff.crs is not None:
+        if roi_obj.crs is None:
+            logger.warning(
+                f"Target GeoTiff has CRS [{target_geotiff.crs.name}] but ROI has none. "
+                "Assuming they match."
+            )
+        elif roi_obj.crs != target_geotiff.crs:
+            logger.info(f"Reprojecting ROI from {roi_obj.crs.name} to {target_geotiff.crs.name}")
+            roi_obj.change_crs(target_geotiff.crs)
+    
+    # 3. Collect polygons for rasterization
+    # rasterio.features.rasterize expects list of (geometry, value) or just geometry (if value=default)
+    shapes = []
+    for k, poly_np in roi_obj.items():
+        # Ensure polygon is closed
+        if not np.allclose(poly_np[0], poly_np[-1]):
+            poly_np = np.vstack([poly_np, poly_np[0]])
+        
+        # Use Shapely Polygon
+        poly_geom = Polygon(poly_np)
+        shapes.append((poly_geom, inside_value))
+
+    if not shapes:
+        logger.warning(f"No polygons found in ROI [{roi_obj.source}]. Returning empty mask.")
+        mask_array = np.full(
+            (target_geotiff.height, target_geotiff.width), 
+            outside_value, 
+            dtype=np.uint8
+        )
+    else:
+        # 4. Rasterize
+        # Use target_geotiff's transform and dimensions
+        transform = target_geotiff.header['profile']['transform']
+        
+        # If target uses affine rotation, the transform handles the rotation.
+        # However, rasterize operates in the crs/world space defined by transform.
+        # This works correctly for both standard and affine-rotated GeoTiffs 
+        # as long as we use the correct transform.
+        
+        mask_array = rio_rasterize(
+            shapes=shapes,
+            out_shape=(target_geotiff.height, target_geotiff.width),
+            transform=transform,
+            fill=outside_value,
+            dtype=np.uint8,
+            all_touched=all_touched
+        )
+        
+    # Ensure 3D shape (H, W, C) where C=1
+    if mask_array.ndim == 2:
+        mask_array = mask_array[:, :, np.newaxis]
+
+    # 5. Create GeoTiff object
+    # Copy header from target but update relevant fields
+    header = target_geotiff.header.copy()
+    header['profile'] = header['profile'].copy()
+    
+    # Update data types and count
+    header['dim'] = 1
+    header['dtype'] = np.dtype('uint8')
+    header['nodata'] = None # Usually masks don't use nodata, 0 is background
+    header['has_alpha'] = False
+    
+    header['profile']['count'] = 1
+    header['profile']['dtype'] = 'uint8'
+    header['profile']['nodata'] = None
+    header['profile']['height'] = mask_array.shape[0]
+    header['profile']['width'] = mask_array.shape[1]
+    
+    # Ensure transform is updating if needed (though it should match target)
+    header['profile']['transform'] = transform
+    
+    # Create object
+    mask_gt = GeoTiff(imarray=mask_array, header=header)
+    
+    # Copy affine properties if present
+    if target_geotiff.use_affine:
+        mask_gt._use_affine = True
+        mask_gt._mask_polygon = target_geotiff.mask_polygon
+        mask_gt._mask_polygon_is_geo = target_geotiff._mask_polygon_is_geo
+
+    # 6. Save if requested
+    if output_path:
+        mask_gt.save(output_path, overwrite=True)
+
+    return mask_gt

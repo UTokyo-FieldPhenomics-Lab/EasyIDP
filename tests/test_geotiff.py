@@ -1235,6 +1235,85 @@ class TestAffineConversion:
         assert affine2 is affine1
 
 
+class TestUseAffineParamOptimization:
+    
+    def test_save_optimization_A(self, shared_data, tmp_path):
+        """Test Optimization A: save() shouldn't re-convert if already affine."""
+        test_data = shared_data['test_data']
+        
+        # 1. Create a GeoTiff object and manually set it to affine mode mock
+        # (Or convert a real one)
+        dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
+        
+        # Set a dummy rectangular mask
+        rect_poly = np.array([
+            [368019.2, 3955513.7],
+            [368021.1, 3955514.1], 
+            [368021.5, 3955512.2],
+            [368019.6, 3955511.8],
+            [368019.2, 3955513.7]
+        ])
+        dom.set_mask_polygon(rect_poly, is_geo=True)
+        
+        # Convert to affine
+        affine_dom = dom.convert_to_affine()
+        assert affine_dom.use_affine is True
+        
+        # Save with use_affine=True
+        # This should trigger the new logic: skip re-conversion
+        save_path = tmp_path / "opt_a_test.tif"
+        
+        # We can verify this by checking logs, but here we just ensure it runs and file is valid
+        # If the optimization was missing, it would still work but do extra work.
+        # But if we broke something, it might fail.
+        success = affine_dom.save(save_path, use_affine=True, overwrite=True)
+        assert success
+        assert save_path.exists()
+        
+        # Check saved file is indeed affine
+        reloaded = idp.GeoTiff(save_path)
+        assert reloaded.use_affine is True
+
+    def test_back2raw2geotiff_optimization_B(self, shared_data, tmp_path):
+        """Test Optimization B: back2raw2geotiff returns affine objects if requested."""
+        p4d = shared_data['p4d']
+        roi = shared_data['roi']
+        out_all = shared_data['out_all']
+        
+        out_folder = tmp_path / "opt_b_output"
+        
+        # Run with use_affine=True
+        results = idp.geotiff.back2raw2geotiff(
+            recons=p4d,
+            back2raw_result=out_all,
+            roi=roi,
+            output_folder=out_folder,
+            use_affine=True  # This should return affine objects now
+        )
+        
+        # Grab result
+        first_roi = list(results.keys())[0]
+        first_img = list(results[first_roi].keys())[0]
+        gtiff = results[first_roi][first_img]
+        
+        # 1. Check returned object is affine memory-side
+        assert gtiff.use_affine is True
+        # Check transform has rotation (not just scale/translate)
+        t = gtiff.header['transform'] 
+        has_rotation = not (np.isclose(t.b, 0) and np.isclose(t.d, 0))
+        assert has_rotation
+        
+        # 2. Check saved file is affine disk-side
+        saved_file = out_folder / str(first_roi) / f"{first_img}.tif"
+        assert saved_file.exists()
+        
+        reloaded = idp.GeoTiff(saved_file)
+        assert reloaded.use_affine is True
+        t_loaded = reloaded.header['transform']
+        has_rotation_loaded = not (np.isclose(t_loaded.b, 0) and np.isclose(t_loaded.d, 0))
+        assert has_rotation_loaded
+
+
 class TestAffineCrop:
     
     def test_crop_polygon_use_affine(self, shared_data, tmp_path):

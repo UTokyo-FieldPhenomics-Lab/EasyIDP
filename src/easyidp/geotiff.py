@@ -347,10 +347,17 @@ class GeoTiff(object):
                 "Polygon is not a valid rectangle. Cannot convert to affine mode."
             )
         
+        
         # Perform the transformation
         profile = self.header['profile'].copy()
+        
+        # Ensure image is loaded
+        imarray = self.imarray
+        if imarray is None:
+             raise ValueError("Could not load image data for affine conversion.")
+
         new_imarray, new_profile = self._prepare_affine_storage(
-            self._imarray.copy(), profile, polygon_geo, angle, bounds
+            imarray.copy(), profile, polygon_geo, angle, bounds
         )
         
         # Build new header
@@ -872,7 +879,8 @@ class GeoTiff(object):
         - MS/MSA (multispectral): adds alpha channel to protect original data
 
         When use_affine=True and mask_polygon is a rectangle, the image is
-        saved with affine rotation in the transform (no mask needed).
+        saved with affine rotation in the transform (no mask needed). The 
+        current object is NOT modified (unless it was already in affine mode).
 
         Parameters
         ----------
@@ -883,7 +891,10 @@ class GeoTiff(object):
         apply_mask : bool, optional
             If True and mask exists, apply mask appropriately, by default True
         use_affine : bool, optional
+            "Convert and Save" mode. 
             If True, try to use affine rotation storage for rectangular masks.
+            If the object is ALREADY in affine mode (self.use_affine=True), 
+            this parameter is ignored (no double-conversion).
             Requires mask_polygon to be a valid rectangle (4 vertices, 90° angles).
             By default False.
             
@@ -917,11 +928,19 @@ class GeoTiff(object):
                 logger.info("File save cancelled by user.")
                 return False
 
+        # Optimization A: Avoid double-conversion if already affine
+        if self.use_affine and use_affine:
+            logger.debug("Object is already in affine mode, skipping redundant affine conversion for save.")
+            use_affine = False
+
         # Prepare data and profile
         data_type = self._get_data_type()
-        imarray = self._imarray.copy()
+        imarray = self.imarray.copy()  # Use property to ensure lazy load
         mask = self._mask
-        profile = self.header['profile'].copy()
+        
+        # Use deepcopy for profile to avoid reference issues
+        import copy
+        profile = copy.deepcopy(self.header['profile'])
         
         # Check for affine mode with valid rectangle polygon
         polygon_wkt = None
@@ -2075,8 +2094,10 @@ def get_header(tif_path: str | Path) -> dict:
                             f">>> import pyproj \n"
                             f">>> proj = pyproj.CRS.from_epsg() # or from_string() or refer official documents:\n"
                             f"https://pyproj4.github.io/pyproj/dev/api/crs/coordinate_operation.html")
-            
-        header['profile'] = src.profile.copy()
+        
+        # Optimization C: Use deepcopy to ensure profile independence
+        import copy
+        header['profile'] = copy.deepcopy(src.profile)
 
         # Read colorinterp to detect alpha band
         # colorinterp is a tuple of ColorInterp enums for each band
@@ -2757,6 +2778,17 @@ def _process_single_image_task(task, common_args):
                 has_alpha=has_alpha
             )
             
+            # Optimization B: Consistent storage and return object
+            # If use_affine is requested, convert the object IN MEMORY first.
+            if use_affine:
+                try:
+                    gtiff = gtiff.convert_to_affine()
+                except ValueError as e:
+                     logger.warning(
+                         f"Could not convert ROI {roi_id} on image {task['img_id']} to affine mode: {e}. "
+                         f"Falling back to standard storage."
+                     )
+            
             results[roi_id] = gtiff
             
             # Save if needed (IO intensive part 2)
@@ -2768,7 +2800,13 @@ def _process_single_image_task(task, common_args):
                 out_path_base.mkdir(parents=True, exist_ok=True)
                 
                 save_path = out_path_base / f"{task['img_id']}.tif"
-                gtiff.save(save_path, overwrite=True, use_affine=use_affine)
+                
+                # We can just call save() without arguments, because if use_affine=True,
+                # the object is ALREADY converted to affine above.
+                # Optimization A will handle it if we pass use_affine=True, 
+                # but to be explicit and clean, we pass use_affine=False (or skip it)
+                # because the conversion is already done.
+                gtiff.save(save_path, overwrite=True)
                 
     except Exception as e:
         logger.error(f"Worker failed for image {img_path}: {e}")

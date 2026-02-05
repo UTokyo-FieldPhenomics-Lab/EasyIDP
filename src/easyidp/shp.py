@@ -296,22 +296,27 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
     ### but shp.shapes() is not dict, so not useable
     ### keyring designed for read_geojson function in jsonfile.py
 
+    # Use iterShapeRecords for better performance (O(N) vs O(N^2)) and memory usage
     pbar = tqdm(
-        shp_data.shapes(), 
+        shp_data.iterShapeRecords(), 
+        total=len(shp_data),
         desc=f"[shp] Read shapefile [{os.path.basename(shp_path)}]"
     )
-    for i, shape in enumerate(pbar):
+    for i, shape_record in enumerate(pbar):
+        shape = shape_record.shape
+        record = shape_record.record
+
         # convert dict_key name string by given name_field
         if isinstance(field_id, list):
             values = [
-                shp_data.records()[i][fid] 
+                record[fid] 
                 if fid != -1 else i 
                 for fid in field_id
             ]
             plot_name = plot_name_template.format(*values)
         else:
             if field_id != -1:
-                plot_name = plot_name_template.format(shp_data.records()[i][field_id])
+                plot_name = plot_name_template.format(record[field_id])
             else:
                 plot_name = plot_name_template.format(i)
 

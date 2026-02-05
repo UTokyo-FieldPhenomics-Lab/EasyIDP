@@ -7,7 +7,9 @@ import warnings
 from pathlib import Path
 from copy import deepcopy
 
+import time
 import numpy as np
+from tqdm import tqdm
 from loguru import logger
 
 ##############
@@ -301,15 +303,60 @@ logger_format = (
 
 logger_file = user_data_dir() / "easyidp.log"
 
-# 1. (可选但推荐) 移除所有默认的处理器，以便完全控制日志输出
+# Filter logic for duplicates and frequency limiting
+class LogFilter:
+    """Filter to handle duplicates and throttling of frequent messages"""
+    def __init__(self, cooldown=2.0):
+        self.cooldown = cooldown
+        self._last_msg = None
+        self._last_times = {}  # {group_key: timestamp}
+        
+        # Patterns to group and throttle
+        # Key: substring to match, Value: group name
+        self.throttle_groups = {
+            "Converted to affine mode": "affine_mode",
+            "Reprojecting ROI": "roi_reproject",
+            "GeoTiff successfully saved": "tiff_save",
+        }
+
+    def __call__(self, record):
+        msg = record["message"]
+        now = time.time()
+
+        # 1. Block exact consecutive duplicates
+        if msg == self._last_msg:
+            return False
+        
+        # 2. Check throttling groups
+        matched_group = None
+        for pattern, group in self.throttle_groups.items():
+            if pattern in msg:
+                matched_group = group
+                break
+        
+        if matched_group:
+            last_time = self._last_times.get(matched_group, 0)
+            if now - last_time < self.cooldown:
+                return False
+            self._last_times[matched_group] = now
+
+        # Update last message and allow
+        self._last_msg = msg
+        return True
+
+# Sink to redirect logs to tqdm.write to avoid interfering with progress bars
+def tqdm_sink(message):
+    tqdm.write(message, end="")
+
+# 1. Remove all default handlers
 logger.remove()
 
-# 2. 添加一个新的处理器，配置你想要的格式、级别、输出位置等
-#    这里我们将日志输出到标准错误流 (stderr)
+# 2. Add tqdm sink with custom filter
 logger.add(
-    sys.stderr, 
-    level="INFO",  # 设置最低日志级别为 INFO
-    format = logger_format
+    tqdm_sink, 
+    level="INFO", 
+    format = logger_format, 
+    filter=LogFilter(cooldown=1.0)
 )
 
 if not os.environ.get("IS_TESTING") == "True":

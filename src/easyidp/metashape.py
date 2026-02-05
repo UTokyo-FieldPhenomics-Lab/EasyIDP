@@ -896,15 +896,15 @@ class Metashape(idp.reconstruct.Recons):
         self.crs = ccopy(roi.crs)
 
         # Calculate total progress units:
-        # - Step 1: n_roi items (deduplication loop)
+        # - Step 1: 1 unit (deduplication loop)
         # - Step 2: 1 unit (coordinate conversion)
         # - Step 3: 1 unit (prepare transforms)
         # - Step 4: 1 unit (batch projection)
         # - Step 5: n_roi items (reconstruct loop)
-        # Total = 2 * n_roi + 3
+        # Total = n_roi + 4
         roi_names = list(roi.keys())
         n_roi = len(roi_names)
-        total_units = 2 * n_roi + 3
+        total_units = n_roi + 4
 
         # Initialize single progress bar
         pbar = tqdm(total=total_units, desc="Step 1/5: Collecting ROI points", leave=True)
@@ -936,7 +936,7 @@ class Metashape(idp.reconstruct.Recons):
             roi_point_mapping.append(roi_indices)
             all_points.append(points_xyz)
             split_indices.append(split_indices[-1] + len(points_xyz))
-            pbar.update(1)  # Update for each ROI processed in step 1
+        pbar.update(1)  # Update for each ROI processed in step 1
 
         # Convert to numpy array
         unified_points_np = np.array(unified_points)  # (M_unique, 3)

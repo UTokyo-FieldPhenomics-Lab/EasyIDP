@@ -122,3 +122,128 @@ def test_draw_backward_one_roi(shared_data, report_loguru_to_caplog):
     
     # Check that warning was logged via loguru
     assert "Expected title like ['title1', 'title2']" in report_loguru_to_caplog.text
+
+
+######################
+# Test show_subplots #
+######################
+
+OUTPUT_DIR = Path("tests/out/visual_test")
+
+class TestShowSubplots:
+    """Tests for subplot visualization output."""
+
+    @pytest.fixture
+    def setup_out_dir(self):
+        """Ensure output directory exists."""
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        return OUTPUT_DIR
+
+    @pytest.fixture
+    def rectangular_boundary(self):
+        """Create a simple rectangular boundary ROI for testing."""
+        roi = idp.ROI()
+        # 10x20 meter rectangle
+        roi["test_boundary"] = np.array([
+            [0, 0],
+            [20, 0],
+            [20, 10],
+            [0, 10],
+            [0, 0],
+        ], dtype=float)
+        roi.crs = pyproj.CRS.from_epsg(32654)  # UTM 54N
+        return roi
+
+    @pytest.fixture
+    def l_shaped_boundary(self):
+        """Create an L-shaped boundary for testing non-rectangular cases."""
+        roi = idp.ROI()
+        # L-shape: 20x10 with 10x5 cut out from top-right
+        roi["test_l_boundary"] = np.array([
+            [0, 0],
+            [20, 0],
+            [20, 5],
+            [10, 5],
+            [10, 10],
+            [0, 10],
+            [0, 0],
+        ], dtype=float)
+        roi.crs = pyproj.CRS.from_epsg(32654)
+        return roi
+
+    def test_visualize_rect_grid(self, rectangular_boundary, setup_out_dir):
+        """Test visualization of rectangular boundary grid."""
+        subplots = idp.geotools.generate_subplots(
+            rectangular_boundary,
+            row_num=4,
+            col_num=6,
+            x_interval=0.5,
+            y_interval=0.5
+        )
+        
+        save_path = setup_out_dir / "rect_grid.png"
+        idp.visualize.show_subplots(
+            rectangular_boundary, 
+            subplots, 
+            title="Rectangular Boundary (4x6 grid)",
+            save_as=str(save_path),
+            show=False
+        )
+        assert save_path.exists()
+
+    def test_visualize_l_shape_keep_all(self, l_shaped_boundary, setup_out_dir):
+        """Test visualization of L-shaped boundary with keep='all'."""
+        subplots = idp.geotools.generate_subplots(
+            l_shaped_boundary,
+            row_num=4,
+            col_num=6,
+            keep="all"
+        )
+        
+        save_path = setup_out_dir / "l_shape_keep_all.png"
+        idp.visualize.show_subplots(
+            l_shaped_boundary, 
+            subplots, 
+            title="L-Shape Boundary (keep='all')",
+            save_as=str(save_path),
+            show=False
+        )
+        assert save_path.exists()
+
+    def test_visualize_l_shape_keep_touch(self, l_shaped_boundary, setup_out_dir):
+        """Test visualization of L-shaped boundary with keep='touch'."""
+        subplots = idp.geotools.generate_subplots(
+            l_shaped_boundary,
+            row_num=4,
+            col_num=6,
+            keep="touch"
+        )
+        
+        save_path = setup_out_dir / "l_shape_keep_touch.png"
+        idp.visualize.show_subplots(
+            l_shaped_boundary, 
+            subplots, 
+            title="L-Shape Boundary (keep='touch')",
+            save_as=str(save_path),
+            show=False
+        )
+        assert save_path.exists()
+
+    def test_visualize_l_shape_keep_inside(self, l_shaped_boundary, setup_out_dir):
+        """Test visualization of L-shaped boundary with keep='inside'."""
+        subplots = idp.geotools.generate_subplots(
+            l_shaped_boundary,
+            row_num=4,
+            col_num=6,
+            keep="inside"
+        )
+        
+        save_path = setup_out_dir / "l_shape_keep_inside.png"
+        idp.visualize.show_subplots(
+            l_shaped_boundary, 
+            subplots, 
+            title="L-Shape Boundary (keep='inside')",
+            save_as=str(save_path),
+            show=False
+        )
+        assert save_path.exists()

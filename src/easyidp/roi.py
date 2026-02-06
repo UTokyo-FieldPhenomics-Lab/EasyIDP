@@ -468,6 +468,70 @@ class ROI(idp.Container):
         self.id_item = idp.geotools.convert_proj(self.id_item, self.crs, target_crs)
         self.crs = target_crs
 
+    def save(self, target_path, **kwargs):
+        """Save ROI to file. Format determined by extension.
+
+        Parameters
+        ----------
+        target_path : str | pathlib.Path
+            Output path.
+        **kwargs : dict
+            Additional arguments passed to specific save methods.
+            For .shp: name_field, encoding.
+        """
+        target_path = Path(target_path)
+        ext = target_path.suffix.lower()
+
+        if ext == '.shp':
+            return self.save_shp(target_path, **kwargs)
+        else:
+            # Fallback or raise error
+            raise ValueError(f"Unsupported file extension: {ext}")
+
+    def save_shp(self, shp_path, name_field='id', encoding='utf-8'):
+        """Save ROI polygons to shapefile.
+
+        Parameters
+        ----------
+        shp_path : str | pathlib.Path
+            Output shapefile path (with or without .shp extension).
+        name_field : str, optional
+            Name of the attribute field for polygon names, by default 'id'.
+        encoding : str, optional
+            Character encoding for the shapefile, by default 'utf-8'.
+
+        Returns
+        -------
+        pathlib.Path
+            Path to the saved shapefile.
+
+        Raises
+        ------
+        ValueError
+            If ROI is empty.
+
+        Examples
+        --------
+        >>> import easyidp as idp
+        >>> roi = idp.ROI("input.shp")
+        >>> roi.save_shp("output.shp", name_field='plot_id')
+        PosixPath('output.shp')
+
+        Notes
+        -----
+        Uses pyshp for shapefile writing. The .prj file is automatically
+        generated if the ROI has a CRS defined.
+        """
+        subplot_meta = getattr(self, '_subplot_meta', None)
+        return idp.shp.write_shp(
+            shp_path, 
+            self, 
+            self.crs, 
+            name_field=name_field, 
+            encoding=encoding, 
+            subplot_meta=subplot_meta
+        )
+
     def _get_z_input_check(self, obj, mode, kernel, buffer, func="dsm"):
         # check if has CRS (GeoROI), otherwise stop
         if not self.is_geo():

@@ -347,3 +347,168 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None
     plt.clf()
     plt.close(fig)
     del fig, ax, img_np
+
+
+def show_subplots(
+    boundary_roi,
+    subplot_roi,
+    ax=None,
+    boundary_color='blue',
+    inside_color='green',
+    touch_color='orange',
+    outside_color='red',
+    outside_style='--',
+    show_labels=True,
+    title=None,
+    save_as=None,
+    show=True,
+    figsize=(10, 10),
+    dpi=72,
+):
+    """Visualize boundary and generated subplots using matplotlib.
+
+    Subplots are styled differently based on their spatial relationship
+    with the boundary polygon (inside/touch/outside).
+
+    Parameters
+    ----------
+    boundary_roi : idp.ROI
+        ROI object containing the boundary polygon.
+    subplot_roi : idp.ROI
+        ROI object containing the generated subplots.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes to draw on, by default None (creates new figure).
+    boundary_color : str, optional
+        Color for boundary polygon outline, by default 'blue'.
+    inside_color : str, optional
+        Color for subplots fully inside boundary, by default 'green'.
+    touch_color : str, optional
+        Color for subplots that intersect boundary, by default 'orange'.
+    outside_color : str, optional
+        Color for subplots outside boundary, by default 'red'.
+    outside_style : str, optional
+        Line style for outside subplots, by default '--' (dashed).
+    show_labels : bool, optional
+        Whether to show subplot labels, by default True.
+    title : str, optional
+        Figure title, by default None.
+    save_as : str, optional
+        Path to save the figure, by default None.
+    show : bool, optional
+        Whether to display the figure, by default True.
+    figsize : tuple, optional
+        Figure size (width, height), by default (10, 10).
+    dpi : int, optional
+        Figure DPI, by default 72.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes object with the plot.
+
+    Examples
+    --------
+    >>> import easyidp as idp
+    >>> boundary = idp.ROI("field_boundary.shp")
+    >>> subplots = idp.generate_subplots(boundary, row_num=4, col_num=6)
+    >>> idp.visualize.show_subplots(boundary, subplots, save_as="subplots.png")
+    """
+    created_fig = False
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+        created_fig = True
+
+    # Draw boundary polygon
+    for name in boundary_roi.keys():
+        coords = boundary_roi[name]
+        poly_coords = coords[:, :2]
+
+        polygon = pts.Polygon(poly_coords, closed=True)
+        p = PatchCollection(
+            [polygon],
+            facecolors='none',
+            edgecolors=boundary_color,
+            linewidths=2,
+        )
+        ax.add_collection(p)
+
+    # Check if subplot has metadata
+    has_meta = hasattr(subplot_roi, '_subplot_meta') and subplot_roi._subplot_meta
+
+    # Draw subplots with different styles based on status
+    for name in subplot_roi.keys():
+        coords = subplot_roi[name]
+        poly_coords = coords[:, :2]
+
+        # Determine status and style
+        if has_meta and name in subplot_roi._subplot_meta:
+            status = subplot_roi._subplot_meta[name]['status']
+        else:
+            status = 'inside'  # Default if no metadata
+
+        if status == 'inside':
+            color = inside_color
+            linestyle = '-'
+            alpha = 0.3
+        elif status == 'touch':
+            color = touch_color
+            linestyle = '-'
+            alpha = 0.2
+        else:  # outside
+            color = outside_color
+            linestyle = outside_style
+            alpha = 0.1
+
+        polygon = pts.Polygon(poly_coords, closed=True)
+        p = PatchCollection(
+            [polygon],
+            facecolors=color,
+            edgecolors=color,
+            linewidths=1,
+            alpha=alpha,
+            linestyles=linestyle,
+        )
+        ax.add_collection(p)
+
+        # Add label at polygon center
+        if show_labels:
+            center_x = poly_coords[:, 0].mean()
+            center_y = poly_coords[:, 1].mean()
+            ax.text(
+                center_x, center_y, name,
+                ha='center', va='center',
+                fontsize=6, color='black',
+            )
+
+    # Set axis properties
+    ax.set_aspect('equal')
+    ax.autoscale_view()
+
+    if title:
+        ax.set_title(title)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+
+    # Add legend
+    legend_patches = [
+        pts.Patch(color=boundary_color, label='Boundary'),
+        pts.Patch(color=inside_color, alpha=0.3, label='Inside'),
+        pts.Patch(color=touch_color, alpha=0.2, label='Touch'),
+        pts.Patch(color=outside_color, alpha=0.1, label='Outside'),
+    ]
+    ax.legend(handles=legend_patches, loc='upper right')
+
+    if created_fig:
+        plt.tight_layout()
+
+        if save_as is not None:
+            plt.savefig(save_as)
+            logger.info(f"Saved subplot visualization to {save_as}")
+
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+
+    return ax

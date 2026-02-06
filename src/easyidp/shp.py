@@ -6,6 +6,7 @@ import warnings
 from tabulate import tabulate
 from tqdm import tqdm
 from pathlib import Path
+from loguru import logger
 
 import easyidp as idp
 
@@ -486,3 +487,84 @@ def _get_plot_name_template(roi_fields, field_id, include_title):
         plot_name_template, keyring = _fetch_single_field(roi_fields, field_id)
 
     return plot_name_template, keyring
+
+
+def write_shp(shp_path, roi_dict, crs=None, name_field='id', encoding='utf-8', subplot_meta=None):
+    """Save ROI polygons to shapefile.
+
+    Parameters
+    ----------
+    shp_path : str | pathlib.Path
+        Output shapefile path (with or without .shp extension).
+    roi_dict : dict or idp.ROI
+        Dictionary of polygons or ROI object.
+    crs : pyproj.CRS, optional
+        Coordinate reference system.
+    name_field : str, optional
+        Name of the attribute field for polygon names, by default 'id'.
+    encoding : str, optional
+        Character encoding for the shapefile, by default 'utf-8'.
+    subplot_meta : dict, optional
+        Metadata for subplots (row, col, status) if available.
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the saved shapefile.
+
+    Raises
+    ------
+    ValueError
+        If roi_dict is empty.
+    """
+    if len(roi_dict) == 0:
+        raise ValueError("Cannot save empty ROI to shapefile")
+
+    shp_path = Path(shp_path)
+    if shp_path.suffix.lower() != '.shp':
+        shp_path = shp_path.with_suffix('.shp')
+
+    # Create shapefile writer
+    with shapefile.Writer(str(shp_path), encoding=encoding) as w:
+        # Define fields
+        w.field(name_field, 'C', 80)
+
+        # Add subplot metadata fields if available
+        if subplot_meta:
+            w.field('row', 'N')
+            w.field('col', 'N')
+            w.field('status', 'C', 20)
+
+        # Write each polygon
+        for name in roi_dict.keys():
+            coords = roi_dict[name]
+
+            # Ensure 2D coordinates for shapefile
+            # Standardizing input: coords might be numpy array
+            if isinstance(coords, np.ndarray):
+                if coords.shape[1] >= 2:
+                    poly_coords = coords[:, :2].tolist()
+                else:
+                    poly_coords = coords.tolist()
+            else:
+                 poly_coords = coords # assume list
+
+            # Write polygon geometry
+            w.poly([poly_coords])
+
+            # Write attributes
+            if subplot_meta and name in subplot_meta:
+                meta = subplot_meta[name]
+                w.record(name, meta['row'], meta['col'], meta['status'])
+            else:
+                w.record(name)
+
+    # Write .prj file if CRS is available
+    if crs is not None:
+        prj_path = shp_path.with_suffix('.prj')
+        prj_path.write_text(crs.to_wkt())
+        logger.debug(f"Saved projection file to {prj_path}")
+
+    logger.info(f"Saved {len(roi_dict)} polygons to {shp_path}")
+
+    return shp_path

@@ -1,5 +1,8 @@
 import pyproj
 import numpy as np
+from shapely.geometry import Polygon
+from loguru import logger
+import easyidp as idp
 
 ############################
 # pyproj transformer tools #
@@ -278,3 +281,497 @@ def _get_crs_xy_order(crs):
         return 'yx'
     else:
         raise ValueError(f'Unable to parse the crs axis info\n- {crs.axis_info[0]}\n- {crs.axis_info[1]}')
+
+
+##################
+# Subplot Tools  #
+##################
+
+def generate_subplots(
+    boundary,
+    row_num=None,
+    col_num=None,
+    width=None,
+    height=None,
+    x_interval=0.0,
+    y_interval=0.0,
+    keep="all",
+):
+    """Generate subplots within a boundary polygon.
+
+    Supports two modes (mutually exclusive):
+    - **By grid**: Specify `row_num` and `col_num`
+    - **By size**: Specify `width` and `height`
+
+    Parameters
+    ----------
+    boundary : idp.ROI
+        ROI object containing exactly one polygon as the boundary.
+    row_num : int, optional
+        Number of rows (vertical divisions). Used with `col_num`.
+    col_num : int, optional
+        Number of columns (horizontal divisions). Used with `row_num`.
+    width : float, optional
+        Subplot width in CRS units (typically meters). Used with `height`.
+    height : float, optional
+        Subplot height in CRS units (typically meters). Used with `width`.
+    x_interval : float, optional
+        Horizontal spacing between subplots, by default 0.0
+    y_interval : float, optional
+        Vertical spacing between subplots, by default 0.0
+    keep : str, optional
+        Filter mode for subplots based on boundary relationship, by default "all"
+
+        - ``"all"``: Keep all subplots within MAR (including outside boundary)
+        - ``"touch"``: Keep subplots that intersect with boundary
+        - ``"inside"``: Keep only subplots fully contained within boundary
+
+    Returns
+    -------
+    idp.ROI
+        ROI object containing generated subplot polygons with attributes:
+        - `row`: Row index (1-based)
+        - `col`: Column index (1-based)
+        - `status`: "inside", "touch", or "outside"
+
+    Raises
+    ------
+    ValueError
+        If boundary has zero or more than one polygon,
+        or if parameter combination is invalid.
+
+    Examples
+    --------
+    Generate 4x6 grid of subplots:
+
+    >>> import easyidp as idp
+    >>> boundary = idp.ROI("field_boundary.shp")
+    >>> subplots = idp.geotools.generate_subplots(
+    ...     boundary, row_num=4, col_num=6,
+    ...     x_interval=0.5, y_interval=0.5
+    ... )
+    >>> subplots.save_shp("output_subplots.shp")
+
+    Generate subplots by size (2m x 3m):
+
+    >>> subplots = idp.geotools.generate_subplots(
+    ...     boundary, width=2.0, height=3.0,
+    ...     x_interval=0.3, y_interval=0.3,
+    ...     keep="inside"
+    ... )
+    """
+    # Input validation
+    boundary_poly = _validate_boundary(boundary)
+    _validate_parameters(row_num, col_num, width, height, keep)
+
+    # Get MAR and orientation vectors
+    mar_info = _compute_mar_info(boundary_poly)
+
+    # Calculate grid dimensions
+    rows, cols, cell_w, cell_h = _compute_grid_dimensions(
+        mar_info, row_num, col_num, width, height, x_interval, y_interval
+    )
+
+    # Generate subplot polygons
+    subplots_data = _generate_subplot_grid(
+        mar_info, rows, cols, cell_w, cell_h, x_interval, y_interval
+    )
+
+    # Classify subplots by boundary relationship
+    subplots_data = _classify_subplots(subplots_data, boundary_poly)
+
+    # Filter by keep mode
+    subplots_data = _filter_by_keep_mode(subplots_data, keep)
+
+    # Convert to ROI object
+    return _create_roi_from_subplots(subplots_data, boundary.crs)
+
+
+def _validate_boundary(boundary):
+    """Validate boundary ROI and extract single polygon.
+
+    Parameters
+    ----------
+    boundary : idp.ROI
+        ROI object to validate.
+
+    Returns
+    -------
+    shapely.geometry.Polygon
+        The single boundary polygon.
+
+    Raises
+    ------
+    ValueError
+        If boundary is empty or contains more than one polygon.
+    TypeError
+        If boundary is not an idp.ROI object.
+    """
+    if not isinstance(boundary, idp.ROI):
+        raise TypeError(
+            f"Expected idp.ROI object, got {type(boundary).__name__}"
+        )
+
+    if len(boundary) == 0:
+        raise ValueError("Boundary ROI is empty, must contain exactly one polygon")
+
+    if len(boundary) != 1:
+        raise ValueError(
+            f"Boundary must contain exactly one polygon, got {len(boundary)}"
+        )
+
+    # Extract the polygon coordinates
+    coords = list(boundary.values())[0]
+    return Polygon(coords[:, :2])
+
+
+def _validate_parameters(row_num, col_num, width, height, keep):
+    """Validate parameter combinations.
+
+    Parameters
+    ----------
+    row_num : int or None
+        Number of rows.
+    col_num : int or None
+        Number of columns.
+    width : float or None
+        Subplot width.
+    height : float or None
+        Subplot height.
+    keep : str
+        Keep mode.
+
+    Raises
+    ------
+    ValueError
+        If parameter combination is invalid.
+    """
+    # Check mode exclusivity
+    grid_mode = row_num is not None or col_num is not None
+    size_mode = width is not None or height is not None
+
+    if grid_mode and size_mode:
+        raise ValueError(
+            "Cannot specify both grid mode (row_num/col_num) and "
+            "size mode (width/height) simultaneously"
+        )
+
+    if not grid_mode and not size_mode:
+        raise ValueError(
+            "Must specify either grid mode (row_num, col_num) or "
+            "size mode (width, height)"
+        )
+
+    # Grid mode validation
+    if grid_mode:
+        if row_num is None or col_num is None:
+            raise ValueError(
+                "Grid mode requires both row_num and col_num"
+            )
+        if row_num < 1 or col_num < 1:
+            raise ValueError(
+                f"row_num and col_num must be >= 1, got row_num={row_num}, col_num={col_num}"
+            )
+
+    # Size mode validation
+    if size_mode:
+        if width is None or height is None:
+            raise ValueError("Size mode requires both width and height")
+        if width <= 0 or height <= 0:
+            raise ValueError(
+                f"width and height must be > 0, got width={width}, height={height}"
+            )
+
+    # Keep mode validation
+    valid_keep = ("all", "touch", "inside")
+    if keep not in valid_keep:
+        raise ValueError(f"keep must be one of {valid_keep}, got '{keep}'")
+
+
+def _compute_mar_info(polygon):
+    """Compute Minimum Area Rectangle info for polygon.
+
+    Parameters
+    ----------
+    polygon : shapely.geometry.Polygon
+        The boundary polygon.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - start_p: Origin point (numpy array)
+        - width_dir: Width direction unit vector
+        - height_dir: Height direction unit vector
+        - width_len: Total width length
+        - height_len: Total height length
+    """
+    # Get MAR from shapely
+    mar = polygon.minimum_rotated_rectangle
+    coords = list(mar.exterior.coords)
+
+    if len(coords) < 4:
+        raise ValueError("Invalid MAR geometry")
+
+    # Extract corner points
+    p0 = np.array(coords[0])
+    p1 = np.array(coords[1])
+    p2 = np.array(coords[2])
+
+    # Calculate edge vectors
+    edge1_vec = p1 - p0
+    edge2_vec = p2 - p1
+
+    len1 = np.linalg.norm(edge1_vec)
+    len2 = np.linalg.norm(edge2_vec)
+
+    # Longest edge is width direction (columns distributed along width)
+    # Shortest edge is height direction (rows distributed along height)
+    if len1 >= len2:
+        width_vec = edge1_vec
+        height_vec = edge2_vec
+        width_len = len1
+        height_len = len2
+        start_p = p0
+    else:
+        width_vec = edge2_vec
+        height_vec = p0 - p1
+        width_len = len2
+        height_len = len1
+        start_p = p1
+
+    # Normalize vectors
+    width_dir = width_vec / width_len
+    height_dir = height_vec / height_len
+
+    return {
+        "start_p": start_p,
+        "width_dir": width_dir,
+        "height_dir": height_dir,
+        "width_len": width_len,
+        "height_len": height_len,
+    }
+
+
+def _compute_grid_dimensions(
+    mar_info, row_num, col_num, width, height, x_interval, y_interval
+):
+    """Compute grid dimensions based on mode.
+
+    Parameters
+    ----------
+    mar_info : dict
+        MAR information from _compute_mar_info.
+    row_num : int or None
+        Number of rows (grid mode).
+    col_num : int or None
+        Number of columns (grid mode).
+    width : float or None
+        Subplot width (size mode).
+    height : float or None
+        Subplot height (size mode).
+    x_interval : float
+        Horizontal spacing.
+    y_interval : float
+        Vertical spacing.
+
+    Returns
+    -------
+    tuple
+        (rows, cols, cell_width, cell_height)
+    """
+    total_width = mar_info["width_len"]
+    total_height = mar_info["height_len"]
+
+    if row_num is not None and col_num is not None:
+        # Grid mode: calculate cell size from total dimensions
+        # Formula: cell_w = (TotalW - (cols-1)*x_interval) / cols
+        cell_w = (total_width - (col_num - 1) * x_interval) / col_num
+        cell_h = (total_height - (row_num - 1) * y_interval) / row_num
+
+        if cell_w <= 0 or cell_h <= 0:
+            raise ValueError(
+                f"Interval too large: resulting cell size is negative. "
+                f"cell_w={cell_w:.2f}, cell_h={cell_h:.2f}"
+            )
+
+        return row_num, col_num, cell_w, cell_h
+    else:
+        # Size mode: calculate grid size from cell dimensions
+        # cols = floor((TotalW + x_interval) / (width + x_interval))
+        cols = int((total_width + x_interval) / (width + x_interval))
+        rows = int((total_height + y_interval) / (height + y_interval))
+
+        if cols < 1:
+            cols = 1
+        if rows < 1:
+            rows = 1
+
+        logger.debug(
+            f"Size mode: calculated {rows} rows x {cols} cols "
+            f"for {width}x{height} subplots"
+        )
+
+        return rows, cols, width, height
+
+
+def _generate_subplot_grid(
+    mar_info, rows, cols, cell_w, cell_h, x_interval, y_interval
+):
+    """Generate grid of subplot polygons.
+
+    Parameters
+    ----------
+    mar_info : dict
+        MAR information.
+    rows : int
+        Number of rows.
+    cols : int
+        Number of columns.
+    cell_w : float
+        Cell width.
+    cell_h : float
+        Cell height.
+    x_interval : float
+        Horizontal spacing.
+    y_interval : float
+        Vertical spacing.
+
+    Returns
+    -------
+    list
+        List of dicts with 'polygon', 'row', 'col' keys.
+    """
+    start_p = mar_info["start_p"]
+    width_dir = mar_info["width_dir"]
+    height_dir = mar_info["height_dir"]
+
+    # Step vectors (cell size + interval)
+    step_x = width_dir * (cell_w + x_interval)
+    step_y = height_dir * (cell_h + y_interval)
+
+    # Cell size vectors
+    vec_cw = width_dir * cell_w
+    vec_ch = height_dir * cell_h
+
+    subplots = []
+    for r in range(rows):
+        for c in range(cols):
+            # Origin of current cell
+            origin = start_p + (c * step_x) + (r * step_y)
+
+            # Four corners (closed polygon)
+            corners = np.array([
+                origin,
+                origin + vec_cw,
+                origin + vec_cw + vec_ch,
+                origin + vec_ch,
+                origin,  # Close polygon
+            ])
+
+            subplots.append({
+                "polygon": corners,
+                "row": r + 1,
+                "col": c + 1,
+                "status": None,  # Will be set in _classify_subplots
+            })
+
+    return subplots
+
+
+def _classify_subplots(subplots_data, boundary_poly):
+    """Classify subplots by spatial relationship with boundary.
+
+    Parameters
+    ----------
+    subplots_data : list
+        List of subplot dicts.
+    boundary_poly : shapely.geometry.Polygon
+        The boundary polygon.
+
+    Returns
+    -------
+    list
+        Updated subplots_data with 'status' field set.
+    """
+    for subplot in subplots_data:
+        subplot_poly = Polygon(subplot["polygon"])
+
+        if boundary_poly.contains(subplot_poly):
+            subplot["status"] = "inside"
+        elif boundary_poly.intersects(subplot_poly):
+            subplot["status"] = "touch"
+        else:
+            subplot["status"] = "outside"
+
+    return subplots_data
+
+
+def _filter_by_keep_mode(subplots_data, keep):
+    """Filter subplots based on keep mode.
+
+    Parameters
+    ----------
+    subplots_data : list
+        List of subplot dicts.
+    keep : str
+        Keep mode: "all", "touch", or "inside".
+
+    Returns
+    -------
+    list
+        Filtered subplots_data.
+    """
+    if keep == "all":
+        return subplots_data
+    elif keep == "touch":
+        return [s for s in subplots_data if s["status"] in ("inside", "touch")]
+    elif keep == "inside":
+        return [s for s in subplots_data if s["status"] == "inside"]
+    else:
+        return subplots_data
+
+
+def _create_roi_from_subplots(subplots_data, crs):
+    """Create ROI object from subplots data.
+
+    Parameters
+    ----------
+    subplots_data : list
+        List of subplot dicts.
+    crs : pyproj.CRS or None
+        Coordinate reference system.
+
+    Returns
+    -------
+    idp.ROI
+        ROI object with subplot polygons.
+    """
+    roi = idp.ROI()
+    roi.crs = crs
+
+    # Store additional metadata for each subplot
+    roi._subplot_meta = {}
+
+    for i, subplot in enumerate(subplots_data):
+        # Generate name: R{row}C{col}
+        name = f"R{subplot['row']}C{subplot['col']}"
+
+        # Store polygon
+        roi[name] = subplot["polygon"]
+
+        # Store metadata
+        roi._subplot_meta[name] = {
+            "row": subplot["row"],
+            "col": subplot["col"],
+            "status": subplot["status"],
+        }
+
+    logger.info(
+        f"Generated {len(roi)} subplots "
+        f"(inside: {sum(1 for s in subplots_data if s['status'] == 'inside')}, "
+        f"touch: {sum(1 for s in subplots_data if s['status'] == 'touch')}, "
+        f"outside: {sum(1 for s in subplots_data if s['status'] == 'outside')})"
+    )
+
+    return roi

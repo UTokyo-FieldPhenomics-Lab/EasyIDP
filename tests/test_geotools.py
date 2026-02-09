@@ -16,13 +16,16 @@ def rectangular_boundary():
     """Create a simple rectangular boundary ROI for testing."""
     roi = idp.ROI()
     # 10x20 meter rectangle
-    roi["test_boundary"] = np.array([
-        [0, 0],
-        [20, 0],
-        [20, 10],
-        [0, 10],
-        [0, 0],
-    ], dtype=float)
+    roi["test_boundary"] = np.array(
+        [
+            [0, 0],
+            [20, 0],
+            [20, 10],
+            [0, 10],
+            [0, 0],
+        ],
+        dtype=float,
+    )
     roi.crs = pyproj.CRS.from_epsg(32654)  # UTM 54N
     return roi
 
@@ -32,15 +35,18 @@ def l_shaped_boundary():
     """Create an L-shaped boundary for testing non-rectangular cases."""
     roi = idp.ROI()
     # L-shape: 20x10 with 10x5 cut out from top-right
-    roi["test_l_boundary"] = np.array([
-        [0, 0],
-        [20, 0],
-        [20, 5],
-        [10, 5],
-        [10, 10],
-        [0, 10],
-        [0, 0],
-    ], dtype=float)
+    roi["test_l_boundary"] = np.array(
+        [
+            [0, 0],
+            [20, 0],
+            [20, 5],
+            [10, 5],
+            [10, 10],
+            [0, 10],
+            [0, 0],
+        ],
+        dtype=float,
+    )
     roi.crs = pyproj.CRS.from_epsg(32654)
     return roi
 
@@ -94,11 +100,11 @@ class TestGenerateSubplotsGridMode:
             row_num=2,
             col_num=2,
         )
-        assert hasattr(subplots, '_subplot_meta')
+        assert hasattr(subplots, "_subplot_meta")
         meta = subplots._subplot_meta["R1C1"]
-        assert meta['row'] == 1
-        assert meta['col'] == 1
-        assert meta['status'] in ('inside', 'touch', 'outside')
+        assert meta["row"] == 1
+        assert meta["col"] == 1
+        assert meta["status"] in ("inside", "touch", "outside")
 
 
 class TestGenerateSubplotsSizeMode:
@@ -162,8 +168,8 @@ class TestGenerateSubplotsKeepMode:
         )
         # All remaining should be inside or touch (no outside)
         for name in subplots.keys():
-            status = subplots._subplot_meta[name]['status']
-            assert status in ('inside', 'touch'), f"{name} has status {status}"
+            status = subplots._subplot_meta[name]["status"]
+            assert status in ("inside", "touch"), f"{name} has status {status}"
 
     def test_keep_inside(self, l_shaped_boundary):
         """Test keep='inside' only keeps fully contained subplots."""
@@ -175,8 +181,8 @@ class TestGenerateSubplotsKeepMode:
         )
         # Only fully inside subplots
         for name in subplots.keys():
-            status = subplots._subplot_meta[name]['status']
-            assert status == 'inside'
+            status = subplots._subplot_meta[name]["status"]
+            assert status == "inside"
 
 
 class TestGenerateSubplotsValidation:
@@ -193,13 +199,15 @@ class TestGenerateSubplotsValidation:
     def test_multiple_polygons_raises(self, rectangular_boundary):
         """Test that multiple polygons raise ValueError."""
         # Add second polygon
-        rectangular_boundary["second"] = np.array([
-            [100, 100],
-            [110, 100],
-            [110, 110],
-            [100, 110],
-            [100, 100],
-        ])
+        rectangular_boundary["second"] = np.array(
+            [
+                [100, 100],
+                [110, 100],
+                [110, 110],
+                [100, 110],
+                [100, 100],
+            ]
+        )
 
         with pytest.raises(ValueError, match="exactly one"):
             idp.geotools.generate_subplots(rectangular_boundary, row_num=2, col_num=2)
@@ -252,14 +260,14 @@ class TestROISaveShp:
         """Test save and reload roundtrip."""
         with tempfile.TemporaryDirectory() as tmpdir:
             shp_path = Path(tmpdir) / "test_output.shp"
-            
+
             # Save
             result_path = rectangular_boundary.save_shp(shp_path)
-            
+
             assert result_path.exists()
-            assert (result_path.with_suffix('.prj')).exists()
-            assert (result_path.with_suffix('.dbf')).exists()
-            assert (result_path.with_suffix('.shx')).exists()
+            assert (result_path.with_suffix(".prj")).exists()
+            assert (result_path.with_suffix(".dbf")).exists()
+            assert (result_path.with_suffix(".shx")).exists()
 
             # Reload and verify
             reloaded = idp.ROI(str(result_path))
@@ -282,10 +290,10 @@ class TestROISaveShp:
     def test_save_empty_raises(self):
         """Test that saving empty ROI raises ValueError."""
         empty_roi = idp.ROI()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             shp_path = Path(tmpdir) / "empty.shp"
-            
+
             with pytest.raises(ValueError, match="empty"):
                 empty_roi.save_shp(shp_path)
 
@@ -293,7 +301,49 @@ class TestROISaveShp:
         """Test the new ROI.save() method."""
         with tempfile.TemporaryDirectory() as tmpdir:
             shp_path = Path(tmpdir) / "generic.shp"
-            
+
             # Save using .save()
             result_path = rectangular_boundary.save(shp_path)
             assert result_path.exists()
+
+    def test_save_shp_default_wkt_version_is_1(self, rectangular_boundary):
+        """Default PRJ output should be WKT1-compatible for GIS tools."""
+        expected_wkt1 = (
+            'PROJCS["WGS_1984_UTM_Zone_54N",GEOGCS["GCS_WGS_1984",'
+            'DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],'
+            'PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],'
+            'PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],'
+            'PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",141.0],'
+            'PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],'
+            'UNIT["Meter",1.0]]'
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            shp_path = Path(tmpdir) / "wkt1_default.shp"
+            rectangular_boundary.save_shp(shp_path)
+            prj_text = shp_path.with_suffix(".prj").read_text().strip()
+            assert prj_text == expected_wkt1
+
+    def test_save_shp_supports_wkt_version_2(self, rectangular_boundary):
+        """WKT2 PRJ output should be available by explicit option."""
+        expected_wkt2 = (
+            'PROJCRS["WGS 84 / UTM zone 54N",BASEGEOGCRS["WGS 84",'
+            'DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,'
+            '298.257223563,LENGTHUNIT["metre",1]],ID["EPSG",6326]],'
+            'PRIMEM["Greenwich",0,ANGLEUNIT["Degree",0.0174532925199433]]],'
+            'CONVERSION["UTM zone 54N",METHOD["Transverse Mercator",ID["EPSG",9807]],'
+            'PARAMETER["Latitude of natural origin",0,ANGLEUNIT["Degree",'
+            '0.0174532925199433],ID["EPSG",8801]],PARAMETER["Longitude of natural origin",'
+            '141,ANGLEUNIT["Degree",0.0174532925199433],ID["EPSG",8802]],'
+            'PARAMETER["Scale factor at natural origin",0.9996,SCALEUNIT["unity",1],'
+            'ID["EPSG",8805]],PARAMETER["False easting",500000,LENGTHUNIT["metre",1],'
+            'ID["EPSG",8806]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],'
+            'ID["EPSG",8807]],ID["EPSG",16054]],CS[Cartesian,2],AXIS["(E)",east,'
+            'ORDER[1],LENGTHUNIT["metre",1,ID["EPSG",9001]]],AXIS["(N)",north,ORDER[2],'
+            'LENGTHUNIT["metre",1,ID["EPSG",9001]]]]'
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            shp_path = Path(tmpdir) / "wkt2.shp"
+            rectangular_boundary.save_shp(shp_path, wkt_version=2)
+            prj_text = shp_path.with_suffix(".prj").read_text().strip()
+            assert prj_text.startswith("PROJCRS[")
+            assert pyproj.CRS.from_wkt(prj_text) == pyproj.CRS.from_wkt(expected_wkt2)

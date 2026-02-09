@@ -13,12 +13,12 @@ import easyidp as idp
 
 def read_proj(prj_path):
     """read \*.prj file to pyproj object
-    
+
     Parameters
     ----------
     prj_path : str
         the file path of shp \*.prj
-    
+
     Returns
     -------
     <pyproj.CRS> object
@@ -33,7 +33,7 @@ def read_proj(prj_path):
 
         >>> prj_path = test_data.shp.roi_prj
         PosixPath('/Users/<user>/Library/Application Support/easyidp.data/data_for_tests/shp_test/roi.prj')
-        
+
         >>> out_proj = idp.shp.read_proj(prj_path)
         >>> out_proj
         <Derived Projected CRS: EPSG:32654>
@@ -51,12 +51,12 @@ def read_proj(prj_path):
         - Prime Meridian: Greenwich
 
     """
-    with open(str(prj_path), 'r') as f:
+    with open(str(prj_path), "r") as f:
         wkt_string = f.readline()
 
     proj = pyproj.CRS.from_wkt(wkt_string)
-    
-    if proj.name == 'WGS 84':
+
+    if proj.name == "WGS 84":
         proj = pyproj.CRS.from_epsg(4326)
 
     return proj
@@ -65,7 +65,7 @@ def read_proj(prj_path):
 def show_shp_fields(shp_path, encoding="utf-8"):
     """
     Show geojson properties data, for better setting ``name_field`` of :py:obj:`read_shp <easyidp.roi.ROI.read_shp>`
-    
+
     Parameters
     ----------
     shp_path : str
@@ -81,7 +81,7 @@ def show_shp_fields(shp_path, encoding="utf-8"):
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
-        >>> idp.shp.show_shp_fields(test_data.shp.complex_shp, encoding="GBK") 
+        >>> idp.shp.show_shp_fields(test_data.shp.complex_shp, encoding="GBK")
           [-1]            [0] ID                [1] MASSIFID       [2] CROPTYPE    [3] CROPDATE    [4] CROPAREA    [5] ATTID
         ------  ---------------------------  -------------------  --------------  --------------  --------------  -----------
              0  230104112201809010000000000  2301041120000000000       小麦         2018-09-01     61525.26302
@@ -91,7 +91,7 @@ def show_shp_fields(shp_path, encoding="utf-8"):
            320  230104112201809010000000583  2301041120000000583       大豆         2018-09-01      380.41704
            321  230104112201809010000000584  2301041120000000584       其它         2018-09-01      9133.25998
            322  230104112201809010000000585  2301041120000000585       其它         2018-09-01      1704.27193
-    
+
         >>> idp.shp.show_shp_fields(test_data.shp.lotus_shp)
         [-1] #   [0] plot_id
         ------  -------------
@@ -133,22 +133,29 @@ def show_shp_fields(shp_path, encoding="utf-8"):
             data.append([row_num + i] + list(shp.records()[i]))
 
     if row_num > 6:
-        data.insert(3, ['...'] * (col_num + 1))
+        data.insert(3, ["..."] * (col_num + 1))
 
-    table_str = tabulate(data, headers=head, tablefmt='simple', colalign=col_align)
+    table_str = tabulate(data, headers=head, tablefmt="simple", colalign=col_align)
     print(table_str)
 
 
-def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encoding='utf-8', return_proj=False):
+def read_shp(
+    shp_path,
+    shp_proj=None,
+    name_field=-1,
+    include_title=False,
+    encoding="utf-8",
+    return_proj=False,
+):
     """read shp file to python numpy object
-    
+
     Parameters
     ----------
     shp_path : str
         the file path of \*.shp
     shp_proj : str | pyproj object
-        by default None, will read automatically from prj file with the same name of shp filename, 
-        or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or 
+        by default None, will read automatically from prj file with the same name of shp filename,
+        or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or
         ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)``
     name_field : str or int or list[ str|int ], optional
         by default None, the id or name of shp file fields as output dictionary keys
@@ -158,10 +165,10 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
         by default 'utf-8', for some chinese characters, 'gbk' may required
     return_proj : bool, optional
         by default False, if given as true, will return extra pyproj.CRS object of current shp file.
-    
+
     Returns
     -------
-    dict, 
+    dict,
         the dictionary with read numpy polygon coordinates
 
         .. code-block:: python
@@ -215,11 +222,11 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
     .. code-block:: python
 
         >>> out = idp.shp.read_shp(data_path, name_field="MASSIFID", encoding='gbk')
-        >>> # or 
+        >>> # or
         >>> out = idp.shp.read_shp(data_path, name_field=1, encoding='gbk')
         [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
-        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s] 
-        >>> out['23010...0000'] 
+        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s]
+        >>> out['23010...0000']
         array([[ 45.83319255, 126.84383445],
                [ 45.83222256, 126.84212197],
                ...
@@ -230,11 +237,11 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
 
     .. code-block:: python
 
-        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], encoding='gbk') 
+        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], encoding='gbk')
         >>> # or
-        >>> out = idp.shp.read_shp(data_path, name_field=[2, 1], include_title=True, encoding='gbk') 
+        >>> out = idp.shp.read_shp(data_path, name_field=[2, 1], include_title=True, encoding='gbk')
         [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
-        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s] 
+        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s]
         >>> out.keys()
         dict_keys(['小麦_23010...0000', '蔬菜_23010...0012', '玉米_23010...0014', ... ])
 
@@ -242,7 +249,7 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
 
     .. code-block:: python
 
-        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], include_title=True, encoding='gbk') 
+        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], include_title=True, encoding='gbk')
         >>> out.keys()
         dict_keys(['CROPTYPE_小麦_MASSIFID_23010...0000', 'CROPTYPE_蔬菜_MASSIFID_23010...0012', ... ])
 
@@ -255,26 +262,36 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
     # check projection coordinate first #
     #####################################
     if shp_proj is None:
-        prj_path = Path(shp_path).with_suffix('.prj')
+        prj_path = Path(shp_path).with_suffix(".prj")
 
         if Path(prj_path).exists():
             shp_proj = read_proj(prj_path)
         else:
-            raise ValueError(f"Unable to find the proj coordinate info [{prj_path}], please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`")
+            raise ValueError(
+                f"Unable to find the proj coordinate info [{prj_path}], please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`"
+            )
     # or give a prj file path
-    elif isinstance(shp_proj, (Path, str)) and str(shp_proj)[-4:]=='.prj' and Path(shp_proj).exists:
+    elif (
+        isinstance(shp_proj, (Path, str))
+        and str(shp_proj)[-4:] == ".prj"
+        and Path(shp_proj).exists
+    ):
         shp_proj = read_proj(shp_proj)
     # or give a CRS projection object
     elif isinstance(shp_proj, pyproj.CRS):
         pass
     else:
-        raise ValueError(f"Unable to find the projection coordinate, please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`")
+        raise ValueError(
+            f"Unable to find the projection coordinate, please either specify `shp_proj='path/to/{{shp_name}}.prj'` or `shp_proj=pyproj.CRS.from_epsg(xxxx)`"
+        )
 
-    print(f'[shp][proj] Use projection [{shp_proj.name}] for loaded shapefile [{Path(shp_path).name}]')
+    print(
+        f"[shp][proj] Use projection [{shp_proj.name}] for loaded shapefile [{Path(shp_path).name}]"
+    )
 
     # read shapefile
     shp_data = shapefile.Reader(str(shp_path), encoding=encoding)
-    
+
     # read shp file fields (headers)
     shp_fields = _get_field_key(shp_data)
 
@@ -299,9 +316,9 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
 
     # Use iterShapeRecords for better performance (O(N) vs O(N^2)) and memory usage
     pbar = tqdm(
-        shp_data.iterShapeRecords(), 
+        shp_data.iterShapeRecords(),
         total=len(shp_data),
-        desc=f"[shp] Read shapefile [{os.path.basename(shp_path)}]"
+        desc=f"[shp] Read shapefile [{os.path.basename(shp_path)}]",
     )
     for i, shape_record in enumerate(pbar):
         shape = shape_record.shape
@@ -309,11 +326,7 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
 
         # convert dict_key name string by given name_field
         if isinstance(field_id, list):
-            values = [
-                record[fid] 
-                if fid != -1 else i 
-                for fid in field_id
-            ]
+            values = [record[fid] if fid != -1 else i for fid in field_id]
             plot_name = plot_name_template.format(*values)
         else:
             if field_id != -1:
@@ -321,8 +334,8 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
             else:
                 plot_name = plot_name_template.format(i)
 
-        plot_name = plot_name.replace(r'/', '_')
-        plot_name = plot_name.replace(r'\\', '_')
+        plot_name = plot_name.replace(r"/", "_")
+        plot_name = plot_name.replace(r"\\", "_")
 
         ##################################
         # get the shape coordinate value #
@@ -331,11 +344,13 @@ def read_shp(shp_path, shp_proj=None, name_field=-1, include_title=False, encodi
         # check if the last point == first point
         if (coord_np[0, :] != coord_np[-1, :]).all():
             # otherwise duplicate first point to last point to fit the polygon definition
-            coord_np = np.append(coord_np, coord_np[0,:][None,:], axis = 0)
+            coord_np = np.append(coord_np, coord_np[0, :][None, :], axis=0)
 
         # check if has duplicated key, otherwise will cause override
         if plot_name in shp_dict.keys():
-            raise KeyError(f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {shp_fields} or or using row id as key `name_field='#'`")
+            raise KeyError(
+                f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {shp_fields} or or using row id as key `name_field='#'`"
+            )
 
         shp_dict[plot_name] = coord_np
 
@@ -357,9 +372,9 @@ def _get_field_key(shp):
     Returns
     -------
     dict
-        Format: {"Column": int_id}; 
+        Format: {"Column": int_id};
         Example: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
-    
+
     Notes
     -----
     This function is compatible with both old and new versions of pyshp:
@@ -372,25 +387,25 @@ def _get_field_key(shp):
         # Skip DeletionFlag field (first field)
         # In old pyshp: DeletionFlag is a tuple, other fields are lists
         # In new pyshp: all fields are Field namedtuples
-        
+
         # Get field name - works for both list/tuple and namedtuple
-        if hasattr(field, 'name'):
+        if hasattr(field, "name"):
             # New pyshp: Field namedtuple with 'name' attribute
             field_name = field.name
         else:
             # Old pyshp: list or tuple, first element is name
             field_name = field[0]
-        
+
         # Skip DeletionFlag
-        if field_name == 'DeletionFlag':
+        if field_name == "DeletionFlag":
             continue
-            
+
         shp_fields[field_name] = f_count
         f_count += 1
 
     return shp_fields
-    
-    
+
+
 def _find_name_related_int_id(shp_fields, name_field):
     """
     Inner function to get the number of given `name_field`.
@@ -401,13 +416,13 @@ def _find_name_related_int_id(shp_fields, name_field):
         the output of _get_field_key()
         Format: {"Column": int_id}
         Exmaple: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
-    name_field : str or int or list[ str|int ], 
+    name_field : str or int or list[ str|int ],
         the id or name of shp file fields as output dictionary keys
 
     Returns
     -------
     field_id : int or list[ int ]
-        
+
         For example:
 
         .. code-block:: python
@@ -422,19 +437,22 @@ def _find_name_related_int_id(shp_fields, name_field):
     """
     if isinstance(name_field, int):
         if name_field >= len(shp_fields) or name_field < -1:
-            raise IndexError(f'Int key [{name_field}] is outside the number of fields {shp_fields}')
+            raise IndexError(
+                f"Int key [{name_field}] is outside the number of fields {shp_fields}"
+            )
         field_id = name_field
     elif isinstance(name_field, str):
-        if name_field == '#':
+        if name_field == "#":
             field_id = -1
         else:
             if name_field not in shp_fields.keys():
-                raise KeyError(f'Can not find key {name_field} in {shp_fields}')
+                raise KeyError(f"Can not find key {name_field} in {shp_fields}")
             field_id = shp_fields[name_field]
     else:
-        raise KeyError(f'Can not find key {name_field} in {shp_fields}')
-    
+        raise KeyError(f"Can not find key {name_field} in {shp_fields}")
+
     return field_id
+
 
 def _get_plot_name_template(roi_fields, field_id, include_title):
     """
@@ -442,16 +460,16 @@ def _get_plot_name_template(roi_fields, field_id, include_title):
     ----------
     roi_fields : dict
         example: {"ID":0, "MASSIFID":1, "CROPTYPE":2, ...}
-    field_id : int or list[ int ] 
+    field_id : int or list[ int ]
         the output of _find_name_related_int_id(), the column of property used for index
     include_title : bool, optional
         by default False, whether add column name to roi key.
-    
+
     Returns
     -------
     plot_name : str
         >>> a = "{} {}"
-        >>> a.format("hello", "world") 
+        >>> a.format("hello", "world")
         'hello world'
     keyring : str or list[ str ]
         a variable to save key of geo_field:dict
@@ -460,12 +478,12 @@ def _get_plot_name_template(roi_fields, field_id, include_title):
     def _fetch_single_field(roi_fields, field_id):
         plot_name_template = ""
         if field_id == -1:  # the row index
-            _key = '#'
+            _key = "#"
         else:
             _key = idp._find_key(roi_fields, field_id)
 
         if include_title:
-            plot_name_template +=  _key + " {}"
+            plot_name_template += _key + " {}"
         else:
             plot_name_template += "{}"
 
@@ -481,7 +499,7 @@ def _get_plot_name_template(roi_fields, field_id, include_title):
             keyring.append(_key)
 
             # not adding the last key A|B|C| --> A|B|C
-            if j < len(field_id)-1:
+            if j < len(field_id) - 1:
                 plot_name_template += "|"
     else:
         plot_name_template, keyring = _fetch_single_field(roi_fields, field_id)
@@ -489,7 +507,42 @@ def _get_plot_name_template(roi_fields, field_id, include_title):
     return plot_name_template, keyring
 
 
-def write_shp(shp_path, roi_dict, crs=None, name_field='id', encoding='utf-8', subplot_meta=None):
+def _crs_to_wkt(crs, wkt_version=1):
+    """Convert CRS to requested WKT version string.
+
+    Parameters
+    ----------
+    crs : pyproj.CRS
+        Input CRS object.
+    wkt_version : int, optional
+        WKT version selector: 1 for WKT1_ESRI, 2 for WKT2_2019.
+
+    Returns
+    -------
+    str
+        WKT string for .prj file output.
+
+    Raises
+    ------
+    ValueError
+        If wkt_version is not 1 or 2.
+    """
+    if wkt_version == 1:
+        return crs.to_wkt(version=pyproj.enums.WktVersion.WKT1_ESRI)
+    if wkt_version == 2:
+        return crs.to_wkt(version=pyproj.enums.WktVersion.WKT2_2019)
+    raise ValueError(f"wkt_version must be 1 or 2, got {wkt_version}")
+
+
+def write_shp(
+    shp_path,
+    roi_dict,
+    crs=None,
+    name_field="id",
+    encoding="utf-8",
+    subplot_meta=None,
+    wkt_version=1,
+):
     """Save ROI polygons to shapefile.
 
     Parameters
@@ -506,6 +559,9 @@ def write_shp(shp_path, roi_dict, crs=None, name_field='id', encoding='utf-8', s
         Character encoding for the shapefile, by default 'utf-8'.
     subplot_meta : dict, optional
         Metadata for subplots (row, col, status) if available.
+    wkt_version : int, optional
+        WKT version for PRJ output (1 for WKT1_ESRI, 2 for WKT2_2019),
+        by default 1.
 
     Returns
     -------
@@ -521,19 +577,19 @@ def write_shp(shp_path, roi_dict, crs=None, name_field='id', encoding='utf-8', s
         raise ValueError("Cannot save empty ROI to shapefile")
 
     shp_path = Path(shp_path)
-    if shp_path.suffix.lower() != '.shp':
-        shp_path = shp_path.with_suffix('.shp')
+    if shp_path.suffix.lower() != ".shp":
+        shp_path = shp_path.with_suffix(".shp")
 
     # Create shapefile writer
     with shapefile.Writer(str(shp_path), encoding=encoding) as w:
         # Define fields
-        w.field(name_field, 'C', 80)
+        w.field(name_field, "C", 80)
 
         # Add subplot metadata fields if available
         if subplot_meta:
-            w.field('row', 'N')
-            w.field('col', 'N')
-            w.field('status', 'C', 20)
+            w.field("row", "N")
+            w.field("col", "N")
+            w.field("status", "C", 20)
 
         # Write each polygon
         for name in roi_dict.keys():
@@ -547,7 +603,7 @@ def write_shp(shp_path, roi_dict, crs=None, name_field='id', encoding='utf-8', s
                 else:
                     poly_coords = coords.tolist()
             else:
-                 poly_coords = coords # assume list
+                poly_coords = coords  # assume list
 
             # Write polygon geometry
             w.poly([poly_coords])
@@ -555,14 +611,14 @@ def write_shp(shp_path, roi_dict, crs=None, name_field='id', encoding='utf-8', s
             # Write attributes
             if subplot_meta and name in subplot_meta:
                 meta = subplot_meta[name]
-                w.record(name, meta['row'], meta['col'], meta['status'])
+                w.record(name, meta["row"], meta["col"], meta["status"])
             else:
                 w.record(name)
 
     # Write .prj file if CRS is available
     if crs is not None:
-        prj_path = shp_path.with_suffix('.prj')
-        prj_path.write_text(crs.to_wkt())
+        prj_path = shp_path.with_suffix(".prj")
+        prj_path.write_text(_crs_to_wkt(crs, wkt_version=wkt_version))
         logger.debug(f"Saved projection file to {prj_path}")
 
     logger.info(f"Saved {len(roi_dict)} polygons to {shp_path}")

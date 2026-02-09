@@ -70,13 +70,12 @@ class ROI(idp.Container):
         # if has CRS -> GPS coordiantes -> geo2pix convert
 
         #: the CRS that current ROI used.
-        self.crs = None   # default -> pixel coords
+        self.crs = None  # default -> pixel coords
         #: the source file path of current ROI.
         self.source = target_path
 
         if target_path is not None:
             self.open(target_path, **kwargs)
-
 
     def is_geo(self):
         """Returns True if the ROI is geo coordinate.
@@ -89,7 +88,6 @@ class ROI(idp.Container):
             return False
         else:
             return True
-
 
     def open(self, target_path, **kwargs):
         """An advanced wrapper to open ROI without dealing with file format, current support shapefile.shp and labelme.json
@@ -138,8 +136,14 @@ class ROI(idp.Container):
         elif ext == ".json":
             self.read_labelme_json(target_path)
 
-
-    def read_shp(self, shp_path, shp_proj=None, name_field=-1, include_title=False, encoding='utf-8'):
+    def read_shp(
+        self,
+        shp_path,
+        shp_proj=None,
+        name_field=-1,
+        include_title=False,
+        encoding="utf-8",
+    ):
         """read ROI from shp file
 
         Parameters
@@ -147,9 +151,9 @@ class ROI(idp.Container):
         shp_path : str
             the file path of \*.shp
         shp_proj : str | pyproj object
-            | by default None, will read automatically from prj file with the same name of shp filename, 
-            | or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or 
-            | ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)`` 
+            | by default None, will read automatically from prj file with the same name of shp filename,
+            | or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or
+            | ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)``
         name_field : str or int or list[ str|int ], optional
             by default None, the id or name of shp file fields as output dictionary keys
         include_title : bool, optional
@@ -213,7 +217,9 @@ class ROI(idp.Container):
         """
         # if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
         # shp.convert_proj()
-        roi_dict, crs = idp.shp.read_shp(shp_path, shp_proj, name_field, include_title, encoding, return_proj=True)
+        roi_dict, crs = idp.shp.read_shp(
+            shp_path, shp_proj, name_field, include_title, encoding, return_proj=True
+        )
 
         self.source = shp_path
 
@@ -254,8 +260,10 @@ class ROI(idp.Container):
         js_dict = idp.jsonfile.read_json(json_path)
 
         # check if is labelme json
-        if all(x in js_dict.keys() for x in ["version", "flags", "shapes", "imagePath", "imageHeight"]):
-
+        if all(
+            x in js_dict.keys()
+            for x in ["version", "flags", "shapes", "imagePath", "imageHeight"]
+        ):
             # init values
             self.crs = None
             self.id_item = {}
@@ -270,10 +278,11 @@ class ROI(idp.Container):
                     self[label] = np.array(poly)
                 else:
                     logger.warning(
-                        f"Only labelme [polygon] shape are accepted, not [{shapes['shape_type']}] of [{shapes['label']}]")
+                        f"Only labelme [polygon] shape are accepted, not [{shapes['shape_type']}] of [{shapes['label']}]"
+                    )
         else:
             raise TypeError(f"It seems [{json_path}] is not a Labelme json file.")
-        
+
     def read_geojson(self, geojson_path, name_field=-1, include_title=False):
         """read ROI from geojson file
 
@@ -302,7 +311,7 @@ class ROI(idp.Container):
 
             >>> roi.read_geojson(test_data.json.geojson_soy, name_field="FID")
             Read geojson [2023_soybean_field.geojson]: 100%|███████████| 260/260         [00:00<00:00, 218234.75it/s]
-        
+
             >>> roi
             <easyidp.ROI> with 260 items
             [0]	65
@@ -330,7 +339,7 @@ class ROI(idp.Container):
                    [-26395.26665 , -28841.235885],
                    [-26394.375966, -28845.135449],
                    [-26393.693576, -28844.979604]])
-        
+
         Notes
         -----
         For more details of these parameters, please refer to :func:`easyidp.jsonfile.read_geojson`
@@ -342,7 +351,8 @@ class ROI(idp.Container):
         pass
 
         geojson_dict, crs_proj = idp.jsonfile.read_geojson(
-            geojson_path, name_field, include_title, return_proj=True)
+            geojson_path, name_field, include_title, return_proj=True
+        )
 
         self.source = geojson_path
 
@@ -352,7 +362,6 @@ class ROI(idp.Container):
 
         for k, v in geojson_dict.items():
             self[k] = v
-
 
     def change_crs(self, target_crs):
         """Change the geo coordinates of roi to another crs.
@@ -456,10 +465,12 @@ class ROI(idp.Container):
         if self.crs is None:
             raise FileNotFoundError(
                 "Current ROI does not have CRS, can not convert "
-                "(Is it a pixel coordinate?)")
+                "(Is it a pixel coordinate?)"
+            )
 
-        if  not isinstance(self.crs, pyproj.CRS) or \
-            not isinstance(target_crs, pyproj.CRS):
+        if not isinstance(self.crs, pyproj.CRS) or not isinstance(
+            target_crs, pyproj.CRS
+        ):
             raise TypeError(
                 f"Both self.crs <{type(self.crs)}> and target_crs "
                 f"<{type(target_crs)}> should be <pyproj.CRS> type"
@@ -477,18 +488,18 @@ class ROI(idp.Container):
             Output path.
         **kwargs : dict
             Additional arguments passed to specific save methods.
-            For .shp: name_field, encoding.
+            For .shp: name_field, encoding, wkt_version.
         """
         target_path = Path(target_path)
         ext = target_path.suffix.lower()
 
-        if ext == '.shp':
+        if ext == ".shp":
             return self.save_shp(target_path, **kwargs)
         else:
             # Fallback or raise error
             raise ValueError(f"Unsupported file extension: {ext}")
 
-    def save_shp(self, shp_path, name_field='id', encoding='utf-8'):
+    def save_shp(self, shp_path, name_field="id", encoding="utf-8", wkt_version=1):
         """Save ROI polygons to shapefile.
 
         Parameters
@@ -499,6 +510,9 @@ class ROI(idp.Container):
             Name of the attribute field for polygon names, by default 'id'.
         encoding : str, optional
             Character encoding for the shapefile, by default 'utf-8'.
+        wkt_version : int, optional
+            WKT version for PRJ output (1 for WKT1_ESRI, 2 for WKT2_2019),
+            by default 1.
 
         Returns
         -------
@@ -522,14 +536,15 @@ class ROI(idp.Container):
         Uses pyshp for shapefile writing. The .prj file is automatically
         generated if the ROI has a CRS defined.
         """
-        subplot_meta = getattr(self, '_subplot_meta', None)
+        subplot_meta = getattr(self, "_subplot_meta", None)
         return idp.shp.write_shp(
-            shp_path, 
-            self, 
-            self.crs, 
-            name_field=name_field, 
-            encoding=encoding, 
-            subplot_meta=subplot_meta
+            shp_path,
+            self,
+            self.crs,
+            name_field=name_field,
+            encoding=encoding,
+            subplot_meta=subplot_meta,
+            wkt_version=wkt_version,
         )
 
     def _get_z_input_check(self, obj, mode, kernel, buffer, func="dsm"):
@@ -543,10 +558,9 @@ class ROI(idp.Container):
                 f"The param 'mode' only accept 'point' or 'face', not '{mode}'"
             )
 
-        if kernel not in [
-            "mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"
-        ]:
-            raise KeyError(f"The param 'kernel' only accept "
+        if kernel not in ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"]:
+            raise KeyError(
+                f"The param 'kernel' only accept "
                 f"'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10'"
                 f" not '{kernel}'"
             )
@@ -572,12 +586,13 @@ class ROI(idp.Container):
             if func == "dsm":
                 raise TypeError(
                     f"Only geotiff path <str> and <easyidp.GeoTiff> object "
-                    f"are accepted, not {type(obj)}")
+                    f"are accepted, not {type(obj)}"
+                )
             else:
                 raise TypeError(
                     f"Only point cloud path <str> and <easyidp.PointCloud> object "
-                    f"are accepted, not {type(obj)}")
-
+                    f"are accepted, not {type(obj)}"
+                )
 
     def get_z_from_dsm(self, dsm, mode="face", kernel="mean", buffer=0, keep_crs=False):
         """Get the z values (heights) from DSM for 2D polygon
@@ -588,7 +603,7 @@ class ROI(idp.Container):
             the path of dsm, or the GeoTiff object from idp.GeoTiff()
         mode : str, optional
             the mode to calculate z values, by default "face".
-            
+
             - ``point``: get height on each vertex, result in different values for each vertex
             - ``face``: get height on polygon face, result in the same value for each vertex
 
@@ -602,15 +617,15 @@ class ROI(idp.Container):
             - ``pmin10``: 10th *percentile mean* inside polygon
             - ``pmax5``: 95th *percentile mean* inside polygon
             - ``pmax10``: 90th *percentile mean* inside polygon
-            
+
             .. note::
-            
+
                 percentile mean: the mean value of all pixels over/under xth percentile threshold
 
                 .. image:: ../../_static/images/python_api/percentile_mean.png
                     :alt: percentile_mean.png'
                     :scale: 35
-        
+
         buffer : float, optional
             | the buffer of ROI, by default 0 (no buffer),
 
@@ -632,7 +647,7 @@ class ROI(idp.Container):
             When the crs is not the save with DSM crs, where change the ROI crs to fit DSM.
 
             - ``False`` (default): change ROI's CRS;
-            - ``True``: not change ROI's CRS, only attach the z value to current coordinate. 
+            - ``True``: not change ROI's CRS, only attach the z value to current coordinate.
 
         Example
         -------
@@ -648,8 +663,8 @@ class ROI(idp.Container):
             >>> roi = roi[0:3]
             >>> lotus_full_dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
-        .. caution:: 
-        
+        .. caution::
+
             The ROI and DSM, did not share the same CRS.
 
         The ROI is in longitude-latitude coordinate system, unit is degree.
@@ -758,8 +773,8 @@ class ROI(idp.Container):
 
             You can using buffer to calculate z values from a larger area. This will decrease the effects of some extreme noise points on DSM. Especially for the point mode, which is more sensitive to such noise.
 
-            .. caution:: 
-            
+            .. caution::
+
                 The value here share the same unit as DSM, if your DSM in lon-lat coordinate (e.g. WGS84, EPSG:4326), ``buffer=1.0`` will result in 1.0 degree in longitude and latitude, this is a very large area!
 
             .. code-block:: python
@@ -832,11 +847,12 @@ class ROI(idp.Container):
         if dsm.header["dim"] != 1:
             raise TypeError(
                 f"Only one layer geotiff (DSM) are accepted, current "
-                f"layer is {dsm.header['dim']}")
+                f"layer is {dsm.header['dim']}"
+            )
 
         # Handle CRS conversion based on self.crs and dsm.header["crs"] combinations
         # Case 1A: self.crs=None, dsm.crs=None
-        # Case 1B: self.crs=None, dsm.crs=has CRS  
+        # Case 1B: self.crs=None, dsm.crs=has CRS
         # Case 2A: self.crs=has CRS, dsm.crs=None
         # -> All above: give warning, no conversion
         # Case 2B: both have CRS
@@ -890,7 +906,9 @@ class ROI(idp.Container):
             global_z = None
 
         nan_z_list = []
-        pbar = tqdm(self.items(), desc=f"Read z values of roi from DSM [{dsm.file_path.name}]")
+        pbar = tqdm(
+            self.items(), desc=f"Read z values of roi from DSM [{dsm.file_path.name}]"
+        )
         for roi_name, val in pbar:
             poly = poly_dict[self.item_label[roi_name]]
             # only get the x and y of coords
@@ -900,7 +918,7 @@ class ROI(idp.Container):
             if global_z is not None:
                 poly3d = _insert_z_value_for_roi(val, global_z)
             else:
-                if mode == "face":    # using the polygon as uniform z values
+                if mode == "face":  # using the polygon as uniform z values
                     # need do buffer
                     if buffer != 0 or buffer != 0.0:
                         p = Polygon(poly)
@@ -908,10 +926,10 @@ class ROI(idp.Container):
                         poly = np.array(p_buffer.exterior.coords)
 
                     poly_z = dsm.polygon_math(poly, is_geo=True, kernel=kernel)
-                    
+
                     poly3d = _insert_z_value_for_roi(val, poly_z)
 
-                else:    # using each point own z values
+                else:  # using each point own z values
                     if buffer != 0 or buffer != 0.0:
                         z_values = []
                         for po in poly:
@@ -919,25 +937,28 @@ class ROI(idp.Container):
                             p_buffer = p.buffer(buffer)
                             p_buffer_np = np.array(p_buffer.exterior.coords)
 
-                            poly_z = dsm.polygon_math(p_buffer_np, is_geo=True, kernel=kernel)
+                            poly_z = dsm.polygon_math(
+                                p_buffer_np, is_geo=True, kernel=kernel
+                            )
                             z_values.append(poly_z)
 
                         z_values = np.array(z_values)
                     else:
-                        # just qurey pixel value 
+                        # just qurey pixel value
                         z_values = dsm.point_query(poly, is_geo=True)
 
                     poly3d = _insert_z_value_for_roi(val, z_values)
 
             # give warning if np.nan in z values (often caused by ROI outside DSM)
-            if(np.isin(poly3d, dsm.header['nodata']).any()):
+            if np.isin(poly3d, dsm.header["nodata"]).any():
                 nan_z_list.append(roi_name)
 
             self[roi_name] = poly3d
 
         if len(nan_z_list) > 0:
-            logger.warning(f"Z values contains empty attribute [{dsm.header['nodata']}] for {nan_z_list}, this may be caused by the ROI distribute inside the DSM no-value area, please double check the source shapefile and DOM in GIS software")
-
+            logger.warning(
+                f"Z values contains empty attribute [{dsm.header['nodata']}] for {nan_z_list}, this may be caused by the ROI distribute inside the DSM no-value area, please double check the source shapefile and DOM in GIS software"
+            )
 
     def get_z_from_pcd(self, pcd, mode="face", kernel="mean", buffer=0, keep_crs=False):
         """Get the z values (heights) from PointCloud for 2D polygon
@@ -948,7 +969,7 @@ class ROI(idp.Container):
             the path of point cloud, or the PointCloud object from idp.PointCloud()
         mode : str, optional
             the mode to calculate z values, by default "face".
-            
+
             - ``point``: get height on each vertex, result in different values for each vertex
             - ``face``: get height on polygon face, result in the same value for each vertex
 
@@ -962,7 +983,7 @@ class ROI(idp.Container):
             - ``pmin10``: 10th *percentile mean* inside polygon
             - ``pmax5``: 95th *percentile mean* inside polygon
             - ``pmax10``: 90th *percentile mean* inside polygon
-        
+
         buffer : float, optional
             | the buffer of ROI, by default 0 (no buffer),
 
@@ -974,7 +995,7 @@ class ROI(idp.Container):
             When the crs is not the save with PCD crs, where change the ROI crs to fit PCD.
 
             - ``False`` (default): change ROI's CRS;
-            - ``True``: not change ROI's CRS, only attach the z value to current coordinate. 
+            - ``True``: not change ROI's CRS, only attach the z value to current coordinate.
 
         """
         pcd = self._get_z_input_check(pcd, mode, kernel, buffer, func="pcd")
@@ -985,7 +1006,7 @@ class ROI(idp.Container):
 
         # Handle CRS conversion based on self.crs and pcd.crs combinations
         # Case 1A: self.crs=None, pcd.crs=None
-        # Case 1B: self.crs=None, pcd.crs=has CRS  
+        # Case 1B: self.crs=None, pcd.crs=has CRS
         # Case 2A: self.crs=has CRS, pcd.crs=None
         # -> All above: give warning, no conversion
         # Case 2B: both have CRS
@@ -1030,7 +1051,7 @@ class ROI(idp.Container):
                     "converting coordinates for query but keeping original ROI CRS"
                 )
                 poly_dict = idp.geotools.convert_proj(self.id_item, self.crs, pcd.crs)
-        
+
         # Determine global Z if applicable
         if buffer == -1 or buffer == -1.0:
             # use full point cloud z
@@ -1040,7 +1061,10 @@ class ROI(idp.Container):
             global_z_val = None
 
         nan_z_list = []
-        pbar = tqdm(self.items(), desc=f"Read z values of roi from PCD [{Path(pcd.file_path).name}]")
+        pbar = tqdm(
+            self.items(),
+            desc=f"Read z values of roi from PCD [{Path(pcd.file_path).name}]",
+        )
 
         for roi_name, val in pbar:
             poly = poly_dict[self.item_label[roi_name]]
@@ -1088,9 +1112,13 @@ class ROI(idp.Container):
                             poly_cal_geom = Point(pt_xy).buffer(buffer)
                             poly_cal = np.array(poly_cal_geom.exterior.coords)
                             xyz_vals = pcd.crop_polygon(poly_cal)
-                            z_vals = xyz_vals[:, 2] if len(xyz_vals) > 0 else np.array([])
+                            z_vals = (
+                                xyz_vals[:, 2] if len(xyz_vals) > 0 else np.array([])
+                            )
                             if len(z_vals) > 0:
-                                z_result_list.append(calculate_kernel_stats(z_vals, kernel))
+                                z_result_list.append(
+                                    calculate_kernel_stats(z_vals, kernel)
+                                )
                             else:
                                 z_result_list.append(np.nan)
                         else:
@@ -1124,7 +1152,7 @@ class ROI(idp.Container):
             the folder to save cropped images, use ROI indices as file_names, by default None, means not save.
         **kwargs : dict
             Additional arguments passed to the underlying crop method (e.g. `GeoTiff.crop_rois`):
-            
+
             - use_affine (bool): If True, use affine rotation storage for GeoTiff crops.
             - return_geotiff (bool): If True, return GeoTiff objects instead of ndarrays.
             - is_geo (bool): Coordinate system flag (usually automated, but can be forced).
@@ -1153,31 +1181,31 @@ class ROI(idp.Container):
         .. code-block:: python
 
             >>> lotus_full_dsm = test_data.pix4d.lotus_dsm
-            >>> lotus_full_pcd = test_data.pix4d.lotus_pcd 
-            >>> lotus_full_dom = test_data.pix4d.lotus_dom 
+            >>> lotus_full_pcd = test_data.pix4d.lotus_pcd
+            >>> lotus_full_dom = test_data.pix4d.lotus_dom
 
             >>> out_dom = roi.crop(lotus_full_dom)
             >>> out_dsm = roi.crop(lotus_full_dsm)
             >>> out_pcd = roi.crop(lotus_full_pcd)
 
             >>> out_dsm
-            {'N1W1': 
+            {'N1W1':
             array([[-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    ...,
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
-                   [-10000., -10000., -10000., ..., -10000., -10000., -10000.]], dtype=float32), 
-            'N1W2': 
+                   [-10000., -10000., -10000., ..., -10000., -10000., -10000.]], dtype=float32),
+            'N1W2':
             array([[-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    ...,
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
-                   [-10000., -10000., -10000., ..., -10000., -10000., -10000.]], dtype=float32), 
-            'N1W3': 
+                   [-10000., -10000., -10000., ..., -10000., -10000., -10000.]], dtype=float32),
+            'N1W3':
             array([[-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
                    [-10000., -10000., -10000., ..., -10000., -10000., -10000.],
@@ -1191,11 +1219,11 @@ class ROI(idp.Container):
         .. code-block:: python
 
             >>> out_dom = roi.crop(lotus_full_dom, save_folder=r"path/to/save/outputs")
-            
+
         You can also use ``use_affine=True`` to get affine rotated crops (GeoTiff only).
-        
+
         .. code-block:: python
-        
+
             >>> out_dom = roi.crop(lotus_full_dom, use_affine=True)
             >>> type(out_dom['N1W1'])
             <class 'easyidp.geotiff.GeoTiff'>
@@ -1207,7 +1235,7 @@ class ROI(idp.Container):
         """
         if not self.is_geo():
             raise TypeError("Could not operate without CRS specified")
-            
+
         if isinstance(target, (Path, str)) and Path(target).exists():
             ext = Path(target).suffix
             if ext == ".tif":
@@ -1215,7 +1243,9 @@ class ROI(idp.Container):
             elif ext in [".ply", ".laz", ".las"]:
                 target = idp.PointCloud(target)
             else:
-                raise TypeError(f"Only [.tif, .ply, .laz, .las] are supported, not [{ext}]")
+                raise TypeError(
+                    f"Only [.tif, .ply, .laz, .las] are supported, not [{ext}]"
+                )
         elif isinstance(target, (idp.GeoTiff, idp.PointCloud)):
             pass
         else:
@@ -1237,14 +1267,14 @@ class ROI(idp.Container):
         Parameters
         ----------
         recons: easyidp.reconstruct.Recons
-            the reconstruction object like <easyidp.Metashape> or <easyidp.Pix4D> object (support both) 
+            the reconstruction object like <easyidp.Metashape> or <easyidp.Pix4D> object (support both)
         roi : easyidp.ROI | dict
             the <ROI> object created by easyidp.ROI() or dictionary
         save_folder : str, optional
             the folder to save projected preview images and json files, by default ""
         distortion_correct : bool, optional
             | Whether do distortion correction, by default True (back to raw image with lens distortion);
-            | If back to software corrected images without len distortion, set it to False. 
+            | If back to software corrected images without len distortion, set it to False.
             | (Pix4D support do this operation, seems metashape not supported yet.)
         ignore : str | None, optional
             Whether tolerate small parts outside image, check :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
@@ -1291,7 +1321,7 @@ class ROI(idp.Container):
                 Not recommended to use in this way:
 
                 .. code-block:: python
-                
+
                     for roi_id in out_dict.keys()
                         img_dict = out_dict[roi_id]
                         for img_name in img_dict.keys():
@@ -1323,30 +1353,30 @@ class ROI(idp.Container):
             >>> out_p4d = roi.back2raw(p4d)
 
             >>> out_ms = roi.back2raw(ms)
-            {'N1W1': 
+            {'N1W1':
                 {'DJI_0479': array([[  43.91987253, 1247.04066872],
                                     [  69.0221046 ,  972.89938018],
                                     [ 353.25370817,  993.30409359],
                                     [ 328.10701394, 1267.40353364],
-                                    [  43.91987253, 1247.04066872]]), 
+                                    [  43.91987253, 1247.04066872]]),
                  'DJI_0480': array([[ 655.3678591 , 1273.01418098],
                                     [ 681.18303761,  996.4866665 ],
                                     [ 965.60719523, 1019.55346144],
                                     [ 939.89408896, 1296.05588162],
-                                    [ 655.3678591 , 1273.01418098]]), 
+                                    [ 655.3678591 , 1273.01418098]]),
                  'DJI_0481': array([[1024.43757205, 1442.10211955],
                                     [1043.51451272, 1159.41597   ],
                                     [1331.67724595, 1177.40543929],
                                     [1312.55275279, 1460.0493473 ],
-                                    [1024.43757205, 1442.10211955]]), 
+                                    [1024.43757205, 1442.10211955]]),
                  ...
                 }
 
-             'N1W2': 
+             'N1W2':
                 {...}
-                
+
              ...
-                
+
         See also
         --------
         easyidp.pix4d.back2raw, easyidp.metashape.back2raw
@@ -1362,7 +1392,9 @@ class ROI(idp.Container):
         for k, coord in self.items():
             dim = coord.shape[1]
             if dim != 3:
-                raise ValueError(f"The back2raw function requires 3D roi with shape=(n, 3), but [{k}] is {coord.shape}")
+                raise ValueError(
+                    f"The back2raw function requires 3D roi with shape=(n, 3), but [{k}] is {coord.shape}"
+                )
 
         # if is one chunk
         if isinstance(recons, (idp.Pix4D, idp.Metashape)):
@@ -1370,7 +1402,9 @@ class ROI(idp.Container):
         # several chunks
         # Todo, not supported
         if isinstance(recons, idp.ProjectPool):
-            raise NotImplementedError("This Pool batch processing function has not been fully implemented")
+            raise NotImplementedError(
+                "This Pool batch processing function has not been fully implemented"
+            )
             out_dict = {}
             for chunk in recons:
                 if isinstance(save_folder, str) and os.path.isdir(save_folder):
@@ -1378,7 +1412,9 @@ class ROI(idp.Container):
                 else:
                     save_path = None
 
-                out_dict[chunk.label] = chunk.back2raw(self, save_folder=save_path, **kwargs)
+                out_dict[chunk.label] = chunk.back2raw(
+                    self, save_folder=save_path, **kwargs
+                )
 
         return out_dict
 
@@ -1393,21 +1429,27 @@ def _insert_z_value_for_roi(ndarray, z_value):
         elif len(z_value.shape) == 2:
             z_value_2d = z_value
         else:
-            raise ValueError(f"The expected z_value shape should be either (n) or (n, 1), not given {z_value.shape}")
+            raise ValueError(
+                f"The expected z_value shape should be either (n) or (n, 1), not given {z_value.shape}"
+            )
 
         if ndarray.shape[1] == 2:
             ndarray_z = np.concatenate([ndarray, z_value_2d], axis=1)
         elif ndarray.shape[1] == 3:
             ndarray_z = np.concatenate([ndarray[:, 0:2], z_value_2d], axis=1)
         else:
-            raise ValueError(f"The expected ROI shape should be (n, 3), not given {ndarray.shape}")
+            raise ValueError(
+                f"The expected ROI shape should be (n, 3), not given {ndarray.shape}"
+            )
     else:  # share the same value
         if ndarray.shape[1] == 2:
             ndarray_z = np.insert(ndarray, obj=2, values=z_value, axis=1)
         elif ndarray.shape[1] == 3:
-            ndarray_z = np.insert(ndarray[:,0:2], obj=2, values=z_value, axis=1)
+            ndarray_z = np.insert(ndarray[:, 0:2], obj=2, values=z_value, axis=1)
         else:
-            raise ValueError(f"The expected ROI shape should be (n, 3), not given {ndarray.shape}")
+            raise ValueError(
+                f"The expected ROI shape should be (n, 3), not given {ndarray.shape}"
+            )
 
     return ndarray_z
 
@@ -1426,42 +1468,53 @@ def read_cc_txt(txt_path):
     """
     if os.path.exists(txt_path):
         try:
-            # try to analysis 'x,y,z' type 
-            test_data = np.loadtxt(txt_path, delimiter=',')
+            # try to analysis 'x,y,z' type
+            test_data = np.loadtxt(txt_path, delimiter=",")
         except ValueError as e:
             # means it is 'label, x, y, z' type
             # line i -> Point #0, x, y, z
             # ValueError: could not convert string to float: 'Point '
             # it also view # as comment sign.
-            test_data = np.loadtxt(txt_path, delimiter=',', comments="@", usecols=[1,2,3])
+            test_data = np.loadtxt(
+                txt_path, delimiter=",", comments="@", usecols=[1, 2, 3]
+            )
     else:
         raise FileNotFoundError(f"Could not find file [{txt_path}]")
 
     # get points A,B,C,D, but polygon needs A,B,C,D,A
-    poly_data = np.append(test_data, test_data[0,:][None,:], axis = 0)
+    poly_data = np.append(test_data, test_data[0, :][None, :], axis=0)
 
     return poly_data
 
 
-# Load detections for backwards projection 
+# Load detections for backwards projection
+
 
 def load_detections(path):
     """Load a csv file of bounding box detections
     CSV takes the format xmin, ymin, xmax, ymax, image_path, label. The bounding box corners are in the image coordinate system,
     the image_path is the expected to be the full path, and the label is the character label for each box. One detection per row in the csv.
-    
+
     Args:
         path: path on local disk
     Returns:
         boxes: a pandas dataframe of detections
     """
-    
+
     # boxes = pd.read_csv(path)
     boxes = None
-    if not all([x in ["image_path","xmin","ymin","xmax","ymax","image_path","label"] for x in boxes.columns]):
-        raise IOError("{} is expected to be a .csv with columns, xmin, ymin, xmax, ymax, image_path, label for each detection")
-        
+    if not all(
+        [
+            x in ["image_path", "xmin", "ymin", "xmax", "ymax", "image_path", "label"]
+            for x in boxes.columns
+        ]
+    ):
+        raise IOError(
+            "{} is expected to be a .csv with columns, xmin, ymin, xmax, ymax, image_path, label for each detection"
+        )
+
     return None
+
 
 def calculate_kernel_stats(z_values, kernel="mean"):
     """Calculate kernel statistics for a list of z values
@@ -1486,7 +1539,7 @@ def calculate_kernel_stats(z_values, kernel="mean"):
     - "pmax10": 90th [percentile mean]_ inside polygon
 
     .. [percentile mean] the mean value of all pixels over/under xth percentile threshold
-        
+
     """
     z_values = np.asarray(z_values)
     if z_values.size == 0:
@@ -1499,7 +1552,7 @@ def calculate_kernel_stats(z_values, kernel="mean"):
                 return group <= thresh
             else:
                 return group >= thresh
-        else: # array threshold derived from 2D array
+        else:  # array threshold derived from 2D array
             if compare == "<=":
                 # For multi-band, require condition met in ALL bands?
                 # This logic is from original geotiff.py
@@ -1520,22 +1573,28 @@ def calculate_kernel_stats(z_values, kernel="mean"):
     elif kernel == "pmin5":
         thresh = np.percentile(z_values, 5, axis=agg_axis)
         idx = _get_idx(z_values, thresh, "<=")
-        if not idx.any(): return np.nan
+        if not idx.any():
+            return np.nan
         return np.mean(z_values[idx], axis=agg_axis)
     elif kernel == "pmin10":
         thresh = np.percentile(z_values, 10, axis=agg_axis)
         idx = _get_idx(z_values, thresh, "<=")
-        if not idx.any(): return np.nan
+        if not idx.any():
+            return np.nan
         return np.mean(z_values[idx], axis=agg_axis)
     elif kernel == "pmax5":
         thresh = np.percentile(z_values, 95, axis=agg_axis)
         idx = _get_idx(z_values, thresh, ">=")
-        if not idx.any(): return np.nan
+        if not idx.any():
+            return np.nan
         return np.mean(z_values[idx], axis=agg_axis)
     elif kernel == "pmax10":
         thresh = np.percentile(z_values, 90, axis=agg_axis)
         idx = _get_idx(z_values, thresh, ">=")
-        if not idx.any(): return np.nan
+        if not idx.any():
+            return np.nan
         return np.mean(z_values[idx], axis=agg_axis)
     else:
-        raise KeyError(f"Could not find kernel [{kernel}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]")
+        raise KeyError(
+            f"Could not find kernel [{kernel}] in [mean, min, max, pmin5, pmin10, pmax5, pmax10]"
+        )

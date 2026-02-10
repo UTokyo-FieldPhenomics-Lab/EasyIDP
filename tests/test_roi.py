@@ -2,6 +2,7 @@ import re
 import pytest
 import numpy as np
 import pyproj
+from pathlib import Path
 
 import easyidp as idp
 
@@ -88,6 +89,7 @@ def test_class_roi_read_shp(shared_data):
 
     assert len(roi) == 3
     assert roi.crs.name == "WGS 84 / UTM zone 54N"
+    assert Path(roi.source) == Path(test_data.shp.roi_shp)
 
     # also test overwrite read
     roi = idp.ROI()
@@ -95,6 +97,17 @@ def test_class_roi_read_shp(shared_data):
 
     assert roi.crs.name == "WGS 84"
     assert "N1W1" in roi.keys()
+    assert Path(roi.source) == Path(test_data.shp.lotus_shp)
+
+
+def test_class_roi_show_shp_field(shared_data, capfd):
+    test_data = shared_data["test_data"]
+
+    roi = idp.ROI(test_data.shp.roi_shp)
+    roi.show_shp_field()
+
+    out, _ = capfd.readouterr()
+    assert "[0] id" in out
 
 
 def test_class_roi_read_shp_key_names(shared_data):

@@ -10,6 +10,8 @@ from pathlib import Path
 
 import easyidp as idp
 
+from . import shared_data
+
 
 @pytest.fixture
 def rectangular_boundary():
@@ -347,3 +349,50 @@ class TestROISaveShp:
             prj_text = shp_path.with_suffix(".prj").read_text().strip()
             assert prj_text.startswith("PROJCRS[")
             assert pyproj.CRS.from_wkt(prj_text) == pyproj.CRS.from_wkt(expected_wkt2)
+
+    def test_save_shp_keep_attrs_when_name_from_two_fields(self, shared_data):
+        """Saving ROI should keep attrs and append only new name field."""
+        test_data = shared_data["test_data"]
+
+        roi = idp.ROI()
+        roi.read_shp(
+            test_data.shp.complex_shp,
+            name_field=["CROPTYPE", "MASSIFID"],
+            encoding="gbk",
+        )
+        old_attrs = [dict(attr) for attr in roi._attrs]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_shp = Path(tmpdir) / "attrs_keep.shp"
+            roi.save_shp(out_shp, name_field="plot_key", encoding="gbk")
+
+            _, new_records, _ = idp.shp.read_shp(
+                out_shp, shp_proj=roi.crs, encoding="gbk"
+            )
+
+        assert len(new_records) == len(old_attrs)
+        for idx, old_record in enumerate(old_attrs):
+            new_record = new_records[idx]
+            assert set(new_record.keys()) == set(old_record.keys()) | {"plot_key"}
+            assert new_record["plot_key"] == list(roi.keys())[idx]
+            for field_name, field_value in old_record.items():
+                assert new_record[field_name] == field_value
+
+    def test_save_shp_reflects_modified_attr(self, shared_data):
+        """Saving ROI should write modified attrs into output shapefile."""
+        test_data = shared_data["test_data"]
+
+        roi = idp.ROI()
+        roi.read_shp(test_data.shp.utm53n_shp, name_field="Attr")
+        original_attr = roi._attrs[0]["Attr"]
+        roi._attrs[0]["Attr"] = "renamed_attr_value"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_shp = Path(tmpdir) / "attrs_rename.shp"
+            roi.save_shp(out_shp, name_field="roi_name")
+
+            _, new_records, _ = idp.shp.read_shp(out_shp, shp_proj=roi.crs)
+
+        assert new_records[0]["roi_name"] == list(roi.keys())[0]
+        assert new_records[0]["Attr"] != original_attr
+        assert "renamed_attr_value".startswith(new_records[0]["Attr"])

@@ -142,8 +142,6 @@ def show_shp_fields(shp_path, encoding="utf-8"):
 def read_shp(
     shp_path,
     shp_proj=None,
-    name_field=-1,
-    include_title=False,
     encoding="utf-8",
     return_proj=False,
 ):
@@ -157,10 +155,6 @@ def read_shp(
         by default None, will read automatically from prj file with the same name of shp filename,
         or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or
         ``read_shp(..., shp_proj=r'path/to/{shp_name}.prj', ...)``
-    name_field : str or int or list[ str|int ], optional
-        by default None, the id or name of shp file fields as output dictionary keys
-    include_title : bool, optional
-        by default False, whether add column name to roi key.
     encoding : str
         by default 'utf-8', for some chinese characters, 'gbk' may required
     return_proj : bool, optional
@@ -168,8 +162,12 @@ def read_shp(
 
     Returns
     -------
-    dict,
-        the dictionary with read numpy polygon coordinates
+    list[np.ndarray]
+        Polygon coordinates for each shape in original order.
+    list[dict]
+        Attribute records of each shape in original order.
+    dict
+        Field map in format ``{"FIELD_NAME": int_id}``.
 
         .. code-block:: python
 
@@ -209,7 +207,7 @@ def read_shp(
     | 23010...0585 | 23010...0585 | 其它           | 2018-09-01     | 1704.27193     |             |
     +--------------+--------------+----------------+----------------+----------------+-------------+
 
-    First, prepare data
+    First, prepare data:
 
     .. code-block:: python
 
@@ -217,41 +215,21 @@ def read_shp(
         >>> testdata = idp.data.TestData()
         >>> data_path = testdata.shp.complex_shp
 
-    Then using the second column ``MASSIFID`` as shape keys:
+    Then read geometry and attributes:
 
     .. code-block:: python
 
-        >>> out = idp.shp.read_shp(data_path, name_field="MASSIFID", encoding='gbk')
-        >>> # or
-        >>> out = idp.shp.read_shp(data_path, name_field=1, encoding='gbk')
-        [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
-        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s]
-        >>> out['23010...0000']
+        >>> polygons, records, fields = idp.shp.read_shp(data_path, encoding='gbk')
+        >>> polygons[0]
         array([[ 45.83319255, 126.84383445],
                [ 45.83222256, 126.84212197],
-               ...
+               ...,
                [ 45.83321205, 126.84381378],
                [ 45.83319255, 126.84383445]])
-
-    Due to the duplication of ``CROPTYPE``, you can not using it as the unique key, but you can combine several columns together by passing a list to ``name_field``:
-
-    .. code-block:: python
-
-        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], encoding='gbk')
-        >>> # or
-        >>> out = idp.shp.read_shp(data_path, name_field=[2, 1], include_title=True, encoding='gbk')
-        [shp][proj] Use projection [WGS 84] for loaded shapefile [complex_shp_review.shp]
-        [shp] read shp [complex_shp_review.shp]: 100%|███████████| 323/323 [00:02<00:00, 143.13it/s]
-        >>> out.keys()
-        dict_keys(['小麦_23010...0000', '蔬菜_23010...0012', '玉米_23010...0014', ... ])
-
-    And you can also add column_names to id by ``include_title=True`` :
-
-    .. code-block:: python
-
-        >>> out = idp.shp.read_shp(data_path, name_field=["CROPTYPE", "MASSIFID"], include_title=True, encoding='gbk')
-        >>> out.keys()
-        dict_keys(['CROPTYPE_小麦_MASSIFID_23010...0000', 'CROPTYPE_蔬菜_MASSIFID_23010...0012', ... ])
+        >>> records[0]
+        {'ID': '230104112201809010000000000', 'MASSIFID': '2301041120000000000', ...}
+        >>> fields
+        {'ID': 0, 'MASSIFID': 1, 'CROPTYPE': 2, ...}
 
     See also
     --------
@@ -298,21 +276,8 @@ def read_shp(
     ########################
     # read shp coordinates #
     ########################
-    shp_dict = {}
-
-    ### do not put it into the following loop, save calculation time.
-    if isinstance(name_field, list):
-        field_id = [_find_name_related_int_id(shp_fields, nf) for nf in name_field]
-    else:
-        field_id = _find_name_related_int_id(shp_fields, name_field)
-
-    # build the format template
-    plot_name_template, keyring = idp.shp._get_plot_name_template(
-        shp_fields, field_id, include_title
-    )
-    ### the ``keyring`` only for dict like object,
-    ### but shp.shapes() is not dict, so not useable
-    ### keyring designed for read_geojson function in jsonfile.py
+    polygons = []
+    records = []
 
     # Use iterShapeRecords for better performance (O(N) vs O(N^2)) and memory usage
     pbar = tqdm(
@@ -324,19 +289,6 @@ def read_shp(
         shape = shape_record.shape
         record = shape_record.record
 
-        # convert dict_key name string by given name_field
-        if isinstance(field_id, list):
-            values = [record[fid] if fid != -1 else i for fid in field_id]
-            plot_name = plot_name_template.format(*values)
-        else:
-            if field_id != -1:
-                plot_name = plot_name_template.format(record[field_id])
-            else:
-                plot_name = plot_name_template.format(i)
-
-        plot_name = plot_name.replace(r"/", "_")
-        plot_name = plot_name.replace(r"\\", "_")
-
         ##################################
         # get the shape coordinate value #
         ##################################
@@ -346,18 +298,16 @@ def read_shp(
             # otherwise duplicate first point to last point to fit the polygon definition
             coord_np = np.append(coord_np, coord_np[0, :][None, :], axis=0)
 
-        # check if has duplicated key, otherwise will cause override
-        if plot_name in shp_dict.keys():
-            raise KeyError(
-                f"Meet with duplicated key [{plot_name}] for current shapefile, please specify another `name_field` from {shp_fields} or or using row id as key `name_field='#'`"
-            )
-
-        shp_dict[plot_name] = coord_np
+        polygons.append(coord_np)
+        record_dict = {
+            field_name: record[fid] for field_name, fid in shp_fields.items()
+        }
+        records.append(record_dict)
 
     if return_proj:
-        return shp_dict, shp_proj
-    else:
-        return shp_dict
+        return polygons, records, shp_fields, shp_proj
+
+    return polygons, records, shp_fields
 
 
 def _get_field_key(shp):

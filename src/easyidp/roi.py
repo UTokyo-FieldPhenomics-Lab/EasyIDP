@@ -73,6 +73,8 @@ class ROI(idp.Container):
         self.crs = None  # default -> pixel coords
         #: the source file path of current ROI.
         self.source = target_path
+        #: per-polygon attributes aligned by index.
+        self._attrs = []
 
         if target_path is not None:
             self.open(target_path, **kwargs)
@@ -215,10 +217,11 @@ class ROI(idp.Container):
         easyidp.shp.read_shp
 
         """
-        # if geotiff_proj is not None and shp_proj is not None and shp_proj.name != geotiff_proj.name:
-        # shp.convert_proj()
-        roi_dict, crs = idp.shp.read_shp(
-            shp_path, shp_proj, name_field, include_title, encoding, return_proj=True
+        polygons, records, fields, crs = idp.shp.read_shp(
+            shp_path,
+            shp_proj=shp_proj,
+            encoding=encoding,
+            return_proj=True,
         )
 
         self.source = shp_path
@@ -226,9 +229,79 @@ class ROI(idp.Container):
         self.crs = crs
         self.id_item = {}
         self.item_label = {}
+        self._attrs = []
 
-        for k, v in roi_dict.items():
-            self[k] = v
+        for i, poly in enumerate(polygons):
+            self[str(i)] = poly
+            self._attrs.append(records[i])
+
+        self.rename_by_fields(
+            name_field=name_field, include_title=include_title, fields=fields
+        )
+
+    def _get_name_field_ids(self, fields, name_field):
+        if isinstance(name_field, list):
+            return [idp.shp._find_name_related_int_id(fields, nf) for nf in name_field]
+        return idp.shp._find_name_related_int_id(fields, name_field)
+
+    def _format_field_value(self, attrs, fields, fid, idx):
+        if fid == -1:
+            return idx
+
+        field_name = idp._find_key(fields, fid)
+        return attrs[field_name]
+
+    def rename_by_fields(self, name_field=-1, include_title=False, fields=None):
+        """Rename ROI keys based on loaded attribute fields.
+
+        Parameters
+        ----------
+        name_field : str or int or list[ str|int ], optional
+            Field selector rule for generating key names.
+        include_title : bool, optional
+            Whether field title should be included in generated key.
+        fields : dict, optional
+            Field map in ``{"field_name": index}`` format.
+        """
+        if fields is None:
+            raise ValueError("The `fields` mapping is required for key renaming")
+
+        if len(self._attrs) != len(self):
+            raise ValueError("The ROI attribute table does not align with ROI items")
+
+        field_id = self._get_name_field_ids(fields, name_field)
+        name_template, _ = idp.shp._get_plot_name_template(
+            fields, field_id, include_title
+        )
+
+        generated_keys = []
+        for idx, attrs in enumerate(self._attrs):
+            if isinstance(field_id, list):
+                values = [
+                    self._format_field_value(attrs, fields, fid, idx)
+                    for fid in field_id
+                ]
+                key = name_template.format(*values)
+            else:
+                value = self._format_field_value(attrs, fields, field_id, idx)
+                key = name_template.format(value)
+
+            key = key.replace(r"/", "_")
+            key = key.replace(r"\\", "_")
+            generated_keys.append(key)
+
+        if len(generated_keys) != len(set(generated_keys)):
+            for key in generated_keys:
+                if generated_keys.count(key) > 1:
+                    dup_key = key
+                    break
+            raise KeyError(
+                f"Meet with duplicated key [{dup_key}] for current shapefile, "
+                f"please specify another `name_field` from {fields} or or "
+                "using row id as key `name_field='#'`"
+            )
+
+        self.item_label = {key: idx for idx, key in enumerate(generated_keys)}
 
     def read_labelme_json(self, json_path):
         """read roi from labelme marked json file

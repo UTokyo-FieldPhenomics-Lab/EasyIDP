@@ -7,15 +7,19 @@ import easyidp as idp
 
 from . import shared_data, report_loguru_to_caplog
 
+
 def test_read_cc_txt(shared_data):
     test_data = shared_data["test_data"]
 
-    results = np.array([
-        [-18.42576599, -16.10819054,  -0.63814539],
-        [-18.00066757, -18.05295944,  -0.67380333],
-        [-16.05021095, -17.63488388,  -0.68102068],
-        [-16.46848488, -15.66774559,  -0.6401825 ],
-        [-18.42576599, -16.10819054,  -0.63814539]])
+    results = np.array(
+        [
+            [-18.42576599, -16.10819054, -0.63814539],
+            [-18.00066757, -18.05295944, -0.67380333],
+            [-16.05021095, -17.63488388, -0.68102068],
+            [-16.46848488, -15.66774559, -0.6401825],
+            [-18.42576599, -16.10819054, -0.63814539],
+        ]
+    )
 
     # xyz type:
     xyz_fpath = test_data.roi.xyz_txt
@@ -34,9 +38,10 @@ def test_class_roi_init():
     roi = idp.ROI()
 
     # specify values
-    roi["ddfge"] = np.array([[1,2],[4,5]])
+    roi["ddfge"] = np.array([[1, 2], [4, 5]])
     assert len(roi) == 1
     assert "ddfge" in roi.item_label.keys()
+
 
 def test_class_roi_slice(shared_data):
     test_data = shared_data["test_data"]
@@ -55,6 +60,7 @@ def test_class_roi_slice(shared_data):
     for func_name in ["crop", "back2raw", "get_z_from_dsm"]:
         assert func_name in dir(roi)
 
+
 def test_class_roi_copy(shared_data):
     test_data = shared_data["test_data"]
 
@@ -72,6 +78,7 @@ def test_class_roi_copy(shared_data):
     assert roi.crs == roi_copy.crs
     assert roi.source == roi_copy.source
 
+
 def test_class_roi_read_shp(shared_data):
     test_data = shared_data["test_data"]
 
@@ -80,7 +87,7 @@ def test_class_roi_read_shp(shared_data):
     roi.read_shp(test_data.shp.roi_shp, name_field=0)
 
     assert len(roi) == 3
-    assert roi.crs.name == 'WGS 84 / UTM zone 54N'
+    assert roi.crs.name == "WGS 84 / UTM zone 54N"
 
     # also test overwrite read
     roi = idp.ROI()
@@ -89,6 +96,104 @@ def test_class_roi_read_shp(shared_data):
     assert roi.crs.name == "WGS 84"
     assert "N1W1" in roi.keys()
 
+
+def test_class_roi_read_shp_key_names(shared_data):
+    test_data = shared_data["test_data"]
+    shp_path = test_data.shp.utm53n_shp
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, include_title=True)
+    assert "# 1" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field="Attr")
+    assert "1_02" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field=0)
+    assert "1_02" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field="Attr", include_title=True)
+    assert "Attr 1_02" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field=0, include_title=True)
+    assert "Attr 1_02" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field=-1, include_title=False)
+    assert "1" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field="#", include_title=True)
+    assert "# 1" in roi.keys()
+
+
+def test_class_roi_read_shp_key_names_merge(shared_data):
+    test_data = shared_data["test_data"]
+    shp_path = test_data.shp.complex_shp
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field=["CROPTYPE", "MASSIFID"], encoding="gbk")
+    assert "小麦|2301041120000000000" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(
+        shp_path,
+        name_field=["CROPTYPE", "MASSIFID"],
+        include_title=True,
+        encoding="gbk",
+    )
+    assert "CROPTYPE 小麦|MASSIFID 2301041120000000000" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field=[2, 1], encoding="gbk")
+    assert "小麦|2301041120000000000" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field=[2, 1], include_title=True, encoding="gbk")
+    assert "CROPTYPE 小麦|MASSIFID 2301041120000000000" in roi.keys()
+
+    roi = idp.ROI()
+    roi.read_shp(shp_path, name_field=[2, -1], include_title=True, encoding="gbk")
+    assert "CROPTYPE 小麦|# 0" in roi.keys()
+
+
+def test_class_roi_read_shp_duplicate_key_name_error(shared_data):
+    test_data = shared_data["test_data"]
+    shp_path = test_data.shp.complex_shp
+
+    roi = idp.ROI()
+    with pytest.raises(KeyError, match=re.escape("Meet with duplicated key")):
+        roi.read_shp(shp_path, name_field="CROPTYPE", encoding="gbk")
+
+
+def test_class_roi_read_shp_non_exist_key_name_error(shared_data):
+    test_data = shared_data["test_data"]
+    shp_path = test_data.shp.complex_shp
+
+    roi = idp.ROI()
+    with pytest.raises(KeyError, match=re.escape("Can not find key")):
+        roi.read_shp(shp_path, name_field="AAAA", encoding="gbk")
+
+    roi = idp.ROI()
+    with pytest.raises(KeyError, match=re.escape("Can not find key")):
+        roi.read_shp(shp_path, name_field=["AAAA", "BBBB"], encoding="gbk")
+
+    roi = idp.ROI()
+    with pytest.raises(
+        IndexError, match=re.escape("Int key [6] is outside the number of fields")
+    ):
+        roi.read_shp(shp_path, name_field=6, encoding="gbk")
+
+    roi = idp.ROI()
+    with pytest.raises(
+        IndexError, match=re.escape("Int key [6] is outside the number of fields")
+    ):
+        roi.read_shp(shp_path, name_field=[1, 6], encoding="gbk")
+
+
 def test_class_read_labelme_json(shared_data):
     test_data = shared_data["test_data"]
 
@@ -96,13 +201,15 @@ def test_class_read_labelme_json(shared_data):
 
     roi = idp.ROI(json_path)
 
-    assert roi['1'][0,0] == 2447.239263803681
+    assert roi["1"][0, 0] == 2447.239263803681
 
     # test errors
-    with pytest.raises(TypeError, match=r"It seems \[.*for_read_json\.json\] is not a Labelme json file"):
+    with pytest.raises(
+        TypeError,
+        match=r"It seems \[.*for_read_json\.json\] is not a Labelme json file",
+    ):
         # > It seems [C:\\Users\\hwang\\AppData\\Local\\easyidp.data\\data_for_tests\\json_test\\for_read_json.json] is not a Labelme json file.
         roi = idp.ROI(test_data.json.labelme_err)
-        
 
     # test warnings
     roi = idp.ROI(test_data.json.labelme_warn)
@@ -119,11 +226,12 @@ def test_class_roi_change_crs(shared_data):
     roi.change_crs(obj.header["crs"])
     assert roi.crs.name == obj.header["crs"].name
 
+
 def test_class_roi_get_z_from_dsm(shared_data):
     test_data = shared_data["test_data"]
 
     # only test whether works, not examine the value is true or not
-    roi_select = shared_data['roi_select'].copy()
+    roi_select = shared_data["roi_select"].copy()
 
     assert len(roi_select) == 4
     # have different CRS from shp file
@@ -136,59 +244,79 @@ def test_class_roi_get_z_from_dsm(shared_data):
     map_ht = 97.56273651123047
     # var name -> roi_mode_kernel_buffer_keepcrs
     roi_p_mean_0_f = roi_select.copy()
-    roi_p_mean_0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
-    assert roi_p_mean_0_f.crs.name == 'WGS 84 / UTM zone 54N'
-    assert roi_p_mean_0_f[0].shape == (5,3)
-    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0,0], 368017.7565143015)
-    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0,1], 3955511.081022765)
-    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0,2], ht)
+    roi_p_mean_0_f.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False
+    )
+    assert roi_p_mean_0_f.crs.name == "WGS 84 / UTM zone 54N"
+    assert roi_p_mean_0_f[0].shape == (5, 3)
+    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0, 0], 368017.7565143015)
+    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0, 1], 3955511.081022765)
+    np.testing.assert_almost_equal(roi_p_mean_0_f[0][0, 2], ht)
 
     roi_p_mean_0_t = roi_select.copy()
-    roi_p_mean_0_t.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=True)
+    roi_p_mean_0_t.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=True
+    )
     assert roi_p_mean_0_t.crs.name == "WGS 84"
-    assert roi_p_mean_0_t[0].shape == (5,3)
-    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,0], 139.54052962153048)  # longitude
-    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,1], 35.73475194328632)  # latitude
-    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0,2], ht)
+    assert roi_p_mean_0_t[0].shape == (5, 3)
+    np.testing.assert_almost_equal(
+        roi_p_mean_0_t[0][0, 0], 139.54052962153048
+    )  # longitude
+    np.testing.assert_almost_equal(
+        roi_p_mean_0_t[0][0, 1], 35.73475194328632
+    )  # latitude
+    np.testing.assert_almost_equal(roi_p_mean_0_t[0][0, 2], ht)
 
     roi_p_mean_1_f = roi_select.copy()
-    roi_p_mean_1_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=1, keep_crs=False)
-    assert roi_p_mean_1_f[0].shape == (5,3)
-    assert roi_p_mean_1_f[0][0,1] != ht
+    roi_p_mean_1_f.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=1, keep_crs=False
+    )
+    assert roi_p_mean_1_f[0].shape == (5, 3)
+    assert roi_p_mean_1_f[0][0, 1] != ht
 
     roi_p_mean_1d0_f = roi_select.copy()
-    roi_p_mean_1d0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=1.0, keep_crs=False)
-    assert roi_p_mean_1d0_f[0].shape == (5,3)
+    roi_p_mean_1d0_f.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=1.0, keep_crs=False
+    )
+    assert roi_p_mean_1d0_f[0].shape == (5, 3)
     # buffer 1.0 and buffer 1 should be the same
-    assert roi_p_mean_1d0_f[0][0,2] == roi_p_mean_1_f[0][0,2]
+    assert roi_p_mean_1d0_f[0][0, 2] == roi_p_mean_1_f[0][0, 2]
 
     # using full map as results
     roi_p_mean_m1_f = roi_select.copy()
-    roi_p_mean_m1_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=-1, keep_crs=False)
+    roi_p_mean_m1_f.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=-1, keep_crs=False
+    )
     # all the z values should be the same (use allclose for float comparison)
     for i in roi_p_mean_m1_f.values():
-        np.testing.assert_allclose(i[:,2], map_ht, rtol=1e-6)
+        np.testing.assert_allclose(i[:, 2], map_ht, rtol=1e-6)
 
     roi_p_mean_m1d0_f = roi_select.copy()
-    roi_p_mean_m1d0_f.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=-1.0, keep_crs=False)
+    roi_p_mean_m1d0_f.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=-1.0, keep_crs=False
+    )
     # all the z values should be the same (use allclose for float comparison)
     for i in roi_p_mean_m1d0_f.values():
-        np.testing.assert_allclose(i[:,2], map_ht, rtol=1e-6)
+        np.testing.assert_allclose(i[:, 2], map_ht, rtol=1e-6)
 
     #####################
     # test mode == face #
     #####################
     roi_f_mean_1_f = roi_select.copy()
-    roi_f_mean_1_f.get_z_from_dsm(lotus_full_dsm, mode="face", kernel="mean", buffer=1, keep_crs=False)
-    assert roi_f_mean_1_f[0].shape == (5,3)
-    np.testing.assert_almost_equal(roi_f_mean_1_f[0][0,0], 368017.7565143015)
-    np.testing.assert_almost_equal(roi_f_mean_1_f[0][0,1], 3955511.081022765)
+    roi_f_mean_1_f.get_z_from_dsm(
+        lotus_full_dsm, mode="face", kernel="mean", buffer=1, keep_crs=False
+    )
+    assert roi_f_mean_1_f[0].shape == (5, 3)
+    np.testing.assert_almost_equal(roi_f_mean_1_f[0][0, 0], 368017.7565143015)
+    np.testing.assert_almost_equal(roi_f_mean_1_f[0][0, 1], 3955511.081022765)
 
     roi_f_mean_0_f = roi_select.copy()
-    roi_f_mean_0_f.get_z_from_dsm(lotus_full_dsm, mode="face", kernel="mean", buffer=0, keep_crs=False)
-    assert roi_f_mean_0_f[0].shape == (5,3)
-    np.testing.assert_almost_equal(roi_f_mean_0_f[0][0,0], 368017.7565143015)
-    np.testing.assert_almost_equal(roi_f_mean_0_f[0][0,1], 3955511.081022765)
+    roi_f_mean_0_f.get_z_from_dsm(
+        lotus_full_dsm, mode="face", kernel="mean", buffer=0, keep_crs=False
+    )
+    assert roi_f_mean_0_f[0].shape == (5, 3)
+    np.testing.assert_almost_equal(roi_f_mean_0_f[0][0, 0], 368017.7565143015)
+    np.testing.assert_almost_equal(roi_f_mean_0_f[0][0, 1], 3955511.081022765)
 
 
 def test_class_roi_get_z_from_dsm_warns(shared_data, report_loguru_to_caplog):
@@ -199,15 +327,18 @@ def test_class_roi_get_z_from_dsm_warns(shared_data, report_loguru_to_caplog):
     roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
     roi = roi[0:3]
 
-    roi[0] = roi[0] + np.array([0,  -0.00029697])  # offset 1 degree lon & lat
+    roi[0] = roi[0] + np.array([0, -0.00029697])  # offset 1 degree lon & lat
 
     lotus_full_dsm = test_data.pix4d.lotus_dsm
 
-    roi.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+    roi.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False
+    )
     print(roi[0])
-    
+
     # Check that warning was logged via loguru
     assert "Z values contains empty attribute" in report_loguru_to_caplog.text
+
 
 def test_class_roi_get_z_from_dsm_errors(shared_data):
     test_data = shared_data["test_data"]
@@ -215,76 +346,96 @@ def test_class_roi_get_z_from_dsm_errors(shared_data):
     roi = idp.ROI(test_data.shp.lotus_shp)
     lotus_full_dsm = test_data.pix4d.lotus_dsm
 
-    with pytest.raises(KeyError, match=re.escape("The param 'mode' only accept 'point' or 'face', not 'abcde'")):
+    with pytest.raises(
+        KeyError,
+        match=re.escape("The param 'mode' only accept 'point' or 'face', not 'abcde'"),
+    ):
         roi.get_z_from_dsm(lotus_full_dsm, mode="abcde")
 
-    with pytest.raises(KeyError, match=re.escape(
-        "The param 'kernel' only accept 'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10' not 'abcde'"
-        )):
+    with pytest.raises(
+        KeyError,
+        match=re.escape(
+            "The param 'kernel' only accept 'mean', 'min', 'max', 'pmin5', 'pmin10', 'pmax5', 'pmax10' not 'abcde'"
+        ),
+    ):
         roi.get_z_from_dsm(lotus_full_dsm, kernel="abcde")
 
-    with pytest.raises(TypeError, match=re.escape(
-        "Only 'int' and 'float' are acceptable for 'buffer', not <class 'str'> [abcde]"
-        )):
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "Only 'int' and 'float' are acceptable for 'buffer', not <class 'str'> [abcde]"
+        ),
+    ):
         roi.get_z_from_dsm(lotus_full_dsm, buffer="abcde")
 
     with pytest.raises(FileNotFoundError, match=re.escape("Could not find file")):
         roi.get_z_from_dsm("seffed")
 
-    with pytest.raises(TypeError, match=re.escape("Only geotiff path <str> and <easyidp.GeoTiff> object")):
+    with pytest.raises(
+        TypeError,
+        match=re.escape("Only geotiff path <str> and <easyidp.GeoTiff> object"),
+    ):
         roi.get_z_from_dsm(23345)
 
-    with pytest.raises(TypeError, match=re.escape("Could not operate without CRS specified")):
+    with pytest.raises(
+        TypeError, match=re.escape("Could not operate without CRS specified")
+    ):
         roi.crs = None
         roi.get_z_from_dsm(lotus_full_dsm, buffer="abcde")
 
+
 def test_func_insert_z_value_for_roi_error():
     # test catching incorrest ROI.shape
-    with pytest.raises(ValueError, match=re.escape("The expected ROI shape should be (n, 3), not given (5, 4)")):
-        out = idp.roi._insert_z_value_for_roi(np.ones((5,4)), 3)
+    with pytest.raises(
+        ValueError,
+        match=re.escape("The expected ROI shape should be (n, 3), not given (5, 4)"),
+    ):
+        out = idp.roi._insert_z_value_for_roi(np.ones((5, 4)), 3)
 
     val = np.array(
-       [[ 368017.7565143 , 3955511.08102277],
-        [ 368019.70190232, 3955511.49811902],
-        [ 368020.11263046, 3955509.54636219],
-        [ 368018.15769062, 3955509.13563382],
-        [ 368017.7565143 , 3955511.08102277]])
-    z_value = np.array(
-        [[97.25353 ],
-         [97.34388 ],
-         [97.4322  ],
-         [97.305435],
-         [97.25353 ]])
+        [
+            [368017.7565143, 3955511.08102277],
+            [368019.70190232, 3955511.49811902],
+            [368020.11263046, 3955509.54636219],
+            [368018.15769062, 3955509.13563382],
+            [368017.7565143, 3955511.08102277],
+        ]
+    )
+    z_value = np.array([[97.25353], [97.34388], [97.4322], [97.305435], [97.25353]])
 
-    with pytest.raises(ValueError, match=re.escape("The expected z_value shape should be either (n) or (n, 1), not given (5, 1, 1)")):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "The expected z_value shape should be either (n) or (n, 1), not given (5, 1, 1)"
+        ),
+    ):
         out = idp.roi._insert_z_value_for_roi(val, z_value[:, None])
+
 
 def test_func_insert_z_value_for_roi_error_point_mode(shared_data):
     test_data = shared_data["test_data"]
 
     # meet the error #72
     val = np.array(
-       [[ 368017.7565143 , 3955511.08102277],
-        [ 368019.70190232, 3955511.49811902],
-        [ 368020.11263046, 3955509.54636219],
-        [ 368018.15769062, 3955509.13563382],
-        [ 368017.7565143 , 3955511.08102277]])
-    z_value = np.array(
-        [[97.25353 ],
-         [97.34388 ],
-         [97.4322  ],
-         [97.305435],
-         [97.25353 ]])
+        [
+            [368017.7565143, 3955511.08102277],
+            [368019.70190232, 3955511.49811902],
+            [368020.11263046, 3955509.54636219],
+            [368018.15769062, 3955509.13563382],
+            [368017.7565143, 3955511.08102277],
+        ]
+    )
+    z_value = np.array([[97.25353], [97.34388], [97.4322], [97.305435], [97.25353]])
 
     out = idp.roi._insert_z_value_for_roi(val, z_value)
 
-    assert out.shape == (5,3)
+    assert out.shape == (5, 3)
 
     # then the following code should runnable
-    roi = idp.ROI(test_data.shp.lotus_shp, name_field='plot_id')
+    roi = idp.ROI(test_data.shp.lotus_shp, name_field="plot_id")
     roi.get_z_from_dsm(test_data.metashape.lotus_dsm, mode="point")
 
-    assert roi[0].shape == (5,3)
+    assert roi[0].shape == (5, 3)
 
 
 def test_class_roi_get_z_from_dsm_duplicate_load(shared_data):
@@ -298,11 +449,12 @@ def test_class_roi_get_z_from_dsm_duplicate_load(shared_data):
 
     roi.get_z_from_dsm(lotus_full_dsm)
 
-    assert roi['N1W1'].shape == (5, 3)
+    assert roi["N1W1"].shape == (5, 3)
 
     roi.get_z_from_dsm(lotus_full_dsm)
 
-    assert roi['N1W1'].shape == (5, 3)
+    assert roi["N1W1"].shape == (5, 3)
+
 
 def test_class_roi_crop(shared_data):
     test_data = shared_data["test_data"]
@@ -311,11 +463,13 @@ def test_class_roi_crop(shared_data):
 
     # data prepare
     lotus_full_dsm = test_data.pix4d.lotus_dsm
-    lotus_full_pcd = test_data.pix4d.lotus_pcd 
-    lotus_full_dom = test_data.pix4d.lotus_dom 
+    lotus_full_pcd = test_data.pix4d.lotus_pcd
+    lotus_full_dom = test_data.pix4d.lotus_dom
 
-    roi_select = shared_data['roi_select'].copy()
-    roi_select.get_z_from_dsm(lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False)
+    roi_select = shared_data["roi_select"].copy()
+    roi_select.get_z_from_dsm(
+        lotus_full_dsm, mode="point", kernel="mean", buffer=0, keep_crs=False
+    )
 
     # crop geotiff
     out_dom = roi_select.crop(lotus_full_dom)
@@ -328,16 +482,23 @@ def test_class_roi_crop(shared_data):
     out_pcd = roi_select.crop(lotus_full_pcd)
     assert len(out_pcd) == 4
 
+
 def test_class_roi_crop_error():
     roi = idp.ROI()
 
-    with pytest.raises(TypeError, match=re.escape("Could not operate without CRS specified")):
+    with pytest.raises(
+        TypeError, match=re.escape("Could not operate without CRS specified")
+    ):
         roi.crop("aaa")
 
     roi.crs = pyproj.CRS.from_epsg(4326)
-    with pytest.raises(TypeError, match=re.escape(
-        "Only file path <str> or <easyidp.GeoTiff> object or <easyidp.PointCloud>"
-        " object are accepted, not <class 'str'>")):
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "Only file path <str> or <easyidp.GeoTiff> object or <easyidp.PointCloud>"
+            " object are accepted, not <class 'str'>"
+        ),
+    ):
         roi.crop("aaa")
 
 
@@ -345,13 +506,15 @@ def test_class_roi_back2raw(shared_data):
     test_data = shared_data["test_data"]
 
     # single chunk:
-    p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
-                    raw_img_folder=test_data.pix4d.lotus_photos,
-                    param_folder=test_data.pix4d.lotus_param)
+    p4d = idp.Pix4D(
+        project_path=test_data.pix4d.lotus_folder,
+        raw_img_folder=test_data.pix4d.lotus_photos,
+        param_folder=test_data.pix4d.lotus_param,
+    )
 
     ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
 
-    roi_select = shared_data['roi_select'].copy()
+    roi_select = shared_data["roi_select"].copy()
     roi_select.get_z_from_dsm(test_data.pix4d.lotus_dsm)
 
     ms.crs = roi_select.crs
@@ -362,43 +525,39 @@ def test_class_roi_back2raw(shared_data):
     assert len(out_p4d) == 4
     assert len(out_ms) == 4
 
+
 def test_class_roi_back2raw_error(shared_data):
     test_data = shared_data["test_data"]
-    
+
     ms = idp.Metashape(test_data.metashape.lotus_psx)
 
-    roi_select = shared_data['roi_select'].copy()
+    roi_select = shared_data["roi_select"].copy()
 
     # test ROI.back2raw error
     with pytest.raises(
-        ValueError, 
+        ValueError,
         match=re.escape(
-            "The back2raw function requires 3D roi with shape=(n, 3), but [N1W1] is (5, 2)")):
+            "The back2raw function requires 3D roi with shape=(n, 3), but [N1W1] is (5, 2)"
+        ),
+    ):
         out_ms = roi_select.back2raw(ms)
-        
+
+
 def test_class_roi_get_z_from_pcd_synthetic():
     # 1. Prepare Data
     # ROI: 10x10 square at 0,0
     roi = idp.ROI()
-    roi["test_square"] = np.array([
-        [0, 0],
-        [10, 0],
-        [10, 10],
-        [0, 10],
-        [0, 0]
-    ], dtype=float)
-    roi.crs = pyproj.CRS.from_epsg(32654) # UTM 54N
+    roi["test_square"] = np.array(
+        [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], dtype=float
+    )
+    roi.crs = pyproj.CRS.from_epsg(32654)  # UTM 54N
 
-    # PCD: 
+    # PCD:
     # Pt1: 5, 5, 100 (Center)
     # Pt2: 15, 15, 50 (Outside)
     # Pt3: 1, 1, 10 (Corner inside)
     pcd = idp.PointCloud()
-    pcd.points = np.array([
-        [5, 5, 100],
-        [15, 15, 50],
-        [1, 1, 10]
-    ], dtype=float)
+    pcd.points = np.array([[5, 5, 100], [15, 15, 50], [1, 1, 10]], dtype=float)
     pcd.crs = pyproj.CRS.from_epsg(32654)
 
     # 2. Test Face Mode (Mean) = (100 + 10) / 2 = 55
@@ -406,12 +565,12 @@ def test_class_roi_get_z_from_pcd_synthetic():
     roi_face.get_z_from_pcd(pcd, mode="face", kernel="mean")
     # Expected: 55
     assert len(roi_face["test_square"][0]) == 3
-    np.testing.assert_almost_equal(roi_face["test_square"][:,-1], 55.0)
+    np.testing.assert_almost_equal(roi_face["test_square"][:, -1], 55.0)
 
     # 3. Test Face Mode (Max) = 100
     roi_face_max = roi.copy()
     roi_face_max.get_z_from_pcd(pcd, mode="face", kernel="max")
-    np.testing.assert_almost_equal(roi_face_max["test_square"][:,-1], 100.0)
+    np.testing.assert_almost_equal(roi_face_max["test_square"][:, -1], 100.0)
 
     # 4. Test Buffer (Expand to include 15,15)
     # Buffer = 10 -> Square becomes approx -10,-10 to 20,20
@@ -419,42 +578,36 @@ def test_class_roi_get_z_from_pcd_synthetic():
     # Mean = (100 + 10 + 50) / 3 = 53.333
     roi_buffer = roi.copy()
     roi_buffer.get_z_from_pcd(pcd, mode="face", buffer=10.0)
-    np.testing.assert_almost_equal(roi_buffer["test_square"][:,-1], 53.3333333)
+    np.testing.assert_almost_equal(roi_buffer["test_square"][:, -1], 53.3333333)
 
     # 5. Test CRS Mismatch Warning
     pcd_wgs84 = idp.PointCloud()
     pcd_wgs84.points = pcd.points
-    pcd_wgs84.crs = pyproj.CRS.from_epsg(4326) # WGS84
+    pcd_wgs84.crs = pyproj.CRS.from_epsg(4326)  # WGS84
 
     roi_warn = roi.copy()
     # Should log warning
     # with pytest.warns(UserWarning, match="are not equal"): # Loguru might need caplog
     roi_warn.get_z_from_pcd(pcd_wgs84)
 
+
 def test_class_roi_get_z_from_pcd_point_mode():
     roi = idp.ROI()
     # ROI is just a point (formatted as polygon for structure, but treating vertices)
-    roi["test_pt"] = np.array([
-        [5, 5],
-        [5.15, 5.15]
-    ])
+    roi["test_pt"] = np.array([[5, 5], [5.15, 5.15]])
     roi.crs = pyproj.CRS.from_epsg(32654)
-    
+
     pcd = idp.PointCloud()
-    pcd.points = np.array([
-        [5, 5, 100],
-        [5.2, 5.2, 200]
-    ])
-    
+    pcd.points = np.array([[5, 5, 100], [5.2, 5.2, 200]])
+
     # Mode Point with buffer=0 -> Nearest Neighbor
     roi.get_z_from_pcd(pcd, mode="point", buffer=0)
-    
+
     # 5,5 -> Nearest is 5,5,100 -> 100
-    # 5.1,5.1 -> Nearest is 5.2,5.2,200 (dist ~0.14) vs 5,5 (dist ~0.14)... 
+    # 5.1,5.1 -> Nearest is 5.2,5.2,200 (dist ~0.14) vs 5,5 (dist ~0.14)...
     # Actually sqrt(0.1^2+0.1^2) = 0.1414
-    # 5.2-5.1 = 0.1. 
+    # 5.2-5.1 = 0.1.
     # So 5.2 is closer. -> 200
-    
+
     expected = np.array([100, 200])
     np.testing.assert_almost_equal(roi["test_pt"][:, 2], expected)
-

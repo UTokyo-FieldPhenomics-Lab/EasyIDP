@@ -288,3 +288,43 @@ Pseudo diff:
 3. `test: migrate shp/roi/container behavior tests`
 
 This ordering keeps each change-set reviewable and easier to rollback.
+
+---
+
+## 2026-02-10 Incremental Scope Update (ROI attrs I/O)
+
+### New Requirements Confirmed
+
+1. ROI records source shapefile path after reading.
+2. ROI provides `show_shp_field()` to display shapefile attributes.
+3. ROI save supports writing attrs back into output shapefile.
+4. Conflict policy: if `name_field` already exists in attrs, overwrite that field with ROI key.
+
+### Implementation Notes
+
+- `ROI.source` is already assigned in `ROI.read_shp()`. Add regression test and docs clarification.
+- Add `ROI.show_shp_field()` as a thin wrapper around `idp.shp.show_shp_fields(self.source)`.
+- Extend shapefile writing path (`ROI.save_shp` -> `idp.shp.write_shp`) to write full attrs table:
+  - Keep existing fields and values.
+  - Overwrite `name_field` when it collides.
+  - Preserve non-key attrs unchanged.
+- Keep backward compatibility for existing `save_shp()` usages.
+
+### New Tests
+
+1. Read shapefile, generate key from two fields (`name_field=[..., ...]`), save to new shp, verify:
+   - Only key field changes as expected.
+   - All other attrs remain unchanged.
+2. Read shapefile, modify one attr field, save new shp, verify:
+   - Output attrs reflect renamed value.
+   - Other attrs unchanged.
+
+### Docs Update and Render Verification
+
+- Update ROI API docs with:
+  - `show_shp_field()`
+  - attrs-preserving `save_shp()` behavior
+  - key-field overwrite policy
+- Validate docs rendering:
+  - `uv run --group docs sphinx-build -b html docs docs/_build/html`
+  - `uv run --group docs sphinx-build -W -b html docs docs/_build/html`

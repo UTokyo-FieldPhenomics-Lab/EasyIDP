@@ -8,15 +8,13 @@ from loguru import logger
 
 import easyidp as idp
 
-class ProjectPool(idp.Container):
 
+class ProjectPool(idp.Container):
     def __init__(self) -> None:
         super().__init__()
-        self.id_item = {}
-        self.item_label = {}
 
     def add_pix4d(self, paths):
-        # proj.add_pix4d(["aaa.p4d", "bbb.p4d", ...]) 
+        # proj.add_pix4d(["aaa.p4d", "bbb.p4d", ...])
         pass
 
     def add_metashape(self, paths):
@@ -32,24 +30,24 @@ class Recons(object):
 
         Coordinate systems used in the 3D reconstruction.
 
-        - internal coordinate (local): 
-        
+        - internal coordinate (local):
+
             the coordinate used in current chunk, often the center of model as initial point
 
-        - geocentric coordinate (world): 
-        
+        - geocentric coordinate (world):
+
             use the earth's core as initial point, also called world coordinate
 
         - geographic coordinate (crs):
-        
+
             coordinate reference system (CRS) to locate geographical entities. Common used:
-        
+
             - ``WGS84 (EPSG: 4326)``: xyz = longitude, latitude, altitude
             - ``WGS84/ UTM Zone xxx``: e.g. UTM Zone 54N -> Tokyo area.
 
     """
-    def __init__(self):
 
+    def __init__(self):
         #: the 3D reconstruction project name, ``<class 'str'>``
         self.label = ""
         #: meta information in this project, ``<class 'dict'>``
@@ -63,7 +61,9 @@ class Recons(object):
         self.photos = idp.Container()
 
         #: the world crs for geocentric coordiante, ``<class 'pyproj.crs.crs.CRS'>``
-        self._world_crs = pyproj.CRS.from_dict({"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'})
+        self._world_crs = pyproj.CRS.from_dict(
+            {"proj": "geocent", "ellps": "WGS84", "datum": "WGS84"}
+        )
 
         self._dom = idp.GeoTiff()
         self._dsm = idp.GeoTiff()
@@ -84,7 +84,9 @@ class Recons(object):
             self._photo_position_cache = None
             self._crs = new_crs
         else:
-            raise TypeError(f"Only <'pyproj.CRS' object> is acceptable for property .crs, not given {type(new_crs)}")
+            raise TypeError(
+                f"Only <'pyproj.CRS' object> is acceptable for property .crs, not given {type(new_crs)}"
+            )
 
     @property
     def dom(self):
@@ -105,7 +107,9 @@ class Recons(object):
         elif isinstance(p, idp.GeoTiff):
             self._dom = p
         else:
-            raise TypeError(f"Please either specify DOM file path (str) or idp.GeoTiff objects, not {type(p)}")
+            raise TypeError(
+                f"Please either specify DOM file path (str) or idp.GeoTiff objects, not {type(p)}"
+            )
 
     @property
     def dsm(self):
@@ -125,7 +129,9 @@ class Recons(object):
         elif isinstance(p, idp.GeoTiff):
             self._dsm = p
         else:
-            raise TypeError(f"Please either specify DSM file path (str) or idp.GeoTiff objects, not {type(p)}")
+            raise TypeError(
+                f"Please either specify DSM file path (str) or idp.GeoTiff objects, not {type(p)}"
+            )
 
     @property
     def pcd(self):
@@ -145,7 +151,9 @@ class Recons(object):
         elif isinstance(p, idp.PointCloud):
             self._pcd = p
         else:
-            raise TypeError(f"Please either specify pointcloud file path (str) or idp.PointCloud objects, not {type(p)}")
+            raise TypeError(
+                f"Please either specify pointcloud file path (str) or idp.PointCloud objects, not {type(p)}"
+            )
 
 
 class Sensor:
@@ -167,7 +175,7 @@ class Sensor:
         self.w_mm = 0.0
         #: sensor actual height, unit is mm, ``<class 'float'>``
         self.h_mm = 0.0
-        
+
         #: the scale of one pixel width, unit in mm, ``<class 'float'>``
         self.pixel_width = 0.0
         #: the scale of one pixel height, unit in mm, ``<class 'float'>``
@@ -203,7 +211,7 @@ class Sensor:
 
                 - ``True``: strickly in image area, default;
                 - ``False``: cut the polygon inside the image range;
-                
+
                 .. image:: ../../_static/images/python_api/back2raw_ignore_todo.png
                     :alt: back2raw_ignore_todo.png'
                     :scale: 60
@@ -217,51 +225,62 @@ class Sensor:
         w, h = self.width, self.height
         coord_min = polygon_hv.min(axis=0)
         x_min, y_min = coord_min[0], coord_min[1]
-        coord_max= polygon_hv.max(axis=0)
+        coord_max = polygon_hv.max(axis=0)
         x_max, y_max = coord_max[0], coord_max[1]
 
         if ignore is None:
             if x_min < 0 or y_min < 0 or x_max > w or y_max > h:
-                if log: print(f'X  w[{x_min} ~ {x_max}], h[{y_min} ~ {y_max}]')
+                if log:
+                    print(f"X  w[{x_min} ~ {x_max}], h[{y_min} ~ {y_max}]")
                 return None
             else:
-                if log: print(f'O  w[{x_min} ~ {x_max}], h[{y_min} ~ {y_max}]')
+                if log:
+                    print(f"O  w[{x_min} ~ {x_max}], h[{y_min} ~ {y_max}]")
                 return polygon_hv
-        elif ignore=='x':
+        elif ignore == "x":
             logger.warning(
                 "This API `ignore` (str) will be enhanced and "
-                "changed to `ignore_overflow` (bool) in the future.", 
-                FutureWarning
+                "changed to `ignore_overflow` (bool) in the future.",
+                FutureWarning,
             )
             if y_min < 0 or y_max > h:
-                if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
+                if log:
+                    print(f"X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]")
                 return None
             else:
                 # replace outside points to image boundary
                 polygon_hv[polygon_hv[:, 0] < 0, 0] = 0
                 polygon_hv[polygon_hv[:, 0] > w, 0] = w
-                if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
+                if log:
+                    print(f"O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]")
                 return polygon_hv
-        elif ignore=='y':
+        elif ignore == "y":
             logger.warning(
                 "This API `ignore` (str) will be enhanced and "
-                "changed to `ignore_overflow` (bool) in the future.", 
-                FutureWarning
+                "changed to `ignore_overflow` (bool) in the future.",
+                FutureWarning,
             )
             if x_min < 0 or x_max > w:
-                if log: print(f'X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
+                if log:
+                    print(f"X  w[{x_min}-{x_max}], h[{y_min}-{y_max}]")
                 return None
             else:
                 # replace outside point to image boundary
                 polygon_hv[polygon_hv[:, 1] < 0, 1] = 0
                 polygon_hv[polygon_hv[:, 1] > h, 1] = h
-                if log: print(f'O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]')
+                if log:
+                    print(f"O  w[{x_min}-{x_max}], h[{y_min}-{y_max}]")
                 return polygon_hv
-        elif ignore=='as_point':
+        elif ignore == "as_point":
             # Convert polygon to points, then just keep the points inside images.
             # This mode is designed for broccoli position points backward projection or UAVBroccoli project
-            points_left = polygon_hv[(polygon_hv[:,0] > 0) & (polygon_hv[:,0] < w) & 
-                                     (polygon_hv[:,1] > 0) & (polygon_hv[:,1] < h), :]
+            points_left = polygon_hv[
+                (polygon_hv[:, 0] > 0)
+                & (polygon_hv[:, 0] < w)
+                & (polygon_hv[:, 1] > 0)
+                & (polygon_hv[:, 1] < h),
+                :,
+            ]
             return points_left
         else:
             raise ValueError(f"`ignore` should be None, 'x', or 'y', not {ignore}")
@@ -271,7 +290,7 @@ class Photo:
     """The base class to store image information used in 3D reconstruction project"""
 
     # Modifed from the old API for pix4d
-    # 
+    #
     # class Image:
     #     def __init__(self, name, path, w, h, pmat, cam_matrix, rad_distort, tan_distort, cam_pos, cam_rot):
     #         # external parameters
@@ -292,7 +311,7 @@ class Photo:
 
         #: The image path in local computer, ``<class 'str'>``
         self.path = ""
-        self._path = ""   # this is the relative path, often stored by metashape project
+        self._path = ""  # this is the relative path, often stored by metashape project
 
         #: the image name, ``<class 'str'>``
         self.label = ""
@@ -307,7 +326,7 @@ class Photo:
 
         # reconstruction info in local coord
         #: the 3x3 camera matrix, the ``K`` in ``K[R t]``, ``<class 'numpy.ndarray'>``
-        self.cam_matrix = None # np.zeros(3,3) -> K
+        self.cam_matrix = None  # np.zeros(3,3) -> K
         #: the 3x1 vector of camera location, the ``t`` in ``K[R t]``, ``<class 'numpy.ndarray'>``
         self.location = None  # np.zeros(3,) -> t
         #: the 3x3 rotation matrix, the ``R`` in ``K[R t]``, ``<class 'numpy.ndarray'>``
@@ -318,28 +337,31 @@ class Photo:
         #: - In ``metashape``: it is the 4x4 matrix describing photo location in the chunk coordinate system -> ``K[R t]``
         #: - in ``pix4d``: it is the 3x4 pmatrix. Please check `Pix4D PMatrix documentation <https://support.pix4d.com/hc/en-us/articles/202977149-What-does-the-Output-Params-Folder-contain#label12>` for more details
         #:
-        self.transform = None  # 
+        self.transform = None  #
         #: the 3x1 translation vector, often provided by metashape.
         self.translation = None  # np.zeros(3,)
 
         # output infomation
         #: The 3x1 vector of geo coodinate of image in real world, ``<class 'numpy.ndarray'>``
-        self.position = None # -> in outputs geo_coordiantes
+        self.position = None  # -> in outputs geo_coordiantes
 
         # meta info, not necessary in current version
-        #self.time = ""
-        #self.gps = {"altitude": 0.0, "latitude": 0.0, "longitude": 0.0}
-        #self.xyz = {"X": 0, "Y": 0, "Z": 0}
-        #self.orientation = {"yaw": 0.0, "pitch": 0.0, "roll": 0.0}
+        # self.time = ""
+        # self.gps = {"altitude": 0.0, "latitude": 0.0, "longitude": 0.0}
+        # self.xyz = {"X": 0, "Y": 0, "Z": 0}
+        # self.orientation = {"yaw": 0.0, "pitch": 0.0, "roll": 0.0}
 
         # parent info, for multispectral cameras
         self.master_id = None
 
     def _img_exists(func):
         """the decorator to check if image exists"""
+
         def wrapper(self, *args, **kwargs):
             if self.path != "" or not os.path.exists(self.path):
-                raise FileNotFoundError("Could not operate if not specify correct image file path")
+                raise FileNotFoundError(
+                    "Could not operate if not specify correct image file path"
+                )
             return func(self, *args, **kwargs)
 
         return wrapper
@@ -363,10 +385,10 @@ class Calibration:
         self.sensor = sensor
 
         #: focal length, unit is pixel, for pix4d project, convert mm to pixel. ``<class 'float'>``
-        self.f = 0.0 
-        
+        self.f = 0.0
+
         #: principle point offset, unit is pixel.
-        #: 
+        #:
         #: .. note::
         #:    In the older version of metashape, Cx and Cy were given in pixels from the top-left corner of the image.
         #:    But in the latest release version they are measured as offset from the image center.
@@ -376,7 +398,7 @@ class Calibration:
         #: principle point offset, unit is pixel.
         self.cy = 0.0
 
-        #: affinity and non-orthogonality (skew) coefficients (in pixels) [metashape use only] 
+        #: affinity and non-orthogonality (skew) coefficients (in pixels) [metashape use only]
         self.b1 = 0.0
         #: affinity and non-orthogonality (skew) coefficients (in pixels) [metashape use only]
         self.b2 = 0.0
@@ -435,7 +457,7 @@ class Calibration:
 
         Returns
         -------
-        xb, yb: 
+        xb, yb:
             the pixel coordinate on the original image
 
 
@@ -472,8 +494,8 @@ class Calibration:
                 )
         else:
             raise TypeError(
-                f"Could only handle [pix4d | metashape] projects, "
-                "not {self.type}")
+                f"Could only handle [pix4d | metashape] projects, not {{self.type}}"
+            )
 
     def _calibrate_pix4d_frame(self, u, v):
         """Convert undistorted images -> original image pixel coordinate
@@ -487,7 +509,7 @@ class Calibration:
 
         Returns
         -------
-        xb, yb: 
+        xb, yb:
             the pixel coordinate on the original image
 
         Notes
@@ -502,12 +524,12 @@ class Calibration:
         xh = (u - cx) / f
         yh = (v - cy) / f
 
-        r2 = xh ** 2 + yh ** 2
-        r4 = r2 ** 2
-        r6 = r2 ** 3
+        r2 = xh**2 + yh**2
+        r4 = r2**2
+        r6 = r2**3
         a1 = 1 + self.k1 * r2 + self.k2 * r4 + self.k3 * r6
-        xhd = a1 * xh + 2 * self.t1 * xh * yh + self.t2 * (r2 + 2 * xh ** 2)
-        yhd = a1 * yh + 2 * self.t2 * xh * yh + self.t1 * (r2 + 2 * yh ** 2)
+        xhd = a1 * xh + 2 * self.t1 * xh * yh + self.t2 * (r2 + 2 * xh**2)
+        yhd = a1 * yh + 2 * self.t2 * xh * yh + self.t1 * (r2 + 2 * yh**2)
 
         xh = f * xhd + cx
         yh = f * yhd + cy
@@ -553,10 +575,10 @@ class Calibration:
         (100, 5)
         """
         # Compute radial distance powers (vectorized)
-        r2 = xh ** 2 + yh ** 2
-        r4 = r2 ** 2
-        r6 = r2 ** 3
-        r8 = r2 ** 4
+        r2 = xh**2 + yh**2
+        r4 = r2**2
+        r6 = r2**3
+        r8 = r2**4
 
         f = self.f
         cx = self.cx
@@ -576,8 +598,8 @@ class Calibration:
         radial = 1 + k1 * r2 + k2 * r4 + k3 * r6 + k4 * r8
 
         # Tangential distortion
-        x_prime = xh * radial + (p1 * (r2 + 2 * xh ** 2) + 2 * p2 * xh * yh)
-        y_prime = yh * radial + (p2 * (r2 + 2 * yh ** 2) + 2 * p1 * xh * yh)
+        x_prime = xh * radial + (p1 * (r2 + 2 * xh**2) + 2 * p2 * xh * yh)
+        y_prime = yh * radial + (p2 * (r2 + 2 * yh**2) + 2 * p1 * xh * yh)
 
         w = self.sensor.width
         h = self.sensor.height
@@ -590,11 +612,9 @@ class Calibration:
 
 
 class ChunkTransform:
-    """Similar API wrapper for Metashape Python API ``class Metashape.ChunkTransform``
-    """
+    """Similar API wrapper for Metashape Python API ``class Metashape.ChunkTransform``"""
 
     def __init__(self):
-
         #: Transformation matrix
         self.matrix = None
         #: Rotation compone
@@ -606,24 +626,26 @@ class ChunkTransform:
         #: Inverse matrix
         #:
         #: .. note::
-        #: 
+        #:
         #:     Inspired from Kunihiro Kodama's Metashape API usage <kkodama@kazusa.or.jp>
-        #: 
+        #:
         #:     .. code-block:: python
-        #: 
+        #:
         #:         >>> import Metashape
         #:         >>> chunk = Metashape.app.document.chunk()
         #:         >>> transm = chunk.transform.matrix
         #:         >>> invm = Metashape.Matrix.inv(chunk.transform.matrix)
-        #: 
+        #:
         #:     invm.mulp(local_vec) --> transform chunk local coord to world coord (if you handle vec in local coord)
-        #: 
+        #:
         #:     How to calculate from xml data: `Agisoft Forum: Topic: Camera coordinates to world <https://www.agisoft.com/forum/index.php?topic=6176.0>`_
-        #: 
+        #:
         self.matrix_inv = None
 
 
-def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=None, save_folder=None):
+def sort_img_by_distance(
+    recons, img_dict_all, roi, distance_thresh=None, num=None, save_folder=None
+):
     """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
 
     Parameters
@@ -648,11 +670,11 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
         the same structure as output of roi.back2raw()
     """
     # Optimized version using vectorization (numpy) to separate calculation and filtering
-    
+
     # 1. Pre-calculate all camera positions (N_cam, 2)
     #    get_photo_position returns {img_name: [x, y, z]}
     cam_pos = recons.get_photo_position(to_crs=roi.crs)
-    
+
     cam_names = list(cam_pos.keys())
     # Handle empty case
     if not cam_names:
@@ -661,7 +683,7 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
     # Extract x, y from [x, y, z] for all cameras
     # shape: (N_cam, 2)
     cam_coords = np.array([cam_pos[n][0:2] for n in cam_names])
-    
+
     # Map name to index for fast lookup
     cam_name_to_idx = {n: i for i, n in enumerate(cam_names)}
 
@@ -669,7 +691,7 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
     #    We iterate over roi.keys() to ensure alignment
     roi_names = list(roi.keys())
     roi_centers = []
-    
+
     for r_name in roi_names:
         plot_geo = roi[r_name]
         # Calculate BBox center: (min + max) / 2
@@ -678,8 +700,8 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
         geo_max = plot_geo[:, 0:2].max(axis=0)
         center = (geo_min + geo_max) / 2.0
         roi_centers.append(center)
-        
-    roi_centers = np.array(roi_centers) # (N_roi, 2)
+
+    roi_centers = np.array(roi_centers)  # (N_roi, 2)
 
     # 3. Calculate Distance Matrix (N_roi, N_cam)
     #    Use broadcasting: (N_roi, 1, 2) - (1, N_cam, 2)
@@ -692,8 +714,10 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
 
     # 4. Construct Result Dictionary
     img_dict_sort_all = {}
-    
-    pbar = tqdm(enumerate(roi_names), total=len(roi_names), desc=f"Filter by distance to ROI")
+
+    pbar = tqdm(
+        enumerate(roi_names), total=len(roi_names), desc=f"Filter by distance to ROI"
+    )
     for i, roi_name in pbar:
         # If this ROI is not in the input dict, skip or add empty
         if roi_name not in img_dict_all:
@@ -701,27 +725,27 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
             continue
 
         current_roi_imgs = img_dict_all[roi_name]
-        
+
         # Prepare list of (distance, img_name) for sorting
         valid_candidates = []
-        
+
         for img_name in current_roi_imgs.keys():
             # Only process images where we have position data
             if img_name in cam_name_to_idx:
                 idx = cam_name_to_idx[img_name]
                 dist = dists[i, idx]
-                
+
                 # Apply distance threshold if specified
                 if distance_thresh is None or dist <= distance_thresh:
                     valid_candidates.append((dist, img_name))
-        
+
         # Sort by distance (ascending)
         valid_candidates.sort(key=lambda x: x[0])
-        
+
         # Apply strict number limit
         if num is not None:
             valid_candidates = valid_candidates[:num]
-            
+
         # Rebuild dictionary for this ROI
         # Preserving the original values from img_dict_all
         img_dict_sort_all[roi_name] = {
@@ -736,7 +760,7 @@ def sort_img_by_distance(recons, img_dict_all, roi, distance_thresh=None, num=No
 
 
 def save_back2raw_json_and_png(recons, results_dict, save_folder):
-    """Save the backward reversed results 
+    """Save the backward reversed results
 
     Parameters
     ----------
@@ -775,8 +799,10 @@ def save_back2raw_json_and_png(recons, results_dict, save_folder):
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
     else:
-        raise TypeError(f"Only the string path is acceptable, not [{save_folder} {type(save_folder)}]")
-    
+        raise TypeError(
+            f"Only the string path is acceptable, not [{save_folder} {type(save_folder)}]"
+        )
+
     # reverse the current order results_dict[roi][image_name] to results[image_name][roi]
     # this will save the IO cost when loading images.
     print("Optimising data structures of produced results, this may take some time...")
@@ -794,22 +820,28 @@ def save_back2raw_json_and_png(recons, results_dict, save_folder):
             rev_dict[img_name][roi_name] = img_pos
 
     # save the full results as json directly
-    idp.jsonfile.save_json(results_dict, os.path.join(save_folder, "roi_image_order.json"))
+    idp.jsonfile.save_json(
+        results_dict, os.path.join(save_folder, "roi_image_order.json")
+    )
     idp.jsonfile.save_json(rev_dict, os.path.join(save_folder, "image_roi_order.json"))
 
     # then doing the for loop for each image.
-    for img_name, img_rois in tqdm(rev_dict.items(), desc=f"Processing image [{img_name}]"):
-
+    for img_name, img_rois in tqdm(
+        rev_dict.items(), desc=f"Processing image [{img_name}]"
+    ):
         img_array = imread(recons.photos[img_name].path)
 
         for roi_name, img_pos in tqdm(img_rois.items(), leave=False):
-
             # cropped_rgb shape=(W, H, 3), uint8; off shape=(2,), int32; mask shape=(W, H), bool
             cropped_rgb, off, mask = idp.cvtools.imarray_crop(img_array, img_pos)
 
             # Merge RGB and mask into RGBA; cropped_png: ndarray (W, H, 4), uint8
-            cropped_png = np.dstack((cropped_rgb, mask.astype(np.uint8)*255))
+            cropped_png = np.dstack((cropped_rgb, mask.astype(np.uint8) * 255))
 
-            png_save_path = os.path.join(save_folder, roi_name, f"{roi_name}_{img_name}_at_top_{off[0]}_left_{off[1]}.png")
+            png_save_path = os.path.join(
+                save_folder,
+                roi_name,
+                f"{roi_name}_{img_name}_at_top_{off[0]}_left_{off[1]}.png",
+            )
 
             imsave(png_save_path, cropped_png)

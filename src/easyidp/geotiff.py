@@ -22,12 +22,16 @@ from tqdm import tqdm
 import easyidp as idp
 
 
-
 class GeoTiff(object):
-    """A easy GeoTiff class warpped on rasterio
-    """
+    """A easy GeoTiff class warpped on rasterio"""
 
-    def __init__(self, file_path:str|Path|None=None, imarray:np.ndarray|None=None, header:dict=None, mask:np.ndarray|None=None):
+    def __init__(
+        self,
+        file_path: str | Path | None = None,
+        imarray: np.ndarray | None = None,
+        header: dict = None,
+        mask: np.ndarray | None = None,
+    ):
         """The method to initialize the GeoTiff class
 
         Parameters
@@ -101,11 +105,11 @@ class GeoTiff(object):
 
         self._imarray = imarray
         self._mask = mask
-        
+
         # Mask polygon attributes (polygon-first architecture)
-        self._mask_polygon: np.ndarray | None = None   # (n, 2) polygon coords
-        self._mask_polygon_is_geo: bool = True         # True=geo, False=pixel
-        self._use_affine: bool = False                 # Using affine rotation
+        self._mask_polygon: np.ndarray | None = None  # (n, 2) polygon coords
+        self._mask_polygon_is_geo: bool = True  # True=geo, False=pixel
+        self._use_affine: bool = False  # Using affine rotation
 
         #: The layer to represent transparency / alpha
         # self.transparent_layer = None
@@ -113,81 +117,80 @@ class GeoTiff(object):
         if self.file_path is not None:
             self.open(self.file_path)
 
-
     @property
     def crs(self):
         """A quick access to ``self.header['crs']``, please access the ``header`` dict to change value"""
-        if isinstance(self.header, dict) and 'crs' in self.header.keys():
-            return self.header['crs']
+        if isinstance(self.header, dict) and "crs" in self.header.keys():
+            return self.header["crs"]
         else:
             return None
-        
+
     @property
     def height(self):
         """A quick access to ``self.header['height']``, please access the ``header`` dict to change value"""
-        if isinstance(self.header, dict) and 'height' in self.header.keys():
-            return self.header['height']
+        if isinstance(self.header, dict) and "height" in self.header.keys():
+            return self.header["height"]
         else:
             return None
-        
+
     @property
     def width(self):
         """A quick access to ``self.header['width']``, please access the ``header`` dict to change value"""
-        if isinstance(self.header, dict) and 'width' in self.header.keys():
-            return self.header['width']
+        if isinstance(self.header, dict) and "width" in self.header.keys():
+            return self.header["width"]
         else:
             return None
-        
+
     @property
     def dim(self):
         """A quick access to ``self.header['dim']``, please access the ``header`` dict to change value"""
-        if isinstance(self.header, dict) and 'dim' in self.header.keys():
-            return self.header['dim']
+        if isinstance(self.header, dict) and "dim" in self.header.keys():
+            return self.header["dim"]
         else:
             return None
-        
+
     @property
     def nodata(self):
         """A quick access to ``self.header['nodata']``, please access the ``header`` dict to change value"""
-        if isinstance(self.header, dict) and 'nodata' in self.header.keys():
-            return self.header['nodata']
+        if isinstance(self.header, dict) and "nodata" in self.header.keys():
+            return self.header["nodata"]
         else:
             return None
-        
+
     @property
     def scale(self):
         """A quick access to ``self.header['scale']``, please access the ``header`` dict to change value"""
-        if isinstance(self.header, dict) and 'scale' in self.header.keys():
-            return self.header['scale']
+        if isinstance(self.header, dict) and "scale" in self.header.keys():
+            return self.header["scale"]
         else:
             return None
-        
+
     @property
     def tie_point(self):
         """A quick access to ``self.header['tie_point']``, please access the ``header`` dict to change value"""
-        if isinstance(self.header, dict) and 'tie_point' in self.header.keys():
-            return self.header['tie_point']
+        if isinstance(self.header, dict) and "tie_point" in self.header.keys():
+            return self.header["tie_point"]
         else:
             return None
-        
+
     @property
     def has_alpha(self) -> bool:
         """Check if this GeoTiff has an alpha channel.
-        
-        This property reads the colorinterp (color interpretation) from the 
-        GeoTiff header to determine if an alpha mask is present. The colorinterp 
+
+        This property reads the colorinterp (color interpretation) from the
+        GeoTiff header to determine if an alpha mask is present. The colorinterp
         field is extracted from the TIFF metadata by rasterio, which maps to
         the GDAL/TIFF PHOTOMETRIC and EXTRASAMPLES tags.
-        
+
         Returns
         -------
         bool
             True if the GeoTiff has an alpha band, False otherwise.
-        
+
         Example
         -------
         .. code-block:: python
-        
+
             >>> import easyidp as idp
             >>> test_data = idp.data.TestData()
             >>> dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
@@ -197,46 +200,46 @@ class GeoTiff(object):
             >>> dsm.has_alpha
             False
         """
-        if isinstance(self.header, dict) and 'has_alpha' in self.header.keys():
-            return self.header['has_alpha']
+        if isinstance(self.header, dict) and "has_alpha" in self.header.keys():
+            return self.header["has_alpha"]
         else:
             return False
-    
+
     @property
     def use_affine(self) -> bool:
         """Check if this GeoTiff uses affine rotation storage.
-        
+
         When True, the transform contains rotation and the entire image
         is valid (no mask needed). This is detected from the transform's
         b and d coefficients being non-zero.
-        
+
         Returns
         -------
         bool
             True if using affine rotation storage.
         """
         return self._use_affine
-    
+
     @property
     def mask_polygon(self) -> np.ndarray | None:
         """Get the mask as polygon coordinates.
-        
+
         Returns the polygon in its stored coordinate type (geo or pixel).
         Use mask_polygon_geo or mask_polygon_pixel for specific types.
-        
+
         Returns
         -------
         np.ndarray | None
             (n, 2) polygon coordinates, or None if not set.
         """
         return self._mask_polygon
-    
+
     @property
     def mask_polygon_geo(self) -> np.ndarray | None:
         """Get mask polygon in geo coordinates.
-        
+
         Converts from pixel coords if needed using the transform.
-        
+
         Returns
         -------
         np.ndarray | None
@@ -247,13 +250,13 @@ class GeoTiff(object):
         if self._mask_polygon_is_geo:
             return self._mask_polygon
         return self._polygon_pixel_to_geo(self._mask_polygon)
-    
+
     @property
     def mask_polygon_pixel(self) -> np.ndarray | None:
         """Get mask polygon in pixel coordinates.
-        
+
         Converts from geo coords if needed using the transform.
-        
+
         Returns
         -------
         np.ndarray | None
@@ -264,14 +267,10 @@ class GeoTiff(object):
         if not self._mask_polygon_is_geo:
             return self._mask_polygon
         return self._polygon_geo_to_pixel(self._mask_polygon)
-    
-    def set_mask_polygon(
-        self, 
-        polygon: np.ndarray, 
-        is_geo: bool = True
-    ) -> None:
+
+    def set_mask_polygon(self, polygon: np.ndarray, is_geo: bool = True) -> None:
         """Set mask from polygon coordinates.
-        
+
         Parameters
         ----------
         polygon : np.ndarray
@@ -279,11 +278,11 @@ class GeoTiff(object):
         is_geo : bool, optional
             True if polygon is in geo coordinates, False for pixel.
             By default True.
-            
+
         Example
         -------
         .. code-block:: python
-        
+
             >>> gtiff = idp.GeoTiff(...)
             >>> roi_coords = np.array([[x1, y1], [x2, y2], ...])
             >>> gtiff.set_mask_polygon(roi_coords, is_geo=True)
@@ -291,39 +290,39 @@ class GeoTiff(object):
         polygon = np.asarray(polygon)
         if polygon.ndim != 2 or polygon.shape[1] != 2:
             raise ValueError(f"Polygon must be (n, 2) array, got {polygon.shape}")
-        
+
         # Ensure polygon is closed
         if not np.allclose(polygon[0], polygon[-1]):
             polygon = np.vstack([polygon, polygon[0]])
-        
+
         self._mask_polygon = polygon
         self._mask_polygon_is_geo = is_geo
         # Clear cached binary mask when polygon changes
         self._mask = None
-    
-    def convert_to_affine(self) -> 'GeoTiff':
+
+    def convert_to_affine(self) -> "GeoTiff":
         """Convert from standard storage to affine rotation storage.
-        
+
         Returns a NEW GeoTiff object with imarray aligned to the mask polygon
         rectangle, and transform including rotation. The original object is
         not modified.
-        
+
         Requires mask_polygon to be a valid rectangle (4 vertices, 90° angles).
-        
+
         Returns
         -------
         GeoTiff
             New GeoTiff object in affine mode. Returns self if already affine.
-        
+
         Raises
         ------
         ValueError
             If no mask polygon is set or polygon is not a valid rectangle.
-        
+
         Example
         -------
         .. code-block:: python
-        
+
             >>> gtiff = idp.GeoTiff('input.tif')
             >>> gtiff.set_mask_polygon(rect_coords, is_geo=True)
             >>> affine_gtiff = gtiff.convert_to_affine()
@@ -335,76 +334,77 @@ class GeoTiff(object):
         if self._use_affine:
             logger.warning("Already in affine mode, returning self")
             return self
-        
+
         if self._mask_polygon is None:
             raise ValueError("No mask polygon set. Use set_mask_polygon first.")
-        
+
         polygon_geo = self.mask_polygon_geo
         is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
-        
+
         if not is_rect:
             raise ValueError(
                 "Polygon is not a valid rectangle. Cannot convert to affine mode."
             )
-        
-        
+
         # Perform the transformation
-        profile = self.header['profile'].copy()
-        
+        profile = self.header["profile"].copy()
+
         # Ensure image is loaded
         imarray = self.imarray
         if imarray is None:
-             raise ValueError("Could not load image data for affine conversion.")
+            raise ValueError("Could not load image data for affine conversion.")
 
         new_imarray, new_profile = self._prepare_affine_storage(
             imarray.copy(), profile, polygon_geo, angle, bounds
         )
-        
+
         # Build new header
         new_header = self.header.copy()
-        new_header['profile'] = new_profile
-        new_header['width'] = new_profile['width']
-        new_header['height'] = new_profile['height']
-        new_header['transform'] = new_profile['transform']
-        new_header['scale'] = [abs(new_profile['transform'].a), 
-                               abs(new_profile['transform'].e)]
-        
+        new_header["profile"] = new_profile
+        new_header["width"] = new_profile["width"]
+        new_header["height"] = new_profile["height"]
+        new_header["transform"] = new_profile["transform"]
+        new_header["scale"] = [
+            abs(new_profile["transform"].a),
+            abs(new_profile["transform"].e),
+        ]
+
         # Create new GeoTiff object
         new_gtiff = GeoTiff(imarray=new_imarray, header=new_header)
         new_gtiff._mask_polygon = self._mask_polygon.copy()
         new_gtiff._mask_polygon_is_geo = self._mask_polygon_is_geo
         new_gtiff._use_affine = True
-        
+
         logger.info(f"Converted to affine mode with {angle:.1f}° rotation")
         return new_gtiff
-    
-    def convert_from_affine(self, target_bounds: tuple | None = None) -> 'GeoTiff':
+
+    def convert_from_affine(self, target_bounds: tuple | None = None) -> "GeoTiff":
         """Convert from affine rotation storage to standard storage.
-        
+
         Returns a NEW GeoTiff object with the rotated imarray transformed back
         to axis-aligned coordinates, with a mask for the valid region.
         The original object is not modified.
-        
+
         Parameters
         ----------
         target_bounds : tuple, optional
             (min_x, min_y, max_x, max_y) for the output image bounds.
             If None, uses the bounding box of mask_polygon.
-        
+
         Returns
         -------
         GeoTiff
             New GeoTiff object in standard mode. Returns self if already standard.
-        
+
         Raises
         ------
         ValueError
             If no mask polygon is available for conversion.
-        
+
         Example
         -------
         .. code-block:: python
-        
+
             >>> gtiff = idp.GeoTiff('affine_file.tif')
             >>> gtiff.use_affine
             True
@@ -417,102 +417,107 @@ class GeoTiff(object):
         if not self._use_affine:
             logger.warning("Already in standard mode, returning self")
             return self
-        
+
         if self._mask_polygon is None:
             raise ValueError("No mask polygon available for conversion.")
-        
+
         from rasterio.transform import Affine
         from scipy.ndimage import map_coordinates
-        
+
         polygon_geo = self.mask_polygon_geo
-        old_transform = self.header['profile']['transform']
-        
+        old_transform = self.header["profile"]["transform"]
+
         # Calculate target bounds
         if target_bounds is None:
             min_x, max_x = polygon_geo[:, 0].min(), polygon_geo[:, 0].max()
             min_y, max_y = polygon_geo[:, 1].min(), polygon_geo[:, 1].max()
         else:
             min_x, min_y, max_x, max_y = target_bounds
-        
+
         # Use same pixel size
         pixel_size_x = abs(old_transform.a)
         pixel_size_y = abs(old_transform.e)
-        
+
         # Calculate output dimensions
         out_width = int(np.ceil((max_x - min_x) / pixel_size_x))
         out_height = int(np.ceil((max_y - min_y) / pixel_size_y))
-        
+
         # New axis-aligned transform
-        new_transform = Affine.translation(min_x, max_y) * Affine.scale(pixel_size_x, -pixel_size_y)
-        
+        new_transform = Affine.translation(min_x, max_y) * Affine.scale(
+            pixel_size_x, -pixel_size_y
+        )
+
         # Create output coordinate grids
         out_rows, out_cols = np.mgrid[0:out_height, 0:out_width]
-        
+
         # Output pixels to geo coordinates (axis-aligned)
         geo_x = min_x + out_cols * pixel_size_x
         geo_y = max_y - out_rows * pixel_size_y
-        
+
         # Geo coordinates to input (rotated) pixel coordinates
         inv_old = ~old_transform
         in_cols = inv_old.a * geo_x + inv_old.b * geo_y + inv_old.c
         in_rows = inv_old.d * geo_x + inv_old.e * geo_y + inv_old.f
-        
+
         # Sample from rotated image
         imarray = self._imarray
         ndim = len(imarray.shape)
         if ndim == 2:
             new_imarray = map_coordinates(
-                imarray, [in_rows, in_cols], order=1, mode='constant', cval=0
+                imarray, [in_rows, in_cols], order=1, mode="constant", cval=0
             ).astype(imarray.dtype)
         else:
             bands = imarray.shape[2]
             new_imarray = np.zeros((out_height, out_width, bands), dtype=imarray.dtype)
             for b in range(bands):
                 new_imarray[:, :, b] = map_coordinates(
-                    imarray[:, :, b], [in_rows, in_cols],
-                    order=1, mode='constant', cval=0
+                    imarray[:, :, b],
+                    [in_rows, in_cols],
+                    order=1,
+                    mode="constant",
+                    cval=0,
                 ).astype(imarray.dtype)
-        
+
         # Build new header
-        new_profile = self.header['profile'].copy()
-        new_profile['width'] = out_width
-        new_profile['height'] = out_height
-        new_profile['transform'] = new_transform
-        
+        new_profile = self.header["profile"].copy()
+        new_profile["width"] = out_width
+        new_profile["height"] = out_height
+        new_profile["transform"] = new_transform
+
         new_header = self.header.copy()
-        new_header['profile'] = new_profile
-        new_header['width'] = out_width
-        new_header['height'] = out_height
-        new_header['transform'] = new_transform
-        new_header['scale'] = [pixel_size_x, pixel_size_y]
-        new_header['tie_point'] = [min_x, max_y]
-        
+        new_header["profile"] = new_profile
+        new_header["width"] = out_width
+        new_header["height"] = out_height
+        new_header["transform"] = new_transform
+        new_header["scale"] = [pixel_size_x, pixel_size_y]
+        new_header["tie_point"] = [min_x, max_y]
+
         # Create new GeoTiff object
         new_gtiff = GeoTiff(imarray=new_imarray, header=new_header)
         new_gtiff._mask_polygon = self._mask_polygon.copy()
         new_gtiff._mask_polygon_is_geo = self._mask_polygon_is_geo
         new_gtiff._use_affine = False
-        
+
         logger.info("Converted from affine to standard mode")
         return new_gtiff
-        
+
     def _polygon_pixel_to_geo(self, polygon: np.ndarray) -> np.ndarray:
         """Convert pixel polygon to geo coordinates using transform."""
-        if self.header is None or 'profile' not in self.header:
+        if self.header is None or "profile" not in self.header:
             raise ValueError("No transform available for conversion")
-        
-        transform = self.header['profile']['transform']
+
+        transform = self.header["profile"]["transform"]
         geo_coords = np.zeros_like(polygon, dtype=np.float64)
         for i, (px, py) in enumerate(polygon):
             geo_coords[i] = transform * (px, py)
         return geo_coords
-    
+
     def _polygon_geo_to_pixel(self, polygon: np.ndarray) -> np.ndarray:
         """Convert geo polygon to pixel coordinates using transform."""
-        if self.header is None or 'profile' not in self.header:
+        if self.header is None or "profile" not in self.header:
             raise ValueError("No transform available for conversion")
-        
-        transform = self.header['profile']['transform']
+
+        transform = self.header["profile"]["transform"]
         pixel_coords = np.zeros_like(polygon, dtype=np.float64)
         for i, (gx, gy) in enumerate(polygon):
             pixel_coords[i] = ~transform * (gx, gy)
@@ -520,14 +525,14 @@ class GeoTiff(object):
 
     def _polygon_to_binary(self, polygon_pixel: np.ndarray) -> np.ndarray:
         """Convert pixel polygon to binary mask.
-        
+
         Uses skimage.draw.polygon for rasterization.
-        
+
         Parameters
         ----------
         polygon_pixel : np.ndarray
             (n, 2) polygon in pixel coordinates (col, row format).
-        
+
         Returns
         -------
         np.ndarray
@@ -535,25 +540,25 @@ class GeoTiff(object):
         """
         height, width = self.height, self.width
         mask = np.zeros((height, width), dtype=bool)
-        
+
         # skimage uses (row, col) = (y, x) ordering
         cols = polygon_pixel[:, 0]  # x = col
         rows = polygon_pixel[:, 1]  # y = row
-        
+
         rr, cc = skimage_polygon(rows, cols, shape=(height, width))
         mask[rr, cc] = True
         return mask
-    
+
     def _binary_to_polygon(self, mask: np.ndarray) -> np.ndarray:
         """Extract polygon from binary mask.
-        
+
         Uses skimage.measure.find_contours. Returns the largest contour.
-        
+
         Parameters
         ----------
         mask : np.ndarray
             Binary mask with shape (height, width).
-        
+
         Returns
         -------
         np.ndarray
@@ -562,36 +567,35 @@ class GeoTiff(object):
         contours = find_contours(mask.astype(float), 0.5)
         if not contours:
             return None
-        
+
         # Get the largest contour
         largest = max(contours, key=len)
-        
+
         # find_contours returns (row, col), convert to (col, row) = (x, y)
         polygon = np.zeros_like(largest)
         polygon[:, 0] = largest[:, 1]  # col -> x
         polygon[:, 1] = largest[:, 0]  # row -> y
-        
+
         # Ensure closed
         if not np.allclose(polygon[0], polygon[-1]):
             polygon = np.vstack([polygon, polygon[0]])
-        
+
         return polygon
 
     def _has_rotation(self) -> bool:
         """Check if current transform contains rotation.
-        
+
         Returns True if the affine transform's b or d coefficient is non-zero.
         """
-        if self.header is None or 'profile' not in self.header:
+        if self.header is None or "profile" not in self.header:
             return False
-        transform = self.header['profile'].get('transform')
+        transform = self.header["profile"].get("transform")
         if transform is None:
             return False
         # Affine: |a  b  c|
         #         |d  e  f|
         return not (np.isclose(transform.b, 0) and np.isclose(transform.d, 0))
 
-        
     @property
     def imarray(self):
         """Access to the pixel values in the type of numpy ndarray"""
@@ -608,22 +612,22 @@ class GeoTiff(object):
     @property
     def mask(self) -> np.ndarray | None:
         """Boolean mask where True indicates valid (non-nodata) pixels.
-        
+
         Shape is (height, width). When mask_polygon is set, the binary mask
         is computed from the polygon. Otherwise, falls back to computing
         from alpha channel or nodata values.
-        
+
         This property is lazy-computed and cached for efficiency.
-        
+
         Returns
         -------
         np.ndarray | None
             Boolean mask array with shape (height, width), or None if no data.
-        
+
         Example
         -------
         .. code-block:: python
-        
+
             >>> import easyidp as idp
             >>> test_data = idp.data.TestData()
             >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
@@ -635,22 +639,22 @@ class GeoTiff(object):
         """
         if self._mask is not None:
             return self._mask
-            
+
         if self.header is None:
             logger.warning("No header loaded, cannot compute mask")
             return None
-        
+
         # Priority 1: Compute from polygon if available
         if self._mask_polygon is not None:
             polygon_pixel = self.mask_polygon_pixel
             self._mask = self._polygon_to_binary(polygon_pixel)
             return self._mask
-        
+
         # Priority 2: Use affine mode (entire image is valid)
         if self._use_affine:
             self._mask = np.ones((self.height, self.width), dtype=bool)
             return self._mask
-        
+
         # Priority 3: Compute from imarray (legacy fallback)
         imarray = self.imarray
         if imarray is None:
@@ -660,17 +664,17 @@ class GeoTiff(object):
 
     def _compute_mask(self, imarray: np.ndarray) -> np.ndarray:
         """Compute the valid pixel mask from imarray.
-        
+
         Supports three mechanisms for reading mask:
         1. GDAL internal mask (per-dataset mask)
         2. Alpha channel (RGBA/MSA images)
         3. Nodata value (DSM/multispectral)
-        
+
         Parameters
         ----------
         imarray : np.ndarray
             The image array with shape (height, width) or (height, width, bands)
-        
+
         Returns
         -------
         np.ndarray
@@ -685,22 +689,24 @@ class GeoTiff(object):
                     file_shape = (src.height, src.width)
                     imarray_squeezed = np.squeeze(imarray)
                     imarray_shape = imarray_squeezed.shape[:2]  # (height, width)
-                    
+
                     if imarray_shape == file_shape:
                         mask_flags = src.mask_flag_enums
                         # Check if has per-dataset mask (not just nodata/all_valid)
-                        has_internal = any('per_dataset' in str(f).lower() for f in mask_flags[0])
+                        has_internal = any(
+                            "per_dataset" in str(f).lower() for f in mask_flags[0]
+                        )
                         if has_internal:
                             internal_mask = src.read_masks(1)
                             return internal_mask > 0
             except Exception:
                 pass
-            
+
         # 2. Fallback: compute from data (nodata value / alpha channel)
         imarray = np.squeeze(imarray)
         ndim = len(imarray.shape)
         nodata = self.header.get("nodata", None)
-        
+
         if ndim == 2:
             # Single band (DSM): valid if != nodata
             if nodata is not None:
@@ -711,13 +717,13 @@ class GeoTiff(object):
             else:
                 # If no nodata defined, all pixels are valid
                 return np.ones(imarray.shape, dtype=bool)
-        
+
         elif ndim == 3:
             height, width, bands = imarray.shape
             data_type = self._get_data_type()
-            
+
             # For types with alpha channel
-            if data_type in ('rgba', 'msa'):
+            if data_type in ("rgba", "msa"):
                 # Alpha > 0 means valid
                 return imarray[:, :, -1] > 0
             elif nodata is not None:
@@ -731,29 +737,29 @@ class GeoTiff(object):
 
     def _get_data_type(self) -> str:
         """Detect the data type of this GeoTiff.
-        
+
         Returns
         -------
         str
             One of 'dsm', 'rgb', 'rgba', 'ms', 'msa'
-            
+
             - dsm: single band elevation data
             - rgb: 3-band uint8 visual imagery
             - rgba: 4-band uint8 visual imagery with alpha
             - ms: multi-spectral imagery (>4 bands or non-uint8)
             - msa: multi-spectral imagery with alpha channel
-        
+
         Notes
         -----
-        This method reads the colorinterp (color interpretation) from the 
-        GeoTiff header to determine if an alpha mask is present. The colorinterp 
+        This method reads the colorinterp (color interpretation) from the
+        GeoTiff header to determine if an alpha mask is present. The colorinterp
         field is extracted from the TIFF metadata by rasterio, which maps to
         the GDAL/TIFF PHOTOMETRIC and EXTRASAMPLES tags.
-        
+
         Example
         -------
         .. code-block:: python
-        
+
             >>> import easyidp as idp
             >>> test_data = idp.data.TestData()
             >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
@@ -764,31 +770,31 @@ class GeoTiff(object):
             'rgba'
         """
         if self.header is None:
-            return 'dsm'  # default
-            
-        dim = self.header.get('dim', 1)
-        dtype = self.header.get('dtype', np.dtype('float32'))
-        has_alpha = self.header.get('has_alpha', False)
-        
+            return "dsm"  # default
+
+        dim = self.header.get("dim", 1)
+        dtype = self.header.get("dtype", np.dtype("float32"))
+        has_alpha = self.header.get("has_alpha", False)
+
         if dim == 1:
-            return 'dsm'
-        elif dim == 3 and dtype == np.dtype('uint8'):
+            return "dsm"
+        elif dim == 3 and dtype == np.dtype("uint8"):
             # RGB without alpha (has_alpha should be False for 3-band)
-            return 'rgb'
-        elif dim == 4 and dtype == np.dtype('uint8'):
-            # Standard RGBA image  
-            return 'rgba'
+            return "rgb"
+        elif dim == 4 and dtype == np.dtype("uint8"):
+            # Standard RGBA image
+            return "rgba"
         else:
             # Multi-spectral: use has_alpha flag from colorinterp to determine
             # if an alpha band is present, instead of relying on heuristics
             if has_alpha:
-                return 'msa'
+                return "msa"
             else:
-                return 'ms'
-
+                return "ms"
 
     def _check_data(func):
         """A warp to check if has data"""
+
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             if self.header is None:
@@ -834,15 +840,15 @@ class GeoTiff(object):
             self.file_path = tif_path
             self.header = get_header(self.file_path)
             self._imarray = None
-            
+
             # Read custom metadata tags
             try:
                 with rio.open(tif_path) as src:
                     tags = src.tags()
-                    
+
                     # Read mask polygon from metadata
-                    if 'EASYIDP_MASK_POLYGON' in tags:
-                        wkt_str = tags['EASYIDP_MASK_POLYGON']
+                    if "EASYIDP_MASK_POLYGON" in tags:
+                        wkt_str = tags["EASYIDP_MASK_POLYGON"]
                         try:
                             poly = shapely.wkt.loads(wkt_str)
                             coords = np.array(poly.exterior.coords)
@@ -850,7 +856,7 @@ class GeoTiff(object):
                             self._mask_polygon_is_geo = True
                         except Exception as e:
                             logger.warning(f"Failed to parse MASK_POLYGON: {e}")
-                    
+
                     # Detect affine rotation from transform
                     transform = src.transform
                     if not (np.isclose(transform.b, 0) and np.isclose(transform.d, 0)):
@@ -862,15 +868,15 @@ class GeoTiff(object):
 
     @_check_data
     def save(
-        self, 
-        save_path: str | Path, 
-        overwrite: bool = False, 
+        self,
+        save_path: str | Path,
+        overwrite: bool = False,
         apply_mask: bool = True,
         use_affine: bool = False,
     ) -> bool:
         """Save GeoTiff as tiff file with proper nodata/mask handling.
 
-        Mask is only applied during save. Previous crop operations preserve 
+        Mask is only applied during save. Previous crop operations preserve
         full rectangular data, allowing further calculations on edge pixels.
 
         The save strategy depends on data type:
@@ -879,7 +885,7 @@ class GeoTiff(object):
         - MS/MSA (multispectral): adds alpha channel to protect original data
 
         When use_affine=True and mask_polygon is a rectangle, the image is
-        saved with affine rotation in the transform (no mask needed). The 
+        saved with affine rotation in the transform (no mask needed). The
         current object is NOT modified (unless it was already in affine mode).
 
         Parameters
@@ -891,22 +897,22 @@ class GeoTiff(object):
         apply_mask : bool, optional
             If True and mask exists, apply mask appropriately, by default True
         use_affine : bool, optional
-            "Convert and Save" mode. 
+            "Convert and Save" mode.
             If True, try to use affine rotation storage for rectangular masks.
-            If the object is ALREADY in affine mode (self.use_affine=True), 
+            If the object is ALREADY in affine mode (self.use_affine=True),
             this parameter is ignored (no double-conversion).
             Requires mask_polygon to be a valid rectangle (4 vertices, 90° angles).
             By default False.
-            
+
         Returns
         -------
         bool
             True if save succeeded, False if cancelled
-            
+
         Example
         -------
         .. code-block:: python
-        
+
             >>> import easyidp as idp
             >>> test_data = idp.data.TestData()
             >>> dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
@@ -914,8 +920,8 @@ class GeoTiff(object):
             True
         """
         save_path = Path(save_path).absolute()
-        if save_path.suffix.lower() not in ['.tif', '.tiff']:
-            save_path = save_path.with_suffix('.tif')
+        if save_path.suffix.lower() not in [".tif", ".tiff"]:
+            save_path = save_path.with_suffix(".tif")
 
         # Ensure directory exists
         save_dir = save_path.parent
@@ -924,30 +930,33 @@ class GeoTiff(object):
 
         if save_path.exists() and not overwrite:
             user_input = input(f"File [{save_path}] already exists. Overwrite? (y/n): ")
-            if user_input.lower() != 'y':
+            if user_input.lower() != "y":
                 logger.info("File save cancelled by user.")
                 return False
 
         # Optimization A: Avoid double-conversion if already affine
         if self.use_affine and use_affine:
-            logger.debug("Object is already in affine mode, skipping redundant affine conversion for save.")
+            logger.debug(
+                "Object is already in affine mode, skipping redundant affine conversion for save."
+            )
             use_affine = False
 
         # Prepare data and profile
         data_type = self._get_data_type()
         imarray = self.imarray.copy()  # Use property to ensure lazy load
         mask = self._mask
-        
+
         # Use deepcopy for profile to avoid reference issues
         import copy
-        profile = copy.deepcopy(self.header['profile'])
-        
+
+        profile = copy.deepcopy(self.header["profile"])
+
         # Check for affine mode with valid rectangle polygon
         polygon_wkt = None
         if self._mask_polygon is not None:
             polygon_geo = self.mask_polygon_geo
             polygon_wkt = Polygon(polygon_geo).wkt
-            
+
             if use_affine:
                 is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
                 if is_rect:
@@ -963,26 +972,26 @@ class GeoTiff(object):
                         "Using standard storage instead."
                     )
 
-        if data_type == 'dsm':
+        if data_type == "dsm":
             # DSM: use nodata value -32767.0
             if apply_mask and mask is not None:
                 imarray = imarray.astype(np.float32)  # Ensure float for -32767.0
                 imarray[~mask] = -32767.0
-                profile['nodata'] = -32767.0
-                profile['dtype'] = 'float32'
-        
-        elif data_type in ('rgb', 'rgba', 'ms', 'msa'):
+                profile["nodata"] = -32767.0
+                profile["dtype"] = "float32"
+
+        elif data_type in ("rgb", "rgba", "ms", "msa"):
             # RGB/Multispectral: use alpha band to protect original data
             if apply_mask and mask is not None:
-                alpha = (mask * 255).astype('uint8')
-                if data_type in ('rgb', 'ms'):
+                alpha = (mask * 255).astype("uint8")
+                if data_type in ("rgb", "ms"):
                     # Add new alpha band
                     imarray = np.dstack([imarray, alpha])
-                    profile['count'] = imarray.shape[2]
+                    profile["count"] = imarray.shape[2]
                 else:  # rgba / msa - merge with existing alpha
                     imarray[:, :, -1] = np.where(mask, imarray[:, :, -1], 0)
             # Remove nodata for images with alpha
-            profile.pop('nodata', None)
+            profile.pop("nodata", None)
 
         # Write to file
         # rasterio requires (bands, height, width), self._imarray is (height, width, bands)
@@ -991,28 +1000,25 @@ class GeoTiff(object):
         else:
             # 2D array (height, width) -> (1, height, width)
             imarray_rio = imarray[np.newaxis, :, :]
-        
-        with rio.open(save_path, 'w', **profile) as dst:
+
+        with rio.open(save_path, "w", **profile) as dst:
             dst.write(imarray_rio)
-            
+
             # Write mask polygon to metadata
             if polygon_wkt is not None:
                 dst.update_tags(EASYIDP_MASK_POLYGON=polygon_wkt)
 
         logger.success(f"GeoTiff successfully saved to: {save_path}")
         return True
-    
-    def _is_valid_rectangle(
-        self, 
-        polygon: np.ndarray
-    ) -> tuple[bool, float, tuple]:
+
+    def _is_valid_rectangle(self, polygon: np.ndarray) -> tuple[bool, float, tuple]:
         """Check if polygon is a valid rectangle for affine mode.
-        
+
         Parameters
         ----------
         polygon : np.ndarray
             (n, 2) polygon coordinates.
-        
+
         Returns
         -------
         is_valid : bool
@@ -1023,38 +1029,42 @@ class GeoTiff(object):
             (origin_x, origin_y, width, height) of the rectangle.
         """
         # Remove closure point if present (use strict atol for geo coords)
-        pts = polygon[:-1] if np.allclose(polygon[0], polygon[-1], rtol=0, atol=1e-6) else polygon
-        
+        pts = (
+            polygon[:-1]
+            if np.allclose(polygon[0], polygon[-1], rtol=0, atol=1e-6)
+            else polygon
+        )
+
         if len(pts) != 4:
             return False, 0.0, ()
-        
+
         # Check all 4 angles are ~90°
         for i in range(4):
             v1 = pts[(i + 1) % 4] - pts[i]
             v2 = pts[(i + 2) % 4] - pts[(i + 1) % 4]
-            
+
             # Normalize and compute angle
             norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
             if norm1 < 1e-10 or norm2 < 1e-10:
                 return False, 0.0, ()
-            
+
             v1_norm = v1 / norm1
             v2_norm = v2 / norm2
             dot = np.clip(np.dot(v1_norm, v2_norm), -1, 1)
             angle_deg = np.degrees(np.arccos(np.abs(dot)))
-            
+
             if not np.isclose(angle_deg, 90.0, atol=2.0):  # ±2° tolerance
                 return False, 0.0, ()
-        
+
         # Calculate rotation from first edge
         edge = pts[1] - pts[0]
         rotation = np.degrees(np.arctan2(edge[1], edge[0]))
-        
+
         # Calculate rectangle bounds
         width = np.linalg.norm(pts[1] - pts[0])
         height = np.linalg.norm(pts[2] - pts[1])
         origin = pts[0]
-        
+
         return True, rotation, (origin[0], origin[1], width, height)
 
     def _prepare_affine_storage(
@@ -1066,11 +1076,11 @@ class GeoTiff(object):
         bounds: tuple,
     ) -> tuple[np.ndarray, dict]:
         """Prepare image and profile for affine rotation storage.
-        
+
         Crops image to the rectangle bounds and builds affine transform
         with rotation. The result can be displayed correctly rotated in
         QGIS without resampling the image data.
-        
+
         Parameters
         ----------
         imarray : np.ndarray
@@ -1083,7 +1093,7 @@ class GeoTiff(object):
             Rotation angle in degrees.
         bounds : tuple
             (origin_x, origin_y, width, height) from _is_valid_rectangle.
-        
+
         Returns
         -------
         cropped_imarray : np.ndarray
@@ -1093,57 +1103,61 @@ class GeoTiff(object):
         """
         from rasterio.transform import Affine
         from scipy.ndimage import map_coordinates
-        
+
         origin_x, origin_y, rect_width, rect_height = bounds
-        
+
         # Get current transform
-        old_transform = profile['transform']
+        old_transform = profile["transform"]
         pixel_size_x = abs(old_transform.a)
         pixel_size_y = abs(old_transform.e)
-        
+
         # Calculate output dimensions in pixels
         # Use tolerance for floating point errors (e.g. 50.00000001 -> 50)
         pixel_width = rect_width / pixel_size_x
         pixel_height = rect_height / pixel_size_y
-        
+
         # If very close to integer, round it to avoid ceil increasing it by 1
         if abs(pixel_width - round(pixel_width)) < 1e-4:
             pixel_width = round(pixel_width)
         if abs(pixel_height - round(pixel_height)) < 1e-4:
             pixel_height = round(pixel_height)
-            
+
         out_width = int(np.ceil(pixel_width))
         out_height = int(np.ceil(pixel_height))
-        
+
         # Build rotation matrix for sampling
         # Angle is the rotation from horizontal to the first edge
         rad = np.radians(angle)
         cos_a, sin_a = np.cos(rad), np.sin(rad)
-        
+
         # Create output coordinate grids
         # For each output pixel (row, col), find corresponding geo coordinate
         out_rows, out_cols = np.mgrid[0:out_height, 0:out_width]
-        
+
         # Transform output pixels to geo coordinates
         # Note: In GeoTiff, rows increase downward but geo Y increases upward
         # So we need to go along the rectangle edges:
         # - Column direction: along first edge (angle direction)
         # - Row direction: perpendicular to first edge (angle + 90 degrees)
         # For row, we subtract because row 0 is at origin (top of rectangle in geo)
-        geo_x = origin_x + out_cols * pixel_size_x * cos_a + out_rows * pixel_size_y * sin_a
-        geo_y = origin_y + out_cols * pixel_size_x * sin_a - out_rows * pixel_size_y * cos_a
-        
+        geo_x = (
+            origin_x + out_cols * pixel_size_x * cos_a + out_rows * pixel_size_y * sin_a
+        )
+        geo_y = (
+            origin_y + out_cols * pixel_size_x * sin_a - out_rows * pixel_size_y * cos_a
+        )
+
         # Transform geo coordinates to input pixel coordinates
         inv_transform = ~old_transform
         in_cols = inv_transform.a * geo_x + inv_transform.b * geo_y + inv_transform.c
         in_rows = inv_transform.d * geo_x + inv_transform.e * geo_y + inv_transform.f
-        
+
         # Sample input image at computed coordinates
         ndim = len(imarray.shape)
         if ndim == 2:
             # Single band
             cropped = map_coordinates(
-                imarray, [in_rows, in_cols], order=1, mode='constant', cval=0
+                imarray, [in_rows, in_cols], order=1, mode="constant", cval=0
             ).astype(imarray.dtype)
         else:
             # Multi-band: sample each band
@@ -1151,29 +1165,32 @@ class GeoTiff(object):
             cropped = np.zeros((out_height, out_width, bands), dtype=imarray.dtype)
             for b in range(bands):
                 cropped[:, :, b] = map_coordinates(
-                    imarray[:, :, b], [in_rows, in_cols], 
-                    order=1, mode='constant', cval=0
+                    imarray[:, :, b],
+                    [in_rows, in_cols],
+                    order=1,
+                    mode="constant",
+                    cval=0,
                 ).astype(imarray.dtype)
-        
+
         # Build new affine transform with rotation
         # Affine.translation * Affine.rotation * Affine.scale
         new_transform = (
-            Affine.translation(origin_x, origin_y) *
-            Affine.rotation(angle) *
-            Affine.scale(pixel_size_x, -pixel_size_y)
+            Affine.translation(origin_x, origin_y)
+            * Affine.rotation(angle)
+            * Affine.scale(pixel_size_x, -pixel_size_y)
         )
-        
+
         # Update profile
-        profile['width'] = out_width
-        profile['height'] = out_height
-        profile['transform'] = new_transform
-        
+        profile["width"] = out_width
+        profile["height"] = out_height
+        profile["transform"] = new_transform
+
         return cropped, profile
 
     @_check_data
     def geo2pixel(self, polygon_hv: np.ndarray, return_index=False) -> np.ndarray:
-        """Convert geo coordinate (lon, lat) to geotiff pixel coordinate (horizontal, vertical). 
-        A warpper of `rasterio.io.DatasetReader.transform() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.transform>`_ 
+        """Convert geo coordinate (lon, lat) to geotiff pixel coordinate (horizontal, vertical).
+        A warpper of `rasterio.io.DatasetReader.transform() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.transform>`_
         and `rasterio.io.DatasetReader.index() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.index>`_
 
         Parameters
@@ -1225,11 +1242,11 @@ class GeoTiff(object):
             crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
 
             for geo_h, geo_v in polygon_hv:
-                if crs_xy_order == 'xy':
+                if crs_xy_order == "xy":
                     # This CRS expects (x, y) order, our input is (h, v), nothing to do
                     input_x = geo_h
                     input_y = geo_v
-                else:   # 'yx' order
+                else:  # 'yx' order
                     # This CRS expects (y, x) order, our input is (h, v), need reverse
                     input_x = geo_v
                     input_y = geo_h
@@ -1237,18 +1254,21 @@ class GeoTiff(object):
                 if return_index:
                     # src.index(x, y) returns (row, col)
                     row, col = src.index(input_x, input_y)
-                    pixel_coords.append((col, row))  # ensure is the (horizontal, vertical) order
+                    pixel_coords.append(
+                        (col, row)
+                    )  # ensure is the (horizontal, vertical) order
                 else:
                     # ~src.transform * (x, y) returns (col_float, row_float)
                     col_float, row_float = ~src.transform * (input_x, input_y)
-                    pixel_coords.append((col_float, row_float)) # ensure is the (horizontal, vertical) order
-                       
+                    pixel_coords.append(
+                        (col_float, row_float)
+                    )  # ensure is the (horizontal, vertical) order
+
         return np.asarray(pixel_coords)
-        
-    
+
     @_check_data
     def pixel2geo(self, polygon_hv):
-        """Convert geotiff pixel coordinate or index (horizontal, vertical) to geo coordinate (x, y). 
+        """Convert geotiff pixel coordinate or index (horizontal, vertical) to geo coordinate (x, y).
         A warpper of `rasterio.io.DatasetReader.xy() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.xy>`_
         and `rasterio.io.DatasetReader.transform() <https://rasterio.readthedocs.io/en/stable/api/rasterio.io.html#rasterio.io.DatasetReader.transform>`_
 
@@ -1300,16 +1320,20 @@ class GeoTiff(object):
 
         # 判断输入像素坐标的类型
         if np.issubdtype(polygon_hv.dtype, np.integer):
-            logger.info(f"The input dtype is {polygon_hv.dtype}, viewed as pixel INDEX (horizontal, vertical) rather than pixel coordinate")
+            logger.info(
+                f"The input dtype is {polygon_hv.dtype}, viewed as pixel INDEX (horizontal, vertical) rather than pixel coordinate"
+            )
             is_integer_pixels = True
         elif np.issubdtype(polygon_hv.dtype, np.floating):
-            logger.info(f"The input dtype is {polygon_hv.dtype}, viewed as pixel COORDINATE (horizontal, vertical) rather than pixel index")
+            logger.info(
+                f"The input dtype is {polygon_hv.dtype}, viewed as pixel COORDINATE (horizontal, vertical) rather than pixel index"
+            )
             is_integer_pixels = False
         else:
             err_info = f"The `points_hv` only accept numpy ndarray integer and float types, but got [{polygon_hv.dtype}] instead"
             logger.error(err_info)
             raise TypeError(err_info)
-        
+
         with rio.open(self.file_path) as src:
             # judge x, y order in crs:
             crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
@@ -1327,14 +1351,14 @@ class GeoTiff(object):
                     x_geo, y_geo = src.transform * (col, row)
 
                 # change order according to crs, ensure outputs order is (horzontal, vertical)
-                if crs_xy_order == 'xy':
+                if crs_xy_order == "xy":
                     geo_coords.append((x_geo, y_geo))
                 else:  # == 'yx'
-                     # CRS 是 (y, x) 顺序，但我们想输出 (h, v)，
+                    # CRS 是 (y, x) 顺序，但我们想输出 (h, v)，
                     # 此时 x_geo 实际上是 CRS 的 y 轴值，y_geo 实际上是 CRS 的 x 轴值。
                     # 所以我们期望的 (h, v) 应该是 (y_geo, x_geo)
                     geo_coords.append((y_geo, x_geo))
-                
+
         return np.asarray(geo_coords)
 
     @_check_data
@@ -1351,7 +1375,7 @@ class GeoTiff(object):
         Returns
         -------
         ndarray
-            the obtained pixel value (RGB or height) 
+            the obtained pixel value (RGB or height)
 
         Example
         -------
@@ -1365,7 +1389,7 @@ class GeoTiff(object):
         Query one point by tuple
 
         .. code-block:: python
-        
+
             >>> # one point tuple
             >>> pts = (368023.004, 3955500.669)
             >>> dsm.point_query(pts, is_geo=True)
@@ -1379,14 +1403,14 @@ class GeoTiff(object):
             >>> pts = [368023.004, 3955500.669]
             >>> dsm.point_query(pts, is_geo=True)
             array([97.45558])
-        
-        
+
+
         Query several points by list
 
         .. code-block:: python
 
             >>> pts = [
-            ...    [368022.581, 3955501.054], 
+            ...    [368022.581, 3955501.054],
             ...    [368024.032, 3955500.465]
             ... ]
             >>> dsm.point_query(pts, is_geo=True)
@@ -1397,7 +1421,7 @@ class GeoTiff(object):
         .. code-block:: python
 
             >>> pts = np.array([
-            ...    [368022.581, 3955501.054], 
+            ...    [368022.581, 3955501.054],
             ...    [368024.032, 3955500.465]
             ... ])
             >>> dsm.point_query(pts, is_geo=True)
@@ -1420,10 +1444,14 @@ class GeoTiff(object):
                 # fit the points
                 points_hv = temp
             else:
-                raise IndexError("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")
+                raise IndexError(
+                    "Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]"
+                )
         else:
-            raise TypeError(f"Only tuple, list, ndarray are supported, not {type(points_hv)}")
-        
+            raise TypeError(
+                f"Only tuple, list, ndarray are supported, not {type(points_hv)}"
+            )
+
         # convert to geo coordinate if input is pixel
         if not is_geo:
             points_hv_geo = self.pixel2geo(points_hv)
@@ -1432,8 +1460,8 @@ class GeoTiff(object):
 
         with rio.open(self.file_path) as src:
             crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
-            
-            if crs_xy_order == 'xy':
+
+            if crs_xy_order == "xy":
                 adjusted_geo_points = points_hv_geo
             else:
                 adjusted_geo_points = points_hv_geo[:, [1, 0]]
@@ -1447,9 +1475,16 @@ class GeoTiff(object):
             sample_gen = sample_gen.flatten()
 
         return sample_gen
-    
+
     @_check_data
-    def crop_rois(self, roi, is_geo=True, save_folder=None, return_geotiff:bool=False, use_affine:bool=False):
+    def crop_rois(
+        self,
+        roi,
+        is_geo=True,
+        save_folder=None,
+        return_geotiff: bool = False,
+        use_affine: bool = False,
+    ):
         """Crop several ROIs from the geotiff by given <ROI> object with several polygons and polygon names
 
         Parameters
@@ -1478,7 +1513,7 @@ class GeoTiff(object):
         Prepare data:
 
         .. code-block:: python
-        
+
             >>> import easyidp as idp
             >>> test_data = idp.data.TestData()
 
@@ -1493,12 +1528,12 @@ class GeoTiff(object):
                        [ 368019.70190232, 3955511.49811902],
                        [ 368020.11263046, 3955509.54636219],
                        [ 368018.15769062, 3955509.13563382],
-                       [ 368017.7565143 , 3955511.08102276]]), 
+                       [ 368017.7565143 , 3955511.08102276]]),
              1: array([[ 368018.20042946, 3955508.96051697],
                        [ 368020.14581791, 3955509.37761334],
                        [ 368020.55654627, 3955507.42585654],
                        [ 368018.601606  , 3955507.01512806],
-                       [ 368018.20042946, 3955508.96051697]]), 
+                       [ 368018.20042946, 3955508.96051697]]),
              2: array([[ 368018.64801755, 3955506.84956301],
                        [ 368020.59340644, 3955507.26665948],
                        [ 368021.00413502, 3955505.31490271],
@@ -1525,9 +1560,14 @@ class GeoTiff(object):
 
         """
         if not isinstance(roi, (dict, idp.ROI)):
-            raise TypeError(f"Only <dict> and <easyidp.ROI> with multiple polygons are accepted, not {type(roi)}. If it is 2D ndarray coordiante for just one polygon, please use `GeoTiff.crop_polygon()` instead.")
+            raise TypeError(
+                f"Only <dict> and <easyidp.ROI> with multiple polygons are accepted, not {type(roi)}. If it is 2D ndarray coordiante for just one polygon, please use `GeoTiff.crop_polygon()` instead."
+            )
 
-        pbar = tqdm(roi.items(), desc=f"Crop roi from geotiff [{os.path.basename(self.file_path)}]")
+        pbar = tqdm(
+            roi.items(),
+            desc=f"Crop roi from geotiff [{os.path.basename(self.file_path)}]",
+        )
         out_dict = {}
         for k, polygon_hv in pbar:
             if save_folder is not None and Path(save_folder).exists():
@@ -1538,24 +1578,28 @@ class GeoTiff(object):
             if polygon_hv.shape[1] == 3:
                 # probably xyz coordinates
                 polygon_hv = polygon_hv[:, :2]
-                logger.info(f"Polygon coordinates are in xyz format {polygon_hv.shape}, only horizontal and vertical coordinates are used for cropping roi.")
+                logger.info(
+                    f"Polygon coordinates are in xyz format {polygon_hv.shape}, only horizontal and vertical coordinates are used for cropping roi."
+                )
 
-            imarray = self.crop_polygon(polygon_hv, is_geo, save_path, return_geotiff, use_affine=use_affine)
+            imarray = self.crop_polygon(
+                polygon_hv, is_geo, save_path, return_geotiff, use_affine=use_affine
+            )
 
             out_dict[k] = imarray
 
         return out_dict
-    
+
     @_check_data
     def crop_shapely_polygon(
-        self, 
-        shapely_polygon: Polygon, 
-        save_path:str|Path|None=None, 
-        return_geotiff:bool=False,
-        use_affine:bool=False,
+        self,
+        shapely_polygon: Polygon,
+        save_path: str | Path | None = None,
+        return_geotiff: bool = False,
+        use_affine: bool = False,
     ):
         """Crop a given polygon from geotiff, the base function of cropping geotiff
-        
+
         Parameters
         ----------
         shapely_polygon : shapely.geometry.Polygon
@@ -1580,24 +1624,28 @@ class GeoTiff(object):
             # 从地理边界计算窗口 (使用 from_bounds 创建一个新的 transform)
             # mask 函数会处理 CRS 轴序，我们只需要提供正确的 GeoJSON 形状
             shapes = [mapping(shapely_polygon)]
-            
-            out_image, out_transform = riomask(src, shapes, crop=True, nodata=src.nodata)
+
+            out_image, out_transform = riomask(
+                src, shapes, crop=True, nodata=src.nodata
+            )
 
             # 更新 profile
             out_profile = src.profile.copy()
-            out_profile.update({
-                "height": out_image.shape[1],
-                "width": out_image.shape[2],
-                "transform": out_transform
-            })
+            out_profile.update(
+                {
+                    "height": out_image.shape[1],
+                    "width": out_image.shape[2],
+                    "transform": out_transform,
+                }
+            )
             if src.nodata is not None:
-                out_profile['nodata'] = src.nodata
+                out_profile["nodata"] = src.nodata
 
             # out_profile all keys and values:
             # {
-            #     'driver': 'GTiff', 'dtype': 'uint8', 'nodata': None, 'width': 320, 'height': 321, 
-            #     'count': 4, 'crs': CRS.from_wkt('PROJCS["WGS 84 / UTM zone 54N", ... ,AUTHORITY["EPSG","32654"]]'), 
-            #     'transform': Affine(0.00738, 0.0, 368017.74449, 0.0, -0.00738, 3955511.4999300004), 
+            #     'driver': 'GTiff', 'dtype': 'uint8', 'nodata': None, 'width': 320, 'height': 321,
+            #     'count': 4, 'crs': CRS.from_wkt('PROJCS["WGS 84 / UTM zone 54N", ... ,AUTHORITY["EPSG","32654"]]'),
+            #     'transform': Affine(0.00738, 0.0, 368017.74449, 0.0, -0.00738, 3955511.4999300004),
             #     'blockxsize': 5490, 'blockysize': 1, 'tiled': False, 'compress': 'lzw', 'interleave': 'pixel'
             # }
 
@@ -1605,30 +1653,30 @@ class GeoTiff(object):
         header = {}
         # keys: 'width', 'height', 'dim', 'scale', 'tie_point',
         #       'nodata', 'crs', 'dtype', 'band_num'
-        header["height"] = out_profile['height']
-        header["width"] = out_profile['width']
-        header["dim"] = out_profile['count']
-        header["nodata"] = out_profile['nodata']
-        header["dtype"] = np.dtype(out_profile['dtype'])
+        header["height"] = out_profile["height"]
+        header["width"] = out_profile["width"]
+        header["dim"] = out_profile["count"]
+        header["nodata"] = out_profile["nodata"]
+        header["dtype"] = np.dtype(out_profile["dtype"])
 
-        transform = out_profile['transform']
+        transform = out_profile["transform"]
         header["transform"] = transform
         header["scale"] = [transform.a, abs(transform.e)]
         header["tie_point"] = [transform.c, transform.f]
 
-        header['crs'] = self.crs
-        header['profile'] = out_profile.copy()
+        header["crs"] = self.crs
+        header["profile"] = out_profile.copy()
 
         # rasterio 读取为 (bands, height, width)
         # 需要转换为 (height, width, bands) 以保持与旧版本 tifffile 的兼容性
         out_imarray = np.moveaxis(out_image, 0, -1)
 
         out_geotiff = GeoTiff(imarray=out_imarray, header=header)
-        
+
         # Store mask polygon (geo coordinates) for precision preservation
         polygon_coords = np.array(shapely_polygon.exterior.coords)
         out_geotiff.set_mask_polygon(polygon_coords, is_geo=True)
-        
+
         # Compute mask for cropped region (记录有效区域，不应用到数据)
         # This preserves full rectangular data for further calculations
         out_geotiff._mask = out_geotiff._compute_mask(out_imarray)
@@ -1642,24 +1690,26 @@ class GeoTiff(object):
                 # If conversion failed (e.g. not a rectangle), we should warn but fallback?
                 # Or user expects affine so we should fail?
                 # Let's fallback to standard storage but warn user
-                logger.warning(f"Could not use affine storage: {e}. Falling back to standard standard storage.")
+                logger.warning(
+                    f"Could not use affine storage: {e}. Falling back to standard standard storage."
+                )
 
         if save_path is not None:
             out_geotiff.file_path = Path(save_path)
             # if we successfully converted to affine, save() will respect that
             # but we need to pass use_affine=False because convert_to_affine already did current object modification
-            # well, save() accepts use_affine parameter.. 
+            # well, save() accepts use_affine parameter..
             # if out_geotiff.use_affine is True, save() writes affine transform regardless of param?
-            # actually save() checks use_affine param. 
+            # actually save() checks use_affine param.
             # But if object is already affine, it just dumps data?
             # Let's check save() implementation again or just let it dump metadata.
-            
-            # If the object IS affine mode (out_geotiff.use_affine == True), 
+
+            # If the object IS affine mode (out_geotiff.use_affine == True),
             # save() logic:
             # - standard save just writes imarray and header['transform']
             # - since convert_to_affine updated imarray and transform, standard save is enough!
             # - The use_affine param in save() is for "convert AND save" workflow on a STANDARD objects.
-            
+
             out_geotiff.save(save_path)
 
         if return_geotiff:
@@ -1667,9 +1717,15 @@ class GeoTiff(object):
         else:
             return out_geotiff.imarray
 
-
     @_check_data
-    def crop_polygon(self, polygon_hv, is_geo=True, save_path:str|Path|None=None, return_geotiff:bool=False, use_affine:bool=False):
+    def crop_polygon(
+        self,
+        polygon_hv,
+        is_geo=True,
+        save_path: str | Path | None = None,
+        return_geotiff: bool = False,
+        use_affine: bool = False,
+    ):
         """Crop a given polygon from geotiff
 
         Parameters
@@ -1717,7 +1773,7 @@ class GeoTiff(object):
         Use this function:
 
         .. code-block:: python
-            
+
             >>> imarray = dom.crop_polygon(roi, is_geo=True)
             >>> imarray.shape
             (320, 319, 4)
@@ -1728,32 +1784,52 @@ class GeoTiff(object):
 
             >>> save_tiff = "path/to/save/cropped.tif"
             >>> imarray = obj.crop_polygon(polygon_hv, is_geo=True, save_path=save_tiff)
-            
+
         """
-        if not isinstance(polygon_hv, np.ndarray) or polygon_hv.ndim != 2 or polygon_hv.shape[1] != 2:
-            actual_info = polygon_hv.shape if hasattr(polygon_hv, "shape") else type(polygon_hv)
+        if (
+            not isinstance(polygon_hv, np.ndarray)
+            or polygon_hv.ndim != 2
+            or polygon_hv.shape[1] != 2
+        ):
+            actual_info = (
+                polygon_hv.shape if hasattr(polygon_hv, "shape") else type(polygon_hv)
+            )
             error_info = f"Polygon_hv must be a 2D numpy array of shape (N, 2), not current input {actual_info}."
             logger.error(error_info)
             raise ValueError(error_info)
-        
+
         crs_xy_order = idp.geotools._get_crs_xy_order(self.crs)
 
         if is_geo:
             # 调整坐标顺序以匹配 CRS 期望的 (x, y) 或 (y, x)
             adjusted_coords = []
             for h_coord, v_coord in polygon_hv:
-                if crs_xy_order == 'xy':
-                    adjusted_coords.append((h_coord, v_coord)) # (x, y)
-                else: # 'yx'
-                    adjusted_coords.append((v_coord, h_coord)) # (y, x)
+                if crs_xy_order == "xy":
+                    adjusted_coords.append((h_coord, v_coord))  # (x, y)
+                else:  # 'yx'
+                    adjusted_coords.append((v_coord, h_coord))  # (y, x)
         else:
             adjusted_coords = self.pixel2geo(polygon_hv)
-        
-        return self.crop_shapely_polygon( Polygon(adjusted_coords), save_path=save_path, return_geotiff=return_geotiff, use_affine=use_affine)
 
+        return self.crop_shapely_polygon(
+            Polygon(adjusted_coords),
+            save_path=save_path,
+            return_geotiff=return_geotiff,
+            use_affine=use_affine,
+        )
 
     @_check_data
-    def crop_rectangle(self, left:int, top:int, w:int, h:int, is_geo:bool=True, save_path:str|Path|None=None, return_geotiff:bool=False, use_affine:bool=False):
+    def crop_rectangle(
+        self,
+        left: int,
+        top: int,
+        w: int,
+        h: int,
+        is_geo: bool = True,
+        save_path: str | Path | None = None,
+        return_geotiff: bool = False,
+        use_affine: bool = False,
+    ):
         """Extract a rectangle regeion crop from a GeoTIFF image file.
 
         .. code-block:: text
@@ -1771,7 +1847,7 @@ class GeoTiff(object):
 
         Parameters
         ----------
-        top: int 
+        top: int
             Coordinates of the top left corner of the desired crop.
         left: int
             Coordinates of the top left corner of the desired crop.
@@ -1788,7 +1864,7 @@ class GeoTiff(object):
         use_affine : bool, optional
             if True, use affine rotation storage for cropped results (only if ROI is a rectangle).
             Forces return_geotiff=True.
-            
+
         Returns
         -------
         ndarray
@@ -1810,7 +1886,7 @@ class GeoTiff(object):
 
         .. note::
             It is not recommended to use without specifying parameters like this:
-            
+
             ``crop_rectiange(434, 918, 320, 321)``
 
             It is hard to know the exactly order
@@ -1822,13 +1898,13 @@ class GeoTiff(object):
             # 输入是地理坐标和地理宽度/高度
             # left, top 是 (horizontal, vertical)
             # w, h 是地理宽度和高度
-            
+
             # 计算裁剪区域的地理边界 (minx, miny, maxx, maxy)
             # 注意：rasterio 的 transform 通常是 north-up，y 轴向下（行号增加方向），
             # 所以 top 是北边界，top-h 是南边界。
             # left 是西边界，left+w 是东边界。
 
-            '''
+            """
             the geotiff coordiate y axis is upward, so need to reverse top-h
             otherwise will get an negative value.
 
@@ -1849,30 +1925,29 @@ class GeoTiff(object):
             |
             o--------------------------------------------------> X
             Geotiff coordinate
-            '''
-            
+            """
+
             # 根据 CRS 轴序调整地理坐标
-            if crs_xy_order == 'xy':
+            if crs_xy_order == "xy":
                 # CRS 也是 (x, y) 顺序，所以 left 是 x，top 是 y
                 minx_geo = left
                 maxx_geo = left + w
-                maxy_geo = top # top 是最高的 y 值
-                miny_geo = top - h # top - h 是最低的 y 值
-            else: # crs_xy_order == 'yx'
+                maxy_geo = top  # top 是最高的 y 值
+                miny_geo = top - h  # top - h 是最低的 y 值
+            else:  # crs_xy_order == 'yx'
                 # CRS 是 (y, x) 顺序，所以 left 是 y，top 是 x
                 # 在这种情况下，我们假设用户输入的 (left, top) 仍然是 (horizontal, vertical)
                 # 那么 left 对应 CRS 的 y 轴，top 对应 CRS 的 x 轴
                 # 所以实际的 x 范围是 (top, top+h)
                 # 实际的 y 范围是 (left-w, left)
-                minx_geo = top # top 是 horizontal
-                maxx_geo = top + h # h 是 horizontal 宽度
-                maxy_geo = left # left 是 vertical
-                miny_geo = left - w # w 是 vertical 宽度
-                
+                minx_geo = top  # top 是 horizontal
+                maxx_geo = top + h  # h 是 horizontal 宽度
+                maxy_geo = left  # left 是 vertical
+                miny_geo = left - w  # w 是 vertical 宽度
+
             # 从地理边界计算窗口 (使用 from_bounds 创建一个新的 transform)
             # mask 函数会处理 CRS 轴序，我们只需要提供正确的 GeoJSON 形状
             bbox_polygon = Polygon.from_bounds(minx_geo, miny_geo, maxx_geo, maxy_geo)
-            
 
         else:
             # 输入是像素坐标和像素宽度/高度
@@ -1881,37 +1956,46 @@ class GeoTiff(object):
             # 1. 将像素坐标矩形转换为地理坐标多边形
             # (col, row) -> (x, y)
 
-            polygon = np.array([
-                [left,   top], 
-                [left+w, top], 
-                [left+w, top+h], 
-                [left,   top+h], 
-                [left,   top]]
+            polygon = np.array(
+                [
+                    [left, top],
+                    [left + w, top],
+                    [left + w, top + h],
+                    [left, top + h],
+                    [left, top],
+                ]
             )
 
             logger.debug(f"polygon (pixel coords): {polygon}")
 
             polygon_geo = self.pixel2geo(polygon)
             logger.debug(f"polygon_geo (geo coords): {polygon_geo}")
-            
+
             bbox_polygon = Polygon(polygon_geo)
 
-        return self.crop_shapely_polygon(bbox_polygon, save_path=save_path, return_geotiff=return_geotiff, use_affine=use_affine)
-        
+        return self.crop_shapely_polygon(
+            bbox_polygon,
+            save_path=save_path,
+            return_geotiff=return_geotiff,
+            use_affine=use_affine,
+        )
+
     @_check_data
-    def polygon_math(self, polygon_hv: np.ndarray | None = None, is_geo=True, kernel="mean"):
+    def polygon_math(
+        self, polygon_hv: np.ndarray | None = None, is_geo=True, kernel="mean"
+    ):
         """Calculate the valus inside given polygon
 
         Parameters
         ----------
         polygon_hv : numpy nx2 array | None, optional
-            (horizontal, vertical) points. 
+            (horizontal, vertical) points.
             If None, the calculation will be performed on the entire image. Defaults to None.
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         kernel : str, optional
             The method to calculate polygon summary, options are: ["mean", "min", "max", "pmin5", "pmin10", "pmax5", "pmax10"], please check notes section for more details.
-        
+
         Notes
         -----
         Option details for ``kernel`` parameter:
@@ -1925,13 +2009,13 @@ class GeoTiff(object):
         - "pmax10": 90th [percentile mean]_ inside polygon
 
         .. [percentile mean] the mean value of all pixels over/under xth percentile threshold
-        
+
         Example
         -------
         Prepare data:
 
         .. code-block:: python
-        
+
             >>> import easyidp as idp
             >>> test_data = idp.data.TestData()
 
@@ -1961,7 +2045,7 @@ class GeoTiff(object):
             This function is initially designed for doing some simple calculations one band (layer) geotiff.
 
             If you applying this function on RGB color geotiff, it will return the calculated results of each layer
-            
+
             .. code-block:: python
 
                 >>> dom.polygon_math(roi_test, is_geo=True, kernel="pmax10")
@@ -1978,11 +2062,11 @@ class GeoTiff(object):
 
         # Squeeze to remove single dimensions (e.g., (h, w, 1) -> (h, w))
         imarray = np.squeeze(imarray)
-        
+
         # Compute mask for valid pixels using the unified mask method
         # Create a temporary header-like dict for _compute_mask
         mask = self._compute_mask(imarray)
-        
+
         # Extract valid values based on mask
         if len(imarray.shape) == 2:
             # Single band (DSM)
@@ -2007,6 +2091,7 @@ class GeoTiff(object):
 ##############
 # Func tools #
 ##############
+
 
 def get_header(tif_path: str | Path) -> dict:
     """Read the necessary meta infomation from TIFF file
@@ -2036,15 +2121,15 @@ def get_header(tif_path: str | Path) -> dict:
 
         >>> lotus_full = idp.geotiff.get_header(test_data.pix4d.lotus_dom)
         >>> lotus_full
-        {'height': 5752, 'width': 5490, 'dim': 4, 'nodata': 0, 'dtype': dtype('uint8'), 
-            'scale': [0.00738, 0.00738], 'tie_point': [368014.54157, 3955518.2747700005], 
+        {'height': 5752, 'width': 5490, 'dim': 4, 'nodata': 0, 'dtype': dtype('uint8'),
+            'scale': [0.00738, 0.00738], 'tie_point': [368014.54157, 3955518.2747700005],
             'crs': <Derived Projected CRS: EPSG:32654>
                 Name: WGS 84 / UTM zone 54N
                 Axis Info [cartesian]:
                 - E[east]: Easting (metre)
                 - N[north]: Northing (metre)
                 Area of Use:
-                - name: Between 138°E and 144°E, northern hemisphere between equator and 84°N, 
+                - name: Between 138°E and 144°E, northern hemisphere between equator and 84°N,
                         onshore and offshore. Japan. Russian Federation.
                 - bounds: (138.0, 0.0, 144.0, 84.0)
                 Coordinate Operation:
@@ -2055,14 +2140,16 @@ def get_header(tif_path: str | Path) -> dict:
                 - Prime Meridian: Greenwich
         }
 
-            
+
     """
     if isinstance(tif_path, str):
         file_path = Path(tif_path)
     elif isinstance(tif_path, Path):
         file_path = tif_path
     else:
-        logger.error(f"Input should be either [str] or [pathlib.Path], but got [{type(tif_path)}]")
+        logger.error(
+            f"Input should be either [str] or [pathlib.Path], but got [{type(tif_path)}]"
+        )
 
     with rio.open(file_path) as src:
         header = {}
@@ -2084,31 +2171,34 @@ def get_header(tif_path: str | Path) -> dict:
         header["transform"] = src.transform
         header["scale"] = [src.transform.a, abs(src.transform.e)]
         header["tie_point"] = [src.transform.c, src.transform.f]
-        
+
         if src.crs:
-            header['crs'] = pyproj.CRS.from_wkt(src.crs.to_wkt())
+            header["crs"] = pyproj.CRS.from_wkt(src.crs.to_wkt())
         else:
-            header['crs'] = None
-            logger.warning(f"[io][geotiff][get_header] Could not find Coordinate Reference System (CRS) for [{tif_path}]\n"
-                            f"but you can still manual specify it by \n"
-                            f">>> import pyproj \n"
-                            f">>> proj = pyproj.CRS.from_epsg() # or from_string() or refer official documents:\n"
-                            f"https://pyproj4.github.io/pyproj/dev/api/crs/coordinate_operation.html")
-        
+            header["crs"] = None
+            logger.warning(
+                f"[io][geotiff][get_header] Could not find Coordinate Reference System (CRS) for [{tif_path}]\n"
+                f"but you can still manual specify it by \n"
+                f">>> import pyproj \n"
+                f">>> proj = pyproj.CRS.from_epsg() # or from_string() or refer official documents:\n"
+                f"https://pyproj4.github.io/pyproj/dev/api/crs/coordinate_operation.html"
+            )
+
         # Optimization C: Use deepcopy to ensure profile independence
         import copy
-        header['profile'] = copy.deepcopy(src.profile)
+
+        header["profile"] = copy.deepcopy(src.profile)
 
         # Read colorinterp to detect alpha band
         # colorinterp is a tuple of ColorInterp enums for each band
-        header['colorinterp'] = tuple(src.colorinterp)
-        
+        header["colorinterp"] = tuple(src.colorinterp)
+
         # Check if any band is marked as alpha
         # Using rasterio.enums.ColorInterp to check for alpha
-        header['has_alpha'] = ColorInterp.alpha in src.colorinterp
+        header["has_alpha"] = ColorInterp.alpha in src.colorinterp
 
-    
     return header
+
 
 def get_imarray(tif_path: str | Path) -> np.ndarray:
     """Read full map data as numpy array (time and RAM costy, not recommended, often requires ``4 x file_size`` of RAM)
@@ -2142,9 +2232,11 @@ def get_imarray(tif_path: str | Path) -> np.ndarray:
     elif isinstance(tif_path, Path):
         file_path = tif_path
     else:
-        logger.error(f"Input should be either [str] or [pathlib.Path], but got [{type(tif_path)}]")
+        logger.error(
+            f"Input should be either [str] or [pathlib.Path], but got [{type(tif_path)}]"
+        )
         return None
-        
+
     with rio.open(file_path) as src:
         # Estimate the required memeory
         height = src.height
@@ -2156,7 +2248,9 @@ def get_imarray(tif_path: str | Path) -> np.ndarray:
         # Check available RAM
         available_memory_gb = psutil.virtual_memory().available / (1024**3)
 
-        logger.debug(f"Available RAM: {available_memory_gb:.2f} GB | Required RAM: {required_memory_gb:.2f} GB")
+        logger.debug(
+            f"Available RAM: {available_memory_gb:.2f} GB | Required RAM: {required_memory_gb:.2f} GB"
+        )
 
         if required_memory_gb > available_memory_gb * 0.99:
             logger.warning(
@@ -2164,7 +2258,7 @@ def get_imarray(tif_path: str | Path) -> np.ndarray:
                 f"{required_memory_gb:.2f} GB RAM, but only {available_memory_gb:.2f} GB available."
             )
             return None
-    
+
         if required_memory_gb > available_memory_gb * 0.8:
             logger.warning(
                 f"Fully loal this geotiff ({file_path.name}) requires "
@@ -2176,7 +2270,7 @@ def get_imarray(tif_path: str | Path) -> np.ndarray:
         # rasterio 读取为 (bands, height, width)dom
         # 需要转换为 (height, width, bands) 以保持与旧版本 tifffile 的兼容性
         return np.moveaxis(imarray, 0, -1)
-    
+
 
 def geo2pixel(points_hv, header, return_index=False):
     """[Deprecated] Convert geo coordinate (lon, lat) to geotiff pixel coordinate (horizontal, vertical)
@@ -2198,7 +2292,7 @@ def geo2pixel(points_hv, header, return_index=False):
         if true: will get int pixel index -> (23, 27)
     Returns
     -------
-    ndarray 
+    ndarray
         pixel position of these points (horizontal, vertical)
 
     Notes
@@ -2211,7 +2305,7 @@ def geo2pixel(points_hv, header, return_index=False):
     - the second columns is horizontal pixel number (along width),
     - the third columns is 3 or 4 bands (RGB, alpha),
     - the x and y is reversed compared with gis coordinates.
-        
+
     This function has already do this reverse, so that you can use the output directly.
 
     Example
@@ -2219,9 +2313,9 @@ def geo2pixel(points_hv, header, return_index=False):
     .. code-block:: python
 
         # manual specify header just as example (no need to open geotiff)
-        >>> header = {'width': 19436, 'height': 31255, 'dim':4, 
+        >>> header = {'width': 19436, 'height': 31255, 'dim':4,
                       'scale': [0.001, 0.001], 'nodata': None,
-                      'tie_point': [484576.70205, 3862285.5109300003], 
+                      'tie_point': [484576.70205, 3862285.5109300003],
                       'proj': pyproj.CRS.from_string("WGS 84 / UTM zone 53N")}
         # prepare coord data (no need to read)
         >>> gis_coord = np.asarray([
@@ -2249,17 +2343,17 @@ def geo2pixel(points_hv, header, return_index=False):
         "Please use `easyidp.GeoTiff.geo2pixel()` instead, "
         "a wrapper for `rasterio.io.DatasetReader.index()` function.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 
     gis_ph = points_hv[:, 0]
     gis_pv = points_hv[:, 1]
 
-    gis_xmin = header['tie_point'][0]
-    gis_ymax = header['tie_point'][1]
+    gis_xmin = header["tie_point"][0]
+    gis_ymax = header["tie_point"][1]
 
-    scale_x = header['scale'][0]
-    scale_y = header['scale'][1]
+    scale_x = header["scale"][0]
+    scale_y = header["scale"][1]
 
     # get float coordinate on pixels
     # - numpy_axis1 = x
@@ -2268,7 +2362,7 @@ def geo2pixel(points_hv, header, return_index=False):
     np_ax_v = (gis_ymax - gis_pv) / scale_y
 
     # get the pixel index (int)
-    if return_index:  
+    if return_index:
         np_ax_h = np.floor(np_ax_h).astype(int)
         np_ax_v = np.floor(np_ax_v).astype(int)
 
@@ -2301,9 +2395,9 @@ def pixel2geo(points_hv, header):
     -------
     .. code-block:: python
 
-        >>> header = {'width': 19436, 'height': 31255, 'dim':4, 
+        >>> header = {'width': 19436, 'height': 31255, 'dim':4,
                       'scale': [0.001, 0.001], 'nodata': None,
-                      'tie_point': [484576.70205, 3862285.5109300003], 
+                      'tie_point': [484576.70205, 3862285.5109300003],
                       'crs': pyproj.CRS.from_string("WGS 84 / UTM zone 53N")}
         >>> pixel_coord = np.asarray([
                 [16972, 26086],
@@ -2317,7 +2411,7 @@ def pixel2geo(points_hv, header):
                [16946.36805996, 25445.77883044],
                [17228.72418998, 25956.37087012],
                [16972.69654   , 26086.79569047]])
-    
+
     See also
     --------
     :func:`easyidp.GeoTiff.pixel2geo <easyidp.geotiff.GeoTiff.pixel2geo>`
@@ -2328,17 +2422,19 @@ def pixel2geo(points_hv, header):
         "Please use `easyidp.GeoTiff.pixel2geo()` instead, "
         "a wrapper for `rasterio.io.DatasetReader.xy()` function.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 
     if not np.issubdtype(points_hv.dtype, np.number):
-        raise TypeError(f"The `points_hv` only accept numpy ndarray float and int types")
+        raise TypeError(
+            f"The `points_hv` only accept numpy ndarray float and int types"
+        )
 
-    gis_xmin = header['tie_point'][0]
-    gis_ymax = header['tie_point'][1]
+    gis_xmin = header["tie_point"][0]
+    gis_ymax = header["tie_point"][1]
 
-    scale_x = header['scale'][0]
-    scale_y = header['scale'][1]
+    scale_x = header["scale"][0]
+    scale_y = header["scale"][1]
 
     # the px is numpy axis0 (vertical, h)
     #     py is numpy axis1 (horizontal, w)
@@ -2422,7 +2518,7 @@ def one_raw_roi2geotiff(
         # Step 1: Read raw image
         raw_img = imread(raw_img_path)
     # else: raw_img is already np.ndarray
- 
+
     # Prepare coordinates: use only first n-1 points (remove closure point)
     roi_geo_2d = roi_geo_coords[:, :2].copy()
     if np.allclose(roi_geo_2d[0], roi_geo_2d[-1]):
@@ -2442,13 +2538,14 @@ def one_raw_roi2geotiff(
 
     # Calculate buffered bounding box, clamped to image boundaries
     buffered_min = np.maximum(roi_min - buffer_size, [0, 0]).astype(np.int32)
-    buffered_max = np.minimum(
-        roi_max + buffer_size, [img_width, img_height]
-    ).astype(np.int32)
+    buffered_max = np.minimum(roi_max + buffer_size, [img_width, img_height]).astype(
+        np.int32
+    )
 
     # Crop with buffer (using bounding box directly, not polygon)
-    cropped_img = raw_img[buffered_min[1]:buffered_max[1], 
-                          buffered_min[0]:buffered_max[0]]
+    cropped_img = raw_img[
+        buffered_min[1] : buffered_max[1], buffered_min[0] : buffered_max[0]
+    ]
     offset = buffered_min  # Offset is the top-left corner of buffered region
 
     # Adjust ROI pixel coords to local crop coordinates
@@ -2505,23 +2602,23 @@ def one_raw_roi2geotiff(
     # Step 8: Create GeoTiff header
     n_bands = warped_img.shape[2] if len(warped_img.shape) == 3 else 1
     header = {
-        'height': out_height,
-        'width': out_width,
-        'dim': n_bands,
-        'dtype': warped_img.dtype,
-        'nodata': nodata if not has_alpha else None,
-        'scale': scale,
-        'tie_point': tie_point,
-        'crs': roi_crs,
-        'has_alpha': False,
-        'profile': {
-            'driver': 'GTiff',
-            'height': out_height,
-            'width': out_width,
-            'count': n_bands,
-            'dtype': str(warped_img.dtype),
-            'crs': roi_crs,
-            'transform': rio.transform.from_bounds(
+        "height": out_height,
+        "width": out_width,
+        "dim": n_bands,
+        "dtype": warped_img.dtype,
+        "nodata": nodata if not has_alpha else None,
+        "scale": scale,
+        "tie_point": tie_point,
+        "crs": roi_crs,
+        "has_alpha": False,
+        "profile": {
+            "driver": "GTiff",
+            "height": out_height,
+            "width": out_width,
+            "count": n_bands,
+            "dtype": str(warped_img.dtype),
+            "crs": roi_crs,
+            "transform": rio.transform.from_bounds(
                 tie_point[0],
                 tie_point[1] - out_height * scale_y,
                 tie_point[0] + out_width * scale_x,
@@ -2534,11 +2631,11 @@ def one_raw_roi2geotiff(
 
     # Create GeoTiff object with mask polygon for precision preservation
     gtiff = GeoTiff(imarray=warped_img, header=header, mask=roi_mask)
-    
+
     # Store original ROI polygon (geo coords) for precise boundary
     roi_geo_closed = np.vstack([roi_geo_2d, roi_geo_2d[0]])
     gtiff.set_mask_polygon(roi_geo_closed, is_geo=True)
-    
+
     return gtiff
 
 
@@ -2565,7 +2662,7 @@ def back2raw2geotiff(
     Parameters
     ----------
     recons: easyidp.reconstruct.Recons
-        the reconstruction object like <easyidp.Metashape> or <easyidp.Pix4D> object (support both) 
+        the reconstruction object like <easyidp.Metashape> or <easyidp.Pix4D> object (support both)
     back2raw_result : dict
         Output from `roi.back2raw()` or `sort_img_by_distance()`.
         Structure: {roi_id: {img_id: roi_pixel_coords, ...}, ...}
@@ -2618,7 +2715,7 @@ def back2raw2geotiff(
     """
     import concurrent.futures
     import multiprocessing
-    
+
     if output_folder is not None:
         output_folder = Path(output_folder)
         output_folder.mkdir(parents=True, exist_ok=True)
@@ -2627,7 +2724,7 @@ def back2raw2geotiff(
     # Also prepare static data for worker to avoid pickling heavy objects
     img_tasks = {}
     roi_static_data = {}  # {roi_id: geo_coords}
-    
+
     # Pre-cache ROI geo coords
     for roi_id in back2raw_result.keys():
         roi_static_data[roi_id] = roi[roi_id][:, :2]
@@ -2645,24 +2742,26 @@ def back2raw2geotiff(
     # 2. Add image paths to tasks
     final_tasks = []
     skipped_images = 0
-    
+
     for img_id, rois_on_img in img_tasks.items():
         try:
             raw_img_obj = recons.photos[img_id]
             img_path = raw_img_obj.path
-            
+
             if not Path(img_path).exists():
-                logger.warning(f"Image file not found at {img_path}, skipping associated ROIs")
+                logger.warning(
+                    f"Image file not found at {img_path}, skipping associated ROIs"
+                )
                 skipped_images += 1
                 continue
-                
-            final_tasks.append({
-                'img_id': img_id,
-                'img_path': img_path,
-                'rois': rois_on_img
-            })
+
+            final_tasks.append(
+                {"img_id": img_id, "img_path": img_path, "rois": rois_on_img}
+            )
         except KeyError:
-            logger.warning(f"Image ID {img_id} not found in reconstruction project, skipping")
+            logger.warning(
+                f"Image ID {img_id} not found in reconstruction project, skipping"
+            )
             skipped_images += 1
             continue
 
@@ -2673,41 +2772,43 @@ def back2raw2geotiff(
     if num_workers is None:
         try:
             # Estimate image size from sensor metadata
-            first_img_id = final_tasks[0]['img_id']
+            first_img_id = final_tasks[0]["img_id"]
             sensor_id = recons.photos[first_img_id].sensor_id
             sensor = recons.sensors[sensor_id]
-            
+
             # Estimate bytes: W * H * 3 (RGB) * 1 (uint8)
             # Add safety factor 2.0x for overhead during processing
             estimated_img_bytes = sensor.width * sensor.height * 3 * 1.5
-            
+
             mem = psutil.virtual_memory()
             available_mem = mem.available
-            
+
             # Use at most 75% of available RAM
             max_safe_workers = int((available_mem * 0.75) // estimated_img_bytes)
-            
+
             cpu_count = multiprocessing.cpu_count()
             # Cap at CPU count, but at least 1, and max 32 (too many creates overhead)
             num_workers = max(1, min(cpu_count, max_safe_workers, 32))
 
             logger.info(
                 f"Auto-configured workers: {num_workers} "
-                f"(Img: {estimated_img_bytes/1024**2:.1f}MB, "
-                f"Avail RAM: {available_mem/1024**3:.1f}GB)"
+                f"(Img: {estimated_img_bytes / 1024**2:.1f}MB, "
+                f"Avail RAM: {available_mem / 1024**3:.1f}GB)"
             )
         except Exception as e:
-            logger.warning(f"Could not auto-calculate worker count ({e}), defaulting to 1.")
+            logger.warning(
+                f"Could not auto-calculate worker count ({e}), defaulting to 1."
+            )
             num_workers = 1
 
     # 4. Prepare shared arguments for worker
     worker_args_base = {
-        'roi_static_data': roi_static_data,
-        'roi_crs': roi.crs,
-        'nodata': nodata,
-        'has_alpha': has_alpha,
-        'output_folder': str(output_folder) if output_folder else None,
-        'use_affine': use_affine
+        "roi_static_data": roi_static_data,
+        "roi_crs": roi.crs,
+        "nodata": nodata,
+        "has_alpha": has_alpha,
+        "output_folder": str(output_folder) if output_folder else None,
+        "use_affine": use_affine,
     }
 
     # 5. Execute in parallel
@@ -2719,24 +2820,26 @@ def back2raw2geotiff(
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
         # Submit all tasks
         futures = {
-            executor.submit(_process_single_image_task, task, worker_args_base): task['img_id']
+            executor.submit(_process_single_image_task, task, worker_args_base): task[
+                "img_id"
+            ]
             for task in final_tasks
         }
-        
+
         with tqdm(total=len(final_tasks), desc="Processing Images") as pbar:
             for future in concurrent.futures.as_completed(futures):
                 img_id = futures[future]
                 try:
                     # Result is {roi_id: GeoTiff} for this image
                     img_results = future.result()
-                    
+
                     # Merge back into main results
                     for r_id, gtiff in img_results.items():
                         results[r_id][img_id] = gtiff
-                        
+
                 except Exception as e:
                     logger.error(f"Error processing image {img_id}: {e}")
-                
+
                 pbar.update(1)
 
     return results
@@ -2744,30 +2847,30 @@ def back2raw2geotiff(
 
 def _process_single_image_task(task, common_args):
     """Worker function to process all ROIs on a single image.
-    
+
     This function is designed to run in a separate process.
     It loads the image ONCE and generates GeoTiffs for all ROIs on it.
     """
-    img_path = task['img_path']
-    rois_on_img = task['rois']  # {roi_id: px_coords}
-    
+    img_path = task["img_path"]
+    rois_on_img = task["rois"]  # {roi_id: px_coords}
+
     # Unpack common args
-    roi_static_data = common_args['roi_static_data']
-    roi_crs = common_args['roi_crs']
-    nodata = common_args['nodata']
-    has_alpha = common_args['has_alpha']
-    output_folder = common_args['output_folder']
-    use_affine = common_args['use_affine']
-    
+    roi_static_data = common_args["roi_static_data"]
+    roi_crs = common_args["roi_crs"]
+    nodata = common_args["nodata"]
+    has_alpha = common_args["has_alpha"]
+    output_folder = common_args["output_folder"]
+    use_affine = common_args["use_affine"]
+
     results = {}
-    
+
     try:
         # Load image once (IO intensive part)
         full_image = imread(img_path)
-        
+
         for roi_id, px_coords in rois_on_img.items():
             roi_geo_coords = roi_static_data[roi_id]
-            
+
             # Process in memory
             gtiff = one_raw_roi2geotiff(
                 roi_crs=roi_crs,
@@ -2775,54 +2878,54 @@ def _process_single_image_task(task, common_args):
                 raw_img=full_image,  # Pass array directly!
                 roi_raw_px_coords=px_coords,
                 nodata=nodata,
-                has_alpha=has_alpha
+                has_alpha=has_alpha,
             )
-            
+
             # Optimization B: Consistent storage and return object
             # If use_affine is requested, convert the object IN MEMORY first.
             if use_affine:
                 try:
                     gtiff = gtiff.convert_to_affine()
                 except ValueError as e:
-                     logger.warning(
-                         f"Could not convert ROI {roi_id} on image {task['img_id']} to affine mode: {e}. "
-                         f"Falling back to standard storage."
-                     )
-            
+                    logger.warning(
+                        f"Could not convert ROI {roi_id} on image {task['img_id']} to affine mode: {e}. "
+                        f"Falling back to standard storage."
+                    )
+
             results[roi_id] = gtiff
-            
+
             # Save if needed (IO intensive part 2)
             if output_folder:
                 out_path_base = Path(output_folder) / str(roi_id)
                 # Create directory eagerly here or rely on ensure_dir checks
-                # Since multiple workers might try to create the same roi folder 
+                # Since multiple workers might try to create the same roi folder
                 # (if rois are distributed across imgs), race conditions are handled by exist_ok=True
                 out_path_base.mkdir(parents=True, exist_ok=True)
-                
+
                 save_path = out_path_base / f"{task['img_id']}.tif"
-                
+
                 # We can just call save() without arguments, because if use_affine=True,
                 # the object is ALREADY converted to affine above.
-                # Optimization A will handle it if we pass use_affine=True, 
+                # Optimization A will handle it if we pass use_affine=True,
                 # but to be explicit and clean, we pass use_affine=False (or skip it)
                 # because the conversion is already done.
                 gtiff.save(save_path, overwrite=True)
-                
+
     except Exception as e:
         logger.error(f"Worker failed for image {img_path}: {e}")
         raise e
-        
+
     return results
 
 
 def create_binary_mask_for_geotiff(
-    target_geotiff: GeoTiff, 
-    roi: "easyidp.ROI | str | Path", 
-    output_path: str | Path | None = None, 
-    inside_value: int = 1, 
+    target_geotiff: GeoTiff,
+    roi: "easyidp.ROI | str | Path",
+    output_path: str | Path | None = None,
+    inside_value: int = 1,
     outside_value: int = 0,
     all_touched: bool = False,
-    **kwargs
+    **kwargs,
 ) -> GeoTiff:
     """
     Create a binary mask GeoTiff from a shapefile (ROI) matching the target GeoTiff's grid.
@@ -2832,7 +2935,7 @@ def create_binary_mask_for_geotiff(
     target_geotiff : easyidp.GeoTiff
         The reference GeoTiff defining the grid, CRS, and transform.
     roi : easyidp.ROI | str | Path
-        The region of interest (polygons) to rasterize. 
+        The region of interest (polygons) to rasterize.
         Can be an existing ROI object or path to a shapefile/geojson.
     output_path : str | Path, optional
         Path to save the generated mask GeoTiff. If None, it is not saved to disk.
@@ -2841,8 +2944,8 @@ def create_binary_mask_for_geotiff(
     outside_value : int, optional
         Pixel value for areas outside the polygons, by default 0.
     all_touched : bool, optional
-        If True, all pixels touched by geometries will be burned in. 
-        If False (default), only pixels whose center is within the polygon or that 
+        If True, all pixels touched by geometries will be burned in.
+        If False (default), only pixels whose center is within the polygon or that
         are selected by Bresenham's line algorithm will be burned in.
     **kwargs : dict
         Additional arguments passed to easyidp.ROI() if roi is a file path.
@@ -2866,12 +2969,8 @@ def create_binary_mask_for_geotiff(
     if isinstance(roi, (str, Path)):
         roi_obj = idp.ROI(roi, **kwargs)
     elif isinstance(roi, idp.ROI):
-        # Create a shallow copy to safely modifying CRS without side effects on original object
-        roi_obj = idp.ROI()
-        roi_obj.source = roi.source
-        roi_obj.crs = roi.crs
-        roi_obj.id_item = roi.id_item.copy()
-        roi_obj.item_label = roi.item_label.copy() 
+        # Use deep copy to avoid side effects on original ROI object.
+        roi_obj = roi.copy()
     else:
         raise TypeError(f"roi must be easyidp.ROI or path strings, got {type(roi)}")
 
@@ -2883,9 +2982,11 @@ def create_binary_mask_for_geotiff(
                 "Assuming they match."
             )
         elif roi_obj.crs != target_geotiff.crs:
-            logger.info(f"Reprojecting ROI from {roi_obj.crs.name} to {target_geotiff.crs.name}")
+            logger.info(
+                f"Reprojecting ROI from {roi_obj.crs.name} to {target_geotiff.crs.name}"
+            )
             roi_obj.change_crs(target_geotiff.crs)
-    
+
     # 3. Collect polygons for rasterization
     # rasterio.features.rasterize expects list of (geometry, value) or just geometry (if value=default)
     shapes = []
@@ -2893,37 +2994,37 @@ def create_binary_mask_for_geotiff(
         # Ensure polygon is closed
         if not np.allclose(poly_np[0], poly_np[-1]):
             poly_np = np.vstack([poly_np, poly_np[0]])
-        
+
         # Use Shapely Polygon
         poly_geom = Polygon(poly_np)
         shapes.append((poly_geom, inside_value))
 
     if not shapes:
-        logger.warning(f"No polygons found in ROI [{roi_obj.source}]. Returning empty mask.")
+        logger.warning(
+            f"No polygons found in ROI [{roi_obj.source}]. Returning empty mask."
+        )
         mask_array = np.full(
-            (target_geotiff.height, target_geotiff.width), 
-            outside_value, 
-            dtype=np.uint8
+            (target_geotiff.height, target_geotiff.width), outside_value, dtype=np.uint8
         )
     else:
         # 4. Rasterize
         # Use target_geotiff's transform and dimensions
-        transform = target_geotiff.header['profile']['transform']
-        
+        transform = target_geotiff.header["profile"]["transform"]
+
         # If target uses affine rotation, the transform handles the rotation.
         # However, rasterize operates in the crs/world space defined by transform.
-        # This works correctly for both standard and affine-rotated GeoTiffs 
+        # This works correctly for both standard and affine-rotated GeoTiffs
         # as long as we use the correct transform.
-        
+
         mask_array = rio_rasterize(
             shapes=shapes,
             out_shape=(target_geotiff.height, target_geotiff.width),
             transform=transform,
             fill=outside_value,
             dtype=np.uint8,
-            all_touched=all_touched
+            all_touched=all_touched,
         )
-        
+
     # Ensure 3D shape (H, W, C) where C=1
     if mask_array.ndim == 2:
         mask_array = mask_array[:, :, np.newaxis]
@@ -2931,26 +3032,26 @@ def create_binary_mask_for_geotiff(
     # 5. Create GeoTiff object
     # Copy header from target but update relevant fields
     header = target_geotiff.header.copy()
-    header['profile'] = header['profile'].copy()
-    
+    header["profile"] = header["profile"].copy()
+
     # Update data types and count
-    header['dim'] = 1
-    header['dtype'] = np.dtype('uint8')
-    header['nodata'] = None # Usually masks don't use nodata, 0 is background
-    header['has_alpha'] = False
-    
-    header['profile']['count'] = 1
-    header['profile']['dtype'] = 'uint8'
-    header['profile']['nodata'] = None
-    header['profile']['height'] = mask_array.shape[0]
-    header['profile']['width'] = mask_array.shape[1]
-    
+    header["dim"] = 1
+    header["dtype"] = np.dtype("uint8")
+    header["nodata"] = None  # Usually masks don't use nodata, 0 is background
+    header["has_alpha"] = False
+
+    header["profile"]["count"] = 1
+    header["profile"]["dtype"] = "uint8"
+    header["profile"]["nodata"] = None
+    header["profile"]["height"] = mask_array.shape[0]
+    header["profile"]["width"] = mask_array.shape[1]
+
     # Ensure transform is updating if needed (though it should match target)
-    header['profile']['transform'] = transform
-    
+    header["profile"]["transform"] = transform
+
     # Create object
     mask_gt = GeoTiff(imarray=mask_array, header=header)
-    
+
     # Copy affine properties if present
     if target_geotiff.use_affine:
         mask_gt._use_affine = True

@@ -139,6 +139,26 @@ def show_shp_fields(shp_path, encoding="utf-8"):
     print(table_str)
 
 
+def read_shp_field_schema(shp_path, encoding="utf-8"):
+    """Read field schema from shapefile DBF header.
+
+    Parameters
+    ----------
+    shp_path : str | pathlib.Path
+        Path to source shapefile.
+    encoding : str, optional
+        Character encoding for DBF, by default ``"utf-8"``.
+
+    Returns
+    -------
+    dict[str, tuple[str, int, int]]
+        Field schema mapping in format
+        ``{"FIELD": (field_type, field_size, decimal_size)}``.
+    """
+    shp = shapefile.Reader(str(shp_path), encoding=encoding)
+    return _get_field_schema(shp)
+
+
 def read_shp(
     shp_path,
     shp_proj=None,
@@ -356,6 +376,64 @@ def _get_field_key(shp):
     return shp_fields
 
 
+def _get_field_schema(shp):
+    """Read shapefile field schema.
+
+    Parameters
+    ----------
+    shp : shapefile.Reader
+        Opened shapefile reader object.
+
+    Returns
+    -------
+    dict[str, tuple[str, int, int]]
+        Field schema mapping as ``{name: (type, size, decimal)}``.
+    """
+    schema = {}
+    for field in shp.fields:
+        if hasattr(field, "name"):
+            field_name = field.name
+            field_type = field.field_type
+            field_size = field.size
+            decimal_size = field.decimal
+        else:
+            field_name = field[0]
+            field_type = field[1]
+            field_size = field[2]
+            decimal_size = field[3]
+
+        if field_name == "DeletionFlag":
+            continue
+        schema[field_name] = (field_type, field_size, decimal_size)
+    return schema
+
+
+def _infer_field_schema_from_attrs(attrs_rows):
+    """Infer DBF field schema from attribute rows."""
+    schema = {}
+    for attrs in attrs_rows:
+        for key, value in attrs.items():
+            if key in schema:
+                continue
+            if isinstance(value, bool):
+                schema[key] = ("L", 1, 0)
+            elif isinstance(value, int):
+                schema[key] = ("N", 18, 0)
+            elif isinstance(value, float):
+                schema[key] = ("F", 18, 8)
+            else:
+                schema[key] = ("C", 80, 0)
+    return schema
+
+
+def _build_record_values(field_order, attrs, name_field, key_name, subplot_values):
+    """Build DBF row values by field order."""
+    attrs[name_field] = key_name
+    for meta_key, meta_value in subplot_values.items():
+        attrs[meta_key] = meta_value
+    return [attrs.get(field_name, None) for field_name in field_order]
+
+
 def _find_name_related_int_id(shp_fields, name_field):
     """
     Inner function to get the number of given `name_field`.
@@ -491,6 +569,8 @@ def write_shp(
     name_field="id",
     encoding="utf-8",
     subplot_meta=None,
+    attrs_rows=None,
+    field_schema=None,
     wkt_version=1,
 ):
     """Save ROI polygons to shapefile.
@@ -509,6 +589,10 @@ def write_shp(
         Character encoding for the shapefile, by default 'utf-8'.
     subplot_meta : dict, optional
         Metadata for subplots (row, col, status) if available.
+    attrs_rows : list[dict], optional
+        Attribute rows aligned with ROI order.
+    field_schema : dict[str, tuple[str, int, int]], optional
+        DBF field schema mapping, usually from source shapefile.
     wkt_version : int, optional
         WKT version for PRJ output (1 for WKT1_ESRI, 2 for WKT2_2019),
         by default 1.
@@ -526,23 +610,38 @@ def write_shp(
     if len(roi_dict) == 0:
         raise ValueError("Cannot save empty ROI to shapefile")
 
+    if attrs_rows is not None and len(attrs_rows) != len(roi_dict):
+        raise ValueError("Length of attrs_rows must match the number of ROI polygons")
+
     shp_path = Path(shp_path)
     if shp_path.suffix.lower() != ".shp":
         shp_path = shp_path.with_suffix(".shp")
 
+    if attrs_rows is None:
+        field_schema_out = {name_field: ("C", 80, 0)}
+    elif field_schema is None:
+        field_schema_out = _infer_field_schema_from_attrs(attrs_rows)
+    else:
+        field_schema_out = dict(field_schema)
+
+    if name_field not in field_schema_out:
+        field_schema_out[name_field] = ("C", 80, 0)
+
+    if subplot_meta:
+        field_schema_out.setdefault("row", ("N", 18, 0))
+        field_schema_out.setdefault("col", ("N", 18, 0))
+        field_schema_out.setdefault("status", ("C", 20, 0))
+
+    field_order = list(field_schema_out.keys())
+
     # Create shapefile writer
     with shapefile.Writer(str(shp_path), encoding=encoding) as w:
-        # Define fields
-        w.field(name_field, "C", 80)
-
-        # Add subplot metadata fields if available
-        if subplot_meta:
-            w.field("row", "N")
-            w.field("col", "N")
-            w.field("status", "C", 20)
+        for field_name, schema in field_schema_out.items():
+            field_type, field_size, decimal_size = schema
+            w.field(field_name, field_type, field_size, decimal_size)
 
         # Write each polygon
-        for name in roi_dict.keys():
+        for idx, name in enumerate(roi_dict.keys()):
             coords = roi_dict[name]
 
             # Ensure 2D coordinates for shapefile
@@ -558,12 +657,28 @@ def write_shp(
             # Write polygon geometry
             w.poly([poly_coords])
 
-            # Write attributes
+            if attrs_rows is None:
+                attrs = {}
+            else:
+                attrs = dict(attrs_rows[idx])
+
+            subplot_values = {}
             if subplot_meta and name in subplot_meta:
                 meta = subplot_meta[name]
-                w.record(name, meta["row"], meta["col"], meta["status"])
-            else:
-                w.record(name)
+                subplot_values = {
+                    "row": meta["row"],
+                    "col": meta["col"],
+                    "status": meta["status"],
+                }
+
+            record_values = _build_record_values(
+                field_order,
+                attrs,
+                name_field,
+                name,
+                subplot_values,
+            )
+            w.record(*record_values)
 
     # Write .prj file if CRS is available
     if crs is not None:

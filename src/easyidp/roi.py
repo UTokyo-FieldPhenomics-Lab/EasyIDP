@@ -75,6 +75,8 @@ class ROI(idp.Container):
         self.source = target_path
         #: per-polygon attributes aligned by index.
         self._attrs = []
+        #: shapefile field schema in format {name: (type, size, decimal)}.
+        self._field_schema = {}
 
         if target_path is not None:
             self.open(target_path, **kwargs)
@@ -212,6 +214,9 @@ class ROI(idp.Container):
         -----
         For more details of these parameters, please refer to :func:`easyidp.shp.read_shp`
 
+        This method also stores source path in :attr:`ROI.source` and keeps
+        per-feature attributes in ``ROI._attrs`` for later save/export.
+
         See also
         --------
         easyidp.shp.read_shp
@@ -230,6 +235,7 @@ class ROI(idp.Container):
         self.id_item = {}
         self.item_label = {}
         self._attrs = []
+        self._field_schema = idp.shp.read_shp_field_schema(shp_path, encoding=encoding)
 
         for i, poly in enumerate(polygons):
             self[str(i)] = poly
@@ -342,6 +348,8 @@ class ROI(idp.Container):
             self.id_item = {}
             self.item_label = {}
             self.source = json_path
+            self._attrs = []
+            self._field_schema = {}
 
             for shapes in js_dict["shapes"]:
                 if shapes["shape_type"] == "polygon":
@@ -432,9 +440,33 @@ class ROI(idp.Container):
         self.crs = crs_proj
         self.id_item = {}
         self.item_label = {}
+        self._attrs = []
+        self._field_schema = {}
 
         for k, v in geojson_dict.items():
             self[k] = v
+
+    def show_shp_field(self, encoding="utf-8"):
+        """Show attributes table of the source shapefile.
+
+        Parameters
+        ----------
+        encoding : str, optional
+            Character encoding used by shapefile DBF, by default ``"utf-8"``.
+
+        Raises
+        ------
+        ValueError
+            If ROI source is missing or not a ``.shp`` file path.
+        """
+        if self.source is None:
+            raise ValueError("Current ROI has no source shapefile path")
+
+        source_path = Path(self.source)
+        if source_path.suffix.lower() != ".shp":
+            raise ValueError(f"Current ROI source is not a shapefile: {source_path}")
+
+        idp.shp.show_shp_fields(source_path, encoding=encoding)
 
     def change_crs(self, target_crs):
         """Change the geo coordinates of roi to another crs.
@@ -581,6 +613,8 @@ class ROI(idp.Container):
             Output shapefile path (with or without .shp extension).
         name_field : str, optional
             Name of the attribute field for polygon names, by default 'id'.
+            If this field already exists in ROI attrs, it will be overwritten
+            by current ROI key names.
         encoding : str, optional
             Character encoding for the shapefile, by default 'utf-8'.
         wkt_version : int, optional
@@ -608,8 +642,18 @@ class ROI(idp.Container):
         -----
         Uses pyshp for shapefile writing. The .prj file is automatically
         generated if the ROI has a CRS defined.
+
+        If ROI was loaded from shapefile, current ``ROI._attrs`` rows will be
+        written back to DBF during save. Fields not related to ``name_field``
+        keep original values.
         """
         subplot_meta = getattr(self, "_subplot_meta", None)
+        attrs_rows = None
+        field_schema = None
+        if len(self._attrs) == len(self):
+            attrs_rows = self._attrs
+            field_schema = self._field_schema
+
         return idp.shp.write_shp(
             shp_path,
             self,
@@ -617,6 +661,8 @@ class ROI(idp.Container):
             name_field=name_field,
             encoding=encoding,
             subplot_meta=subplot_meta,
+            attrs_rows=attrs_rows,
+            field_schema=field_schema,
             wkt_version=wkt_version,
         )
 

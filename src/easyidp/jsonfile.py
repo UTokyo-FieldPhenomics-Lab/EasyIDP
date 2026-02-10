@@ -315,7 +315,7 @@ def show_geojson_fields(geojson_path):
     Parameters
     ----------
     geojson_path : : str
-        the file path of \*.geojson
+        the file path of \\*.geojson
 
     Example
     -------

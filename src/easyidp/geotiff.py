@@ -1561,7 +1561,7 @@ class GeoTiff(object):
         shapely_polygon : shapely.geometry.Polygon
             The polygon to crop, in geo coordinate
         save_path : str, optional
-            if given, will save the cropped as \*.tif file to path
+            if given, will save the cropped as \\*.tif file to path
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
         use_affine : bool, optional
@@ -1679,7 +1679,7 @@ class GeoTiff(object):
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_path : str | pathlib.Path, optional
-            if given, will save the cropped as \*.tif file to path, by default None
+            if given, will save the cropped as \\*.tif file to path, by default None
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
         use_affine : bool, optional
@@ -1782,7 +1782,7 @@ class GeoTiff(object):
         is_geo : bool, optional
             whether the given polygon is pixel coords on imarray or geo coords (default)
         save_path : str | pathlib.Path, optional
-            if given, will save the cropped as \*.tif file to path
+            if given, will save the cropped as \\*.tif file to path
         return_geotiff : bool, optional
             if specify to True, will return idp.GeoTiff object instead of ndarray
         use_affine : bool, optional

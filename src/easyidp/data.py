@@ -221,7 +221,7 @@ class EasyidpDataSet():
         zip_file
             The *temporary* downloaded zip file path (won't be used in)
         shp
-            The path to plot ROI shapefile (\*.shp)
+            The path to plot ROI shapefile (\\*.shp)
         photo
             The folder path to the raw photos
 

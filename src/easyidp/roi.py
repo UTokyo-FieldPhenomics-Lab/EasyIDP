@@ -149,7 +149,7 @@ class ROI(idp.Container):
         Parameters
         ----------
         shp_path : str
-            the file path of \*.shp
+            the file path of \\*.shp
         shp_proj : str | pyproj object
             | by default None, will read automatically from prj file with the same name of shp filename,
             | or give manually by ``read_shp(..., shp_proj=pyproj.CRS.from_epsg(4326), ...)`` or
@@ -289,7 +289,7 @@ class ROI(idp.Container):
         Parameters
         ----------
         geojson_path : str
-            the file path of \*.geojson
+            the file path of \\*.geojson
         name_field : str or int or list[ str|int ], optional
             by default None, the id or name of shp file fields as output dictionary keys
         include_title : bool, optional

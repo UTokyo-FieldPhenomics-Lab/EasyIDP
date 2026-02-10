@@ -240,6 +240,7 @@ In this example, the `plots.shp` file using default projection system EPSG 4326 
     >>> import easyidp as idp
     >>> roi = idp.ROI()
     >>> roi.read_shp(r'roi/plots.shp', name_field=0)
+    >>> roi.show_shp_field()
     >>> roi.crs.name 
     "WGS 84"
     >>> roi["N1W2"]

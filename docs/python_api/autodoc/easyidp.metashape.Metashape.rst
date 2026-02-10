@@ -16,6 +16,7 @@
       ~Metashape.__init__
       ~Metashape.back2raw
       ~Metashape.back2raw_crs
+      ~Metashape.back2raw_old
       ~Metashape.change_photo_folder
       ~Metashape.get_photo_position
       ~Metashape.open_chunk

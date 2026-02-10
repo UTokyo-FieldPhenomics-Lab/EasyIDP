@@ -14,8 +14,10 @@
    .. autosummary::
    
       ~PointCloud.__init__
+      ~PointCloud.change_crs
       ~PointCloud.clear
       ~PointCloud.crop_point_cloud
+      ~PointCloud.crop_polygon
       ~PointCloud.crop_rois
       ~PointCloud.has_colors
       ~PointCloud.has_normals
@@ -33,8 +35,10 @@
 
    .. autosummary::
    
+      ~PointCloud.crs
       ~PointCloud.offset
       ~PointCloud.points
+      ~PointCloud.tree
       ~PointCloud.file_path
       ~PointCloud.file_ext
       ~PointCloud.colors

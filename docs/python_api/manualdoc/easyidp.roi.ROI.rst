@@ -19,11 +19,14 @@
       ~ROI.crop
       ~ROI.get_z_from_dsm
       ~ROI.get_z_from_pcd
-      ~ROI.is_geo
-      ~ROI.open
-      ~ROI.read_labelme_json
-      ~ROI.read_shp
-      ~ROI.read_geojson
+       ~ROI.is_geo
+       ~ROI.open
+       ~ROI.read_labelme_json
+       ~ROI.read_shp
+       ~ROI.read_geojson
+       ~ROI.show_shp_field
+       ~ROI.save
+       ~ROI.save_shp
    
    .. rubric:: Attributes
 

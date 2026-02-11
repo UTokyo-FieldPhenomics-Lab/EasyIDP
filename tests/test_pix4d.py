@@ -6,7 +6,7 @@ from pathlib import Path
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data, report_loguru_to_caplog
+from . import shared_data, report_logging_to_caplog
 
 def test_hidden_match_suffix():
     test_folder = test_data.pix4d.maize_empty / "2_densification" / "point_cloud"
@@ -55,12 +55,12 @@ def test_parse_p4d_project_structure():
         (test_folder2 / "3_dsm_ortho" / "2_mosaic" / "ccc_dom.tif").resolve()
 
 
-def test_parse_p4d_project_warning(report_loguru_to_caplog):
+def test_parse_p4d_project_warning(report_logging_to_caplog):
     # can not find output file
     test_folder = str(test_data.pix4d.maize_noout)
     
     p4d2 = idp.pix4d.parse_p4d_project(test_folder)
-    assert "Unable to find any" in report_loguru_to_caplog.text
+    assert "Unable to find any" in report_logging_to_caplog.text
 
 
 def test_parse_p4d_project_structure_error():

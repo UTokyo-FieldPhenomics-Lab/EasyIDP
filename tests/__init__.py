@@ -1,15 +1,17 @@
 import os
 import sys
+import logging
 from pathlib import Path
-from loguru import logger
 import pytest
 
 sys.path.insert(0, ".")
 
-# diable loguru to log file when vscode testing init
+# disable easyidp file logger during tests
 os.environ["IS_TESTING"] = "True"
 
 import easyidp as idp
+
+idp.setup_logger(level="DEBUG", enable_file=False, reset=True)
 
 # check if output path exists
 out_dir = Path("./tests/out")
@@ -17,14 +19,20 @@ if not out_dir.exists():
     out_dir.mkdir()
 
 out_folders = [
-    "json_test", "pcd_test", "cv_test", "tiff_test", 
-    "visual_test", "back2raw_test", "data_test"
+    "json_test",
+    "pcd_test",
+    "cv_test",
+    "tiff_test",
+    "visual_test",
+    "back2raw_test",
+    "data_test",
 ]
 
 for o in out_folders:
     sub_dir = out_dir / o
     if not sub_dir.exists():
         sub_dir.mkdir()
+
 
 @pytest.fixture(scope="module")
 def shared_data():
@@ -34,15 +42,17 @@ def shared_data():
 
     # global variable for testing
     # shorten for quick for loops
-    roi_select = idp.ROI() 
+    roi_select = idp.ROI()
     for key in ["N1W1", "N1W2", "N2E2", "S1W1"]:
         roi_select[key] = roi_all[key]
         roi_select.crs = roi_all.crs
         roi_select.source = roi_all.source
 
-    p4d = idp.Pix4D(project_path=test_data.pix4d.lotus_folder, 
-                    raw_img_folder=test_data.pix4d.lotus_photos,
-                    param_folder=test_data.pix4d.lotus_param)
+    p4d = idp.Pix4D(
+        project_path=test_data.pix4d.lotus_folder,
+        raw_img_folder=test_data.pix4d.lotus_photos,
+        param_folder=test_data.pix4d.lotus_param,
+    )
     ms = idp.Metashape(test_data.metashape.lotus_psx, chunk_id=0)
 
     roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
@@ -54,31 +64,37 @@ def shared_data():
     out_all = p4d.back2raw(roi)
 
     # for visualization.test
-    roi_vis = idp.ROI(test_data.shp.lotus_shp, name_field='plot_id')
+    roi_vis = idp.ROI(test_data.shp.lotus_shp, name_field="plot_id")
     roi_vis.get_z_from_dsm(test_data.metashape.lotus_dsm, mode="point")
 
     return {
-        "test_data": test_data, "roi_all": roi_all, "roi_select": roi_select, 
-        "p4d": p4d, "ms": ms, "roi": roi, "out_all": out_all,
-        "roi_vis": roi_vis
+        "test_data": test_data,
+        "roi_all": roi_all,
+        "roi_select": roi_select,
+        "p4d": p4d,
+        "ms": ms,
+        "roi": roi,
+        "out_all": out_all,
+        "roi_vis": roi_vis,
     }
 
+
 @pytest.fixture
-def report_loguru_to_caplog(caplog):
+def report_logging_to_caplog(caplog):
     """
-    将 loguru 的日志重定向到 pytest 的 caplog handler 中，
-    这样就可以在测试中使用 caplog 来断言 loguru 的输出了。
+    将 easyidp 的 logging 日志重定向到 pytest 的 caplog handler 中，
+    这样就可以在测试中使用 caplog 来断言日志输出了。
     """
-    # 添加 caplog 的 handler 到 loguru
-    handler_id = logger.add(
-        caplog.handler,
-        format="{message}",
-        level="WARNING",
-        filter=lambda record: record["level"].no >= caplog.handler.level,
-    )
+    target_logger = logging.getLogger("easyidp")
+    original_level = target_logger.level
+    target_logger.setLevel(logging.DEBUG)
+    caplog.set_level(logging.DEBUG, logger="easyidp")
+    target_logger.addHandler(caplog.handler)
+
     yield caplog
-    # 测试结束后移除 handler，避免污染其他测试
-    logger.remove(handler_id)
+
+    target_logger.removeHandler(caplog.handler)
+    target_logger.setLevel(original_level)
 
 
 if __name__ == "__main__":
@@ -90,14 +106,14 @@ if __name__ == "__main__":
 
     # Verify critical test files exist
     import shapefile
-    
+
     critical_files = [
         test_data.shp.lotus_shp,
-        test_data.shp.lotus_shp.with_suffix('.dbf'),
-        test_data.shp.lotus_shp.with_suffix('.shx'),
-        test_data.shp.lotus_shp.with_suffix('.prj'),
+        test_data.shp.lotus_shp.with_suffix(".dbf"),
+        test_data.shp.lotus_shp.with_suffix(".shx"),
+        test_data.shp.lotus_shp.with_suffix(".prj"),
     ]
-    
+
     print("\n=== Verifying test data integrity ===")
     all_exist = True
     for f in critical_files:
@@ -107,7 +123,7 @@ if __name__ == "__main__":
         print(f"  {f.name}: {status}")
         if not exists:
             all_exist = False
-    
+
     if all_exist:
         # Try to read the shapefile
         shp = shapefile.Reader(str(test_data.shp.lotus_shp))

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import easyidp as idp
 
-from . import shared_data, report_loguru_to_caplog
+from . import shared_data, report_logging_to_caplog
 
 
 def test_read_cc_txt(shared_data):
@@ -332,7 +332,7 @@ def test_class_roi_get_z_from_dsm(shared_data):
     np.testing.assert_almost_equal(roi_f_mean_0_f[0][0, 1], 3955511.081022765)
 
 
-def test_class_roi_get_z_from_dsm_warns(shared_data, report_loguru_to_caplog):
+def test_class_roi_get_z_from_dsm_warns(shared_data, report_logging_to_caplog):
     test_data = shared_data["test_data"]
 
     # the ROI outside the DSM ranges and cause nan values for z
@@ -349,8 +349,8 @@ def test_class_roi_get_z_from_dsm_warns(shared_data, report_loguru_to_caplog):
     )
     print(roi[0])
 
-    # Check that warning was logged via loguru
-    assert "Z values contains empty attribute" in report_loguru_to_caplog.text
+    # Check that warning was logged via logging
+    assert "Z values contains empty attribute" in report_logging_to_caplog.text
 
 
 def test_class_roi_get_z_from_dsm_errors(shared_data):

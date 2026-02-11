@@ -9,7 +9,7 @@ from pathlib import Path
 
 import easyidp as idp
 
-from . import shared_data, report_loguru_to_caplog, out_dir
+from . import shared_data, report_logging_to_caplog, out_dir
 
 def test_def_get_header(shared_data):
     test_data = shared_data['test_data']
@@ -887,7 +887,7 @@ class TestMaskPolygon:
         is_valid, angle, bounds = gtiff._is_valid_rectangle(triangle)
         assert is_valid is False
     
-    def test_affine_non_rectangle_warning(self, shared_data, tmp_path, report_loguru_to_caplog):
+    def test_affine_non_rectangle_warning(self, shared_data, tmp_path, report_logging_to_caplog):
         """Test warning when polygon is not rectangular."""
         test_data = shared_data['test_data']
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
@@ -905,7 +905,7 @@ class TestMaskPolygon:
         save_path = tmp_path / "test_triangle.tif"
         gtiff.save(save_path, overwrite=True, use_affine=True)
         
-        # Note: loguru logs may not be captured by pytest caplog by default
+        # Note: logging logs may not be captured by pytest caplog by default
         # Just verify the file was saved successfully (warning was issued)
         assert save_path.exists()
     

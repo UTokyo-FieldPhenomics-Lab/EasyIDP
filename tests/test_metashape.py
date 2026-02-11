@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data, report_loguru_to_caplog
+from . import shared_data, report_logging_to_caplog
 
 #########################
 # test math calculation #
@@ -152,18 +152,18 @@ def test_class_init_metashape_multi_folder():
     assert ms.photos[0].label == "[0]100MEDIA-DJI_0001"
     assert len(ms.photos) == 218
 
-def test_class_init_metashape_warns_errors(report_loguru_to_caplog):
+def test_class_init_metashape_warns_errors(report_logging_to_caplog):
     # warning init with chunk_id without project_path
     m3 = idp.Metashape(chunk_id=0)
-    assert "Unable to open chunk_id [0] for empty project with project_path=None" in report_loguru_to_caplog.text
+    assert "Unable to open chunk_id [0] for empty project with project_path=None" in report_logging_to_caplog.text
 
     # warning with multiple chunks:
     m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
-    assert "The project has [4] chunks, however no chunk_id has been specified, open the first chunk [1] 'multiple_bbb' by default." in report_loguru_to_caplog.text
+    assert "The project has [4] chunks, however no chunk_id has been specified, open the first chunk [1] 'multiple_bbb' by default." in report_logging_to_caplog.text
 
     # warning with unable for further anaylsys
     m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id=1)
-    assert "Current chunk missing required ['transform', 'sensors', 'photos'] information (is it an empty chunk without finishing SfM tasks?) and unable to do further analysis." in report_loguru_to_caplog.text
+    assert "Current chunk missing required ['transform', 'sensors', 'photos'] information (is it an empty chunk without finishing SfM tasks?) and unable to do further analysis." in report_logging_to_caplog.text
         
     m4 = idp.Metashape(project_path=test_data.metashape.multichunk_psx)
 
@@ -182,12 +182,12 @@ def test_class_init_metashape_warns_errors(report_loguru_to_caplog):
     plot = np.ones((5,3)) * np.array([360000, 3950000, 100])
 
     m5.back2raw_crs(plot)
-    assert "Have not specify the CRS of output DOM/DSM/PCD, " in report_loguru_to_caplog.text
+    assert "Have not specify the CRS of output DOM/DSM/PCD, " in report_logging_to_caplog.text
 
     roi = idp.ROI()
     roi['plot1'] = plot
     m5.back2raw(roi)
-    assert "Have not specify the CRS of output DOM/DSM/PCD, " in report_loguru_to_caplog.text
+    assert "Have not specify the CRS of output DOM/DSM/PCD, " in report_logging_to_caplog.text
 
 
 def test_class_init_metashape_with_missing_chunk_folders():     
@@ -203,12 +203,12 @@ def test_class_fetch_by_label():
     assert m2.label == 'Chunk 1'
 
 
-def test_class_fetch_by_label_error(report_loguru_to_caplog):
+def test_class_fetch_by_label_error(report_logging_to_caplog):
     with pytest.raises(KeyError, match=re.escape("Could not find chunk_id [21] in")):
         m2 = idp.Metashape(project_path=test_data.metashape.multichunk_psx, chunk_id="21")
 
     m3 = idp.Metashape(project_path=test_data.metashape.goya_psx, chunk_id="21")
-    assert "This project only has one chunk named [0] 'Chunk 1', ignore the wrong chunk_id [21] specified by user." in report_loguru_to_caplog.text
+    assert "This project only has one chunk named [0] 'Chunk 1', ignore the wrong chunk_id [21] specified by user." in report_logging_to_caplog.text
 
 def test_class_show_chunk():
     m1 = idp.Metashape()
@@ -521,7 +521,7 @@ def test_debug_discussion_12():
     out = ms._world2crs(pos)
     np.testing.assert_almost_equal(out, np.array([139.54053245,  35.73458169, 130.09433649]))
 
-def test_debug_calibration_tag_error(report_loguru_to_caplog):
+def test_debug_calibration_tag_error(report_logging_to_caplog):
     # test ishii san's <calibration> out of index error (has one sensor tag without <calibration>)
     wrong_sensor = """
     <sensors next_id="2">
@@ -590,7 +590,7 @@ def test_debug_calibration_tag_error(report_loguru_to_caplog):
         if i == 0:
             sensor = idp.metashape._decode_sensor_tag(sensor_tag)
             assert sensor.calibration is None
-            assert 'No expected <calibration class="adjusted"> tag found in <sensor label=Test_Pro (10.26mm)> tag' in report_loguru_to_caplog.text
+            assert 'No expected <calibration class="adjusted"> tag found in <sensor label=Test_Pro (10.26mm)> tag' in report_logging_to_caplog.text
         else:
             sensor = idp.metashape._decode_sensor_tag(sensor_tag)
 
@@ -715,7 +715,7 @@ def test_metashape_disordered_image_xml():
     assert ms.photos[1].label == '80m/e-w/card01/101MEDIA/DJI_0538.JPG'
 
 
-def test_parse_sensor_tags_with_multiple_calibration(report_loguru_to_caplog):
+def test_parse_sensor_tags_with_multiple_calibration(report_logging_to_caplog):
     """
     <calibration type="frame" class="initial">
         <resolution width="5280" height="3956"/>
@@ -742,7 +742,7 @@ def test_parse_sensor_tags_with_multiple_calibration(report_loguru_to_caplog):
       </calibration>
     """
     m6 = idp.Metashape(project_path=test_data.metashape.two_calib_psx)
-    assert 'Detect 2 <calibration> tags in <sensor label=M3M (12.29mm)> tag, using <calibration class="adjusted">' in report_loguru_to_caplog.text
+    assert 'Detect 2 <calibration> tags in <sensor label=M3M (12.29mm)> tag, using <calibration class="adjusted">' in report_logging_to_caplog.text
 
     assert m6.sensors[0].calibration.f == 4758.8543529678982
     assert m6.sensors[0].calibration.cx == 14.842273128715597

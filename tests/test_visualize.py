@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 import easyidp as idp
 
-from . import shared_data, report_loguru_to_caplog
+from . import shared_data, report_logging_to_caplog
 
 ##############################
 # Test back2raw_single based #
@@ -105,7 +105,7 @@ def test_visualize_one_roi_on_img_ms(shared_data):
 # Test draw_backward_one_roi based #
 ####################################
 
-def test_draw_backward_one_roi(shared_data, report_loguru_to_caplog):
+def test_draw_backward_one_roi(shared_data, report_logging_to_caplog):
     test_data = shared_data["test_data"]
     roi = shared_data["roi_vis"]
     
@@ -120,8 +120,8 @@ def test_draw_backward_one_roi(shared_data, report_loguru_to_caplog):
         color='blue', show=False
     )
     
-    # Check that warning was logged via loguru
-    assert "Expected title like ['title1', 'title2']" in report_loguru_to_caplog.text
+    # Check that warning was logged via logging
+    assert "Expected title like ['title1', 'title2']" in report_logging_to_caplog.text
 
 
 ######################

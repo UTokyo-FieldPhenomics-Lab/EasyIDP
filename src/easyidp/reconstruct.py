@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 from skimage.io import imread, imsave
-from loguru import logger
+from .logger import logger
 
 import easyidp as idp
 

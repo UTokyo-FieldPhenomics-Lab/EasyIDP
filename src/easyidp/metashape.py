@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 import xml.dom.minidom as minidom
 from tqdm import tqdm
 from copy import copy as ccopy
-from loguru import logger
+from .logger import logger
 
 import easyidp as idp
 

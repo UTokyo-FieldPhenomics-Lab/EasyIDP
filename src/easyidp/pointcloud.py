@@ -3,7 +3,7 @@ from datetime import datetime
 from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
-from loguru import logger
+from .logger import logger
 
 import numpy as np
 import numpy.lib.recfunctions as rfn
@@ -20,11 +20,9 @@ import easyidp as idp
 
 
 class PointCloud(object):
+    """EasyIDP defined PointCloud class, consists by point coordinates, and optionally point colors and point normals."""
 
-    """EasyIDP defined PointCloud class, consists by point coordinates, and optionally point colors and point normals.
-    """
-
-    def __init__(self, pcd_path="", offset=[0.,0.,0.]):
+    def __init__(self, pcd_path="", offset=[0.0, 0.0, 0.0]):
         """The method to initialize the PointCloud class
 
         Parameters
@@ -33,13 +31,13 @@ class PointCloud(object):
             The point cloud file path for loading/reading, by default "", means create an empty point cloud class
         offset : list, optional
             This parameter is used to specify your own offsets rather than the automatically calculated one.
-            
+
             .. note::
-            
+
                 When the point cloud xyz value is too large, need to deduct duplicate values (minus offsets) to save the memory cost and increase the precision.
-            
+
             .. caution::
-            
+
                 For some Pix4D produced pointcloud, the point cloud itself has been offseted, need manually add the offset value back.
 
         Example
@@ -76,7 +74,7 @@ class PointCloud(object):
                    [ 368014.7912, 3955879.4943,      58.0219],
                    [ 368014.1528, 3955883.5785,      58.0321],
                    [ 368016.7278, 3955874.1188,      57.9668]])
-        
+
         If store these values directly, will cost a lot of memeory with precision loss. But with offsets, the data can be stored more neatly in the EasyIDP:
 
         .. code-block:: python
@@ -113,7 +111,7 @@ class PointCloud(object):
         Though the inner stored values changed, it does not affect the final point valus:
 
         .. code-block:: python
-        
+
             >>> pcd.points
             array([[ 367993.0206, 3955865.095 ,      57.9707],
                    [ 367993.146 , 3955865.3131,      57.9703],
@@ -170,8 +168,8 @@ class PointCloud(object):
 
             .. code-block:: python
 
-                >>> p4d = idp.Pix4D(project_path   = test_data.pix4d.lotus_folder, 
-                ...                 raw_img_folder = test_data.pix4d.lotus_photos, 
+                >>> p4d = idp.Pix4D(project_path   = test_data.pix4d.lotus_folder,
+                ...                 raw_img_folder = test_data.pix4d.lotus_photos,
                 ...                 param_folder   = test_data.pix4d.lotus_param))
                 >>> p4d.offset_np
                 array([ 368043., 3955495.,      98.])
@@ -187,13 +185,13 @@ class PointCloud(object):
         #: the file extension to the current point cloud file
         self.file_ext = ".ply"
 
-        self._points = None   # internal points with offsets to save memory
+        self._points = None  # internal points with offsets to save memory
         #: The color (RGB) values of point cloud
         self.colors = None
         #: The normal vector values of point cloud
         self.normals = None
         #: The size of point cloud (xyz)
-        self.shape = (0,3)
+        self.shape = (0, 3)
         #: The CRS of point cloud
         self._crs = None
         #: The KDTree of point cloud
@@ -201,7 +199,7 @@ class PointCloud(object):
 
         self.offset = self._offset_type_check(offset)
         # BeatTiFul print strings for calling print() function
-        self._btf_print = '<Empty easyidp.PointCloud object>'
+        self._btf_print = "<Empty easyidp.PointCloud object>"
 
         if pcd_path != "":
             self.read_point_cloud(pcd_path)
@@ -223,9 +221,9 @@ class PointCloud(object):
         1    4    5    6  nodata  nodata  nodata  nodata  nodata  nodata
         2    7    8    9  nodata  nodata  nodata  nodata  nodata  nodata
         """
-        head = ['','x','y','z','r','g','b','nx','ny','nz']
+        head = ["", "x", "y", "z", "r", "g", "b", "nx", "ny", "nz"]
         data = []
-        col_align = ["right"] + ["decimal"]*3 + ['left']*3 + ["decimal"]*3 
+        col_align = ["right"] + ["decimal"] * 3 + ["left"] * 3 + ["decimal"] * 3
 
         if self.shape[0] > 6:
             show_idx = [0, 1, 2, -3, -2, -1]
@@ -234,34 +232,35 @@ class PointCloud(object):
 
         for i in show_idx:
             if self.has_points():
-                xyz = np.around(self.points[i,:], decimals=3).tolist()
+                xyz = np.around(self.points[i, :], decimals=3).tolist()
             else:
-                xyz = ['nodata'] * 3
+                xyz = ["nodata"] * 3
 
             if self.has_colors():
-                rgb = self.colors[i,:].tolist()
+                rgb = self.colors[i, :].tolist()
             else:
-                rgb = ['nodata'] * 3
+                rgb = ["nodata"] * 3
 
             if self.has_normals():
-                nxyz = self.normals[i,:].tolist()
+                nxyz = self.normals[i, :].tolist()
             else:
-                nxyz = ['nodata'] * 3
-            
+                nxyz = ["nodata"] * 3
+
             if i >= 0:
                 data.append([i] + xyz + rgb + nxyz)
             if i < 0:
                 data.append([self.shape[0] + i] + xyz + rgb + nxyz)
 
         if self.shape[0] > 6:
-            data.insert(3, ['...'] * 10)
-            
-        self._btf_print = tabulate(data, headers=head, tablefmt='plain', colalign=col_align)
-    
+            data.insert(3, ["..."] * 10)
+
+        self._btf_print = tabulate(
+            data, headers=head, tablefmt="plain", colalign=col_align
+        )
+
     @property
     def points(self):
-        """The xyz values of point cloud
-        """
+        """The xyz values of point cloud"""
         if self._points is None:
             return None
         else:
@@ -270,19 +269,22 @@ class PointCloud(object):
     @points.setter
     def points(self, p):
         if not isinstance(p, np.ndarray):
-            raise TypeError(f"Only numpy ndarray object are acceptable for setting values")
-        elif self.shape != p.shape and self.shape != (0,3):
-            raise IndexError(f"The given shape [{p.shape}] does not match current point cloud shape [{self.shape}]")
+            raise TypeError(
+                f"Only numpy ndarray object are acceptable for setting values"
+            )
+        elif self.shape != p.shape and self.shape != (0, 3):
+            raise IndexError(
+                f"The given shape [{p.shape}] does not match current point cloud shape [{self.shape}]"
+            )
         else:
             self._points = p - self._offset
             self.shape = p.shape
-            self._tree = None   # clear tree cache
+            self._tree = None  # clear tree cache
             self._update_btf_print()
 
     @property
     def crs(self):
-        """The Coordinate Reference System (CRS) of point cloud
-        """
+        """The Coordinate Reference System (CRS) of point cloud"""
         return self._crs
 
     @crs.setter
@@ -295,16 +297,17 @@ class PointCloud(object):
             try:
                 self._crs = pyproj.CRS.from_user_input(c)
             except pyproj.exceptions.CRSError:
-                raise TypeError(f"Only pyproj.CRS object or valid CRS string/int are acceptable, not {type(c)} [{c}]")
+                raise TypeError(
+                    f"Only pyproj.CRS object or valid CRS string/int are acceptable, not {type(c)} [{c}]"
+                )
 
     @property
     def tree(self):
-        """The 2D KDTree of point cloud for fast spatial query
-        """
+        """The 2D KDTree of point cloud for fast spatial query"""
         if self._tree is None:
             if self.has_points():
                 # self.points is property, will calculated with offset, it is slow
-                # using self._points + self._offset to avoid data copy? 
+                # using self._points + self._offset to avoid data copy?
                 # cKDTree need data copy? -> yes, it seems
                 # build on 2D
                 self._tree = cKDTree(self.points[:, 0:2])
@@ -402,14 +405,14 @@ class PointCloud(object):
 
             >>> pts = idp.PointCloud(test_data.pcd.maize_las)
             >>> pts
-                            x            y        z  r    g    b  
-                0  367993.021  3955865.095   57.971  28   21   17 
-                1  367993.146  3955865.313   57.97   28   23   19 
-                2  367992.632  3955867.298   57.982  29   22   18 
+                            x            y        z  r    g    b
+                0  367993.021  3955865.095   57.971  28   21   17
+                1  367993.146  3955865.313   57.97   28   23   19
+                2  367992.632  3955867.298   57.982  29   22   18
                 ...     ...          ...      ...      ...  ...  ...
-            49655  368014.791  3955879.494   58.022  33   28   25 
-            49656  368014.153  3955883.578   58.032  30   40   26 
-            49657  368016.728  3955874.119   57.967  25   20   18 
+            49655  368014.791  3955879.494   58.022  33   28   25
+            49656  368014.153  3955883.578   58.032  30   40   26
+            49657  368016.728  3955874.119   57.967  25   20   18
             >>> pts.offset
             array([ 367900., 3955800.,       0.])
 
@@ -419,19 +422,19 @@ class PointCloud(object):
 
             >>> pts.offset = [300, 200, 50]
             >>> pts
-                            x        y        z  r    g    b  
-                0  393.021  265.095  107.971  28   21   17 
-                1  393.146  265.313  107.97   28   23   19 
-                2  392.632  267.298  107.982  29   22   18 
+                            x        y        z  r    g    b
+                0  393.021  265.095  107.971  28   21   17
+                1  393.146  265.313  107.97   28   23   19
+                2  392.632  267.298  107.982  29   22   18
                 ...  ...      ...      ...      ...  ...  ...
-            49655  414.791  279.494  108.022  33   28   25 
-            49656  414.153  283.578  108.032  30   40   26 
-            49657  416.728  274.119  107.967  25   20   18 
+            49655  414.791  279.494  108.022  33   28   25
+            49656  414.153  283.578  108.032  30   40   26
+            49657  416.728  274.119  107.967  25   20   18
 
         .. caution::
-        
+
             If you want to change the offset without affecting the point xyz values, please use :func:`update_offset_value`
-        
+
         """
         return self._offset
 
@@ -458,7 +461,7 @@ class PointCloud(object):
         Example
         -------
         For example, the point cloud like:
-        
+
         .. code-block:: python
 
             >>> import easyidp as idp
@@ -466,14 +469,14 @@ class PointCloud(object):
 
             >>> pts = idp.PointCloud(test_data.pcd.maize_las)
             >>> pts
-                            x            y        z  r    g    b  
-                0  367993.021  3955865.095   57.971  28   21   17 
-                1  367993.146  3955865.313   57.97   28   23   19 
-                2  367992.632  3955867.298   57.982  29   22   18 
+                            x            y        z  r    g    b
+                0  367993.021  3955865.095   57.971  28   21   17
+                1  367993.146  3955865.313   57.97   28   23   19
+                2  367992.632  3955867.298   57.982  29   22   18
                 ...     ...          ...      ...      ...  ...  ...
-            49655  368014.791  3955879.494   58.022  33   28   25 
-            49656  368014.153  3955883.578   58.032  30   40   26 
-            49657  368016.728  3955874.119   57.967  25   20   18 
+            49655  368014.791  3955879.494   58.022  33   28   25
+            49656  368014.153  3955883.578   58.032  30   40   26
+            49657  368016.728  3955874.119   57.967  25   20   18
             >>> pts.offset
             array([ 367900., 3955800.,       0.])
 
@@ -506,7 +509,7 @@ class PointCloud(object):
         #   |         |         |
         # no change   change-   change+
         off_val = self._offset_type_check(off_val)
-        
+
         if self._points is not None:
             self._points = self._points + self._offset - off_val
             self._offset = off_val
@@ -522,9 +525,13 @@ class PointCloud(object):
             elif isinstance(off_val, np.ndarray):
                 return off_val.astype(np.float64)
             else:
-                raise ValueError(f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(off_val)} type")
+                raise ValueError(
+                    f"Only [x, y, z] list or np.array([x, y, z]) are acceptable, not {type(off_val)} type"
+                )
         else:
-            raise ValueError(f"Please give correct 3D coordinate [x, y, z], only {len(off_val)} was given")
+            raise ValueError(
+                f"Please give correct 3D coordinate [x, y, z], only {len(off_val)} was given"
+            )
 
     def has_colors(self):
         """Returns True if the point cloud contains point colors.
@@ -564,20 +571,24 @@ class PointCloud(object):
 
     def change_crs(self, target_crs):
         """Change the point cloud coordinate system
-        
+
         Parameters
         ----------
         target_crs : pyproj.CRS
         """
         if self._crs is None:
-            raise TypeError("Current PointCloud has no CRS, please specify it by `pcd.crs = 'current_EPSG'` first.")
+            raise TypeError(
+                "Current PointCloud has no CRS, please specify it by `pcd.crs = 'current_EPSG'` first."
+            )
 
         if not isinstance(target_crs, pyproj.CRS):
             target_crs = pyproj.CRS.from_user_input(target_crs)
 
         # check if same
         if self._crs.equals(target_crs):
-            logger.warning(f"The current CRS [{self._crs.name}] is same as target CRS [{target_crs.name}], skip converting")
+            logger.warning(
+                f"The current CRS [{self._crs.name}] is same as target CRS [{target_crs.name}], skip converting"
+            )
             return
 
         # convert
@@ -588,7 +599,7 @@ class PointCloud(object):
         x, y, z = transformer.transform(
             self._points[:, 0] + self._offset[0],
             self._points[:, 1] + self._offset[1],
-            self._points[:, 2] + self._offset[2]
+            self._points[:, 2] + self._offset[2],
         )
 
         self.points = np.vstack([x, y, z]).T
@@ -596,16 +607,15 @@ class PointCloud(object):
         self._tree = None
 
     def clear(self):
-        """Delete all points and make an empty point cloud
-        """
-        self._points = None   # internal points with offsets to save memory
+        """Delete all points and make an empty point cloud"""
+        self._points = None  # internal points with offsets to save memory
         self.colors = None
         self.normals = None
-        self.shape = (0,3)
+        self.shape = (0, 3)
         self._crs = None
         self._tree = None
 
-        self.offset = np.array([0.,0.,0.])
+        self.offset = np.array([0.0, 0.0, 0.0])
 
         self.file_ext = ".ply"
         self.file_path = ""
@@ -668,7 +678,9 @@ class PointCloud(object):
         elif Path(pcd_path).suffix in [".laz", ".las"]:
             pts, cls, nms = read_laz(pcd_path)
         else:
-            raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
+            raise IOError(
+                "Only support point cloud file format ['*.ply', '*.laz', '*.las']"
+            )
 
         if self.has_points():
             self.clear()
@@ -676,8 +688,10 @@ class PointCloud(object):
         self.file_ext = os.path.splitext(pcd_path)[-1]
         self.file_path = os.path.abspath(pcd_path)
 
-        if abs(np.max(pts)) > 65536:   # need offseting
-            if not np.any(self._offset):    # not given any offset (0,0,0) -> calculate offset
+        if abs(np.max(pts)) > 65536:  # need offseting
+            if not np.any(
+                self._offset
+            ):  # not given any offset (0,0,0) -> calculate offset
                 self._offset = np.floor(pts.min(axis=0) / 100) * 100
             self._points = pts - self._offset
         else:
@@ -695,13 +709,13 @@ class PointCloud(object):
         crs_path = pcd_path_obj.with_suffix(".crs")
         if crs_path.exists():
             try:
-                with open(crs_path, 'r') as f:
+                with open(crs_path, "r") as f:
                     crs_str = f.read().strip()
                 self.crs = pyproj.CRS.from_user_input(crs_str)
                 logger.info(f"Loaded CRS from sidecar file [{crs_path}]")
             except Exception as e:
                 logger.warning(f"Found CRS file [{crs_path}] but failed to load: {e}")
-        
+
         # 2. check metadata (TODO: implement later if laspy/plyfile supports it reliably)
 
     def save(self, pcd_path):
@@ -769,27 +783,33 @@ class PointCloud(object):
         file_ext = pcd_path.suffix
 
         if file_ext == "":
-            logger.warning(f"It seems file name [{pcd_path}] has no file suffix, using default suffix [{self.file_ext}] instead")
+            logger.warning(
+                f"It seems file name [{pcd_path}] has no file suffix, using default suffix [{self.file_ext}] instead"
+            )
             out_path = pcd_path.with_name(f"{pcd_path.name}{self.file_ext}")
         else:
-            if file_ext not in ['.ply', '.las', '.laz']:
-                raise IOError("Only support point cloud file format ['*.ply', '*.laz', '*.las']")
+            if file_ext not in [".ply", ".las", ".laz"]:
+                raise IOError(
+                    "Only support point cloud file format ['*.ply', '*.laz', '*.las']"
+                )
 
             out_path = pcd_path
 
         if file_ext == ".ply":
             write_ply(
-                points=self._points + self._offset, 
-                colors=self.colors, 
-                ply_path=out_path, 
-                normals=self.normals)
+                points=self._points + self._offset,
+                colors=self.colors,
+                ply_path=out_path,
+                normals=self.normals,
+            )
         else:
             write_laz(
-                points=self._points + self._offset, 
-                colors=self.colors, 
-                laz_path=out_path, 
-                normals=self.normals, 
-                offset=self._offset)
+                points=self._points + self._offset,
+                colors=self.colors,
+                laz_path=out_path,
+                normals=self.normals,
+                offset=self._offset,
+            )
 
     def crop_rois(self, roi, save_folder=None):
         """Crop several ROIs by given <ROI> or dict object with several polygons and polygon names, along z-axis
@@ -865,7 +885,7 @@ class PointCloud(object):
         .. code-block:: python
 
             >>> out = pcd.crop_rois(roi, save_folder=r'path/to/save/folder/')
-        
+
         See also
         --------
         crop_point_cloud
@@ -874,10 +894,15 @@ class PointCloud(object):
             raise ValueError("Could not operate when PointCloud has no points")
 
         if not isinstance(roi, (dict, idp.ROI)):
-            raise TypeError(f"Only <dict> and <easyidp.ROI> are accepted, not {type(roi)}")
+            raise TypeError(
+                f"Only <dict> and <easyidp.ROI> are accepted, not {type(roi)}"
+            )
 
         out_dict = {}
-        pbar = tqdm(roi.items(), desc=f"Crop roi from point cloud [{os.path.basename(self.file_path)}]")
+        pbar = tqdm(
+            roi.items(),
+            desc=f"Crop roi from point cloud [{os.path.basename(self.file_path)}]",
+        )
         for k, polygon_hv in pbar:
             if save_folder is not None and Path(save_folder).exists():
                 save_path = Path(save_folder) / (k + self.file_ext)
@@ -905,7 +930,7 @@ class PointCloud(object):
 
         Example
         -------
-        
+
         Data prepare:
 
         .. code-block:: python
@@ -940,13 +965,16 @@ class PointCloud(object):
 
         # judge whether proper data type
         if not isinstance(polygon_xy, np.ndarray):
-            raise TypeError(f"Only numpy ndarray are supported as `polygon_xy` inputs, not {type(polygon_xy)}")
+            raise TypeError(
+                f"Only numpy ndarray are supported as `polygon_xy` inputs, not {type(polygon_xy)}"
+            )
 
         # judge whether proper shape is (N, 2)
         if len(polygon_xy.shape) != 2 or polygon_xy.shape[1] != 2:
-            raise IndexError(f"Please only spcify shape like (N, 2), not {polygon_xy.shape}")
+            raise IndexError(
+                f"Please only spcify shape like (N, 2), not {polygon_xy.shape}"
+            )
 
-        
         # calculate the bbox of polygon
         xmin, ymin = polygon_xy.min(axis=0)
         xmax, ymax = polygon_xy.max(axis=0)
@@ -958,7 +986,7 @@ class PointCloud(object):
         # get the row (points id) that in bbox
         inbbox_bool = (x >= xmin) * (x <= xmax) * (y >= ymin) * (y <= ymax)
         # -> array([False, False, False, ..., False, False, False])
-        inbbox_idx =  np.where(inbbox_bool)[0]
+        inbbox_idx = np.where(inbbox_bool)[0]
         # -> array([ 3394,  3395,  3396, ..., 41371, 41372, 41373], dtype=int64)
 
         # filter out in bbox points
@@ -987,7 +1015,9 @@ class PointCloud(object):
             return crop_pcd
         # get empty crop
         else:
-            logger.warning("Cropped 0 point in given polygon. Please check whether the coords is correct.")
+            logger.warning(
+                "Cropped 0 point in given polygon. Please check whether the coords is correct."
+            )
             return None
 
 
@@ -1007,7 +1037,7 @@ def read_ply(ply_path):
     Example
     -------
     .. code-block:: python
-    
+
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
@@ -1040,13 +1070,21 @@ def read_ply(ply_path):
     cloud_data = PlyData.read(ply_path).elements[0].data
     ply_names = cloud_data.dtype.names
 
-    points = np.vstack((cloud_data['x'], cloud_data['y'], cloud_data['z'])).T
+    points = np.vstack((cloud_data["x"], cloud_data["y"], cloud_data["z"])).T
 
-    if 'red' in ply_names:
+    if "red" in ply_names:
         # range in 0-255
-        colors = np.vstack((cloud_data['red'], cloud_data['green'], cloud_data['blue'])).T
-    elif 'diffuse_red' in ply_names:
-        colors = np.vstack((cloud_data['diffuse_red'], cloud_data['diffuse_green'], cloud_data['diffuse_blue'])).T
+        colors = np.vstack(
+            (cloud_data["red"], cloud_data["green"], cloud_data["blue"])
+        ).T
+    elif "diffuse_red" in ply_names:
+        colors = np.vstack(
+            (
+                cloud_data["diffuse_red"],
+                cloud_data["diffuse_green"],
+                cloud_data["diffuse_blue"],
+            )
+        ).T
     else:
         print(f"Can not find color info in {ply_names}")
         colors = None
@@ -1054,8 +1092,8 @@ def read_ply(ply_path):
     colors.dtype = np.uint8
 
     # read normals
-    if 'nx' in ply_names:
-        normals = np.vstack((cloud_data['nx'], cloud_data['ny'], cloud_data['nz'])).T
+    if "nx" in ply_names:
+        normals = np.vstack((cloud_data["nx"], cloud_data["ny"], cloud_data["nz"])).T
     else:
         normals = None
 
@@ -1078,7 +1116,7 @@ def read_las(las_path):
     Example
     -------
     .. code-block:: python
-    
+
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
@@ -1127,7 +1165,7 @@ def read_laz(laz_path):
     Example
     -------
     .. code-block:: python
-    
+
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
@@ -1155,14 +1193,16 @@ def read_laz(laz_path):
     See also
     --------
     :func:`easyidp.PointCloud.read_point_cloud <easyidp.pointcloud.PointCloud.read_point_cloud>`
-    
+
     """
     las = laspy.read(laz_path)
 
     points = np.vstack([las.x, las.y, las.z]).T
 
     # ranges 0-65536
-    colors = np.vstack([las.points['red'], las.points['green'], las.points['blue']]).T / 256
+    colors = (
+        np.vstack([las.points["red"], las.points["green"], las.points["blue"]]).T / 256
+    )
     colors = colors.astype(np.uint8)
 
     # read normals
@@ -1179,11 +1219,14 @@ def read_laz(laz_path):
     but las.point['normal x'] -> get float value
     """
     if "normal x" in las.points.array.dtype.names:
-        normals = np.vstack([las.points['normal x'], las.points['normal y'], las.points['normal z']]).T
+        normals = np.vstack(
+            [las.points["normal x"], las.points["normal y"], las.points["normal z"]]
+        ).T
     else:
         normals = None
 
     return points, colors, normals
+
 
 def write_ply(ply_path, points, colors, normals=None, binary=True):
     """Save point cloud to ply format
@@ -1208,7 +1251,7 @@ def write_ply(ply_path, points, colors, normals=None, binary=True):
     Prepare data:
 
     .. code-block:: python
-    
+
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
@@ -1241,7 +1284,7 @@ def write_ply(ply_path, points, colors, normals=None, binary=True):
     -----
     (For developers)
 
-    The ``plyfile`` packages requires to convert the ndarray outputs to numpy structured arrays [1]_ , then save 
+    The ``plyfile`` packages requires to convert the ndarray outputs to numpy structured arrays [1]_ , then save
     the point cloud structure looks like this:
 
     .. code-block:: python
@@ -1249,20 +1292,20 @@ def write_ply(ply_path, points, colors, normals=None, binary=True):
         >>> cloud_data.elements
         (
             PlyElement(
-                'vertex', 
+                'vertex',
                 (
-                    PlyProperty('x', 'float'), 
-                    PlyProperty('y', 'float'), 
-                    PlyProperty('z', 'float'), 
-                    PlyProperty('red', 'uchar'), 
-                    PlyProperty('green', 'uchar'), 
+                    PlyProperty('x', 'float'),
+                    PlyProperty('y', 'float'),
+                    PlyProperty('z', 'float'),
+                    PlyProperty('red', 'uchar'),
+                    PlyProperty('green', 'uchar'),
                     PlyProperty('blue', 'uchar')
-                ), 
-                count=42454, 
+                ),
+                count=42454,
                 comments=[]),
             )
         )
-    
+
     convert ndarray to strucutred array [2]_ and method to merge to structured arrays [3]_
 
     References
@@ -1279,7 +1322,10 @@ def write_ply(ply_path, points, colors, normals=None, binary=True):
 
     # convert to strucutrre array
     struct_points = np.core.records.fromarrays(points.T, names="x, y, z")
-    struct_colors = np.core.records.fromarrays(colors.T, dtype=np.dtype([('red', np.uint8), ('green', np.uint8), ('blue', np.uint8)]))
+    struct_colors = np.core.records.fromarrays(
+        colors.T,
+        dtype=np.dtype([("red", np.uint8), ("green", np.uint8), ("blue", np.uint8)]),
+    )
 
     # add normals
     if normals is not None:
@@ -1288,13 +1334,18 @@ def write_ply(ply_path, points, colors, normals=None, binary=True):
     else:
         merged_list = [struct_points, struct_colors]
 
-    # merge 
+    # merge
     struct_merge = rfn.merge_arrays(merged_list, flatten=True, usemask=False)
 
     # convert to PlyFile data type
-    el = PlyElement.describe(struct_merge, 'vertex', 
-                             comments=[f'Created by EasyIDP v{idp.__version__}', 
-                                       f'Created {datetime.now().strftime("%Y/%m/%d %H:%M:%S")}'])  
+    el = PlyElement.describe(
+        struct_merge,
+        "vertex",
+        comments=[
+            f"Created by EasyIDP v{idp.__version__}",
+            f"Created {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}",
+        ],
+    )
 
     # save to file
     if binary:
@@ -1302,7 +1353,10 @@ def write_ply(ply_path, points, colors, normals=None, binary=True):
     else:
         PlyData([el], text=True).write(ply_path)
 
-def write_laz(laz_path, points, colors, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
+
+def write_laz(
+    laz_path, points, colors, normals=None, offset=np.array([0.0, 0.0, 0.0]), decimal=5
+):
     """Save point cloud to laz format
 
     Parameters
@@ -1325,7 +1379,7 @@ def write_laz(laz_path, points, colors, normals=None, offset=np.array([0., 0., 0
     Prepare data:
 
     .. code-block:: python
-    
+
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
@@ -1365,14 +1419,16 @@ def write_laz(laz_path, points, colors, normals=None, offset=np.array([0., 0., 0
     :func:`easyidp.PointCloud.write_point_cloud <easyidp.pointcloud.PointCloud.write_point_cloud>`
     """
     # create header
-    header = laspy.LasHeader(point_format=2, version="1.2") 
+    header = laspy.LasHeader(point_format=2, version="1.2")
     if normals is not None:
         header.add_extra_dim(laspy.ExtraBytesParams(name="normal x", type=np.float64))
         header.add_extra_dim(laspy.ExtraBytesParams(name="normal y", type=np.float64))
         header.add_extra_dim(laspy.ExtraBytesParams(name="normal z", type=np.float64))
     header.offsets = offset
-    header.scales = np.array([float(f"1e-{decimal}")]*3)
-    header.generating_software = f'EasyIDP v{idp.__version__} on {datetime.now().strftime("%Y/%m/%d %H:%M:%S")}'
+    header.scales = np.array([float(f"1e-{decimal}")] * 3)
+    header.generating_software = (
+        f"EasyIDP v{idp.__version__} on {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}"
+    )
 
     # create las file
     las = laspy.LasData(header)
@@ -1380,27 +1436,29 @@ def write_laz(laz_path, points, colors, normals=None, offset=np.array([0., 0., 0
     # add values
     # in previous laspy, here has the convert to int32 precision loss
     # in laspy 2.5.4, dtype changed to float 64, fixed this change
-    las.points['x'] = points[:, 0]  
-    las.points['y'] = points[:, 1]   
-    las.points['z'] = points[:, 2]
+    las.points["x"] = points[:, 0]
+    las.points["y"] = points[:, 1]
+    las.points["z"] = points[:, 2]
 
     # colors.dtype -> uint8; then convert to uint16
     #   numpy 2.0 -> uint8 can not convert to uint16 by `colors[:,0] * 256`
     #                need do astype first
     colors = colors.astype(np.uint16)
-    las.points['red'] = colors[:,0] * 256    
-    las.points['green'] = colors[:,1] * 256  
-    las.points['blue'] = colors[:,2] * 256
-
+    las.points["red"] = colors[:, 0] * 256
+    las.points["green"] = colors[:, 1] * 256
+    las.points["blue"] = colors[:, 2] * 256
 
     if normals is not None:
-        las.points['normal x'] = normals[:, 0]
-        las.points['normal y'] = normals[:, 1]
-        las.points['normal z'] = normals[:, 2]
+        las.points["normal x"] = normals[:, 0]
+        las.points["normal y"] = normals[:, 1]
+        las.points["normal z"] = normals[:, 2]
 
     las.write(laz_path)
 
-def write_las(las_path, points, colors, normals=None, offset=np.array([0., 0., 0.]), decimal=5):
+
+def write_las(
+    las_path, points, colors, normals=None, offset=np.array([0.0, 0.0, 0.0]), decimal=5
+):
     """Save point cloud to las format, the function wrapper for :func:`write_laz`
 
     Parameters
@@ -1423,7 +1481,7 @@ def write_las(las_path, points, colors, normals=None, offset=np.array([0., 0., 0
     Prepare data:
 
     .. code-block:: python
-    
+
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
@@ -1461,6 +1519,6 @@ def write_las(las_path, points, colors, normals=None, offset=np.array([0., 0., 0
     See also
     --------
     :func:`easyidp.PointCloud.write_point_cloud <easyidp.pointcloud.PointCloud.write_point_cloud>`
-    
+
     """
     write_laz(las_path, points, colors, normals, offset, decimal)

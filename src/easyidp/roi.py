@@ -5,7 +5,7 @@ from tqdm import tqdm
 from shapely.geometry import Point, Polygon
 from matplotlib.path import Path as mplPath
 from pathlib import Path
-from loguru import logger
+from .logger import logger
 
 import easyidp as idp
 

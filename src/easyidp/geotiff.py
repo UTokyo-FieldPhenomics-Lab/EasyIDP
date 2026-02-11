@@ -3,7 +3,7 @@ from functools import wraps
 from pathlib import Path
 import warnings
 
-from loguru import logger
+from .logger import logger
 import numpy as np
 import psutil
 import pyproj
@@ -1008,7 +1008,7 @@ class GeoTiff(object):
             if polygon_wkt is not None:
                 dst.update_tags(EASYIDP_MASK_POLYGON=polygon_wkt)
 
-        logger.success(f"GeoTiff successfully saved to: {save_path}")
+        logger.info(f"GeoTiff successfully saved to: {save_path}")
         return True
 
     def _is_valid_rectangle(self, polygon: np.ndarray) -> tuple[bool, float, tuple]:

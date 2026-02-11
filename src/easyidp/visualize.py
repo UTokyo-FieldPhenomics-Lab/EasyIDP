@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as pts
 from matplotlib.collections import PatchCollection
 from tqdm import tqdm
-from loguru import logger
+from .logger import logger
 
 
 def _view_poly2mask(poly, mask, pix_all, pix_in):
@@ -27,7 +27,7 @@ def _view_poly2mask(poly, mask, pix_all, pix_in):
     """
     h, w = mask.shape
 
-    fig, ax = plt.subplots(1,1, figsize=(7, 7 * h/w))
+    fig, ax = plt.subplots(1, 1, figsize=(7, 7 * h / w))
 
     # draw figures
     # https://matplotlib.org/stable/tutorials/intermediate/imshow_extent.html
@@ -36,15 +36,15 @@ def _view_poly2mask(poly, mask, pix_all, pix_in):
     # -------------
     # draw scatters
     # -------------
-    ax.scatter(*np.array(pix_all).T, c='k')
+    ax.scatter(*np.array(pix_all).T, c="k")
     ax.plot(*poly.T)
-    ax.scatter(*np.array(pix_in).T, c='r')
-    ax.axis('equal')
+    ax.scatter(*np.array(pix_in).T, c="r")
+    ax.axis("equal")
 
-    #plt.grid()
+    # plt.grid()
 
-    ax.set_xlim(0,w)
-    ax.set_ylim(0,h)
+    ax.set_xlim(0, w)
+    ax.set_ylim(0, h)
 
     ax.set_xlabel("Y")
     ax.set_ylabel("X")
@@ -54,8 +54,18 @@ def _view_poly2mask(poly, mask, pix_all, pix_in):
     plt.show()
 
 
-def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=None, title=None, save_as=None, show=False,
-                        color='red', alpha=0.5, dpi=72):
+def draw_polygon_on_img(
+    img_name,
+    img_path,
+    poly_coord,
+    corrected_poly_coord=None,
+    title=None,
+    save_as=None,
+    show=False,
+    color="red",
+    alpha=0.5,
+    dpi=72,
+):
     """Plot one polygon on given image.
 
     Parameters
@@ -124,7 +134,7 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
         >>> photo = p4d.photos[img_name]
 
         >>> idp.visualize.draw_polygon_on_img(
-        ...     img_name, photo.path, out_dict[img_name],  
+        ...     img_name, photo.path, out_dict[img_name],
         ...     save_as="p4d_back2raw_single_view.png")
 
     It will get the following figure:
@@ -141,7 +151,7 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
 
         >>> idp.visualize.draw_polygon_on_img(
         ...     img_name, photo.path, out_dict[img_name], corrected_poly,
-        ...     save_as="p4d_back2raw_single_view2.png", 
+        ...     save_as="p4d_back2raw_single_view2.png",
         ...     color='blue', alpha=0.3)
 
     It will get the following figure:
@@ -169,23 +179,32 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
     else:
         plt.title(title)
 
-    plt.xlabel('x')
-    plt.ylabel('y')
+    plt.xlabel("x")
+    plt.ylabel("y")
 
     ax[1].imshow(img_array)
 
     if corrected_poly_coord is None:
-        x_min, y_min = poly_coord[:,0:2].min(axis=0)
-        x_max, y_max = poly_coord[:,0:2].max(axis=0)
+        x_min, y_min = poly_coord[:, 0:2].min(axis=0)
+        x_max, y_max = poly_coord[:, 0:2].max(axis=0)
 
-        ax[1].plot(poly_coord[:, 0], poly_coord[:, 1], color=color, linestyle='-')
+        ax[1].plot(poly_coord[:, 0], poly_coord[:, 1], color=color, linestyle="-")
     else:
-        x_min, y_min = np.vstack([poly_coord, corrected_poly_coord])[:,0:2].min(axis=0)
-        x_max, y_max = np.vstack([poly_coord, corrected_poly_coord])[:,0:2].max(axis=0)
+        x_min, y_min = np.vstack([poly_coord, corrected_poly_coord])[:, 0:2].min(axis=0)
+        x_max, y_max = np.vstack([poly_coord, corrected_poly_coord])[:, 0:2].max(axis=0)
 
-        l1, = ax[1].plot(poly_coord[:, 0], poly_coord[:, 1], color=color, linestyle='--')
-        l2, = ax[1].plot(corrected_poly_coord[:, 0], corrected_poly_coord[:, 1], color=color, linestyle='-')
-        ax[1].legend((l1, l2), ('Original Projection', 'Corrected Position'), loc='lower center')
+        (l1,) = ax[1].plot(
+            poly_coord[:, 0], poly_coord[:, 1], color=color, linestyle="--"
+        )
+        (l2,) = ax[1].plot(
+            corrected_poly_coord[:, 0],
+            corrected_poly_coord[:, 1],
+            color=color,
+            linestyle="-",
+        )
+        ax[1].legend(
+            (l1, l2), ("Original Projection", "Corrected Position"), loc="lower center"
+        )
 
     x_shift = (x_max - x_min) * 0.1
     y_shift = (y_max - y_min) * 0.1
@@ -206,7 +225,17 @@ def draw_polygon_on_img(img_name, img_path, poly_coord, corrected_poly_coord=Non
     del fig, ax, img_array
 
 
-def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None, show=False, color='red', alpha=0.5, dpi=72):
+def draw_backward_one_roi(
+    proj,
+    result_dict,
+    buffer=40,
+    title=None,
+    save_as=None,
+    show=False,
+    color="red",
+    alpha=0.5,
+    dpi=72,
+):
     """Plot one ROI results on all available images.
 
     Parameters
@@ -259,15 +288,19 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None
         :alt: draw_backward_one_roi.png'
 
     """
-    title_list = ['ROI Positions on Original Images', 'Enlarge Detail View']
+    title_list = ["ROI Positions on Original Images", "Enlarge Detail View"]
     if title is not None:
         if isinstance(title, list) and len(title) == 2:
             title_list = title
         else:
-            logger.warning(f"Expected title like ['title1', 'title2'], not given '{title}', using default title instead")
+            logger.warning(
+                f"Expected title like ['title1', 'title2'], not given '{title}', using default title instead"
+            )
 
     img_num = len(result_dict)
-    grid_w = np.ceil(np.sqrt(img_num + 1)).astype(int)  # img_num + 1 ensures the column num > row num
+    grid_w = np.ceil(np.sqrt(img_num + 1)).astype(
+        int
+    )  # img_num + 1 ensures the column num > row num
 
     if img_num % grid_w == 0:  # no need a new line
         grid_h = (img_num // grid_w).astype(int)
@@ -279,7 +312,12 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None
     # grid_w * 3 -> the recommended size of image
     # grid_w * 3 * 2 -> the relative width of image, doubed due to two figures connected together
     # griw_w * 3 * ratio -> the relative height of image
-    fig, ax = plt.subplots(ncols=grid_w*2, nrows=grid_h, figsize=(grid_w*3*2, grid_w*3*ratio), dpi=dpi)
+    fig, ax = plt.subplots(
+        ncols=grid_w * 2,
+        nrows=grid_h,
+        figsize=(grid_w * 3 * 2, grid_w * 3 * ratio),
+        dpi=dpi,
+    )
 
     tbar = tqdm(result_dict, desc=f"Reading image files for plotting")
     for i, example_img in enumerate(tbar):
@@ -301,42 +339,48 @@ def draw_backward_one_roi(proj, result_dict, buffer=40, title=None, save_as=None
         ax[img_h, img_w].imshow(img_np)
         # ax[img_h, img_w].plot(*img_coord.T, '--', c=color)
         ax[img_h, img_w].add_collection(p)
-        ax[img_h, img_w].set_xlabel(example_img, size='x-large')
+        ax[img_h, img_w].set_xlabel(example_img, size="x-large")
         ax[img_h, img_w].invert_yaxis()
 
         # draw roi on zoomed image
         ax[img_h, img_w + grid_w].imshow(img_np)
-        ax[img_h, img_w + grid_w].plot(*img_coord.T, '--', c=color)
+        ax[img_h, img_w + grid_w].plot(*img_coord.T, "--", c=color)
         ax[img_h, img_w + grid_w].set_xlim(im_xmin - buffer, im_xmax + buffer)
         ax[img_h, img_w + grid_w].set_ylim(im_ymin - buffer, im_ymax + buffer)
-        ax[img_h, img_w + grid_w].set_xlabel(example_img, size='x-large')
+        ax[img_h, img_w + grid_w].set_xlabel(example_img, size="x-large")
         ax[img_h, img_w + grid_w].invert_yaxis()
 
     print(f"Image data loaded, drawing figures, this may cost a few seconds...")
 
-    for empty_idx in range(img_w+1, grid_w):
-        ax[img_h, empty_idx].axis('off')
-        ax[img_h, empty_idx + grid_w].axis('off')
+    for empty_idx in range(img_w + 1, grid_w):
+        ax[img_h, empty_idx].axis("off")
+        ax[img_h, empty_idx + grid_w].axis("off")
 
     plt.tight_layout()
 
     # make space for suptitle
     # y = -0.1/x + 0.99, in range 0.9-0.98
-    plt.subplots_adjust(top= -0.1 / grid_h + 0.99)
+    plt.subplots_adjust(top=-0.1 / grid_h + 0.99)
 
     # add subfigure title
-    plt.text(.25, 0.99, 
-        title_list[0], 
-        transform=fig.transFigure, 
-        horizontalalignment='center', 
-        verticalalignment='top', 
-        size='xx-large')
-    plt.text(.75, 0.99, 
-        title_list[1], 
-        transform=fig.transFigure, 
-        horizontalalignment='center', 
-        verticalalignment='top', 
-        size='xx-large')
+    plt.text(
+        0.25,
+        0.99,
+        title_list[0],
+        transform=fig.transFigure,
+        horizontalalignment="center",
+        verticalalignment="top",
+        size="xx-large",
+    )
+    plt.text(
+        0.75,
+        0.99,
+        title_list[1],
+        transform=fig.transFigure,
+        horizontalalignment="center",
+        verticalalignment="top",
+        size="xx-large",
+    )
 
     if save_as is not None:
         plt.savefig(save_as)
@@ -353,11 +397,11 @@ def show_subplots(
     boundary_roi,
     subplot_roi,
     ax=None,
-    boundary_color='blue',
-    inside_color='green',
-    touch_color='orange',
-    outside_color='red',
-    outside_style='--',
+    boundary_color="blue",
+    inside_color="green",
+    touch_color="orange",
+    outside_color="red",
+    outside_style="--",
     show_labels=True,
     title=None,
     save_as=None,
@@ -426,14 +470,14 @@ def show_subplots(
         polygon = pts.Polygon(poly_coords, closed=True)
         p = PatchCollection(
             [polygon],
-            facecolors='none',
+            facecolors="none",
             edgecolors=boundary_color,
             linewidths=2,
         )
         ax.add_collection(p)
 
     # Check if subplot has metadata
-    has_meta = hasattr(subplot_roi, '_subplot_meta') and subplot_roi._subplot_meta
+    has_meta = hasattr(subplot_roi, "_subplot_meta") and subplot_roi._subplot_meta
 
     # Draw subplots with different styles based on status
     for name in subplot_roi.keys():
@@ -442,17 +486,17 @@ def show_subplots(
 
         # Determine status and style
         if has_meta and name in subplot_roi._subplot_meta:
-            status = subplot_roi._subplot_meta[name]['status']
+            status = subplot_roi._subplot_meta[name]["status"]
         else:
-            status = 'inside'  # Default if no metadata
+            status = "inside"  # Default if no metadata
 
-        if status == 'inside':
+        if status == "inside":
             color = inside_color
-            linestyle = '-'
+            linestyle = "-"
             alpha = 0.3
-        elif status == 'touch':
+        elif status == "touch":
             color = touch_color
-            linestyle = '-'
+            linestyle = "-"
             alpha = 0.2
         else:  # outside
             color = outside_color
@@ -475,29 +519,33 @@ def show_subplots(
             center_x = poly_coords[:, 0].mean()
             center_y = poly_coords[:, 1].mean()
             ax.text(
-                center_x, center_y, name,
-                ha='center', va='center',
-                fontsize=6, color='black',
+                center_x,
+                center_y,
+                name,
+                ha="center",
+                va="center",
+                fontsize=6,
+                color="black",
             )
 
     # Set axis properties
-    ax.set_aspect('equal')
+    ax.set_aspect("equal")
     ax.autoscale_view()
 
     if title:
         ax.set_title(title)
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
 
     # Add legend
     legend_patches = [
-        pts.Patch(color=boundary_color, label='Boundary'),
-        pts.Patch(color=inside_color, alpha=0.3, label='Inside'),
-        pts.Patch(color=touch_color, alpha=0.2, label='Touch'),
-        pts.Patch(color=outside_color, alpha=0.1, label='Outside'),
+        pts.Patch(color=boundary_color, label="Boundary"),
+        pts.Patch(color=inside_color, alpha=0.3, label="Inside"),
+        pts.Patch(color=touch_color, alpha=0.2, label="Touch"),
+        pts.Patch(color=outside_color, alpha=0.1, label="Outside"),
     ]
-    ax.legend(handles=legend_patches, loc='upper right')
+    ax.legend(handles=legend_patches, loc="upper right")
 
     if created_fig:
         plt.tight_layout()

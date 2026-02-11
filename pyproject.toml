@@ -29,7 +29,6 @@ dependencies = [
     "imagecodecs>=2025.3.30",
     "laspy>=2.5.4",
     "lazrs>=0.6.3",
-    "loguru>=0.7.3",
     "matplotlib>=3.10.3",
     "numpy>=2.2.5",
     "plyfile>=1.1",

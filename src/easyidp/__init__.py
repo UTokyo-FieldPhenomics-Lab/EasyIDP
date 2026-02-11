@@ -7,10 +7,8 @@ import warnings
 from pathlib import Path
 from copy import deepcopy
 
-import time
 import numpy as np
-from tqdm import tqdm
-from loguru import logger
+from .logger import init_easyidp_logger, logger, setup_logger
 
 ##############
 # dict tools #
@@ -90,12 +88,15 @@ def user_data_dir(file_name=""):
     """
     # get os specific path
     if sys.platform.startswith("win"):
-        os_path = os.getenv("LOCALAPPDATA")
+        os_path = os.getenv("LOCALAPPDATA", "~/.local/share")
     elif sys.platform.startswith("darwin"):
         os_path = "~/Library/Application Support"
     else:
         # linux
         os_path = os.getenv("XDG_DATA_HOME", "~/.local/share")
+
+    if os_path is None:
+        os_path = "~/.local/share"
 
     # join with easyidp.data dir
     path = Path(os_path) / "easyidp.data"
@@ -112,105 +113,12 @@ def user_data_dir(file_name=""):
 # logger tools #
 ################
 
-# Generated in ANSI Shadow by:
-# https://www.asciiart.eu/text-to-ascii-art
-
-banner = """
-███████╗ █████╗ ███████╗██╗   ██╗██╗██████╗ ██████╗ 
-██╔════╝██╔══██╗██╔════╝╚██╗ ██╔╝██║██╔══██╗██╔══██╗
-█████╗  ███████║███████╗ ╚████╔╝ ██║██║  ██║██████╔╝
-██╔══╝  ██╔══██║╚════██║  ╚██╔╝  ██║██║  ██║██╔═══╝ 
-███████╗██║  ██║███████║   ██║   ██║██████╔╝██║     
-╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝╚═════╝ ╚═╝     
-"""
-
-logger_format = (
-    "<level>{level:1.1}</level> "  # E for ERROR, I for INFO, etc.
-    "<green>{time:YYYY/MM/DD HH:mm:ss}</green> "  # YYYY/MM/DD HH:mm:ss
-    "{name}.{function}:{line}: "  # file.py:123
-    "<level>{message}</level>"  # The actual log message
-)
-
-logger_file = user_data_dir() / "easyidp.log"
-
-
-# Filter logic for duplicates and frequency limiting
-class LogFilter:
-    """Filter to handle duplicates and throttling of frequent messages"""
-
-    def __init__(self, cooldown=2.0):
-        self.cooldown = cooldown
-        self._last_msg = None
-        self._last_times = {}  # {group_key: timestamp}
-
-        # Patterns to group and throttle
-        # Key: substring to match, Value: group name
-        self.throttle_groups = {
-            "Converted to affine mode": "affine_mode",
-            "Reprojecting ROI": "roi_reproject",
-            "GeoTiff successfully saved": "tiff_save",
-        }
-
-    def __call__(self, record):
-        msg = record["message"]
-        now = time.time()
-
-        # 1. Block exact consecutive duplicates
-        if msg == self._last_msg:
-            return False
-
-        # 2. Check throttling groups
-        matched_group = None
-        for pattern, group in self.throttle_groups.items():
-            if pattern in msg:
-                matched_group = group
-                break
-
-        if matched_group:
-            last_time = self._last_times.get(matched_group, 0)
-            if now - last_time < self.cooldown:
-                return False
-            self._last_times[matched_group] = now
-
-        # Update last message and allow
-        self._last_msg = msg
-        return True
-
-
-# Sink to redirect logs to tqdm.write to avoid interfering with progress bars
-def tqdm_sink(message):
-    tqdm.write(message, end="")
-
-
-# 1. Remove all default handlers
-logger.remove()
-
-# 2. Add tqdm sink with custom filter
-logger.add(
-    tqdm_sink, level="INFO", format=logger_format, filter=LogFilter(cooldown=1.0)
-)
-
-if not os.environ.get("IS_TESTING") == "True":
-    # 3. 你也可以添加一个文件处理器，将日志同时保存到文件
-    # 为解决vscode的test模块也会输出日志，使用环境变量进行区分
-    logger.add(
-        logger_file,
-        level="DEBUG",  # 文件中记录更详细的 DEBUG 级别日志
-        rotation="100 MB",  # 每 10 MB 切割一个新文件
-        format=logger_format,
-        enqueue=True,
-        backtrace=True,
-        diagnose=True,
-    )
-
-logger.info(f"Welcome to use\n{banner}\nVersion: {__version__}")
-
-logger.debug(f"ENV: IS_TESTING = {os.environ.get('IS_TESTING')}")
+init_easyidp_logger(__version__)
 
 
 def logged_input(prompt: str, is_sensitive: bool = False) -> str:
     """
-    一个包装了 loguru 日志记录功能的 input() 函数。
+    一个包装了 logging 日志记录功能的 input() 函数。
     Args:
         prompt (str): 显示给用户的提示信息。
         is_sensitive (bool): 如果为 True，用户的输入将被屏蔽，不会记录到日志中。

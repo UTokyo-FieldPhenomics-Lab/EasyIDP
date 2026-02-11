@@ -4,9 +4,10 @@ import pyproj
 from pathlib import Path
 from tqdm import tqdm
 from copy import copy as ccopy
-from loguru import logger
+from .logger import logger
 
 import easyidp as idp
+
 
 class Pix4D(idp.reconstruct.Recons):
     """A Pix4D class, contains information of 3D reconstruction."""
@@ -21,7 +22,7 @@ class Pix4D(idp.reconstruct.Recons):
         raw_img_folder : str, optional
             the original UAV image folder, by default None
         param_folder : str, optional
-            the folder of pix4d project parameters, just in case user changed the default folder structure 
+            the folder of pix4d project parameters, just in case user changed the default folder structure
             (``...\\project_name\\1_initial\\params\\``), by default None
 
         Example
@@ -39,13 +40,13 @@ class Pix4D(idp.reconstruct.Recons):
             >>> p4d = idp.Pix4D(test_data.pix4d.maize_folder)
 
 
-        Or manual specify parameters if the project folder structure has been changed. 
+        Or manual specify parameters if the project folder structure has been changed.
 
         .. code-block:: python
 
             >>> p4d = idp.Pix4D(
-            ...     project_path   = test_data.pix4d.lotus_folder, 
-            ...     raw_img_folder = test_data.pix4d.lotus_photos, 
+            ...     project_path   = test_data.pix4d.lotus_folder,
+            ...     raw_img_folder = test_data.pix4d.lotus_photos,
             ...     param_folder   = test_data.pix4d.lotus_param
             ... )
 
@@ -55,16 +56,16 @@ class Pix4D(idp.reconstruct.Recons):
 
             >>> p4d = idp.Pix4D()
             >>> p4d.open_project(
-            ...     project_path   = test_data.pix4d.lotus_folder, 
-            ...     raw_img_folder = test_data.pix4d.lotus_photos, 
+            ...     project_path   = test_data.pix4d.lotus_folder,
+            ...     raw_img_folder = test_data.pix4d.lotus_photos,
             ...     param_folder   = test_data.pix4d.lotus_param
             ... )
 
         .. caution::
 
             In previous case, the manager reorganized the project structure and outputs of ``test_data.pix4d.lotus_folder``
-            
-            (e.g., moved the ``\\project_name\\1_initial\\params\\`` to ``\\project_name\\params\\``, 
+
+            (e.g., moved the ``\\project_name\\1_initial\\params\\`` to ``\\project_name\\params\\``,
             as well as other outputs, the following folder is no more a standard pix4d project)
 
             .. code-block:: bash
@@ -94,18 +95,17 @@ class Pix4D(idp.reconstruct.Recons):
                     File "/Users/hwang/OneDrive/Program/GitHub/EasyIDP/easyidp/pix4d.py", line 829, in parse_p4d_project
                         sub_folder = os.listdir(project_path)
                 FileNotFoundError: Can not find pix4d parameter in given project folder
-                
+
 
             In this case, must manual specfiy the ``param_folder``
-        
+
         """
         super().__init__()
 
         #: the 3D reconstruction project software, in ['pix4d', 'metashape'], ``<class 'str'>``
         self.software = "pix4d"
         #: pix4d point cloud offset
-        self.offset_np = np.zeros((3,1))
-
+        self.offset_np = np.zeros((3, 1))
 
         ########################################
         # mute attributes warning for auto doc #
@@ -124,7 +124,6 @@ class Pix4D(idp.reconstruct.Recons):
         if project_path is not None:
             self.open_project(project_path, raw_img_folder, param_folder)
 
-
     def open_project(self, project_path, raw_img_folder=None, param_folder=None):
         """Open a new 3D reconstructin project to overwritting current project.
 
@@ -135,7 +134,7 @@ class Pix4D(idp.reconstruct.Recons):
         raw_img_folder : str, optional
             the original UAV image folder, by default None
         param_folder : str, optional
-            the folder of pix4d project parameters, just in case user changed the default folder structure 
+            the folder of pix4d project parameters, just in case user changed the default folder structure
             (``...\\project_name\\1_initial\\params\\``), by default None
 
         Example
@@ -152,8 +151,8 @@ class Pix4D(idp.reconstruct.Recons):
 
             >>> p4d = idp.Pix4D()
             >>> p4d.open_project(
-            ...     project_path   = test_data.pix4d.lotus_folder, 
-            ...     raw_img_folder = test_data.pix4d.lotus_photos, 
+            ...     project_path   = test_data.pix4d.lotus_folder,
+            ...     raw_img_folder = test_data.pix4d.lotus_photos,
             ...     param_folder   = test_data.pix4d.lotus_param
             ... )
 
@@ -179,7 +178,7 @@ class Pix4D(idp.reconstruct.Recons):
         ccp = read_ccp(p4d_dict["param"]["ccp"])
         cicp = read_cicp(p4d_dict["param"]["cicp"])
         ssk = read_cam_ssk(p4d_dict["param"]["ssk"])
-        '''
+        """
         CCP:
         {'w': 4608, 
          'h': 3456, 
@@ -209,7 +208,7 @@ class Pix4D(idp.reconstruct.Recons):
         #Tangential Lens Distortion Coeffs
         T1 0.00240851666319534747
         T2 0.00292562392135245920
-        '''
+        """
 
         sensor = idp.reconstruct.Sensor()
         # seems pix4d only support one camera kind
@@ -236,8 +235,10 @@ class Pix4D(idp.reconstruct.Recons):
             sensor.calibration.cy, sensor.calibration.cx = ssk["photo_center_in_pixels"]
         # the order is reversed, probably orientatio == 0
         elif ssk["image_size_in_pixels"] == [ccp["w"], ccp["h"]]:
-            logger.warning(f"It seems the orientation = {ssk['orientation']} and the height and width are reversed")
-            sensor.pixel_size = ssk["pixel_size"][::-1]   # reverse
+            logger.warning(
+                f"It seems the orientation = {ssk['orientation']} and the height and width are reversed"
+            )
+            sensor.pixel_size = ssk["pixel_size"][::-1]  # reverse
             sensor.pixel_width, sensor.pixel_height = ssk["pixel_size"]
             sensor.calibration.cx, sensor.calibration.cy = ssk["photo_center_in_pixels"]
         else:
@@ -294,7 +295,7 @@ class Pix4D(idp.reconstruct.Recons):
             # and just in case need this:
             img.cam_matrix = ccp[img_label]["cam_matrix"]  # K
             img.location = ccp[img_label]["cam_pos"]  # t
-            img.rotation = ccp[img_label]["cam_rot"]   # R
+            img.rotation = ccp[img_label]["cam_rot"]  # R
 
             self.photos[i] = img
 
@@ -347,7 +348,7 @@ class Pix4D(idp.reconstruct.Recons):
 
             # correct
             >>> pcd = idp.PointCloud(lotus_full_pcd, offset=p4d.meta['p4d_offset'])
-            # or 
+            # or
             >>> pcd = idp.PointCloud(lotus_full_pcd, offset=p4d.offset_np)
 
         Example
@@ -430,7 +431,8 @@ class Pix4D(idp.reconstruct.Recons):
             else:
                 raise KeyError(
                     f"Could not find given image name [{photo}] in "
-                    f"[{self.photos[0].label}, {self.photos[1].label}, ..., {self.photos[-1].label}]")
+                    f"[{self.photos[0].label}, {self.photos[1].label}, ..., {self.photos[-1].label}]"
+                )
         elif isinstance(photo, idp.reconstruct.Photo):
             return photo
         else:
@@ -455,8 +457,8 @@ class Pix4D(idp.reconstruct.Recons):
 
         """
         photo = self._check_photo_type(photo)
-        T = photo.location   # v1.0: T = param.img[image_name].cam_pos
-        R = photo.rotation   # v1.0: R = param.img[image_name].cam_rot
+        T = photo.location  # v1.0: T = param.img[image_name].cam_pos
+        R = photo.rotation  # v1.0: R = param.img[image_name].cam_rot
 
         X_prime = (points - T).dot(R)
         xh = X_prime[:, 0] / X_prime[:, 2]
@@ -478,12 +480,11 @@ class Pix4D(idp.reconstruct.Recons):
             xb = f * xh + cx
             yb = f * yh + cy
 
-        #xa = xb
-        #ya = param.img[image_name].h - yb
-        #coords_a = np.hstack([xa[:, np.newaxis], ya[:, np.newaxis]])
-        #coords_b = np.hstack([xb[:, np.newaxis], yb[:, np.newaxis]])
+        # xa = xb
+        # ya = param.img[image_name].h - yb
+        # coords_a = np.hstack([xa[:, np.newaxis], ya[:, np.newaxis]])
+        # coords_b = np.hstack([xb[:, np.newaxis], yb[:, np.newaxis]])
         return np.vstack([xb, yb]).T
-
 
     def _pmatrix_calc(self, points, photo, distort_correct=True):
         """Calculate backward projection by pix4d pmatrix
@@ -499,14 +500,14 @@ class Pix4D(idp.reconstruct.Recons):
 
         Returns
         -------
-        coords_b : 2d ndarray, 
+        coords_b : 2d ndarray,
             'lower-left' coordiantes
         """
         photo = self._check_photo_type(photo)
 
         xyz1_prime = np.insert(points, 3, 1, axis=1)
         xyz = (xyz1_prime).dot(photo.transform.T)  # v1.0: param.img[image_name].pmat.T
-        u = xyz[:, 0] / xyz[:, 2]   # already the pixel coords
+        u = xyz[:, 0] / xyz[:, 2]  # already the pixel coords
         v = xyz[:, 1] / xyz[:, 2]
 
         calibration = self.sensors[photo.sensor_id].calibration
@@ -518,7 +519,6 @@ class Pix4D(idp.reconstruct.Recons):
 
         return coords_b
 
-
     def back2raw_crs(self, points_xyz, distort_correct=True, ignore=None, log=False):
         """Projects one GIS coordintates ROI (polygon) to all images
 
@@ -528,10 +528,10 @@ class Pix4D(idp.reconstruct.Recons):
             The 3D coordinates of polygon vertexm, in CRS coordinates
         distortion_correct : bool, optional
             Whether do distortion correction, by default True (back to raw image);
-            If back to software corrected images without len distortion, set it to True. 
+            If back to software corrected images without len distortion, set it to True.
             Pix4D support do this operation, seems metashape not supported yet.
         ignore : str | None, optional
-            Whether tolerate small parts outside image, check 
+            Whether tolerate small parts outside image, check
             :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
 
             - ``None``: strickly in image area;
@@ -589,12 +589,17 @@ class Pix4D(idp.reconstruct.Recons):
         points_xyz = points_xyz - self.meta["p4d_offset"]
 
         if log:
-            print(f'[Calculator][Judge]camera_name photo.width photo.height -> x.min \t x.max \t y.min \t y.max')
+            print(
+                f"[Calculator][Judge]camera_name photo.width photo.height -> x.min \t x.max \t y.min \t y.max"
+            )
 
         for photo_name, photo in self.photos.items():
             if log:
-                print(f'[Calculator][Judge]{photo.label} w:{photo.sensor.width} h:{photo.sensor.height} -> ', end='')
-            #if method == 'exin':
+                print(
+                    f"[Calculator][Judge]{photo.label} w:{photo.sensor.width} h:{photo.sensor.height} -> ",
+                    end="",
+                )
+            # if method == 'exin':
             #    projected_coords = self._external_internal_calc(points, photo, distort_correct)
             projected_coords = self._pmatrix_calc(points_xyz, photo, distort_correct)
             coords = sensor.in_img_boundary(projected_coords, ignore=ignore, log=log)
@@ -602,7 +607,6 @@ class Pix4D(idp.reconstruct.Recons):
                 out_dict[photo.label] = coords
 
         return out_dict
-
 
     def back2raw(self, roi, save_folder=None, **kwargs):
         """Projects several GIS coordintates ROIs (polygons) to all images
@@ -615,10 +619,10 @@ class Pix4D(idp.reconstruct.Recons):
             the folder to save projected preview images and json files, by default ""
         distortion_correct : bool, optional
             Whether do distortion correction, by default True (back to raw image);
-            If back to software corrected images without len distortion, set it to True. 
+            If back to software corrected images without len distortion, set it to True.
             Pix4D support do this operation, seems metashape not supported yet.
         ignore : str | None, optional
-            Whether tolerate small parts outside image, check 
+            Whether tolerate small parts outside image, check
             :func:`easyidp.reconstruct.Sensor.in_img_boundary` for more details.
 
             - ``None``: strickly in image area;
@@ -639,7 +643,7 @@ class Pix4D(idp.reconstruct.Recons):
 
             >>> lotus = idp.data.Lotus()
 
-            >>> p4d = idp.Pix4D(project_path=lotus.pix4d.project, 
+            >>> p4d = idp.Pix4D(project_path=lotus.pix4d.project,
                                 raw_img_folder=lotus.photo,
                                 param_folder=lotus.pix4d.param)
 
@@ -658,12 +662,12 @@ class Pix4D(idp.reconstruct.Recons):
             >>> out_all = p4d.back2raw(roi)
             {
                 'N1W1': {
-                    'DJI_0479': 
+                    'DJI_0479':
                         array([[  52.9824393 , 1253.05643133],
                                [  79.20465849,  979.90831093],
                                [ 363.27656888, 1000.07501881],
                                [ 337.25115499, 1273.15285336],
-                               [  52.9824393 , 1253.05643133]]), 
+                               [  52.9824393 , 1253.05643133]]),
                     'DJI_0480':
                         array([...])
                     ...
@@ -684,9 +688,10 @@ class Pix4D(idp.reconstruct.Recons):
             if points_xyz.shape[1] != 3:
                 raise ValueError(
                     f"The back2raw function requires 3D roi with shape=(n, 3)"
-                    f", but [{k}] is {points_xyz.shape}")
+                    f", but [{k}] is {points_xyz.shape}"
+                )
 
-            one_roi_dict= self.back2raw_crs(points_xyz, **kwargs)
+            one_roi_dict = self.back2raw_crs(points_xyz, **kwargs)
 
             out_dict[k] = one_roi_dict
 
@@ -703,7 +708,7 @@ class Pix4D(idp.reconstruct.Recons):
         to_crs : pyproj.CRS, optional
             Transformed to another geo coordinate, by default None, the project.crs
         refresh : bool, optional
-            
+
             - ``False`` : Use cached results (if have), by default
             - ``True`` : recalculate the photo position
 
@@ -730,7 +735,7 @@ class Pix4D(idp.reconstruct.Recons):
 
             >>> out = p4d.get_photo_position()
             {
-                'DJI_0422.JPG': array([ 368016.23334752, 3955491.97729229,     138.25541246]), 
+                'DJI_0422.JPG': array([ 368016.23334752, 3955491.97729229,     138.25541246]),
                 'DJI_0423.JPG': array([ 368016.33261375, 3955492.15845851,     138.05762001]),
                 ...
             }
@@ -741,28 +746,30 @@ class Pix4D(idp.reconstruct.Recons):
         else:
             out = {}
             # Vectorized implementation
-            
+
             # 1. Collect all enabled photos
             enabled_photos = [p for p in self.photos.values() if p.enabled]
-            
+
             if len(enabled_photos) > 0:
                 # 2. Collect location vectors (t) and add offset
                 # shape: (N, 3)
                 locs = np.array([p.location for p in enabled_photos])
                 # Pix4D logic: pos = p.location + self.meta["p4d_offset"]
                 # Broadcast offset addition
-                pos_vecs = locs + self.meta["p4d_offset"] # (N, 3)
-                
+                pos_vecs = locs + self.meta["p4d_offset"]  # (N, 3)
+
                 # 3. Determine target CRS
                 target_crs = self.crs
                 if isinstance(to_crs, pyproj.CRS):
                     target_crs = to_crs
-                    
+
                 # 4. Perform batch projection if needed
                 if not self._proj_crs.equals(target_crs):
                     # convert_proj3d is vectorized
-                    pos_vecs = idp.geotools.convert_proj3d(pos_vecs, self._proj_crs, target_crs)
-                    
+                    pos_vecs = idp.geotools.convert_proj3d(
+                        pos_vecs, self._proj_crs, target_crs
+                    )
+
                 # 5. Assign back to dict and photo objects
                 # Using simple loop for assignment
                 pbar = tqdm(enabled_photos, desc=f"Getting photo positions")
@@ -775,7 +782,9 @@ class Pix4D(idp.reconstruct.Recons):
 
             return out
 
-    def sort_img_by_distance(self, img_dict_all, roi, distance_thresh=None, num=None, save_folder=None):
+    def sort_img_by_distance(
+        self, img_dict_all, roi, distance_thresh=None, num=None, save_folder=None
+    ):
         """Advanced wrapper of sorting back2raw img_dict results by distance from photo to roi
 
         Parameters
@@ -808,12 +817,12 @@ class Pix4D(idp.reconstruct.Recons):
             >>> out_all = p4d.back2raw(roi)
             {
                 'N1W1': {
-                    'DJI_0479': 
+                    'DJI_0479':
                         array([[  52.9824393 , 1253.05643133],
                                [  79.20465849,  979.90831093],
                                [ 363.27656888, 1000.07501881],
                                [ 337.25115499, 1273.15285336],
-                               [  52.9824393 , 1253.05643133]]), 
+                               [  52.9824393 , 1253.05643133]]),
                     'DJI_0480':
                         array([...])
                     ...
@@ -821,10 +830,10 @@ class Pix4D(idp.reconstruct.Recons):
                 'N1W2': {...}   # output of `back2raw_crs()`
             }
 
-        The image are in chaos order, in most application cases, probable only 1-3 closest images 
+        The image are in chaos order, in most application cases, probable only 1-3 closest images
         (to ROI in real world) are required, so this function is provided to sort/filter out.
 
-        In the following example, it filtered 3 images whose distance from camera to ROI in real 
+        In the following example, it filtered 3 images whose distance from camera to ROI in real
         world smaller than 10m:
 
         .. code-block:: python
@@ -842,29 +851,29 @@ class Pix4D(idp.reconstruct.Recons):
                                        [1939.92139124, 1930.65101348],
                                        [2199.9439422 , 1939.32128527],
                                        [2191.19230849, 2200.557026  ],
-                                       [1931.09279469, 2191.59919979]]), 
+                                       [1931.09279469, 2191.59919979]]),
                     'DJI_0517': array([[2870.94915401, 2143.3570243 ],
                                        [2596.8790503 , 2161.04730612],
                                        [2578.87033498, 1886.89058023],
                                        [2853.13891851, 1869.99769984],
-                                       [2870.94915401, 2143.3570243 ]]), 
+                                       [2870.94915401, 2143.3570243 ]]),
                     'DJI_0518': array([[3129.43264924, 1984.91814896],
                                        [2856.71879306, 2002.03817639],
                                        [2838.71418138, 1730.00287388],
                                        [3111.73360179, 1713.76233134],
                                        [3129.43264924, 1984.91814896]])
-                }, 
+                },
                 'N1W2': {
                     'DJI_0500': array([[2214.36789052, 2200.35979344],
                                        [2221.8996575 , 1940.70687713],
                                        [2479.9825464 , 1949.3909589 ],
                                        [2472.52171907, 2209.40355333],
-                                       [2214.36789052, 2200.35979344]]), 
+                                       [2214.36789052, 2200.35979344]]),
                     'DJI_0517': array([[2849.82108263, 1845.6733702 ],
                                        [2577.37309441, 1863.60741328],
                                        [2559.80046778, 1592.07656949],
                                        [2832.52942622, 1574.92640413],
-                                       [2849.82108263, 1845.6733702 ]]), 
+                                       [2849.82108263, 1845.6733702 ]]),
                     'DJI_0516': array([[2891.61686486, 2542.98979632],
                                        [2616.06780032, 2559.41601014],
                                        [2598.43900454, 2282.36641612],
@@ -890,7 +899,7 @@ class Pix4D(idp.reconstruct.Recons):
                                        [2199.9439422 , 1939.32128527],
                                        [2191.19230849, 2200.557026  ],
                                        [1931.09279469, 2191.59919979]])
-                }, 
+                },
                 'N1W2': {
                     'DJI_0500': array([[2214.36789052, 2200.35979344],
                                        [2221.8996575 , 1940.70687713],
@@ -916,8 +925,10 @@ class Pix4D(idp.reconstruct.Recons):
         easyidp.reconstruct.sort_img_by_distance
 
         """
-        return idp.reconstruct.sort_img_by_distance(self, img_dict_all, roi, distance_thresh, num, save_folder)
-    
+        return idp.reconstruct.sort_img_by_distance(
+            self, img_dict_all, roi, distance_thresh, num, save_folder
+        )
+
     def show_roi_on_img(self, img_dict, roi_name, img_name=None, **kwargs):
         """Visualize the specific backward projection results for given roi on the given image.
 
@@ -956,7 +967,7 @@ class Pix4D(idp.reconstruct.Recons):
         .. code-block:: python
 
             >>> ms.show_roi_on_img(img_dict_ms, "N1W1", "DJI_0479")
-            
+
         Check the "N1W1" ROI on all available images:
 
             >>> ms.show_roi_on_img(img_dict_ms, "N1W1")
@@ -968,36 +979,39 @@ class Pix4D(idp.reconstruct.Recons):
         easyidp.visualize.draw_polygon_on_img, easyidp.visualize.draw_backward_one_roi
         """
         # check if given has values
-        if roi_name not in img_dict.keys() or \
-                (img_name is not None and \
-                    img_name not in img_dict[roi_name].keys()):
-            raise IndexError(f"Could not find backward results of plot [{roi_name}] on image [{img_name}]")
-        
-        if img_name is not None and img_name not in self.photos.keys():
-            raise FileNotFoundError(f"Could not find the image file [{img_name}] in the Pix4D project")
-        
-        if 'title' not in kwargs:
-            kwargs['title'] = f"ROI [{roi_name}] on [{img_name}]"
+        if roi_name not in img_dict.keys() or (
+            img_name is not None and img_name not in img_dict[roi_name].keys()
+        ):
+            raise IndexError(
+                f"Could not find backward results of plot [{roi_name}] on image [{img_name}]"
+            )
 
-        if 'show' not in kwargs:
-            kwargs['show'] = True
-    
+        if img_name is not None and img_name not in self.photos.keys():
+            raise FileNotFoundError(
+                f"Could not find the image file [{img_name}] in the Pix4D project"
+            )
+
+        if "title" not in kwargs:
+            kwargs["title"] = f"ROI [{roi_name}] on [{img_name}]"
+
+        if "show" not in kwargs:
+            kwargs["show"] = True
+
         if img_name is not None:
             idp.visualize.draw_polygon_on_img(
-                img_name, 
-                img_path=self.photos[img_name].path, 
-                poly_coord=img_dict[roi_name][img_name], 
-                **kwargs
-                )
-        else:
-            idp.visualize.draw_backward_one_roi(
-                self, img_dict[roi_name], 
-                **kwargs
+                img_name,
+                img_path=self.photos[img_name].path,
+                poly_coord=img_dict[roi_name][img_name],
+                **kwargs,
             )
+        else:
+            idp.visualize.draw_backward_one_roi(self, img_dict[roi_name], **kwargs)
+
 
 ####################
 # code for file IO #
 ####################
+
 
 def _match_suffix(folder, ext):
     """
@@ -1039,7 +1053,7 @@ def _match_suffix(folder, ext):
     return find_path
 
 
-def parse_p4d_param_folder(param_path:str):
+def parse_p4d_param_folder(param_path: str):
     """Get full file path of parameter folder (``...\\project_name\\1_initial\\params.``) of Pix4D project.
 
     Parameters
@@ -1113,7 +1127,7 @@ def parse_p4d_param_folder(param_path:str):
 
     project_name = os.path.commonprefix(param_files)
     # > "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_"
-    if project_name[-1] == '_':
+    if project_name[-1] == "_":
         project_name = project_name[:-1]
     param_dict["project_name"] = project_name
 
@@ -1135,7 +1149,9 @@ def parse_p4d_param_folder(param_path:str):
             "please check whether the `param folder` has correct path."
         )
 
-    cicp_file = f"{param_path}/{project_name}_pix4d_calibrated_internal_camera_parameters.cam"
+    cicp_file = (
+        f"{param_path}/{project_name}_pix4d_calibrated_internal_camera_parameters.cam"
+    )
     # two files with the same string
     # {project_name}_      calibrated_internal_camera_parameters.cam
     # {project_name}_pix4d_calibrated_internal_camera_parameters.cam
@@ -1186,7 +1202,7 @@ def parse_p4d_param_folder(param_path:str):
     return param_dict
 
 
-def parse_p4d_project(project_path:str, param_folder=None):
+def parse_p4d_project(project_path: str, param_folder=None):
     """
     A fuction to automatically analyze related subfiles in pix4d project folder
 
@@ -1261,7 +1277,14 @@ def parse_p4d_project(project_path:str, param_folder=None):
 
 
     """
-    p4d = {"param": None, "pcd": None, "dom": None, "dsm": None, "undist_raw": None, "project_name": None}
+    p4d = {
+        "param": None,
+        "pcd": None,
+        "dom": None,
+        "dsm": None,
+        "undist_raw": None,
+        "project_name": None,
+    }
 
     project_path = idp.get_full_path(project_path)
     sub_folder = os.listdir(project_path)
@@ -1275,8 +1298,10 @@ def parse_p4d_project(project_path:str, param_folder=None):
     undist_folder = project_path / "1_initial" / "images" / "undistorted_images"
 
     # check whether a correct pix4d project folder
-    if '1_initial' not in sub_folder and param_folder is None:
-        raise FileNotFoundError(f"Current folder [{project_path}] is not a standard pix4d projects folder, please manual speccify `param_folder`")
+    if "1_initial" not in sub_folder and param_folder is None:
+        raise FileNotFoundError(
+            f"Current folder [{project_path}] is not a standard pix4d projects folder, please manual speccify `param_folder`"
+        )
 
     if os.path.exists(param_folder) and len(os.listdir(param_folder)) > 0:
         param = parse_p4d_param_folder(param_folder)
@@ -1284,9 +1309,7 @@ def parse_p4d_project(project_path:str, param_folder=None):
         project_name = param["project_name"]
         p4d["project_name"] = param["project_name"]
     else:
-        raise FileNotFoundError(
-            "Can not find pix4d parameter in given project folder"
-        )
+        raise FileNotFoundError("Can not find pix4d parameter in given project folder")
 
     if os.path.exists(undist_folder):
         p4d["undist_raw"] = undist_folder
@@ -1297,9 +1320,9 @@ def parse_p4d_project(project_path:str, param_folder=None):
 
     # point cloud file
     pcd_folder = project_path / "2_densification" / "point_cloud"
-    ply_file   = pcd_folder / f"{project_name}_group1_densified_point_cloud.ply"
-    laz_file   = pcd_folder / f"{project_name}_group1_densified_point_cloud.laz"
-    las_file   = pcd_folder / f"{project_name}_group1_densified_point_cloud.las"
+    ply_file = pcd_folder / f"{project_name}_group1_densified_point_cloud.ply"
+    laz_file = pcd_folder / f"{project_name}_group1_densified_point_cloud.laz"
+    las_file = pcd_folder / f"{project_name}_group1_densified_point_cloud.las"
 
     if pcd_folder.exists():
         if ply_file.exists():
@@ -1401,8 +1424,8 @@ def read_xyz(xyz_path):
         array([ 368009., 3955854.,      97.])
 
     """
-    with open(xyz_path, 'r') as f:
-        x, y, z = f.read().split(' ')
+    with open(xyz_path, "r") as f:
+        x, y, z = f.read().split(" ")
     return np.array([float(x), float(y), float(z)])
 
 
@@ -1421,7 +1444,7 @@ def read_pmat(pmat_path):
         .. code-block:: python
 
             pmat_dict = {
-                "DJI_0000.JPG": nparray(3x4), 
+                "DJI_0000.JPG": nparray(3x4),
                 ... ,
                 "DJI_9999.JPG": nparray(3x4)
             }
@@ -1433,7 +1456,7 @@ def read_pmat(pmat_path):
 
     .. code-block:: python
 
-        DJI_0954.JPG 3111.599161 -2366.736021 -2308.589802 -65840.192261 -2444.444098 -3031.331712 -1800.672677 18549.006987 0.005818 0.038647 -0.999236 31.851547 
+        DJI_0954.JPG 3111.599161 -2366.736021 -2308.589802 -65840.192261 -2444.444098 -3031.331712 -1800.672677 18549.006987 0.005818 0.038647 -0.999236 31.851547
         DJI_0955.JPG 2962.002548 -2547.748788 -2312.702452 -69244.748198 -2620.207260 -2895.573136 -1776.758596 27157.887214 0.003220 0.034307 -0.999406 31.293337
         DJI_0956.JPG 3756.991075 -1038.548434 -2327.984283 -49670.339047 -1138.894683 -3738.320518 -1770.474397 -22001.847467 -0.015923 0.031981 -0.999362 31.327806
         DJI_0957.JPG 3923.542113 562.037059 -2214.273525 -8825.859811 514.572422 -3880.691126 -1755.606046 -68101.592371 0.001783 0.022713 -0.999740 30.301800
@@ -1458,17 +1481,35 @@ def read_pmat(pmat_path):
 
         >>> idp.pix4d.read_pmat(param['pmat'])
         {
-            'DJI_0954.JPG': 
+            'DJI_0954.JPG':
                 array([[  3111.599161,  -2366.736021,  -2308.589802, -65840.192261],
                     [ -2444.444098,  -3031.331712,  -1800.672677,  18549.006987],
-                    [     0.005818,      0.038647,     -0.999236,     31.851547]]), 
+                    [     0.005818,      0.038647,     -0.999236,     31.851547]]),
             'DJI_0955.JPG':
                 array([...])
             ...
         }
 
     """
-    pmat_nb = np.loadtxt(pmat_path, dtype=float, delimiter=None, usecols=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,))
+    pmat_nb = np.loadtxt(
+        pmat_path,
+        dtype=float,
+        delimiter=None,
+        usecols=(
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+        ),
+    )
     pmat_names = np.loadtxt(pmat_path, dtype=str, delimiter=None, usecols=0)
 
     pmat_dict = {}
@@ -1493,7 +1534,7 @@ def read_cicp(cicp_path):
 
         .. code-block:: python
 
-            cicp_dict.keys() = 
+            cicp_dict.keys() =
                 ['F', 'Px', 'Py', 'K1', 'K2', 'K3', 'T1', 'T2', 'w_mm', 'h_mm']
 
     Notes
@@ -1538,24 +1579,24 @@ def read_cicp(cicp_path):
 
         >>> idp.pix4d.read_cicp(param['cicp'])
         {
-            'w_mm': 17.49998592, 
-            'h_mm': 13.124989440000002, 
-            'F': 15.011754049345175, 
-            'Px': 8.4821051197042, 
-            'Py': 6.334346299780423, 
-            'K1': 0.03833474118270805, 
-            'K2': -0.017509179664957433, 
-            'K3': 0.020497987163918523, 
-            'T1': 0.0024085166631953475, 
+            'w_mm': 17.49998592,
+            'h_mm': 13.124989440000002,
+            'F': 15.011754049345175,
+            'Px': 8.4821051197042,
+            'Py': 6.334346299780423,
+            'K1': 0.03833474118270805,
+            'K2': -0.017509179664957433,
+            'K3': 0.020497987163918523,
+            'T1': 0.0024085166631953475,
             'T2': 0.002925623921352459
         }
 
     """
-    with open(cicp_path, 'r') as f:
-        key_pool = ['F', 'Px', 'Py', 'K1', 'K2', 'K3', 'T1', 'T2']
+    with open(cicp_path, "r") as f:
+        key_pool = ["F", "Px", "Py", "K1", "K2", "K3", "T1", "T2"]
         cam_dict = {}
         for line in f.readlines():
-            sp_list = line.split(' ')
+            sp_list = line.split(" ")
             if len(sp_list) == 2:  # lines with param.name in front
                 lead, contents = sp_list[0], sp_list[1]
                 if lead in key_pool:
@@ -1563,9 +1604,9 @@ def read_cicp(cicp_path):
             elif len(sp_list) == 9:
                 # one example:
                 # > Focal Length mm assuming a sensor width of 12.82x8.55mm\n
-                w_h = sp_list[8].split('x')
-                cam_dict['w_mm'] = float(w_h[0])  # extract e.g. 12.82
-                cam_dict['h_mm'] = float(w_h[1][:-4])  # extract e.g. 8.55
+                w_h = sp_list[8].split("x")
+                cam_dict["w_mm"] = float(w_h[0])  # extract e.g. 12.82
+                cam_dict["h_mm"] = float(w_h[1][:-4])  # extract e.g. 8.55
     return cam_dict
 
 
@@ -1584,15 +1625,15 @@ def read_ccp(ccp_path):
         .. code-block:: python
 
             img_configs = {
-                'w': 4608, 
-                'h': 3456, 
+                'w': 4608,
+                'h': 3456,
                 'Image1.JPG': {
-                    'cam_matrix':  array([[...]]), 
+                    'cam_matrix':  array([[...]]),
                     'rad_distort': array([ 0.03833474, ...]),
-                    'tan_distort': array([0.00240852, ...]), 
-                    'cam_pos':     array([ 21.54872207, ...]), 
-                    'cam_rot':     array([[ 0.78389904, ...]])}, 
-                    
+                    'tan_distort': array([0.00240852, ...]),
+                    'cam_pos':     array([ 21.54872207, ...]),
+                    'cam_rot':     array([[ 0.78389904, ...]])},
+
                 'Image2.JPG':
                     {...}
                 }
@@ -1653,29 +1694,29 @@ def read_ccp(ccp_path):
 
         >>> ccp['DJI_0954.JPG']
         {
-            'cam_matrix': 
+            'cam_matrix':
                 array([[3952.81247514,    0.        , 2233.46124793],
                        [   0.        , 3952.81247514, 1667.92521336],
-                       [   0.        ,    0.        ,    1.        ]]), 
-                       
-            'rad_distort': 
+                       [   0.        ,    0.        ,    1.        ]]),
+
+            'rad_distort':
                 array([ 0.03833474, -0.01750918,  0.02049799]),
 
-            'tan_distort': 
-                array([0.00240852, 0.00292562]), 
+            'tan_distort':
+                array([0.00240852, 0.00292562]),
 
-            'cam_pos': 
-                array([ 21.54872207, -29.58734161,  30.8570281 ]), 
+            'cam_pos':
+                array([ 21.54872207, -29.58734161,  30.8570281 ]),
 
-            'cam_rot': 
+            'cam_rot':
                 array([[ 0.78389904, -0.62058396, -0.01943804],
                        [-0.62086105, -0.78318706, -0.03390542],
                        [ 0.00581754,  0.03864674, -0.999236  ]])
         }
 
     """
-    with open(ccp_path, 'r') as f:
-        '''
+    with open(ccp_path, "r") as f:
+        """
         # for each block
         1   fileName imageWidth imageHeight 
         2-4 camera matrix K [3x3]
@@ -1683,7 +1724,7 @@ def read_ccp(ccp_path):
         6   tangential distortion [2x1]
         7   camera position t [3x1]
         8-10   camera rotation R [3x3]
-        '''
+        """
         lines = f.readlines()
 
     img_configs = {}
@@ -1701,29 +1742,37 @@ def read_ccp(ccp_path):
             if block_id == 1:  # [line]: fileName imageWidth imageHeight
                 file_name, w, h = line[:-1].split()  # ignore \n character
                 img_configs[file_name] = {}
-                img_configs['w'] = int(w)
-                img_configs['h'] = int(h)
+                img_configs["w"] = int(w)
+                img_configs["h"] = int(h)
             elif block_id == 2:
-                cam_mat_line1 = np.fromstring(line, dtype=float, sep=' ')
+                cam_mat_line1 = np.fromstring(line, dtype=float, sep=" ")
             elif block_id == 3:
-                cam_mat_line2 = np.fromstring(line, dtype=float, sep=' ')
+                cam_mat_line2 = np.fromstring(line, dtype=float, sep=" ")
             elif block_id == 4:
-                cam_mat_line3 = np.fromstring(line, dtype=float, sep=' ')
-                img_configs[file_name]['cam_matrix'] = np.vstack([cam_mat_line1, cam_mat_line2, cam_mat_line3])
+                cam_mat_line3 = np.fromstring(line, dtype=float, sep=" ")
+                img_configs[file_name]["cam_matrix"] = np.vstack(
+                    [cam_mat_line1, cam_mat_line2, cam_mat_line3]
+                )
             elif block_id == 5:
-                img_configs[file_name]['rad_distort'] = np.fromstring(line, dtype=float, sep=' ')
+                img_configs[file_name]["rad_distort"] = np.fromstring(
+                    line, dtype=float, sep=" "
+                )
             elif block_id == 6:
-                img_configs[file_name]['tan_distort'] = np.fromstring(line, dtype=float, sep=' ')
+                img_configs[file_name]["tan_distort"] = np.fromstring(
+                    line, dtype=float, sep=" "
+                )
             elif block_id == 7:
-                img_configs[file_name]['cam_pos'] = np.fromstring(line, dtype=float, sep=' ')
+                img_configs[file_name]["cam_pos"] = np.fromstring(
+                    line, dtype=float, sep=" "
+                )
             elif block_id == 8:
-                cam_rot_line1 = np.fromstring(line, dtype=float, sep=' ')
+                cam_rot_line1 = np.fromstring(line, dtype=float, sep=" ")
             elif block_id == 9:
-                cam_rot_line2 = np.fromstring(line, dtype=float, sep=' ')
+                cam_rot_line2 = np.fromstring(line, dtype=float, sep=" ")
             elif block_id == 0:
-                cam_rot_line3 = np.fromstring(line, dtype=float, sep=' ')
+                cam_rot_line3 = np.fromstring(line, dtype=float, sep=" ")
                 cam_rot = np.vstack([cam_rot_line1, cam_rot_line2, cam_rot_line3])
-                img_configs[file_name]['cam_rot'] = cam_rot
+                img_configs[file_name]["cam_rot"] = cam_rot
 
     return img_configs
 
@@ -1743,7 +1792,7 @@ def read_campos_geo(campos_path):
         .. code-block:: python
 
             campos_dict = {
-                "Image1.JPG": np.array([x, y ,z]), 
+                "Image1.JPG": np.array([x, y ,z]),
                 "Image2.JPG": ...
                 ...
             }
@@ -1784,21 +1833,21 @@ def read_campos_geo(campos_path):
 
         >>> idp.pix4d.read_campos_geo(param['campos'])
         {
-            'DJI_0954.JPG': 
-                array([ 368030.548722, 3955824.412658,     127.857028]), 
+            'DJI_0954.JPG':
+                array([ 368030.548722, 3955824.412658,     127.857028]),
 
-            'DJI_0955.JPG': 
+            'DJI_0955.JPG':
                 array([ 368031.004387, 3955824.824967,     127.381322]),
 
             ...
         }
 
     """
-    with open(campos_path, 'r') as f:
+    with open(campos_path, "r") as f:
         cam_dict = {}
         for line in f.readlines():
-            sp_list = line.split(',')
-            if len(sp_list) == 4: 
+            sp_list = line.split(",")
+            if len(sp_list) == 4:
                 cam_dict[sp_list[0]] = np.array(sp_list[1:], dtype=float)
 
     return cam_dict
@@ -1814,10 +1863,10 @@ def read_cam_ssk(ssk_path):
     Returns
     -------
     dict
-    
+
         .. code-block:: python
 
-            ssk_info = 
+            ssk_info =
             {
                 "label":                  str
                 "type":                   str, e.g. frame / fisheye ...
@@ -1878,38 +1927,38 @@ def read_cam_ssk(ssk_path):
 
         >>> idp.pix4d.read_cam_ssk(param['ssk'])
         {
-            'label': 'FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456', 
-            'type': 'frame', 
-            'pixel_size': [3.79774, 3.79774], 
-            'image_size_in_pixels': [3456, 4608], 
-            'orientation': 1, 
+            'label': 'FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456',
+            'type': 'frame',
+            'pixel_size': [3.79774, 3.79774],
+            'image_size_in_pixels': [3456, 4608],
+            'orientation': 1,
             'photo_center_in_pixels': [1727.5, 2303.5]
         }
 
     """
-    with open(ssk_path, 'r') as f:
+    with open(ssk_path, "r") as f:
         ssk_info = {}
         for line in f.readlines():
             if "begin camera_parameters" in line:
                 # > ['begin', 'camera_parameters', 'FC550_DJIMFT15mmF1.7ASPH_15.0_4608x3456', '(RGB)(1)']
-                ssk_info["label"] = line.split(' ')[2]
+                ssk_info["label"] = line.split(" ")[2]
             elif "camera_type" in line:
                 # > ['', 'camera_type:', '', '',... '', '', 'frame\n']
-                ssk_info["type"] = str(line.split(' ')[-1][:-1])  # last and rm \n
+                ssk_info["type"] = str(line.split(" ")[-1][:-1])  # last and rm \n
             elif "pixel_size" in line:
                 # > ['', 'pixel_size:', '', ..., '', '3.79774000000000011568', '3.79774000000000011568']
                 # the order is h, w, if orientation == 1
                 # because: image_size_in_pixels: 3456 4608
-                lsp = line.split(' ')
+                lsp = line.split(" ")
                 ssk_info["pixel_size"] = [float(lsp[-2]), float(lsp[-1])]
             elif "image_size_in_pixels" in line:
                 # double check with ccp imageWidth & imageHeight
-                lsp = line.split(' ')
+                lsp = line.split(" ")
                 ssk_info["image_size_in_pixels"] = [int(lsp[-2]), int(lsp[-1])]
             elif "photo_coord_sys_orientation" in line:
-                ssk_info["orientation"] = int(line.split(' ')[-1])
+                ssk_info["orientation"] = int(line.split(" ")[-1])
             elif "photo_coord_sys_origin" in line:
-                lsp = line.split(' ')
+                lsp = line.split(" ")
                 ssk_info["photo_center_in_pixels"] = [float(lsp[-2]), float(lsp[-1])]
 
     return ssk_info

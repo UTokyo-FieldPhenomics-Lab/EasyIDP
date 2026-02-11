@@ -6,7 +6,7 @@ import warnings
 from tabulate import tabulate
 from tqdm import tqdm
 from pathlib import Path
-from loguru import logger
+from .logger import logger
 
 import easyidp as idp
 

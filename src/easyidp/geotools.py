@@ -1,15 +1,16 @@
 import pyproj
 import numpy as np
 from shapely.geometry import Polygon
-from loguru import logger
+from .logger import logger
 import easyidp as idp
 
 ############################
 # pyproj transformer tools #
 ############################
 
+
 def convert_proj(shp_dict, crs_origin, crs_target):
-    """ 
+    """
     Provide the geo coordinate transfrom based on pyproj package
 
     Parameters
@@ -26,10 +27,10 @@ def convert_proj(shp_dict, crs_origin, crs_target):
     Example
     -------
     Data prepare
-    
+
     .. code-block:: python
 
-        >>> 
+        >>>
         >>> import easyidp as idp
         >>> test_data = idp.data.TestData()
 
@@ -53,13 +54,13 @@ def convert_proj(shp_dict, crs_origin, crs_target):
         origin_xy_order = _get_crs_xy_order(crs_origin)
         target_xy_order = _get_crs_xy_order(crs_target)
         if len(coord_np.shape) == 1:
-            if origin_xy_order == 'xy':
+            if origin_xy_order == "xy":
                 # by default, the coord_np is (lon, lat), but transform needs (lat, lon)
                 transformed = transformer.transform(coord_np[0], coord_np[1])
             else:
                 transformed = transformer.transform(coord_np[1], coord_np[0])
         elif len(coord_np.shape) == 2:
-            if origin_xy_order == 'xy':
+            if origin_xy_order == "xy":
                 transformed = transformer.transform(coord_np[:, 0], coord_np[:, 1])
             else:
                 transformed = transformer.transform(coord_np[:, 1], coord_np[:, 0])
@@ -67,9 +68,10 @@ def convert_proj(shp_dict, crs_origin, crs_target):
             raise IndexError(
                 f"The input coord should be either [x, y] -> shape=(2,) "
                 f"or [[x,y], [x,y], ...] -> shape=(n, 2)"
-                f"not current {coord_np.shape}")
+                f"not current {coord_np.shape}"
+            )
 
-        if target_xy_order == 'xy':
+        if target_xy_order == "xy":
             coord_np = np.asarray(transformed).T
         else:
             coord_np = np.flip(np.asarray(transformed).T, axis=1)
@@ -79,10 +81,11 @@ def convert_proj(shp_dict, crs_origin, crs_target):
             raise ValueError(
                 f'Fail to convert points from "{crs_origin.name}" to '
                 f'"{crs_target.name}", '
-                f'this may caused by the uncertainty of .prj file strings, '
-                f'please check the coordinate manually via QGIS Layer Infomation, '
-                f'get the EPGS code, and specify the function argument'
-                f'read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))')
+                f"this may caused by the uncertainty of .prj file strings, "
+                f"please check the coordinate manually via QGIS Layer Infomation, "
+                f"get the EPGS code, and specify the function argument"
+                f"read_shp2d(..., given_proj=pyproj.CRS.from_epsg(xxxx))"
+            )
         trans_dict[k] = coord_np
 
     return trans_dict
@@ -100,7 +103,7 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
     crs_target : pyproj.CRS object
         the CRS of target
     is_xyz: bool, default false
-        The format of points_np; 
+        The format of points_np;
         True: x, y, z; False: lon, lat, alt
 
     Returns
@@ -140,7 +143,7 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
     Example
     -------
     Data prepare
-    
+
     .. code-block:: python
 
         >>> import pyproj
@@ -189,12 +192,12 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
         y_unit = crs_origin.axis_info[1].unit_name
     else:
         raise AttributeError(
-            f'The API of pyproj to get axis unit may changed at current {pyproj.__version__}.'
+            f"The API of pyproj to get axis unit may changed at current {pyproj.__version__}."
             f'Unable to find at both "crs.coordinate_system.axis_list" (pyproj < 3.6.0) '
             f'and "crs.axis_info" (pyproj > 3.6.0), please report this issue or downgrade your pyproj version to 3.6.1'
         )
 
-    if x_unit == "degree" and y_unit == "degree": 
+    if x_unit == "degree" and y_unit == "degree":
         is_xyz = False
     else:
         is_xyz = True
@@ -202,7 +205,7 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
     if is_xyz:
         if crs_target.is_geocentric:
             x, y, z = ts.transform(*points_np.T)
-            out =  np.vstack([x, y, z]).T
+            out = np.vstack([x, y, z]).T
         elif crs_target.is_geographic:
             lon, lat, alt = ts.transform(*points_np.T)
             # the pyproj output order is reversed
@@ -211,10 +214,12 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
             lat_m, lon_m, alt_m = ts.transform(*points_np.T)
             out = np.vstack([lat_m, lon_m, alt_m]).T
         else:
-            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`")
-    else:   
-        lon, lat, alt = points_np[:,0], points_np[:,1], points_np[:,2]
-        
+            raise TypeError(
+                f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`"
+            )
+    else:
+        lon, lat, alt = points_np[:, 0], points_np[:, 1], points_np[:, 2]
+
         if crs_target.is_geocentric:
             x, y, z = ts.transform(lat, lon, alt)
             out = np.vstack([x, y, z]).T
@@ -225,12 +230,15 @@ def convert_proj3d(points_np, crs_origin, crs_target, is_xyz=True):
             lat_m, lon_m, alt_m = ts.transform(lat, lon, alt)
             out = np.vstack([lon_m, lat_m, alt_m]).T
         else:
-            raise TypeError(f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`")
-    
+            raise TypeError(
+                f"Given crs is neither `crs.is_geocentric=True` nor `crs.is_geographic` nor `crs.is_projected`"
+            )
+
     if is_single:
         return out[0, :]
     else:
         return out
+
 
 def is_single_point(points_np):
     """format one point coordinate ``[x,y,z]`` to ``[[x, y, z]]``
@@ -275,17 +283,20 @@ def _get_crs_xy_order(crs):
     crs : pyproj object
         _description_
     """
-    if crs.axis_info[0].direction == 'east':
-        return 'xy'
-    elif crs.axis_info[0].direction == 'north':
-        return 'yx'
+    if crs.axis_info[0].direction == "east":
+        return "xy"
+    elif crs.axis_info[0].direction == "north":
+        return "yx"
     else:
-        raise ValueError(f'Unable to parse the crs axis info\n- {crs.axis_info[0]}\n- {crs.axis_info[1]}')
+        raise ValueError(
+            f"Unable to parse the crs axis info\n- {crs.axis_info[0]}\n- {crs.axis_info[1]}"
+        )
 
 
 ##################
 # Subplot Tools  #
 ##################
+
 
 def generate_subplots(
     boundary,
@@ -408,9 +419,7 @@ def _validate_boundary(boundary):
         If boundary is not an idp.ROI object.
     """
     if not isinstance(boundary, idp.ROI):
-        raise TypeError(
-            f"Expected idp.ROI object, got {type(boundary).__name__}"
-        )
+        raise TypeError(f"Expected idp.ROI object, got {type(boundary).__name__}")
 
     if len(boundary) == 0:
         raise ValueError("Boundary ROI is empty, must contain exactly one polygon")
@@ -465,9 +474,7 @@ def _validate_parameters(row_num, col_num, width, height, keep):
     # Grid mode validation
     if grid_mode:
         if row_num is None or col_num is None:
-            raise ValueError(
-                "Grid mode requires both row_num and col_num"
-            )
+            raise ValueError("Grid mode requires both row_num and col_num")
         if row_num < 1 or col_num < 1:
             raise ValueError(
                 f"row_num and col_num must be >= 1, got row_num={row_num}, col_num={col_num}"
@@ -661,20 +668,24 @@ def _generate_subplot_grid(
             origin = start_p + (c * step_x) + (r * step_y)
 
             # Four corners (closed polygon)
-            corners = np.array([
-                origin,
-                origin + vec_cw,
-                origin + vec_cw + vec_ch,
-                origin + vec_ch,
-                origin,  # Close polygon
-            ])
+            corners = np.array(
+                [
+                    origin,
+                    origin + vec_cw,
+                    origin + vec_cw + vec_ch,
+                    origin + vec_ch,
+                    origin,  # Close polygon
+                ]
+            )
 
-            subplots.append({
-                "polygon": corners,
-                "row": r + 1,
-                "col": c + 1,
-                "status": None,  # Will be set in _classify_subplots
-            })
+            subplots.append(
+                {
+                    "polygon": corners,
+                    "row": r + 1,
+                    "col": c + 1,
+                    "status": None,  # Will be set in _classify_subplots
+                }
+            )
 
     return subplots
 

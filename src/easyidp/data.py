@@ -7,11 +7,12 @@ import subprocess
 import tqdm
 from pathlib import Path
 
-from loguru import logger
+from .logger import logger
 
 GDOWN_TEST_URL = "https://drive.google.com/file/d/1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ/view?usp=share_link"
 
 from easyidp import user_data_dir, logged_input
+
 
 def show_data_dir():
     """open the cached data files in cross-platform system default viewer.
@@ -37,7 +38,7 @@ def show_data_dir():
 
 def url_checker(url):
     r"""Check if download url is accessable or not.
-    
+
     Modified from this [1]_ link.
 
     Parameters
@@ -50,37 +51,38 @@ def url_checker(url):
     .. [1] https://pytutorial.com/check-url-is-reachable
     """
     try:
-        #Get Url
+        # Get Url
         get = requests.get(url, timeout=3)
-        # if the request succeeds 
+        # if the request succeeds
         if get.status_code == 200:
             return True
         else:
             return False
 
-    #Exception
+    # Exception
     except requests.exceptions.RequestException as e:
         logger.warning(f"URL: {url} is not reachable, Err: {e}")
         return False
+
 
 def _can_access_google_cloud():
     return url_checker(GDOWN_TEST_URL)
 
 
 def download_all():
-    """download all datasets
-    """
+    """download all datasets"""
     lotus = Lotus()
     gd = GDownTest()
     test = TestData()
 
 
-class AliYunDownloader():
-
+class AliYunDownloader:
     def __init__(self):
         import oss2
 
-        access_url = "https://easyidp-data.oss-rg-china-mainland.aliyuncs.com/access.txt"
+        access_url = (
+            "https://easyidp-data.oss-rg-china-mainland.aliyuncs.com/access.txt"
+        )
 
         response = requests.get(access_url)
 
@@ -88,67 +90,75 @@ class AliYunDownloader():
 
         if response.status_code == 200:
             content = response.text
-            access_key_secret, access_key_id = content.split('\r\n')
+            access_key_secret, access_key_id = content.split("\r\n")
 
-            self.bucket_name = 'easyidp-data'
-            self.endpoint = 'oss-rg-china-mainland.aliyuncs.com'
+            self.bucket_name = "easyidp-data"
+            self.endpoint = "oss-rg-china-mainland.aliyuncs.com"
 
             self.bucket = oss2.Bucket(
-                oss2.Auth(access_key_id, access_key_secret), 
-                self.endpoint, self.bucket_name
+                oss2.Auth(access_key_id, access_key_secret),
+                self.endpoint,
+                self.bucket_name,
             )
         else:
             raise ConnectionRefusedError(
                 f"Failed to achieve AliYun Auth token, Please contact the maintainer via github.\n"
                 f"Status code: {response.status_code}"
             )
-        
+
     @staticmethod
     def calculate_download_cost(dataset_name, dataset_size):
-
         import re
         import random
 
         # Define the cost per GB
-        cost_per_gb = 0.12 + 0.5 + 0.1*random.random()
-        
+        cost_per_gb = 0.12 + 0.5 + 0.1 * random.random()
+
         # Regular expression to match the number and unit
-        pattern = re.compile(r'(\d+(\.\d+)?)([KMG]B)')
+        pattern = re.compile(r"(\d+(\.\d+)?)([KMG]B)")
         match = pattern.match(dataset_size)
-        
+
         if not match:
-            raise ValueError(f"Invalid dataset size format of {dataset_name}.size = {dataset_size}")
-        
+            raise ValueError(
+                f"Invalid dataset size format of {dataset_name}.size = {dataset_size}"
+            )
+
         # Extract the value and unit
         value = float(match.group(1))
         unit = match.group(3)
-        
+
         # Convert the value to GB
-        if unit == 'KB':
+        if unit == "KB":
             value_in_gb = value / (1024 * 1024)
-        elif unit == 'MB':
+        elif unit == "MB":
             value_in_gb = value / 1024
-        elif unit == 'GB':
+        elif unit == "GB":
             value_in_gb = value
         else:
             raise ValueError(f"Unsupported dataset size unit {dataset_size}")
-        
+
         # Calculate the cost
         cost = value_in_gb * cost_per_gb
         return round(cost, 1)
-    
+
     def download_auth(self, dataset_name, dataset_size):
         money_cost = self.calculate_download_cost(dataset_name, dataset_size)
         confirm_str = f"我已知悉此次下载会消耗{money_cost}元的下行流量费用"
 
         # 插入不可见字符
-        invis_char = '\u200B'  # 零宽度空格
-        no_copy_confirm_str = confirm_str[0:10] + invis_char + confirm_str[10:20] + invis_char + confirm_str[20:]
+        invis_char = "\u200b"  # 零宽度空格
+        no_copy_confirm_str = (
+            confirm_str[0:10]
+            + invis_char
+            + confirm_str[10:20]
+            + invis_char
+            + confirm_str[20:]
+        )
 
         # 使用ANSI转义序列设置颜色和格式
-        RED = '\033[91m'
-        BOLD = '\033[1m'
-        END = '\033[0m'
+        RED = "\033[91m"
+        BOLD = "\033[1m"
+        END = "\033[0m"
 
         notification = (
             f"{RED}{BOLD}请注意，中国大陆数据集下载使用作者私人搭建的阿里云文件存储服务，\n"
@@ -172,14 +182,19 @@ class AliYunDownloader():
 
         if not matched:
             raise PermissionError("尝试失败次数超过5次，请重新运行脚本")
-        
+
         return matched
-        
+
     def tqdm_progress_bar(self, consumed_bytes, total_bytes):
         if total_bytes:
             if self.tqdm_bar is None:
                 # 创建 tqdm 进度条实例
-                self.tqdm_bar = tqdm.tqdm(total=total_bytes, unit='B', unit_scale=True, desc='Downloading from Aliyun OSS')
+                self.tqdm_bar = tqdm.tqdm(
+                    total=total_bytes,
+                    unit="B",
+                    unit_scale=True,
+                    desc="Downloading from Aliyun OSS",
+                )
 
             # rate = int(100 * (float(consumed_bytes) / float(total_bytes)))
             # 使用tqdm显示进度条
@@ -193,19 +208,22 @@ class AliYunDownloader():
         import oss2
 
         self.tqdm_bar = None
-        oss2.resumable_download(self.bucket, dataset_name+'.zip', output, 
-                                multiget_threshold=30000*1024,
-                                part_size=10000*1024,
-                                progress_callback=self.tqdm_progress_bar)
+        oss2.resumable_download(
+            self.bucket,
+            dataset_name + ".zip",
+            output,
+            multiget_threshold=30000 * 1024,
+            part_size=10000 * 1024,
+            progress_callback=self.tqdm_progress_bar,
+        )
 
         # 下载完成后关闭进度条
         if self.tqdm_bar:
             self.tqdm_bar.close()
 
 
-class EasyidpDataSet():
-    """The base class for Dataset
-    """
+class EasyidpDataSet:
+    """The base class for Dataset"""
 
     def __init__(self, name="", gdrive_url="", size=""):
         """The dataset has the following properties (almost in string type)
@@ -246,7 +264,7 @@ class EasyidpDataSet():
             The generated DSM path of plot map
         metashape.pcd
             The generated pointcloud path of plot map
-        
+
 
         """
         self.name = name
@@ -261,18 +279,18 @@ class EasyidpDataSet():
         self.load_data()
 
     def load_data(self):
-        r"""Download dataset from Google Drive to user AppData folder
-        """
+        r"""Download dataset from Google Drive to user AppData folder"""
 
         if not os.path.exists(self.data_dir):
-            
             if not os.path.exists(self.zip_file):
                 self._download_data()
 
             if os.path.exists(self.zip_file):
-                logger.success("Successfully downloaded, start unzipping ...")
+                logger.info("Successfully downloaded, start unzipping ...")
                 self._unzip_data()
-                logger.success("Successfully unzipped, the cache zip file has been removed.")
+                logger.info(
+                    "Successfully unzipped, the cache zip file has been removed."
+                )
             else:
                 raise FileNotFoundError(
                     f"Could not find the downloaded file [{self.zip_file}], "
@@ -281,30 +299,33 @@ class EasyidpDataSet():
                 )
 
     def reload_data(self):
-        """remove local data and redownload again
-        """
+        """remove local data and redownload again"""
         self.remove_data()
         self.load_data()
 
     def remove_data(self):
-        """remove local cached data file
-        """
+        """remove local cached data file"""
         if os.path.exists(self.data_dir):
             shutil.rmtree(self.data_dir)
-        
+
     def _download_data(self):
-        """using gdown to download dataset from Google Drive to user AppData folder
-        """
+        """using gdown to download dataset from Google Drive to user AppData folder"""
         # Download; extract data to disk.
         # Raise an exception if the link is bad, or we can't connect, etc.
         import easyidp as idp
 
         if idp.GOOGLE_AVAILABLE:
             import gdown
+
             # google drive gdown_test.zip file is accessable
             # then try according google drive download link
             if url_checker(self.gdrive_url):
-                output = gdown.download(url=self.gdrive_url, output=str(self.zip_file), quiet=False, fuzzy=True)
+                output = gdown.download(
+                    url=self.gdrive_url,
+                    output=str(self.zip_file),
+                    quiet=False,
+                    fuzzy=True,
+                )
             else:
                 # user can access Google Drive but maybe dataset zip file is missing, no waste AliYun OSS resource
                 # just mention user to double check google drive access
@@ -314,34 +335,39 @@ class EasyidpDataSet():
                 )
         else:
             # high possibility in China Mainland, use aliyun OSS for downloading
-            is_mainland_user = logged_input("Google Drive Unaccessable, are you locate in China Mainland? (Y/N)\n>>> ")
+            is_mainland_user = logged_input(
+                "Google Drive Unaccessable, are you locate in China Mainland? (Y/N)\n>>> "
+            )
             if is_mainland_user in ["Yes", "Y", "y", "yes"]:
                 if idp.aliyun_down is None:
                     idp.aliyun_down = AliYunDownloader()
 
-                idp.aliyun_down.download_auth(dataset_name=self.name, dataset_size=self.size)
-                idp.aliyun_down.download(dataset_name=self.name, output=str(self.zip_file))
+                idp.aliyun_down.download_auth(
+                    dataset_name=self.name, dataset_size=self.size
+                )
+                idp.aliyun_down.download(
+                    dataset_name=self.name, output=str(self.zip_file)
+                )
             else:
                 raise ConnectionError(
                     f"Could not find proper downloadable link for dataset {self.name}.\n"
-                    f"Please contact the maintainer via github.")
+                    f"Please contact the maintainer via github."
+                )
 
     def _unzip_data(self):
-        """Unzip downloaded zip data and remove after decompression
-        """
-        with zipfile.ZipFile(self.zip_file, 'r') as zip_ref:
+        """Unzip downloaded zip data and remove after decompression"""
+        with zipfile.ZipFile(self.zip_file, "r") as zip_ref:
             zip_ref.extractall(self.data_dir)
 
         # already extracted
         if os.path.exists(self.data_dir):
             os.remove(self.zip_file)
         else:
-            raise FileNotFoundError("Seems fail to unzip, please check whether the zip file is fully downloaded.")
-        
+            raise FileNotFoundError(
+                "Seems fail to unzip, please check whether the zip file is fully downloaded."
+            )
 
-    class ReconsProj():
-
-
+    class ReconsProj:
         def __init__(self) -> None:
             self.project = ""
             self.param = ""
@@ -353,9 +379,9 @@ class EasyidpDataSet():
 class Lotus(EasyidpDataSet):
     """The dataset for lotus plot in Tanashi, Tokyo.
 
-    .. image:: ../../_static/images/data/2017_tanashi_lotus.png 
+    .. image:: ../../_static/images/data/2017_tanashi_lotus.png
         :width: 600
-        :alt: 2017_tanashi_lotus.png 
+        :alt: 2017_tanashi_lotus.png
 
     - **Crop** : lotus
     - **Location** : Tanashi, Nishi-Tokyo, Japan
@@ -412,23 +438,38 @@ class Lotus(EasyidpDataSet):
 
         self.pix4d.project = self.data_dir / "20170531"
         self.pix4d.param = self.data_dir / "20170531" / "params"
-        
-        self.pix4d.dom = self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif"
-        self.pix4d.dsm = self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif"
-        self.pix4d.pcd = self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply"
+
+        self.pix4d.dom = (
+            self.data_dir
+            / "20170531"
+            / "hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif"
+        )
+        self.pix4d.dsm = (
+            self.data_dir / "20170531" / "hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif"
+        )
+        self.pix4d.pcd = (
+            self.data_dir
+            / "20170531"
+            / "hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply"
+        )
 
         self.metashape.project = self.data_dir / "170531.Lotus.psx"
         self.metashape.param = self.data_dir / "170531.Lotus.files"
-        self.metashape.dom = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
-        self.metashape.dsm = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif"
+        self.metashape.dom = (
+            self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
+        )
+        self.metashape.dsm = (
+            self.data_dir / "170531.Lotus.outputs" / "170531.Lotus_dsm.tif"
+        )
         self.metashape.pcd = self.data_dir / "170531.Lotus.outputs" / "170531.Lotus.laz"
+
 
 class ForestBirds(EasyidpDataSet):
     """The dataset for forest ecology survey, provided by the University of Florida.
 
-    .. image:: ../../_static/images/data/2022_florida_forestbirds.png 
+    .. image:: ../../_static/images/data/2022_florida_forestbirds.png
         :width: 600
-        :alt: 2022_florida_forestbird.png 
+        :alt: 2022_florida_forestbird.png
 
     - **Author**: Prof. Ben Weinstein, The University of Florida.
     - **Location** : Florida, US
@@ -480,13 +521,12 @@ class ForestBirds(EasyidpDataSet):
         self.metashape.param = self.data_dir / "Hidden_Little_03_24_2022.files"
         self.metashape.dom = self.data_dir / "Hidden_Little_03_24_2022.tiff"
         self.metashape.dsm = self.data_dir / "Hidden_Little_03_24_2022_DEM.tif"
-        
+
+
 class GDownTest(EasyidpDataSet):
-    """The data for Google Drive download testing
-    """
+    """The data for Google Drive download testing"""
 
     def __init__(self):
-
         super().__init__("gdown_test", GDOWN_TEST_URL, "0.2KB")
         super().load_data()
 
@@ -495,8 +535,7 @@ class GDownTest(EasyidpDataSet):
 
 
 class TestData(EasyidpDataSet):
-    """The data for developer and package testing.
-    """
+    """The data for developer and package testing."""
 
     name = "data_for_tests"
     size = "344MB"
@@ -505,18 +544,18 @@ class TestData(EasyidpDataSet):
     def __init__(self, test_out="./tests/out"):
         """
         Containts the following arguments, you can access by:
-        
-        **json test module** 
+
+        **json test module**
 
         * ``.json.for_read_json``
         * ``.json.labelme_demo``
         * ``.json.labelme_warn``
         * ``.json.labelme_err``
 
-        **shp test module** 
+        **shp test module**
 
-        * ``.shp.lotus_shp`` 
-        * ``.shp.lotus_prj`` 
+        * ``.shp.lotus_shp``
+        * ``.shp.lotus_prj``
         * ``.shp.complex_shp``
         * ``.shp.complex_prj``
         * ``.shp.lonlat_shp``
@@ -530,7 +569,7 @@ class TestData(EasyidpDataSet):
         * ``.shp.testutm_prj``
         * ``.shp.mlayer_shp``
 
-        **pcd test module** 
+        **pcd test module**
 
         * ``.pcd.lotus_las``
         * ``.pcd.lotus_laz``
@@ -544,7 +583,7 @@ class TestData(EasyidpDataSet):
         * ``.pcd.maize_ply``
 
 
-        **roi test module** 
+        **roi test module**
 
         * ``.roi.dxf``
         * ``.roi.lxyz_txt``
@@ -559,7 +598,7 @@ class TestData(EasyidpDataSet):
         * ``.tiff.out``
 
 
-        **metashape test module** 
+        **metashape test module**
 
         * ``.metashape.goya_psx``
         * ``.metashape.goya_param``
@@ -574,7 +613,7 @@ class TestData(EasyidpDataSet):
         * ``.metashape.multi_spectral``
 
 
-        **pix4d test module** 
+        **pix4d test module**
 
         * ``.pix4d.lotus_folder``
         * ``.pix4d.lotus_param``
@@ -592,11 +631,11 @@ class TestData(EasyidpDataSet):
         * ``.pix4d.maize_empty``
         * ``.pix4d.maize_noout``
 
-        **cvtools test module** 
+        **cvtools test module**
 
         * ``.cv.out``
-        
-        **visualize test module** 
+
+        **visualize test module**
 
         * ``.vis.out``
 
@@ -627,78 +666,103 @@ class TestData(EasyidpDataSet):
         self.vis = self.VisualDataset(self.data_dir, test_out)
         self.b2r = self.Back2rawDataset(self.data_dir, test_out)
 
-
-    class MetashapeDataset():
-
+    class MetashapeDataset:
         def __init__(self, data_dir, test_out):
             if isinstance(test_out, str):
                 test_out = Path(test_out)
 
-            self.goya_psx    = data_dir / "metashape" / "goya_test.psx"
-            self.goya_param  = data_dir / "metashape" / "goya_test.files"
+            self.goya_psx = data_dir / "metashape" / "goya_test.psx"
+            self.goya_param = data_dir / "metashape" / "goya_test.files"
 
-            self.lotus_psx   = data_dir / "metashape" / "Lotus.psx"
+            self.lotus_psx = data_dir / "metashape" / "Lotus.psx"
             self.lotus_param = data_dir / "metashape" / "Lotus.files"
-            self.lotus_dsm   = data_dir / "metashape" / "Lotus.files" / "170531.Lotus_dsm.tif"
+            self.lotus_dsm = (
+                data_dir / "metashape" / "Lotus.files" / "170531.Lotus_dsm.tif"
+            )
 
-            self.wheat_psx   = data_dir / "metashape" / "wheat_tanashi.psx"
+            self.wheat_psx = data_dir / "metashape" / "wheat_tanashi.psx"
             self.wheat_param = data_dir / "metashape" / "wheat_tanashi.files"
 
-            self.multichunk_psx   = data_dir / "metashape" / "multichunk.psx"
+            self.multichunk_psx = data_dir / "metashape" / "multichunk.psx"
             self.multichunk_param = data_dir / "metashape" / "multichunk.files"
 
-            self.multifolder_psx   = data_dir / "metashape" / "multifolder.psx"
+            self.multifolder_psx = data_dir / "metashape" / "multifolder.psx"
             self.multifolder_param = data_dir / "metashape" / "multifolder.files"
 
-            self.nestedfolder_psx   = data_dir / "metashape" / "nestedfolders.psx"
+            self.nestedfolder_psx = data_dir / "metashape" / "nestedfolders.psx"
             self.nestedfolder_param = data_dir / "metashape" / "nestedfolders.files"
 
-            self.camera_disorder_psx   = data_dir / "metashape" / "camera_disorder.psx"
-            self.camera_disorder_param = data_dir / "metashape" / "camera_disorder.files"
+            self.camera_disorder_psx = data_dir / "metashape" / "camera_disorder.psx"
+            self.camera_disorder_param = (
+                data_dir / "metashape" / "camera_disorder.files"
+            )
 
-            self.two_calib_psx   = data_dir / "metashape" / "two_calib.psx"
+            self.two_calib_psx = data_dir / "metashape" / "two_calib.psx"
             self.two_calib_param = data_dir / "metashape" / "two_calib.files"
 
-            self.multi_spectral_psx   = data_dir / "metashape" / "multi_spectral.psx"
+            self.multi_spectral_psx = data_dir / "metashape" / "multi_spectral.psx"
             self.multi_spectral_param = data_dir / "metashape" / "multi_spectral.files"
 
-
-    class Pix4Dataset():
-
+    class Pix4Dataset:
         def __init__(self, data_dir):
-
             # here is reorgainzed pix4d project
-            self.lotus_folder   = data_dir / "pix4d" / "lotus_tanashi_full"
-            self.lotus_param    = self.lotus_folder / "params"
-            self.lotus_photos   = self.lotus_folder / "photos"
-            self.lotus_dom      = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
-            self.lotus_dsm      = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
-            self.lotus_pcd      = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply"
+            self.lotus_folder = data_dir / "pix4d" / "lotus_tanashi_full"
+            self.lotus_param = self.lotus_folder / "params"
+            self.lotus_photos = self.lotus_folder / "photos"
+            self.lotus_dom = (
+                self.lotus_folder
+                / "hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
+            )
+            self.lotus_dsm = (
+                self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
+            )
+            self.lotus_pcd = (
+                self.lotus_folder
+                / "hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply"
+            )
             self.lotus_dom_part = self.lotus_folder / "plot_dom.tif"
             self.lotus_dsm_part = self.lotus_folder / "plot_dsm.tif"
             self.lotus_pcd_part = self.lotus_folder / "plot_pcd.ply"
 
             # here is standard pix4d project
-            self.maize_folder  = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
-            self.maize_dom = self.maize_folder / "3_dsm_ortho" / "2_mosaic" / \
-                "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_transparent_mosaic_group1.tif"
-            self.maize_dsm = self.maize_folder / "3_dsm_ortho" / "1_dsm" / \
-                "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_dsm.tif"
+            self.maize_folder = (
+                data_dir
+                / "pix4d"
+                / "maize_tanashi"
+                / "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d"
+            )
+            self.maize_dom = (
+                self.maize_folder
+                / "3_dsm_ortho"
+                / "2_mosaic"
+                / "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_transparent_mosaic_group1.tif"
+            )
+            self.maize_dsm = (
+                self.maize_folder
+                / "3_dsm_ortho"
+                / "1_dsm"
+                / "maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_dsm.tif"
+            )
 
-            self.maize_noparam = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_no_param"
-            self.maize_empty   = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_raname_empty_test"
-            self.maize_noout   = data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_raname_no_outputs"
+            self.maize_noparam = (
+                data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_no_param"
+            )
+            self.maize_empty = (
+                data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_raname_empty_test"
+            )
+            self.maize_noout = (
+                data_dir / "pix4d" / "maize_tanashi" / "maize_tanashi_raname_no_outputs"
+            )
 
-    class JsonDataset():
-
+    class JsonDataset:
         def __init__(self, data_dir, test_out):
             self.data_dir = data_dir
             self.for_read_json = data_dir / "json_test" / "for_read_json.json"
-            self.labelme_demo  = data_dir / "json_test" / "labelme_demo_img.json"
-            self.labelme_warn  = data_dir / "json_test" / "labelme_warn_img.json"
-            self.labelme_err   = data_dir / "json_test" / "for_read_json.json"
+            self.labelme_demo = data_dir / "json_test" / "labelme_demo_img.json"
+            self.labelme_warn = data_dir / "json_test" / "labelme_warn_img.json"
+            self.labelme_err = data_dir / "json_test" / "for_read_json.json"
 
-            self.geojson_soy   = data_dir / "json_test" / "2023_soybean_field.geojson"
+            self.geojson_soy = data_dir / "json_test" / "2023_soybean_field.geojson"
 
             if isinstance(test_out, str):
                 test_out = Path(test_out)
@@ -707,11 +771,8 @@ class TestData(EasyidpDataSet):
         def __truediv__(self, other):
             return self.data_dir / "json_test" / other
 
-
-    class ShapefileDataset():
-
+    class ShapefileDataset:
         def __init__(self, data_dir, test_out):
-
             self.data_dir = data_dir
             self.lotus_shp = data_dir / "shp_test" / "lotus_plots.shp"
             self.lotus_prj = data_dir / "shp_test" / "lotus_plots.prj"
@@ -737,13 +798,17 @@ class TestData(EasyidpDataSet):
             self.jp_crs_prj = data_dir / "shp_test" / "jp_crs.prj"
 
             # for multi-spectral testing
-            self.mlayer_shp  = data_dir / "shp_test" / "mlayer_roi.shp"
+            self.mlayer_shp = data_dir / "shp_test" / "mlayer_roi.shp"
 
             # for convert shapefile to geotiff mask
-            self.mask_rice_roi      = data_dir / "shp_test" / "mask_rice_grid_32.shp"
-            self.mask_rice_prj      = data_dir / "shp_test" / "mask_rice_grid_32.prj"
-            self.mask_rice_gt_shp   = data_dir / "shp_test" / "mask_rice_train_true_value.shp"
-            self.mask_rice_gt_prj   = data_dir / "shp_test" / "mask_rice_train_true_value.prj"
+            self.mask_rice_roi = data_dir / "shp_test" / "mask_rice_grid_32.shp"
+            self.mask_rice_prj = data_dir / "shp_test" / "mask_rice_grid_32.prj"
+            self.mask_rice_gt_shp = (
+                data_dir / "shp_test" / "mask_rice_train_true_value.shp"
+            )
+            self.mask_rice_gt_prj = (
+                data_dir / "shp_test" / "mask_rice_train_true_value.prj"
+            )
 
             if isinstance(test_out, str):
                 test_out = Path(test_out)
@@ -752,9 +817,7 @@ class TestData(EasyidpDataSet):
         def __truediv__(self, other):
             return self.data_dir / "shp_test" / other
 
-
-    class PointCloudDataset():
-
+    class PointCloudDataset:
         def __init__(self, data_dir, test_out):
             self.data_dir = data_dir
 
@@ -779,19 +842,15 @@ class TestData(EasyidpDataSet):
         def __truediv__(self, other):
             return self.data_dir / "pcd_test" / other
 
-
-    class ROIDataset():
-
+    class ROIDataset:
         def __init__(self, data_dir):
             self.data_dir = data_dir
 
-            self.dxf  = data_dir / "roi_test" / "hasu_tanashi_ccroi.dxf"
+            self.dxf = data_dir / "roi_test" / "hasu_tanashi_ccroi.dxf"
             self.lxyz_txt = data_dir / "roi_test" / "hasu_tanashi_lxyz.txt"
-            self.xyz_txt  = data_dir / "roi_test" / "hasu_tanashi_xyz.txt"
+            self.xyz_txt = data_dir / "roi_test" / "hasu_tanashi_xyz.txt"
 
-
-    class TiffDataSet():
-
+    class TiffDataSet:
         def __init__(self, data_dir, test_out):
             self.data_dir = data_dir
 
@@ -802,8 +861,12 @@ class TestData(EasyidpDataSet):
             self.mlayer_multi = data_dir / "tiff_test" / "mlayer_yamato_multi.tif"
 
             # for convert shapefile to geotiff mask
-            self.mask_rice_geotiff_empty_polygon = data_dir / "tiff_test" / "mask_rice_grid_48.tif"
-            self.mask_rice_geotiff_with_polygon = data_dir / "tiff_test" / "mask_rice_grid_77.tif"
+            self.mask_rice_geotiff_empty_polygon = (
+                data_dir / "tiff_test" / "mask_rice_grid_48.tif"
+            )
+            self.mask_rice_geotiff_with_polygon = (
+                data_dir / "tiff_test" / "mask_rice_grid_77.tif"
+            )
 
             if isinstance(test_out, str):
                 test_out = Path(test_out)
@@ -812,9 +875,7 @@ class TestData(EasyidpDataSet):
         def __truediv__(self, other):
             return self.data_dir / "tiff_test" / other
 
-
-    class CVDataset():
-
+    class CVDataset:
         def __init__(self, data_dir, test_out):
             self.data_dir = data_dir
 
@@ -825,9 +886,7 @@ class TestData(EasyidpDataSet):
         def __truediv__(self, other):
             return self.data_dir / "cv_test" / other
 
-
-    class VisualDataset():
-
+    class VisualDataset:
         def __init__(self, data_dir, test_out):
             self.data_dir = data_dir
 
@@ -837,11 +896,8 @@ class TestData(EasyidpDataSet):
 
         def __truediv__(self, other):
             return self.data_dir / "visual_test" / other
-        
 
-
-    class Back2rawDataset():
-
+    class Back2rawDataset:
         def __init__(self, data_dir, test_out):
             self.data_dir = data_dir
 

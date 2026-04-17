@@ -2769,6 +2769,29 @@ def back2raw2geotiff(
         return {}
 
     # 3. Determine worker count safely
+    """Log worker count and host resource overview."""
+    try:
+        cpu_cores = multiprocessing.cpu_count()
+        cpu_text = f"cpu_cores={cpu_cores}"
+    except Exception as e:
+        cpu_cores = -1
+        cpu_text = f"cpu_cores_unavailable: {e}"
+
+    try:
+        mem = psutil.virtual_memory()
+        total_gb = mem.total / 1024**3
+        available_mem = mem.available
+        available_gb = available_mem / 1024**3
+        memory_text = (
+            f"memory {available_gb:.2f}GB / {total_gb:.2f}GB"
+        )
+    except Exception as e:
+        memory_text = f"memory_info_unavailable: {e}"
+    
+    logger.info(
+        f"Worker resource summary: {cpu_text}, {memory_text}"
+    )
+    
     if num_workers is None:
         try:
             # Estimate image size from sensor metadata
@@ -2780,9 +2803,6 @@ def back2raw2geotiff(
             # Add safety factor 2.0x for overhead during processing
             estimated_img_bytes = sensor.width * sensor.height * 3 * 1.5
 
-            mem = psutil.virtual_memory()
-            available_mem = mem.available
-
             # Use at most 75% of available RAM
             max_safe_workers = int((available_mem * 0.75) // estimated_img_bytes)
 
@@ -2792,8 +2812,7 @@ def back2raw2geotiff(
 
             logger.info(
                 f"Auto-configured workers: {num_workers} "
-                f"(Img: {estimated_img_bytes / 1024**2:.1f}MB, "
-                f"Avail RAM: {available_mem / 1024**3:.1f}GB)"
+                f"(Img: {estimated_img_bytes / 1024**2:.1f}MB)"
             )
         except Exception as e:
             logger.warning(

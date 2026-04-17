@@ -11,9 +11,10 @@ import easyidp as idp
 
 from . import shared_data, report_logging_to_caplog, out_dir
 
+
 def test_def_get_header(shared_data):
-    test_data = shared_data['test_data']
-    
+    test_data = shared_data["test_data"]
+
     lotus_full = idp.geotiff.get_header(test_data.pix4d.lotus_dom)
     assert lotus_full["width"] == 5490
     assert lotus_full["height"] == 5752
@@ -43,8 +44,9 @@ def test_def_get_header(shared_data):
     assert lotus_part["tie_point"][0] == 368024.0839
     assert lotus_part["tie_point"][1] == 3955479.7512
 
+
 def test_def_get_imarray(shared_data):
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
     maize_part_np = idp.geotiff.get_imarray(test_data.pix4d.maize_dom)
     assert maize_part_np.shape == (722, 836, 4)
 
@@ -52,13 +54,17 @@ def test_def_get_imarray(shared_data):
     lotus_part_np = idp.geotiff.get_imarray(test_data.pix4d.lotus_dom_part)
     assert lotus_part_np.shape == (lh["height"], lh["width"], lh["dim"])
 
+
 def test_def_geo2pixel2geo_UTM():
-    gis_coord = np.asarray([
-        [ 484593.67474654, 3862259.42413431],
-        [ 484593.41064743, 3862259.92582402],
-        [ 484593.64841806, 3862260.06515117],
-        [ 484593.93077419, 3862259.55455913],
-        [ 484593.67474654, 3862259.42413431]])
+    gis_coord = np.asarray(
+        [
+            [484593.67474654, 3862259.42413431],
+            [484593.41064743, 3862259.92582402],
+            [484593.64841806, 3862260.06515117],
+            [484593.93077419, 3862259.55455913],
+            [484593.67474654, 3862259.42413431],
+        ]
+    )
 
     # example file
     # TIFF file: 200423_G_M600pro_transparent_mosaic_group1.tif, 411 MiB, little endian, bigtiff
@@ -66,24 +72,29 @@ def test_def_geo2pixel2geo_UTM():
     # > https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/blob/a3420bc7b1e0f1013411565cf0e66dd2d2ba5371/easyric/tests/test_io_geotiff.py#L114
     # to get the full string of this header
     # here we just use the extracted results
-    header = {'width': 19436, 'height': 31255, 'dim':4, 
-              'scale': [0.001, 0.001], 'nodata': None,
-              'tie_point': [484576.70205, 3862285.5109300003], 
-              'crs': pyproj.CRS.from_string("WGS 84 / UTM zone 53N")}
+    header = {
+        "width": 19436,
+        "height": 31255,
+        "dim": 4,
+        "scale": [0.001, 0.001],
+        "nodata": None,
+        "tie_point": [484576.70205, 3862285.5109300003],
+        "crs": pyproj.CRS.from_string("WGS 84 / UTM zone 53N"),
+    }
 
-    expected_pixel_idx = np.array([
-        [16972, 26086],
-        [16708, 25585],
-        [16946, 25445],
-        [17228, 25956],
-        [16972, 26086]])
+    expected_pixel_idx = np.array(
+        [[16972, 26086], [16708, 25585], [16946, 25445], [17228, 25956], [16972, 26086]]
+    )
 
-    expected_pixel_flt = np.array([
-        [16972.69654   , 26086.79569047],
-        [16708.59742997, 25585.10598028],
-        [16946.36805996, 25445.77883044],
-        [17228.72418998, 25956.37087012],
-        [16972.69654   , 26086.79569047]])
+    expected_pixel_flt = np.array(
+        [
+            [16972.69654, 26086.79569047],
+            [16708.59742997, 25585.10598028],
+            [16946.36805996, 25445.77883044],
+            [17228.72418998, 25956.37087012],
+            [16972.69654, 26086.79569047],
+        ]
+    )
 
     # ==========================
     # 1. return pixel int index
@@ -106,28 +117,38 @@ def test_def_geo2pixel2geo_UTM():
     gis_revert_flt = idp.geotiff.pixel2geo(pixel_coord_idx, header)
     np.testing.assert_almost_equal(gis_revert_flt, gis_coord, decimal=3)
 
+
 def test_def_geo2pixel2geo_lonlat():
     # using the source: https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/discussions/44
-    gis_latlon_coord = np.array([
-        [-80.83957435, 25.78354364],
-        [-80.83947435, 25.78354364],
-        [-80.83947435, 25.78344364],
-        [-80.83957435, 25.78344364],
-        [-80.83957435, 25.78354364]])
+    gis_latlon_coord = np.array(
+        [
+            [-80.83957435, 25.78354364],
+            [-80.83947435, 25.78354364],
+            [-80.83947435, 25.78344364],
+            [-80.83957435, 25.78344364],
+            [-80.83957435, 25.78354364],
+        ]
+    )
 
     header = {
-        'height': 8748, 'width': 7941, 'dim': 1, 'nodata': -32767.0, 
-        'scale': [3.49222000000852e-07, 3.1617399999982425e-07], 
-        'tie_point': [-80.84039234705898, 25.784493471936425], 
-        'crs': pyproj.CRS.from_epsg(4326)
+        "height": 8748,
+        "width": 7941,
+        "dim": 1,
+        "nodata": -32767.0,
+        "scale": [3.49222000000852e-07, 3.1617399999982425e-07],
+        "tie_point": [-80.84039234705898, 25.784493471936425],
+        "crs": pyproj.CRS.from_epsg(4326),
     }
 
-    expected_pixel = np.array([
-        [2342.34114395, 3004.14308711],
-        [2628.6919466 , 3004.14308711],
-        [2628.6919466 , 3320.42462829],
-        [2342.34114395, 3320.42462829],
-        [2342.34114395, 3004.14308711]])
+    expected_pixel = np.array(
+        [
+            [2342.34114395, 3004.14308711],
+            [2628.6919466, 3004.14308711],
+            [2628.6919466, 3320.42462829],
+            [2342.34114395, 3320.42462829],
+            [2342.34114395, 3004.14308711],
+        ]
+    )
 
     out = idp.geotiff.geo2pixel(gis_latlon_coord, header)
 
@@ -137,13 +158,15 @@ def test_def_geo2pixel2geo_lonlat():
 
     np.testing.assert_almost_equal(back, gis_latlon_coord, decimal=3)
 
+
 # ============================================================================
 # Migrated Class-based tests from test_geotiff.old
 # ============================================================================
 
+
 def test_class_init_with_path(shared_data):
     """Test GeoTiff initialization with file path."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
@@ -154,28 +177,28 @@ def test_class_init_with_path(shared_data):
 
 def test_class_header_sugar_property(shared_data):
     """Test the crs sugar to replace geotiff.header['crs']."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
-    
-    assert obj.crs == obj.header['crs']
-    assert obj.height == obj.header['height']
-    assert obj.width == obj.header['width']
-    assert obj.dim == obj.header['dim']
-    assert obj.nodata == obj.header['nodata']
-    assert obj.scale == obj.header['scale']
-    assert obj.tie_point == obj.header['tie_point']
+
+    assert obj.crs == obj.header["crs"]
+    assert obj.height == obj.header["height"]
+    assert obj.width == obj.header["width"]
+    assert obj.dim == obj.header["dim"]
+    assert obj.nodata == obj.header["nodata"]
+    assert obj.scale == obj.header["scale"]
+    assert obj.tie_point == obj.header["tie_point"]
 
     # test value setter (should raise AttributeError)
     with pytest.raises(AttributeError):
         # python <3.10 : can't set attribute ...
         # python >3.10 : property 'crs' of 'GeoTiff' object has no setter
-        obj.crs = 'aaa'
+        obj.crs = "aaa"
 
 
 def test_class_open(shared_data):
     """Test GeoTiff.open() method."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
     obj = idp.GeoTiff()
     obj.open(test_data.pix4d.lotus_dom)
@@ -186,8 +209,8 @@ def test_class_open(shared_data):
 
 def test_class_point_query(shared_data):
     """Test GeoTiff.point_query() method with various input formats."""
-    test_data = shared_data['test_data']
-    
+    test_data = shared_data["test_data"]
+
     dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
     # query one point by tuple
@@ -202,9 +225,7 @@ def test_class_point_query(shared_data):
     np.testing.assert_almost_equal(out2, expect, decimal=3)
 
     # query several points by list
-    point3 = [
-        [368022.581, 3955501.054], 
-        [368024.032, 3955500.465]]
+    point3 = [[368022.581, 3955501.054], [368024.032, 3955500.465]]
     out3 = dsm.point_query(point3, is_geo=True)
     expects = np.array([97.624344, 97.59617])
     np.testing.assert_almost_equal(out3, expects, decimal=3)
@@ -215,12 +236,15 @@ def test_class_point_query(shared_data):
     np.testing.assert_almost_equal(out4, expects, decimal=3)
 
     # test point query using polygon vertices
-    poly_geo = np.array([
-        [ 368017.7565143 , 3955511.08102277],
-        [ 368019.70190232, 3955511.49811902],
-        [ 368020.11263046, 3955509.54636219],
-        [ 368018.15769062, 3955509.13563382],
-        [ 368017.7565143 , 3955511.08102277]])
+    poly_geo = np.array(
+        [
+            [368017.7565143, 3955511.08102277],
+            [368019.70190232, 3955511.49811902],
+            [368020.11263046, 3955509.54636219],
+            [368018.15769062, 3955509.13563382],
+            [368017.7565143, 3955511.08102277],
+        ]
+    )
 
     pt = dsm.point_query(poly_geo, is_geo=True)
     assert pt.shape == (5,)
@@ -229,33 +253,50 @@ def test_class_point_query(shared_data):
 
 def test_class_point_query_error(shared_data):
     """Test GeoTiff.point_query() error handling."""
-    test_data = shared_data['test_data']
-    
+    test_data = shared_data["test_data"]
+
     dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
     # raise type error for set input
     set1 = {1, 2}
-    with pytest.raises(TypeError, match=re.escape("Only tuple, list, ndarray are supported")):
+    with pytest.raises(
+        TypeError, match=re.escape("Only tuple, list, ndarray are supported")
+    ):
         dsm.point_query(set1, is_geo=True)
 
     # raise index error for wrong shape
     tuple1 = (1, 2, 3)
-    with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+    with pytest.raises(
+        IndexError,
+        match=re.escape(
+            "Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]"
+        ),
+    ):
         dsm.point_query(tuple1, is_geo=True)
 
     list1 = [1, 2, 3]
-    with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+    with pytest.raises(
+        IndexError,
+        match=re.escape(
+            "Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]"
+        ),
+    ):
         dsm.point_query(list1, is_geo=True)
 
     ndarray1 = np.array([1, 2, 3])
-    with pytest.raises(IndexError, match=re.escape("Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]")):
+    with pytest.raises(
+        IndexError,
+        match=re.escape(
+            "Please only spcify shape like [x, y] or [[x1, y1], [x2, y2], ...]"
+        ),
+    ):
         dsm.point_query(ndarray1, is_geo=True)
 
 
 def test_class_crop_polygon_save_geotiff(shared_data, tmp_path):
     """Test polygon cropping and saving to file."""
-    test_data = shared_data['test_data']
-    roi_select = shared_data['roi_select']
+    test_data = shared_data["test_data"]
+    roi_select = shared_data["roi_select"]
 
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
@@ -290,7 +331,7 @@ def test_class_crop_polygon_save_geotiff(shared_data, tmp_path):
 
 def test_class_crop_rectangle_save_geotiff(shared_data):
     """Test rectangle cropping with geo and pixel coordinates."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
@@ -299,16 +340,19 @@ def test_class_crop_rectangle_save_geotiff(shared_data):
 
     # crop by geo coordinates
     out2 = obj.crop_rectangle(
-        left=368017.75187, top=3955511.49993, 
-        w=2.3561161599936895, h=2.362485199701041, 
-        is_geo=True)
+        left=368017.75187,
+        top=3955511.49993,
+        w=2.3561161599936895,
+        h=2.362485199701041,
+        is_geo=True,
+    )
 
     # Rasterio may produce slightly different crop sizes (±1 pixel)
     # due to different rounding in coordinate transformation
     assert 320 <= out1.shape[0] <= 322
     assert 319 <= out1.shape[1] <= 321
     assert out1.shape[2] == 4
-    
+
     assert 320 <= out2.shape[0] <= 322
     assert 319 <= out2.shape[1] <= 321
     assert out2.shape[2] == 4
@@ -316,67 +360,70 @@ def test_class_crop_rectangle_save_geotiff(shared_data):
 
 def test_class_polygon_math(shared_data):
     """Test polygon_math() method for DSM and DOM."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
-    # plot_t["N1W1"] -> 
-    poly_geo = np.array([
-        [ 368017.7565143 , 3955511.08102277],
-        [ 368019.70190232, 3955511.49811902],
-        [ 368020.11263046, 3955509.54636219],
-        [ 368018.15769062, 3955509.13563382],
-        [ 368017.7565143 , 3955511.08102277]])
+    # plot_t["N1W1"] ->
+    poly_geo = np.array(
+        [
+            [368017.7565143, 3955511.08102277],
+            [368019.70190232, 3955511.49811902],
+            [368020.11263046, 3955509.54636219],
+            [368018.15769062, 3955509.13563382],
+            [368017.7565143, 3955511.08102277],
+        ]
+    )
 
     # test dsm results
     dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
 
-    dsm_mean   = dsm.polygon_math(poly_geo, is_geo=True, kernel="mean")
-    dsm_min    = dsm.polygon_math(poly_geo, is_geo=True, kernel="min")
-    dsm_max    = dsm.polygon_math(poly_geo, is_geo=True, kernel="max")
-    dsm_pmin5  = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmin5")
+    dsm_mean = dsm.polygon_math(poly_geo, is_geo=True, kernel="mean")
+    dsm_min = dsm.polygon_math(poly_geo, is_geo=True, kernel="min")
+    dsm_max = dsm.polygon_math(poly_geo, is_geo=True, kernel="max")
+    dsm_pmin5 = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmin5")
     dsm_pmin10 = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmin10")
-    dsm_pmax5  = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmax5")
+    dsm_pmax5 = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmax5")
     dsm_pmax10 = dsm.polygon_math(poly_geo, is_geo=True, kernel="pmax10")
 
-    assert 97 < dsm_mean   and dsm_mean   < 98
-    assert 97 < dsm_min    and dsm_min    < 98
-    assert 97 < dsm_max    and dsm_max    < 98
-    assert 97 < dsm_pmin5  and dsm_pmin5  < 98
+    assert 97 < dsm_mean and dsm_mean < 98
+    assert 97 < dsm_min and dsm_min < 98
+    assert 97 < dsm_max and dsm_max < 98
+    assert 97 < dsm_pmin5 and dsm_pmin5 < 98
     assert 97 < dsm_pmin10 and dsm_pmin10 < 98
-    assert 97 < dsm_pmax5  and dsm_pmax5  < 98
+    assert 97 < dsm_pmax5 and dsm_pmax5 < 98
     assert 97 < dsm_pmax10 and dsm_pmax10 < 98
 
     # test dom results
     dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
-    dom_mean   = dom.polygon_math(poly_geo, is_geo=True, kernel="mean")
-    dom_min    = dom.polygon_math(poly_geo, is_geo=True, kernel="min")
-    dom_max    = dom.polygon_math(poly_geo, is_geo=True, kernel="max")
-    dom_pmin5  = dom.polygon_math(poly_geo, is_geo=True, kernel="pmin5")
+    dom_mean = dom.polygon_math(poly_geo, is_geo=True, kernel="mean")
+    dom_min = dom.polygon_math(poly_geo, is_geo=True, kernel="min")
+    dom_max = dom.polygon_math(poly_geo, is_geo=True, kernel="max")
+    dom_pmin5 = dom.polygon_math(poly_geo, is_geo=True, kernel="pmin5")
     dom_pmin10 = dom.polygon_math(poly_geo, is_geo=True, kernel="pmin10")
-    dom_pmax5  = dom.polygon_math(poly_geo, is_geo=True, kernel="pmax5")
+    dom_pmax5 = dom.polygon_math(poly_geo, is_geo=True, kernel="pmax5")
     dom_pmax10 = dom.polygon_math(poly_geo, is_geo=True, kernel="pmax10")
 
-    assert dom_mean  .shape == (4, )
-    assert dom_min   .shape == (4, )
-    assert dom_max   .shape == (4, )
-    assert dom_pmin5 .shape == (4, )
-    assert dom_pmin10.shape == (4, )
-    assert dom_pmax5 .shape == (4, )
-    assert dom_pmax10.shape == (4, )
+    assert dom_mean.shape == (4,)
+    assert dom_min.shape == (4,)
+    assert dom_max.shape == (4,)
+    assert dom_pmin5.shape == (4,)
+    assert dom_pmin10.shape == (4,)
+    assert dom_pmax5.shape == (4,)
+    assert dom_pmax10.shape == (4,)
 
-    assert dom_mean  [3] == 255.0
-    assert dom_min   [3] == 255.0
-    assert dom_max   [3] == 255.0
-    assert dom_pmin5 [3] == 255.0
+    assert dom_mean[3] == 255.0
+    assert dom_min[3] == 255.0
+    assert dom_max[3] == 255.0
+    assert dom_pmin5[3] == 255.0
     assert dom_pmin10[3] == 255.0
-    assert dom_pmax5 [3] == 255.0
+    assert dom_pmax5[3] == 255.0
     assert dom_pmax10[3] == 255.0
 
 
 def test_class_crop_rois(shared_data, tmp_path):
     """Test crop_rois() method with ROI object."""
-    test_data = shared_data['test_data']
-    roi_select = shared_data['roi_select']
+    test_data = shared_data["test_data"]
+    roi_select = shared_data["roi_select"]
 
     obj = idp.GeoTiff(test_data.pix4d.lotus_dom)
 
@@ -399,7 +446,7 @@ def test_class_crop_rois(shared_data, tmp_path):
 
 def test_class_crop_rois_multispec(shared_data, tmp_path):
     """Test crop_rois() with 5-layer multispectral image."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
     roi = idp.ROI(test_data.shp.mlayer_shp)
 
@@ -420,7 +467,7 @@ def test_class_crop_rois_multispec(shared_data, tmp_path):
 
 def test_class_crop_rois_ndvi_special(shared_data, tmp_path):
     """Test crop_rois() with NDVI 2-layer image."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
     roi = idp.ROI(test_data.shp.mlayer_shp)
 
@@ -441,11 +488,11 @@ def test_class_crop_rois_ndvi_special(shared_data, tmp_path):
 
 def test_class_geo2pixel2geo_executable(shared_data):
     """Test geo2pixel and pixel2geo coordinate conversion roundtrip."""
-    test_data = shared_data['test_data']
+    test_data = shared_data["test_data"]
 
     roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
     dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-    roi.change_crs(dom.header['crs'])
+    roi.change_crs(dom.header["crs"])
 
     roi_test = roi[111]
 
@@ -455,69 +502,73 @@ def test_class_geo2pixel2geo_executable(shared_data):
 
     np.testing.assert_almost_equal(roi_test, roi_test_back, decimal=5)
 
+
 # ============================================================================
 # Tests for nodata/mask handling
 # ============================================================================
 
+
 def test_data_type_detection(shared_data):
     """Test _get_data_type() method for detecting dsm/rgb/rgba/ms/msa."""
-    test_data = shared_data['test_data']
-    
+    test_data = shared_data["test_data"]
+
     # DSM should be detected as 'dsm'
     dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
-    assert dsm._get_data_type() == 'dsm'
-    
+    assert dsm._get_data_type() == "dsm"
+
     # DOM with 4 bands uint8 should be 'rgba'
     dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-    assert dom._get_data_type() == 'rgba'
+    assert dom._get_data_type() == "rgba"
 
 
 def test_dsm_nodata_save(shared_data, tmp_path):
     """Test DSM saves with nodata value -32767.0."""
-    test_data = shared_data['test_data']
-    
+    test_data = shared_data["test_data"]
+
     # Create a DSM with some masked regions
     dsm = idp.GeoTiff(test_data.pix4d.lotus_dsm)
-    
+
     # Get a small crop to work with
-    crop = dsm.crop_rectangle(left=100, top=100, w=50, h=50, is_geo=False, 
-                              return_geotiff=True)
-    
+    crop = dsm.crop_rectangle(
+        left=100, top=100, w=50, h=50, is_geo=False, return_geotiff=True
+    )
+
     # The crop should have a mask computed
     assert crop._mask is not None
     assert crop._mask.shape == (crop.height, crop.width)
-    
+
     # Save and verify nodata is set
     save_path = tmp_path / "test_dsm.tif"
     crop.save(save_path, overwrite=True)
-    
+
     # Reload and check nodata value
     reloaded = idp.GeoTiff(save_path)
-    assert reloaded.header['nodata'] == -32767.0
+    assert reloaded.header["nodata"] == -32767.0
 
 
 def test_rgb_alpha_save(shared_data, tmp_path):
     """Test RGB saves as RGBA with alpha channel."""
-    test_data = shared_data['test_data']
-    
+    test_data = shared_data["test_data"]
+
     # Load DOM (RGBA)
     dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-    
+
     # Crop a region (this should compute mask)
-    crop = dom.crop_rectangle(left=100, top=100, w=50, h=50, is_geo=False,
-                              return_geotiff=True)
-    
+    crop = dom.crop_rectangle(
+        left=100, top=100, w=50, h=50, is_geo=False, return_geotiff=True
+    )
+
     # Verify mask is computed
     assert crop._mask is not None
-    
+
     # Save and verify no nodata (uses alpha instead)
     save_path = tmp_path / "test_rgba.tif"
     crop.save(save_path, overwrite=True)
-    
+
     reloaded = idp.GeoTiff(save_path)
     # RGBA should have 4 bands and no nodata
-    assert reloaded.header['dim'] == 4
-    assert reloaded.header['nodata'] is None
+    assert reloaded.header["dim"] == 4
+    assert reloaded.header["nodata"] is None
 
 
 def test_ms_alpha_save(shared_data, tmp_path):
@@ -525,62 +576,63 @@ def test_ms_alpha_save(shared_data, tmp_path):
     # Create a synthetic 5-band multispectral image
     # shape: (height, width, bands) = (100, 100, 5)
     ms_data = np.random.randint(0, 255, size=(100, 100, 5), dtype=np.uint16)
-    
+
     # Create header
     header = {
-        'height': 100,
-        'width': 100,
-        'dim': 5,
-        'dtype': np.dtype('uint16'),
-        'nodata': None,
-        'scale': [1.0, 1.0],
-        'tie_point': [0.0, 0.0],
-        'crs': None,
-        'profile': {
-            'driver': 'GTiff',
-            'height': 100,
-            'width': 100,
-            'count': 5,
-            'dtype': 'uint16',
-        }
+        "height": 100,
+        "width": 100,
+        "dim": 5,
+        "dtype": np.dtype("uint16"),
+        "nodata": None,
+        "scale": [1.0, 1.0],
+        "tie_point": [0.0, 0.0],
+        "crs": None,
+        "profile": {
+            "driver": "GTiff",
+            "height": 100,
+            "width": 100,
+            "count": 5,
+            "dtype": "uint16",
+        },
     }
-    
+
     ms_geotiff = idp.GeoTiff(imarray=ms_data, header=header)
-    
+
     # Set a mask to simulate invalid regions
     mask = np.ones((100, 100), dtype=bool)
     mask[0:20, 0:20] = False  # Mark top-left as invalid
     ms_geotiff._mask = mask
-    
+
     # Save
     save_path = tmp_path / "test_ms.tif"
     ms_geotiff.save(save_path, overwrite=True)
-    
+
     # Reload and check - should have 6 bands (5 + alpha)
     reloaded = idp.GeoTiff(save_path)
-    assert reloaded.header['dim'] == 6
+    assert reloaded.header["dim"] == 6
 
 
 def test_crop_preserves_full_data(shared_data):
     """Test that crop_* preserves full rectangular data, only storing mask."""
-    test_data = shared_data['test_data']
-    
+    test_data = shared_data["test_data"]
+
     dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-    
+
     # Crop a region
-    crop = dom.crop_rectangle(left=100, top=100, w=50, h=50, is_geo=False,
-                              return_geotiff=True)
-    
+    crop = dom.crop_rectangle(
+        left=100, top=100, w=50, h=50, is_geo=False, return_geotiff=True
+    )
+
     # Verify full rectangular data is preserved
     # Rasterio may produce slightly different crop sizes (±1 pixel)
     assert 49 <= crop.imarray.shape[0] <= 52
     assert 49 <= crop.imarray.shape[1] <= 52
-    
+
     # Verify mask is computed and stored
     assert crop._mask is not None
     # Mask shape should match imarray shape
     assert crop._mask.shape == crop.imarray.shape[:2]
-    
+
     # Data should NOT have nodata applied yet
     # (The original values should still be there, not replaced by nodata)
 
@@ -589,25 +641,26 @@ def test_crop_preserves_full_data(shared_data):
 # Tests for one_raw_roi2geotiff and back2raw2geotiff
 # ============================================================================
 
+
 def test_one_raw_roi2geotiff(shared_data):
     """Test one_raw_roi2geotiff() basic functionality."""
-    test_data = shared_data['test_data']
-    p4d = shared_data['p4d']
-    roi = shared_data['roi']
-    out_all = shared_data['out_all']
-    
+    test_data = shared_data["test_data"]
+    p4d = shared_data["p4d"]
+    roi = shared_data["roi"]
+    out_all = shared_data["out_all"]
+
     # Get first ROI and first image
     roi_id = list(out_all.keys())[0]
     img_dict = out_all[roi_id]
     img_id = list(img_dict.keys())[0]
     roi_raw_px = img_dict[img_id]
-    
+
     # Get geo coordinates (need 2D only)
     roi_geo_coords = roi[roi_id][:, :2]
-    
+
     # Find raw image path
     raw_img_path = test_data.pix4d.lotus_photos / f"{img_id}.JPG"
-    
+
     # Call the function
     gtiff = idp.geotiff.one_raw_roi2geotiff(
         roi_crs=roi.crs,
@@ -617,7 +670,7 @@ def test_one_raw_roi2geotiff(shared_data):
         nodata=0,
         has_alpha=True,
     )
-    
+
     # Verify GeoTiff object
     assert gtiff is not None
     assert isinstance(gtiff, idp.GeoTiff)
@@ -627,15 +680,15 @@ def test_one_raw_roi2geotiff(shared_data):
     assert gtiff.mask is not None  # Computed from mask_polygon
     assert gtiff.mask.shape == (gtiff.height, gtiff.width)
     assert gtiff.mask_polygon is not None  # Polygon stored
-    
+
     # Verify imarray is 3D (RGB image)
     assert len(gtiff.imarray.shape) == 3
-    
+
     # Save and verify file
-    save_path = out_dir / "tiff_test" /  "test_one_raw2geotiff.tif"
+    save_path = out_dir / "tiff_test" / "test_one_raw2geotiff.tif"
     gtiff.save(save_path, overwrite=True)
     assert save_path.exists()
-    
+
     # Reload and verify
     reloaded = idp.GeoTiff(save_path)
     assert reloaded.crs == roi.crs
@@ -643,10 +696,10 @@ def test_one_raw_roi2geotiff(shared_data):
 
 def test_one_raw_roi2geotiff_options(shared_data):
     """Test one_raw_roi2geotiff() with different options."""
-    test_data = shared_data['test_data']
-    roi = shared_data['roi']
-    out_all = shared_data['out_all']
-    
+    test_data = shared_data["test_data"]
+    roi = shared_data["roi"]
+    out_all = shared_data["out_all"]
+
     # Get first ROI and first image
     roi_id = list(out_all.keys())[0]
     img_dict = out_all[roi_id]
@@ -654,7 +707,7 @@ def test_one_raw_roi2geotiff_options(shared_data):
     roi_raw_px = img_dict[img_id]
     roi_geo_coords = roi[roi_id][:, :2]
     raw_img_path = test_data.pix4d.lotus_photos / f"{img_id}.JPG"
-    
+
     # Test with has_alpha=False
     gtiff_noalpha = idp.geotiff.one_raw_roi2geotiff(
         roi_crs=roi.crs,
@@ -664,9 +717,9 @@ def test_one_raw_roi2geotiff_options(shared_data):
         nodata=255,
         has_alpha=False,
     )
-    
+
     assert gtiff_noalpha.nodata == 255
-    
+
     # Test with has_alpha=True (default)
     gtiff_alpha = idp.geotiff.one_raw_roi2geotiff(
         roi_crs=roi.crs,
@@ -676,21 +729,21 @@ def test_one_raw_roi2geotiff_options(shared_data):
         nodata=0,
         has_alpha=True,
     )
-    
+
     assert gtiff_alpha.nodata is None  # No nodata when using alpha
 
 
 def test_back2raw2geotiff(shared_data):
     """Test back2raw2geotiff() batch processing with save_folder."""
-    p4d = shared_data['p4d']
-    roi = shared_data['roi']
-    out_all = shared_data['out_all']
-    
+    p4d = shared_data["p4d"]
+    roi = shared_data["roi"]
+    out_all = shared_data["out_all"]
+
     output_folder = out_dir / "tiff_test" / "back2raw2geotiff_test"
     if output_folder.exists():
         shutil.rmtree(output_folder)
     output_folder.mkdir()
-    
+
     # Call the function
     result = idp.geotiff.back2raw2geotiff(
         recons=p4d,
@@ -700,18 +753,18 @@ def test_back2raw2geotiff(shared_data):
         nodata=0,
         has_alpha=True,
     )
-    
+
     # Verify result structure matches input
     assert len(result) == len(out_all)
-    
+
     for roi_id in out_all.keys():
         assert roi_id in result
         assert len(result[roi_id]) > 0
-        
+
         # Check that files were saved
         roi_folder = output_folder / str(roi_id)
         assert roi_folder.exists()
-        
+
         for img_id, gtiff in result[roi_id].items():
             assert isinstance(gtiff, idp.GeoTiff)
             save_path = roi_folder / f"{img_id}.tif"
@@ -720,21 +773,21 @@ def test_back2raw2geotiff(shared_data):
 
 def test_back2raw2geotiff_no_save(shared_data):
     """Test back2raw2geotiff() without saving files."""
-    p4d = shared_data['p4d']
-    roi = shared_data['roi']
-    out_all = shared_data['out_all']
-    
+    p4d = shared_data["p4d"]
+    roi = shared_data["roi"]
+    out_all = shared_data["out_all"]
+
     # Call without output_folder (no save)
-    result = idp.geotiff.back2raw2geotiff(  
+    result = idp.geotiff.back2raw2geotiff(
         recons=p4d,
         back2raw_result=out_all,
         roi=roi,
         output_folder=None,  # No save
     )
-    
+
     # Verify result structure matches input
     assert len(result) == len(out_all)
-    
+
     for roi_id in out_all.keys():
         assert roi_id in result
         for img_id, gtiff in result[roi_id].items():
@@ -742,311 +795,425 @@ def test_back2raw2geotiff_no_save(shared_data):
             assert gtiff.crs == roi.crs
 
 
+def test_work_log_resource_info(monkeypatch, tmp_path):
+    """Test worker resource summary log output in back2raw2geotiff."""
+
+    class DummyMemory:
+        """Simple memory mock object."""
+
+        total = 64 * 1024**3
+        available = 40 * 1024**3
+
+    class DummyPhoto:
+        """Minimal photo object for recons mock."""
+
+        def __init__(self, path):
+            self.path = str(path)
+            self.sensor_id = "s1"
+
+    class DummySensor:
+        """Minimal sensor object for recons mock."""
+
+        width = 5280
+        height = 3956
+
+    class DummyRecons:
+        """Minimal reconstruction object for test."""
+
+        def __init__(self, path):
+            self.photos = {"img1": DummyPhoto(path)}
+            self.sensors = {"s1": DummySensor()}
+
+    class DummyROI:
+        """Minimal ROI object for test."""
+
+        def __init__(self):
+            self.crs = "EPSG:4326"
+            self._data = {
+                "r1": np.array(
+                    [[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 1.0]],
+                    dtype=float,
+                )
+            }
+
+        def __getitem__(self, key):
+            return self._data[key]
+
+    class DummyFuture:
+        """Minimal future object for executor mock."""
+
+        def result(self):
+            return {}
+
+    class DummyExecutor:
+        """Minimal executor context manager for no-op execution."""
+
+        def __init__(self, max_workers):
+            self.max_workers = max_workers
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def submit(self, fn, task, worker_args):
+            return DummyFuture()
+
+    records = []
+
+    def fake_info(msg, *args, **kwargs):
+        records.append(str(msg).format(*args, **kwargs))
+
+    img_path = tmp_path / "img1.jpg"
+    img_path.write_bytes(b"fake")
+
+    monkeypatch.setattr("multiprocessing.cpu_count", lambda: 16)
+    monkeypatch.setattr(idp.geotiff.psutil, "virtual_memory", lambda: DummyMemory())
+    monkeypatch.setattr(idp.geotiff.logger, "info", fake_info)
+    monkeypatch.setattr(
+        "concurrent.futures.ProcessPoolExecutor",
+        lambda max_workers: DummyExecutor(max_workers),
+    )
+    monkeypatch.setattr(
+        "concurrent.futures.as_completed", lambda futures: list(futures)
+    )
+
+    result = idp.geotiff.back2raw2geotiff(
+        recons=DummyRecons(img_path),
+        back2raw_result={"r1": {"img1": np.array([[0, 0], [1, 1]], dtype=float)}},
+        roi=DummyROI(),
+        num_workers=2,
+    )
+
+    assert "r1" in result
+    assert records
+    summary_logs = [line for line in records if "Worker resource summary" in line]
+    assert summary_logs
+    log_line = summary_logs[-1]
+    assert "cpu_cores=16" in log_line
+    assert "memory 40.00GB / 64.00GB" in log_line
+
+
 # =============================================================================
 # Mask Polygon Tests
 # =============================================================================
 
+
 class TestMaskPolygon:
     """Tests for mask polygon functionality."""
-    
+
     def test_set_mask_polygon_geo(self, shared_data):
         """Set polygon with geo coords, verify storage."""
-        test_data = shared_data['test_data']
+        test_data = shared_data["test_data"]
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
-        
+
         # Create a simple rectangle polygon in geo coordinates
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
-        
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
+
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         assert gtiff.mask_polygon is not None
         assert gtiff._mask_polygon_is_geo is True
         # Check polygon has 4 or 5 points (auto-closure may apply)
         assert len(gtiff.mask_polygon) >= 4
-    
+
     def test_set_mask_polygon_pixel(self, shared_data):
         """Set polygon with pixel coords, verify conversion."""
-        test_data = shared_data['test_data']
+        test_data = shared_data["test_data"]
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
-        
+
         # Create polygon in pixel coordinates
-        polygon = np.array([
-            [50, 50],
-            [150, 50],
-            [150, 150],
-            [50, 150],
-        ])
-        
+        polygon = np.array(
+            [
+                [50, 50],
+                [150, 50],
+                [150, 150],
+                [50, 150],
+            ]
+        )
+
         gtiff.set_mask_polygon(polygon, is_geo=False)
-        
+
         assert gtiff.mask_polygon is not None
         assert gtiff._mask_polygon_is_geo is False
-        
+
         # Verify can get geo coords
         geo_poly = gtiff.mask_polygon_geo
         assert geo_poly is not None
         assert geo_poly.shape == (5, 2)  # 4 points + closure
-        
+
         # Verify pixel coords unchanged
         pixel_poly = gtiff.mask_polygon_pixel
         np.testing.assert_allclose(pixel_poly[:4], polygon, atol=0.01)
-    
+
     def test_mask_binary_from_polygon(self, shared_data):
         """Binary mask computed correctly from polygon."""
-        test_data = shared_data['test_data']
+        test_data = shared_data["test_data"]
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
-        
+
         # Set a rectangular polygon in pixel coords
-        polygon = np.array([
-            [100, 100],
-            [200, 100],
-            [200, 200],
-            [100, 200],
-        ])
+        polygon = np.array(
+            [
+                [100, 100],
+                [200, 100],
+                [200, 200],
+                [100, 200],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=False)
-        
+
         # Get binary mask (should be computed from polygon)
         mask = gtiff.mask
-        
+
         assert mask is not None
         assert mask.dtype == bool
         assert mask.shape == (gtiff.height, gtiff.width)
-        
+
         # Check that interior is True
         assert mask[150, 150] is np.True_
         # Check that exterior is False
         assert mask[50, 50] is np.False_
-    
+
     def test_polygon_metadata_storage(self, shared_data, tmp_path):
         """Test polygon is stored and retrieved from metadata."""
         import rasterio as rio
-        test_data = shared_data['test_data']
-        
+
+        test_data = shared_data["test_data"]
+
         # Load and set polygon
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray  # Force load
-        
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         # Save
         save_path = tmp_path / "test_polygon.tif"
         gtiff.save(save_path, overwrite=True)
-        
+
         # Check metadata written
         with rio.open(save_path) as src:
             tags = src.tags()
-            assert 'EASYIDP_MASK_POLYGON' in tags
-            assert 'POLYGON' in tags['EASYIDP_MASK_POLYGON']
-        
+            assert "EASYIDP_MASK_POLYGON" in tags
+            assert "POLYGON" in tags["EASYIDP_MASK_POLYGON"]
+
         # Reload and verify polygon recovered
         gtiff2 = idp.GeoTiff(save_path)
         assert gtiff2.mask_polygon is not None
-        np.testing.assert_allclose(
-            gtiff2.mask_polygon[:4], 
-            polygon, 
-            atol=0.001
-        )
-    
+        np.testing.assert_allclose(gtiff2.mask_polygon[:4], polygon, atol=0.001)
+
     def test_affine_rectangle_detection(self, shared_data):
         """Test _is_valid_rectangle correctly identifies rectangles."""
-        test_data = shared_data['test_data']
+        test_data = shared_data["test_data"]
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
-        
+
         # Standard axis-aligned rectangle
-        rect = np.array([
-            [0, 0], [10, 0], [10, 5], [0, 5], [0, 0]
-        ], dtype=float)
+        rect = np.array([[0, 0], [10, 0], [10, 5], [0, 5], [0, 0]], dtype=float)
         is_valid, angle, bounds = gtiff._is_valid_rectangle(rect)
         assert is_valid is True
         assert np.isclose(angle, 0.0, atol=1.0)
-        
+
         # Rotated rectangle (45 degrees)
         s2 = np.sqrt(2)
-        rotated_rect = np.array([
-            [0, 0], [s2, s2], [0, 2*s2], [-s2, s2], [0, 0]
-        ], dtype=float)
+        rotated_rect = np.array(
+            [[0, 0], [s2, s2], [0, 2 * s2], [-s2, s2], [0, 0]], dtype=float
+        )
         is_valid, angle, bounds = gtiff._is_valid_rectangle(rotated_rect)
         assert is_valid is True
         assert np.isclose(abs(angle), 45.0, atol=2.0)
-        
+
         # Triangle (not rectangle)
-        triangle = np.array([
-            [0, 0], [10, 0], [5, 10], [0, 0]
-        ], dtype=float)
+        triangle = np.array([[0, 0], [10, 0], [5, 10], [0, 0]], dtype=float)
         is_valid, angle, bounds = gtiff._is_valid_rectangle(triangle)
         assert is_valid is False
-    
-    def test_affine_non_rectangle_warning(self, shared_data, tmp_path, report_logging_to_caplog):
+
+    def test_affine_non_rectangle_warning(
+        self, shared_data, tmp_path, report_logging_to_caplog
+    ):
         """Test warning when polygon is not rectangular."""
-        test_data = shared_data['test_data']
+        test_data = shared_data["test_data"]
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray
-        
+
         # Set a non-rectangular polygon (triangle)
-        triangle = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368026.0, 3955477.0],
-        ])
+        triangle = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368026.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(triangle, is_geo=True)
-        
+
         # Save with use_affine=True (should warn)
         save_path = tmp_path / "test_triangle.tif"
         gtiff.save(save_path, overwrite=True, use_affine=True)
-        
+
         # Note: logging logs may not be captured by pytest caplog by default
         # Just verify the file was saved successfully (warning was issued)
         assert save_path.exists()
-    
+
     def test_backward_compatibility_no_polygon(self, shared_data):
         """Existing GeoTiffs without polygon tags load normally."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # Load existing file (no polygon tag)
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
-        
+
         # Should have no polygon
         assert gtiff.mask_polygon is None
         assert gtiff.use_affine is False
-        
+
         # Mask should still work via legacy method
         mask = gtiff.mask
         assert mask is not None
         assert mask.dtype == bool
-    
+
     def test_affine_save_and_reload(self, shared_data, tmp_path):
         """Test affine save creates rotated GeoTiff that reloads correctly."""
         import rasterio as rio
-        test_data = shared_data['test_data']
-        
+
+        test_data = shared_data["test_data"]
+
         # Load source image
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray  # Force load
-        
+
         # Set a rotated rectangle polygon (axis-aligned for simplicity)
         # Get bounds of the image in geo coordinates
-        transform = gtiff.header['profile']['transform']
+        transform = gtiff.header["profile"]["transform"]
         # Create rectangle covering part of the image
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         # Save with affine mode
         save_path = tmp_path / "test_affine.tif"
         gtiff.save(save_path, overwrite=True, use_affine=True)
-        
+
         # Verify file was created
         assert save_path.exists()
-        
+
         # Check the transform has no rotation (axis-aligned rectangle)
         with rio.open(save_path) as src:
             # For axis-aligned, b and d should be ~0
             assert src.transform is not None
             # Polygon metadata should exist
             tags = src.tags()
-            assert 'EASYIDP_MASK_POLYGON' in tags
-        
+            assert "EASYIDP_MASK_POLYGON" in tags
+
         # Reload the file
         gtiff2 = idp.GeoTiff(save_path)
-        
+
         # Should have the polygon recovered
         assert gtiff2.mask_polygon is not None
-        
+
         # Image should be valid
         assert gtiff2.imarray is not None
-    
+
     def test_affine_coordinate_conversion(self, shared_data, tmp_path):
         """Test geo2pixel/pixel2geo work with affine-saved files."""
         import rasterio as rio
-        test_data = shared_data['test_data']
-        
+
+        test_data = shared_data["test_data"]
+
         # Load and set polygon
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray
-        
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         # Save with affine
         save_path = tmp_path / "test_affine_coord.tif"
         gtiff.save(save_path, overwrite=True, use_affine=True)
-        
+
         # Reload
         gtiff2 = idp.GeoTiff(save_path)
         gtiff2._imarray = gtiff2.imarray  # Force load for _check_data decorator
-        
+
         # Test coordinate conversion round-trip
         test_point = np.array([[368026.0, 3955478.0]])
         pixel = gtiff2.geo2pixel(test_point)
         geo_back = gtiff2.pixel2geo(pixel)
-        
+
         # Should be close to original
         np.testing.assert_allclose(geo_back, test_point, atol=0.1)
-    
+
     def test_crop_polygon_stores_mask(self, shared_data, tmp_path):
         """crop_polygon() stores mask_polygon in result."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # Load source image
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
-        
+
         # Crop a polygon region
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
-        
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
+
         result = gtiff.crop_polygon(polygon, is_geo=True, return_geotiff=True)
-        
+
         # Verify mask_polygon is stored
         assert result.mask_polygon is not None
         assert len(result.mask_polygon) >= 4
-        
+
         # Verify mask works
         assert result.mask is not None
         assert result.mask.dtype == bool
-    
+
     def test_one_raw_roi2geotiff_stores_polygon(self, shared_data):
         """one_raw_roi2geotiff stores mask_polygon from input ROI."""
-        p4d = shared_data['p4d']
-        roi = shared_data['roi']
-        
+        p4d = shared_data["p4d"]
+        roi = shared_data["roi"]
+
         # Get a single ROI
         roi_id = list(roi.keys())[0]
         roi_geo = roi[roi_id][:, :2]
-        
+
         # Get back2raw result
-        out_all = shared_data['out_all']
+        out_all = shared_data["out_all"]
         img_dict = out_all[roi_id]
         img_id = list(img_dict.keys())[0]
         roi_px = img_dict[img_id]
-        
+
         # Get image path
         raw_img = p4d.photos[img_id]
         img_path = raw_img.path
-        
+
         # Call one_raw_roi2geotiff
         gtiff = idp.geotiff.one_raw_roi2geotiff(
             roi_crs=roi.crs,
@@ -1054,7 +1221,7 @@ class TestMaskPolygon:
             raw_img=img_path,
             roi_raw_px_coords=roi_px,
         )
-        
+
         # Verify polygon is stored
         assert gtiff.mask_polygon is not None
         # Polygon should match input (approximately closed)
@@ -1063,336 +1230,345 @@ class TestMaskPolygon:
 
 class TestAffineConversion:
     """Tests for affine mode conversion functions."""
-    
+
     def test_convert_to_affine_returns_new_object(self, shared_data):
         """convert_to_affine returns a new GeoTiff, original unchanged."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # Load and set polygon
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray  # Force load
         original_shape = gtiff.imarray.shape
-        
+
         # Set axis-aligned rectangle
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         # Convert to affine
         affine_gtiff = gtiff.convert_to_affine()
-        
+
         # Verify new object
         assert affine_gtiff is not gtiff
         assert affine_gtiff.use_affine is True
-        
+
         # Verify original unchanged
         assert gtiff.use_affine is False
         assert gtiff.imarray.shape == original_shape
-    
+
     def test_convert_from_affine_returns_new_object(self, shared_data):
         """convert_from_affine returns a new GeoTiff, original unchanged."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # Load, set polygon, convert to affine
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray
-        
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         affine_gtiff = gtiff.convert_to_affine()
         affine_shape = affine_gtiff.imarray.shape
-        
+
         # Convert back from affine
         standard_gtiff = affine_gtiff.convert_from_affine()
-        
+
         # Verify new object
         assert standard_gtiff is not affine_gtiff
         assert standard_gtiff.use_affine is False
-        
+
         # Verify affine original unchanged
         assert affine_gtiff.use_affine is True
         assert affine_gtiff.imarray.shape == affine_shape
-    
+
     def test_convert_roundtrip_data_consistency(self, shared_data):
         """Roundtrip conversion preserves polygon and basic properties."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # Load original image
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray
         original_shape = gtiff.imarray.shape
-        
+
         # Set axis-aligned rectangle
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         # Convert to affine
         affine_gtiff = gtiff.convert_to_affine()
         assert affine_gtiff.use_affine is True
         # Affine should be smaller (cropped to rectangle)
         assert affine_gtiff.width <= gtiff.width
         assert affine_gtiff.height <= gtiff.height
-        
+
         # Convert back
         roundtrip_gtiff = affine_gtiff.convert_from_affine()
         assert roundtrip_gtiff.use_affine is False
-        
+
         # Polygon should be preserved through both conversions
         assert roundtrip_gtiff.mask_polygon is not None
         np.testing.assert_allclose(
-            roundtrip_gtiff.mask_polygon_geo[:4], 
-            polygon, 
-            atol=1e-6
+            roundtrip_gtiff.mask_polygon_geo[:4], polygon, atol=1e-6
         )
-        
+
         # Roundtrip should have data (not all zeros)
         assert roundtrip_gtiff.imarray.sum() > 0
-    
+
     def test_convert_preserves_original(self, shared_data):
         """Verify original GeoTiff is completely unchanged after conversion."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray
-        
+
         # Store original state
         original_imarray = gtiff.imarray.copy()
         original_use_affine = gtiff.use_affine
         original_width = gtiff.width
         original_height = gtiff.height
-        
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         # Convert to affine
         _ = gtiff.convert_to_affine()
-        
+
         # Verify original is unchanged
         assert gtiff.use_affine == original_use_affine
         assert gtiff.width == original_width
         assert gtiff.height == original_height
         np.testing.assert_array_equal(gtiff.imarray, original_imarray)
-    
+
     def test_convert_non_rectangle_raises(self, shared_data):
         """convert_to_affine raises error for non-rectangle polygons."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray
-        
+
         # Set triangle (not rectangle)
-        triangle = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368026.0, 3955477.0],
-        ])
+        triangle = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368026.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(triangle, is_geo=True)
-        
+
         # Should raise ValueError
         with pytest.raises(ValueError, match="not a valid rectangle"):
             gtiff.convert_to_affine()
-    
+
     def test_already_affine_returns_self(self, shared_data):
         """convert_to_affine returns self if already in affine mode."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
         gtiff._imarray = gtiff.imarray
-        
-        polygon = np.array([
-            [368025.0, 3955479.0],
-            [368027.0, 3955479.0],
-            [368027.0, 3955477.0],
-            [368025.0, 3955477.0],
-        ])
+
+        polygon = np.array(
+            [
+                [368025.0, 3955479.0],
+                [368027.0, 3955479.0],
+                [368027.0, 3955477.0],
+                [368025.0, 3955477.0],
+            ]
+        )
         gtiff.set_mask_polygon(polygon, is_geo=True)
-        
+
         # Convert twice
         affine1 = gtiff.convert_to_affine()
         affine2 = affine1.convert_to_affine()
-        
+
         # Second call should return same object
         assert affine2 is affine1
 
 
 class TestUseAffineParamOptimization:
-    
     def test_save_optimization_A(self, shared_data, tmp_path):
         """Test Optimization A: save() shouldn't re-convert if already affine."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # 1. Create a GeoTiff object and manually set it to affine mode mock
         # (Or convert a real one)
         dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
-        
+
         # Set a dummy rectangular mask
-        rect_poly = np.array([
-            [368019.2, 3955513.7],
-            [368021.1, 3955514.1], 
-            [368021.5, 3955512.2],
-            [368019.6, 3955511.8],
-            [368019.2, 3955513.7]
-        ])
+        rect_poly = np.array(
+            [
+                [368019.2, 3955513.7],
+                [368021.1, 3955514.1],
+                [368021.5, 3955512.2],
+                [368019.6, 3955511.8],
+                [368019.2, 3955513.7],
+            ]
+        )
         dom.set_mask_polygon(rect_poly, is_geo=True)
-        
+
         # Convert to affine
         affine_dom = dom.convert_to_affine()
         assert affine_dom.use_affine is True
-        
+
         # Save with use_affine=True
         # This should trigger the new logic: skip re-conversion
         save_path = tmp_path / "opt_a_test.tif"
-        
+
         # We can verify this by checking logs, but here we just ensure it runs and file is valid
         # If the optimization was missing, it would still work but do extra work.
         # But if we broke something, it might fail.
         success = affine_dom.save(save_path, use_affine=True, overwrite=True)
         assert success
         assert save_path.exists()
-        
+
         # Check saved file is indeed affine
         reloaded = idp.GeoTiff(save_path)
         assert reloaded.use_affine is True
 
     def test_back2raw2geotiff_optimization_B(self, shared_data, tmp_path):
         """Test Optimization B: back2raw2geotiff returns affine objects if requested."""
-        p4d = shared_data['p4d']
-        roi = shared_data['roi']
-        out_all = shared_data['out_all']
-        
+        p4d = shared_data["p4d"]
+        roi = shared_data["roi"]
+        out_all = shared_data["out_all"]
+
         out_folder = tmp_path / "opt_b_output"
-        
+
         # Run with use_affine=True
         results = idp.geotiff.back2raw2geotiff(
             recons=p4d,
             back2raw_result=out_all,
             roi=roi,
             output_folder=out_folder,
-            use_affine=True  # This should return affine objects now
+            use_affine=True,  # This should return affine objects now
         )
-        
+
         # Grab result
         first_roi = list(results.keys())[0]
         first_img = list(results[first_roi].keys())[0]
         gtiff = results[first_roi][first_img]
-        
+
         # 1. Check returned object is affine memory-side
         assert gtiff.use_affine is True
         # Check transform has rotation (not just scale/translate)
-        t = gtiff.header['transform'] 
+        t = gtiff.header["transform"]
         has_rotation = not (np.isclose(t.b, 0) and np.isclose(t.d, 0))
         assert has_rotation
-        
+
         # 2. Check saved file is affine disk-side
         saved_file = out_folder / str(first_roi) / f"{first_img}.tif"
         assert saved_file.exists()
-        
+
         reloaded = idp.GeoTiff(saved_file)
         assert reloaded.use_affine is True
-        t_loaded = reloaded.header['transform']
-        has_rotation_loaded = not (np.isclose(t_loaded.b, 0) and np.isclose(t_loaded.d, 0))
+        t_loaded = reloaded.header["transform"]
+        has_rotation_loaded = not (
+            np.isclose(t_loaded.b, 0) and np.isclose(t_loaded.d, 0)
+        )
         assert has_rotation_loaded
 
 
 class TestAffineCrop:
-    
     def test_crop_polygon_use_affine(self, shared_data, tmp_path):
         """Test crop_polygon with use_affine=True"""
-        test_data = shared_data['test_data']
+        test_data = shared_data["test_data"]
         # Use DSM as it has 1 band, simpler
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dsm)
-        
+
         # Create a rotated rectangular polygon (approx 45 degrees) in geo coordinates
         # Center around a known point in Lotus field
         # Tie point: [368014.54, 3955518.27]
         # Pixel Scale: 0.00738
-        
-        # Let's use a small area 
+
+        # Let's use a small area
         # Center: 368020.0, 3955510.0
         cx, cy = 368020.0, 3955510.0
         w, h = 1.0, 0.5  # meters
         angle_deg = 45.0
         angle_rad = math.radians(angle_deg)
-        
+
         # Calculate corners
         dx = w / 2
         dy = h / 2
-        
+
         # Local corners (unrotated)
         # TL, TR, BR, BL
-        corners_local = np.array([
-            [-dx, dy],
-            [dx, dy],
-            [dx, -dy],
-            [-dx, -dy]
-        ])
-        
+        corners_local = np.array([[-dx, dy], [dx, dy], [dx, -dy], [-dx, -dy]])
+
         # Rotate
         cos_a = math.cos(angle_rad)
         sin_a = math.sin(angle_rad)
         rot_mat = np.array([[cos_a, -sin_a], [sin_a, cos_a]])
-        
+
         corners_rot = corners_local @ rot_mat.T
-        
+
         # Translate
         corners_geo = corners_rot + np.array([cx, cy])
-        
+
         # Crop with affine
         out_gtiff = gtiff.crop_polygon(corners_geo, is_geo=True, use_affine=True)
-        
+
         assert isinstance(out_gtiff, idp.GeoTiff)
         assert out_gtiff.use_affine is True
-        
+
         # Verify transform has rotation
-        transform = out_gtiff.header['profile']['transform']
+        transform = out_gtiff.header["profile"]["transform"]
         assert not (np.isclose(transform.b, 0) and np.isclose(transform.d, 0))
-        
+
         # Check size roughly (in pixels)
         # Width should correspond to w=1.0m, Height to h=0.5m
         # Pixel size ~ 0.00738
         expected_w_px = int(w / 0.00738)
         expected_h_px = int(h / 0.00738)
-        
+
         # Allow some margin due to rounding and padding
         assert abs(out_gtiff.width - expected_w_px) < 5
         assert abs(out_gtiff.height - expected_h_px) < 5
-        
+
         # Verify we can save and load it
         save_path = tmp_path / "affine_crop.tif"
         out_gtiff.save(save_path)
-        
+
         reloaded = idp.GeoTiff(save_path)
         assert reloaded.use_affine is True
 
     def test_crop_rectangle_use_affine_returns_affine(self, shared_data):
         """Test crop_rectangle with use_affine=True"""
-        test_data = shared_data['test_data']
+        test_data = shared_data["test_data"]
         gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom)
-        
+
         # Crop a standard rectangle but request affine storage
         # It should result in specific affine (rotation 0) but use_affine=True
-        out_gtiff = gtiff.crop_rectangle(left=100, top=100, w=50, h=50, is_geo=False, use_affine=True)
-        
+        out_gtiff = gtiff.crop_rectangle(
+            left=100, top=100, w=50, h=50, is_geo=False, use_affine=True
+        )
+
         assert isinstance(out_gtiff, idp.GeoTiff)
         assert out_gtiff.use_affine is True
         assert out_gtiff.width == 50
@@ -1401,69 +1577,69 @@ class TestAffineCrop:
     def test_roi_crop_lotus(self, shared_data, tmp_path):
         """Test roi.crop with Lotus dataset and use_affine=True"""
         # Data preparation
-        test_data = shared_data['test_data']
-        
-        dom = idp.GeoTiff(test_data.pix4d.lotus_dom) 
+        test_data = shared_data["test_data"]
+
+        dom = idp.GeoTiff(test_data.pix4d.lotus_dom)
         roi = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-        
+
         # Ensure ROI CRS matches DOM CRS
         roi.change_crs(dom.crs)
-        
+
         # Pick 3 ROIs
         roi_subset = roi[0:3]
-        
+
         # Crop with standard mode first for comparison
         out_std = roi_subset.crop(dom, use_affine=False)
         assert isinstance(out_std, dict)
         assert isinstance(next(iter(out_std.values())), np.ndarray)
-        
+
         # Crop with affine mode
         out_affine = roi_subset.crop(dom, use_affine=True)
-        
+
         assert isinstance(out_affine, dict)
         assert len(out_affine) == 3
-        
+
         first_key = list(out_affine.keys())[0]  # e.g. N1W1
         first_gtiff = out_affine[first_key]
-        
+
         assert isinstance(first_gtiff, idp.GeoTiff)
         assert first_gtiff.use_affine is True
-        
+
         # Verify polygon match
         # The ROI polygon (N1W1) is a rectangle but rotated in UTM
         # So the affine crop should have smaller bounding box than standard AABB crop
-        
+
         # Get standard crop as GeoTiff to compare bounds
         # We need to manually call crop_polygon with return_geotiff=True to get bounds
         poly_geo = roi_subset[first_key]
         std_gtiff_crop = dom.crop_polygon(poly_geo, is_geo=True, return_geotiff=True)
-        
+
         # Calculate areas (in pixels)
         area_std = std_gtiff_crop.width * std_gtiff_crop.height
         area_affine = first_gtiff.width * first_gtiff.height
-        
+
         # Affine crop should be more compact for rotated ROI
         # N1W1 in Lotus is indeed rotated
         assert area_affine < area_std
-        
+
         # Verify data consistency (approximate)
         # Sample center point of polygon
-        poly_center = np.mean(poly_geo[:-1], axis=0) # (x, y)
-        
+        poly_center = np.mean(poly_geo[:-1], axis=0)  # (x, y)
+
         # Query values
         val_orig = dom.point_query(poly_center, is_geo=True)
-        
+
         # point_query requires file on disk in current easyidp implementation
         temp_affine_path = tmp_path / "temp_affine.tif"
         first_gtiff.save(temp_affine_path)
         first_gtiff.file_path = temp_affine_path
-        
+
         val_affine = first_gtiff.point_query(poly_center, is_geo=True)
-        
+
         # Should be close (resampling might introduce slight diffs)
         # For DOM (RGB), point_query returns (1, Bands) e.g. [R, G, B, A]
         # But point_query implementation might vary for multi-band
-        
+
         # Should be close (resampling might introduce slight diffs)
         # Relax tolerance due to different interpolation methods (GDAL vs Scipy)
         np.testing.assert_allclose(val_orig, val_affine, atol=10)
@@ -1473,42 +1649,46 @@ class TestAffineCrop:
 # create_binary_mask_for_geotiff Tests
 # =============================================================================
 
+
 class TestCreateBinaryMaskForGeoTiff:
     """Tests for create_binary_mask_for_geotiff function."""
 
     def test_create_binary_mask_with_polygon(self, shared_data):
         """Test binary mask creation where polygons intersect (Expected non-empty)."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # 1. Prepare Data
         # Path to reference GeoTIFF (affine rotated) - using the one with polygons
         target_tif_path = test_data.tiff.mask_rice_geotiff_with_polygon
         # Path to Ground Truth Shapefile
         gt_shp_path = test_data.shp.mask_rice_gt_shp
-        
+
         # Check if files exist
         assert target_tif_path.exists(), f"Target GeoTIFF not found: {target_tif_path}"
         assert gt_shp_path.exists(), f"Shapefile not found: {gt_shp_path}"
 
         # Load target
         target_gt = idp.GeoTiff(target_tif_path)
-        
+
         # 2. Test Path Input with all_touched=True
         # Note: We use the new renamed function
         mask_1 = idp.geotiff.create_binary_mask_for_geotiff(
             target_gt, gt_shp_path, all_touched=True
         )
-        
+
         assert isinstance(mask_1, idp.GeoTiff)
         assert mask_1.width == target_gt.width
         assert mask_1.height == target_gt.height
         # Check transform match
-        assert mask_1.header['profile']['transform'] == target_gt.header['profile']['transform']
-        
+        assert (
+            mask_1.header["profile"]["transform"]
+            == target_gt.header["profile"]["transform"]
+        )
+
         # Check values are binary
         unique_vals = np.unique(mask_1.imarray)
         assert np.all(np.isin(unique_vals, [0, 1]))
-        
+
         # Verify Content (Basic Check)
         # Check if we have some 1s (intersection expected)
         assert np.sum(mask_1.imarray) > 0, "Mask should not be empty for this test case"
@@ -1517,39 +1697,40 @@ class TestCreateBinaryMaskForGeoTiff:
         out_path = test_data.tiff.out / "mask_test_output_poly.tif"
         mask_1.save(out_path, overwrite=True)
         assert out_path.exists()
-        
+
         # Reload and check
         loaded = idp.GeoTiff(out_path)
         np.testing.assert_array_equal(loaded.imarray[:, :, 0], mask_1.imarray[:, :, 0])
 
-
     def test_create_binary_mask_empty_polygon(self, shared_data):
         """Test binary mask creation where NO polygons intersect (Expected empty)."""
-        test_data = shared_data['test_data']
-        
+        test_data = shared_data["test_data"]
+
         # 1. Prepare Data
         # Path to reference GeoTIFF - using the one WITHOUT polygons
         target_tif_path = test_data.tiff.mask_rice_geotiff_empty_polygon
         gt_shp_path = test_data.shp.mask_rice_gt_shp
-        
+
         assert target_tif_path.exists()
-        
+
         target_gt = idp.GeoTiff(target_tif_path)
-        
+
         # 2. Create Mask
         mask_empty = idp.geotiff.create_binary_mask_for_geotiff(
             target_gt, gt_shp_path, all_touched=True
         )
-        
+
         # 3. Verification
         assert isinstance(mask_empty, idp.GeoTiff)
         # Should be all zeros
-        assert np.sum(mask_empty.imarray) == 0, "Mask should be empty (all zeros) for this test case"
-        
+        assert np.sum(mask_empty.imarray) == 0, (
+            "Mask should be empty (all zeros) for this test case"
+        )
+
         # Verify it has correct dimensions
         assert mask_empty.width == target_gt.width
         assert mask_empty.height == target_gt.height
-        
+
         # Test saving
         out_path = test_data.tiff.out / "mask_test_output_empty.tif"
         mask_empty.save(out_path, overwrite=True)

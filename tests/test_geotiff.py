@@ -12,6 +12,60 @@ import easyidp as idp
 from . import shared_data, report_logging_to_caplog, out_dir
 
 
+def _affine_pixel_corners(gtiff):
+    """Return geospatial coordinates of an affine GeoTiff's pixel corners.
+
+    Parameters
+    ----------
+    gtiff : easyidp.GeoTiff
+        GeoTiff object with an affine transform in its profile.
+
+    Returns
+    -------
+    numpy.ndarray
+        Four corner coordinates in clockwise pixel order.
+
+    Examples
+    --------
+    >>> corners = _affine_pixel_corners(gtiff)
+    >>> corners.shape
+    (4, 2)
+    """
+    transform = gtiff.header["profile"]["transform"]
+    pixel_corners = np.array(
+        [[0, 0], [gtiff.width, 0], [gtiff.width, gtiff.height], [0, gtiff.height]],
+        dtype=float,
+    )
+    return np.array([transform * tuple(corner) for corner in pixel_corners])
+
+
+def _assert_same_corner_set(actual, expected, atol=0.02):
+    """Assert two rectangle corner sets match regardless of order.
+
+    Parameters
+    ----------
+    actual : numpy.ndarray
+        Actual rectangle corners with shape (4, 2).
+    expected : numpy.ndarray
+        Expected rectangle corners with shape (4, 2).
+    atol : float, optional
+        Absolute tolerance in coordinate units.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    >>> _assert_same_corner_set(np.array([[0, 0], [1, 0]]), np.array([[1, 0], [0, 0]]))
+    """
+    actual = np.asarray(actual, dtype=float)
+    expected = np.asarray(expected, dtype=float)
+    distances = np.linalg.norm(actual[:, None, :] - expected[None, :, :], axis=2)
+    assert np.all(distances.min(axis=1) <= atol)
+    assert np.all(distances.min(axis=0) <= atol)
+
+
 def test_def_get_header(shared_data):
     test_data = shared_data["test_data"]
 
@@ -1230,6 +1284,99 @@ class TestMaskPolygon:
 
 class TestAffineConversion:
     """Tests for affine mode conversion functions."""
+
+    def test_convert_to_affine_bottom_left_first_axis_aligned_rectangle(self, shared_data):
+        """Bottom-left-first axis-aligned rectangles keep data and bounds."""
+        test_data = shared_data["test_data"]
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+
+        polygon = np.array(
+            [
+                [368025.0, 3955477.0],
+                [368027.0, 3955477.0],
+                [368027.0, 3955479.0],
+                [368025.0, 3955479.0],
+            ]
+        )
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+
+        affine_gtiff = gtiff.convert_to_affine()
+
+        assert np.any(affine_gtiff.imarray)
+        actual_bounds = np.array(
+            [
+                affine_gtiff.header["profile"]["transform"] * (0, 0),
+                affine_gtiff.header["profile"]["transform"]
+                * (affine_gtiff.width, affine_gtiff.height),
+            ]
+        )
+        expected_bounds = np.array(
+            [
+                [polygon[:, 0].min(), polygon[:, 1].min()],
+                [polygon[:, 0].max(), polygon[:, 1].max()],
+            ]
+        )
+        np.testing.assert_allclose(
+            np.sort(actual_bounds, axis=0), expected_bounds, atol=0.02
+        )
+
+    def test_convert_to_affine_tall_rectangle_preserves_pixel_scale(self, shared_data):
+        """Tall rectangles keep non-zero pixel scale in affine mode."""
+        test_data = shared_data["test_data"]
+        gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom_part)
+        gtiff._imarray = gtiff.imarray
+
+        polygon = np.array(
+            [
+                [368025.0, 3955477.0],
+                [368026.0, 3955477.0],
+                [368026.0, 3955482.0],
+                [368025.0, 3955482.0],
+            ]
+        )
+        gtiff.set_mask_polygon(polygon, is_geo=True)
+
+        affine_gtiff = gtiff.convert_to_affine()
+        standard_gtiff = affine_gtiff.convert_from_affine()
+
+        assert np.all(np.asarray(affine_gtiff.header["scale"]) > 0)
+        assert standard_gtiff.width > 0
+        assert standard_gtiff.height > 0
+
+    def test_convert_to_affine_rotated_rectangle_ignores_vertex_order(self, shared_data):
+        """Rotated rectangle affine output is independent of start and winding."""
+        test_data = shared_data["test_data"]
+        polygon = np.array(
+            [
+                [368019.2, 3955513.7],
+                [368021.1, 3955514.1],
+                [368021.5, 3955512.2],
+                [368019.6, 3955511.8],
+            ]
+        )
+        variants = [
+            polygon,
+            np.roll(polygon, -1, axis=0),
+            polygon[::-1],
+            polygon[[0, 2, 1, 3]],
+        ]
+
+        corner_sets = []
+        shapes = []
+        for variant in variants:
+            gtiff = idp.GeoTiff(test_data.pix4d.lotus_dom)
+            gtiff._imarray = gtiff.imarray
+            gtiff.set_mask_polygon(variant, is_geo=True)
+            affine_gtiff = gtiff.convert_to_affine()
+
+            assert np.any(affine_gtiff.imarray)
+            shapes.append(affine_gtiff.imarray.shape)
+            corner_sets.append(_affine_pixel_corners(affine_gtiff))
+
+        assert shapes == [shapes[0]] * len(shapes)
+        for corners in corner_sets[1:]:
+            _assert_same_corner_set(corners, corner_sets[0], atol=0.02)
 
     def test_convert_to_affine_returns_new_object(self, shared_data):
         """convert_to_affine returns a new GeoTiff, original unchanged."""

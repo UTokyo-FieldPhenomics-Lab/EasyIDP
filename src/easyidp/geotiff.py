@@ -339,9 +339,12 @@ class GeoTiff(object):
             raise ValueError("No mask polygon set. Use set_mask_polygon first.")
 
         polygon_geo = self.mask_polygon_geo
-        is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
+        if polygon_geo is None:
+            raise ValueError("No mask polygon set. Use set_mask_polygon first.")
 
-        if not is_rect:
+        rect_info = self._get_rectangle_affine_info(polygon_geo)
+
+        if rect_info is None:
             raise ValueError(
                 "Polygon is not a valid rectangle. Cannot convert to affine mode."
             )
@@ -355,7 +358,7 @@ class GeoTiff(object):
             raise ValueError("Could not load image data for affine conversion.")
 
         new_imarray, new_profile = self._prepare_affine_storage(
-            imarray.copy(), profile, polygon_geo, angle, bounds
+            imarray.copy(), profile, rect_info
         )
 
         # Build new header
@@ -364,10 +367,7 @@ class GeoTiff(object):
         new_header["width"] = new_profile["width"]
         new_header["height"] = new_profile["height"]
         new_header["transform"] = new_profile["transform"]
-        new_header["scale"] = [
-            abs(new_profile["transform"].a),
-            abs(new_profile["transform"].e),
-        ]
+        new_header["scale"] = self._transform_pixel_sizes(new_profile["transform"])
 
         # Create new GeoTiff object
         new_gtiff = GeoTiff(imarray=new_imarray, header=new_header)
@@ -375,7 +375,7 @@ class GeoTiff(object):
         new_gtiff._mask_polygon_is_geo = self._mask_polygon_is_geo
         new_gtiff._use_affine = True
 
-        logger.info(f"Converted to affine mode with {angle:.1f}° rotation")
+        logger.info(f"Converted to affine mode with {rect_info['angle']:.1f}° rotation")
         return new_gtiff
 
     def convert_from_affine(self, target_bounds: tuple | None = None) -> "GeoTiff":
@@ -435,8 +435,7 @@ class GeoTiff(object):
             min_x, min_y, max_x, max_y = target_bounds
 
         # Use same pixel size
-        pixel_size_x = abs(old_transform.a)
-        pixel_size_y = abs(old_transform.e)
+        pixel_size_x, pixel_size_y = self._transform_pixel_sizes(old_transform)
 
         # Calculate output dimensions
         out_width = int(np.ceil((max_x - min_x) / pixel_size_x))
@@ -522,6 +521,28 @@ class GeoTiff(object):
         for i, (gx, gy) in enumerate(polygon):
             pixel_coords[i] = ~transform * (gx, gy)
         return pixel_coords
+
+    def _transform_pixel_sizes(self, transform) -> list[float]:
+        """Calculate pixel sizes from affine column and row vectors.
+
+        Parameters
+        ----------
+        transform : affine.Affine
+            Raster affine transform.
+
+        Returns
+        -------
+        list of float
+            Pixel size along image x and y axes.
+
+        Examples
+        --------
+        >>> gtiff._transform_pixel_sizes(transform)
+        [0.01, 0.01]
+        """
+        pixel_size_x = float(np.hypot(transform.a, transform.d))
+        pixel_size_y = float(np.hypot(transform.b, transform.e))
+        return [pixel_size_x, pixel_size_y]
 
     def _polygon_to_binary(self, polygon_pixel: np.ndarray) -> np.ndarray:
         """Convert pixel polygon to binary mask.
@@ -955,16 +976,25 @@ class GeoTiff(object):
         polygon_wkt = None
         if self._mask_polygon is not None:
             polygon_geo = self.mask_polygon_geo
-            polygon_wkt = Polygon(polygon_geo).wkt
+            if polygon_geo is None:
+                polygon_wkt = None
+            else:
+                polygon_wkt = Polygon(polygon_geo).wkt
 
             if use_affine:
-                is_rect, angle, bounds = self._is_valid_rectangle(polygon_geo)
-                if is_rect:
+                rect_info = (
+                    self._get_rectangle_affine_info(polygon_geo)
+                    if polygon_geo is not None
+                    else None
+                )
+                if rect_info is not None:
                     # Prepare affine rotated storage (only for saved file)
                     imarray, profile = self._prepare_affine_storage(
-                        imarray, profile, polygon_geo, angle, bounds
+                        imarray, profile, rect_info
                     )
-                    logger.info(f"Affine mode: saved with {angle:.1f}° rotation")
+                    logger.info(
+                        f"Affine mode: saved with {rect_info['angle']:.1f}° rotation"
+                    )
                     apply_mask = False  # No mask needed in affine mode
                 else:
                     logger.warning(
@@ -1067,13 +1097,140 @@ class GeoTiff(object):
 
         return True, rotation, (origin[0], origin[1], width, height)
 
+    def _get_rectangle_affine_info(self, polygon: np.ndarray) -> dict | None:
+        """Build order-independent rectangle geometry for affine storage.
+
+        Parameters
+        ----------
+        polygon : numpy.ndarray
+            Rectangle vertices in geo coordinates, optionally closed.
+
+        Returns
+        -------
+        dict or None
+            Geometry with origin, column vector, row vector, width, height, and angle.
+
+        Examples
+        --------
+        >>> info = gtiff._get_rectangle_affine_info(polygon)
+        >>> info["origin"].shape
+        (2,)
+        """
+        pts = self._sort_rectangle_points(polygon)
+        if pts is None or not self._is_ordered_rectangle(pts):
+            return None
+
+        next_pts = np.roll(pts, -1, axis=0)
+        edges = next_pts - pts
+        edge_lengths = np.linalg.norm(edges, axis=1)
+        min_length = np.min(edge_lengths)
+        max_length = np.max(edge_lengths)
+        if max_length / min_length > 1.2:
+            width_edges = np.where(np.isclose(edge_lengths, max_length, rtol=1e-5))[0]
+        else:
+            width_edges = np.arange(4)
+        edge_midpoints = (pts + next_pts) / 2
+        top_idx = int(width_edges[np.argmax(edge_midpoints[width_edges, 1])])
+
+        origin = pts[top_idx].copy()
+        edge = next_pts[top_idx] - origin
+        if edge[0] < 0 or (np.isclose(edge[0], 0.0) and edge[1] < 0):
+            origin = next_pts[top_idx].copy()
+            edge = pts[top_idx] - origin
+
+        width = np.linalg.norm(edge)
+        if width < 1e-10:
+            return None
+
+        col_vec = edge / width
+        center_vec = pts.mean(axis=0) - (origin + edge / 2)
+        row_vec = np.array([col_vec[1], -col_vec[0]])
+        if np.dot(row_vec, center_vec) < 0:
+            row_vec = -row_vec
+
+        height = np.max(np.dot(pts - origin, row_vec))
+        if height < 1e-10:
+            return None
+
+        angle = np.degrees(np.arctan2(col_vec[1], col_vec[0]))
+        return {
+            "origin": origin,
+            "col_vec": col_vec,
+            "row_vec": row_vec,
+            "width": width,
+            "height": height,
+            "angle": angle,
+        }
+
+    def _sort_rectangle_points(self, polygon: np.ndarray) -> np.ndarray | None:
+        """Sort four rectangle vertices around their centroid.
+
+        Parameters
+        ----------
+        polygon : numpy.ndarray
+            Polygon vertices, optionally closed.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Four vertices ordered around the centroid, or None for invalid input.
+
+        Examples
+        --------
+        >>> pts = gtiff._sort_rectangle_points(polygon)
+        >>> len(pts)
+        4
+        """
+        pts = np.asarray(polygon, dtype=float)
+        if pts.ndim != 2 or pts.shape[1] != 2:
+            return None
+        if len(pts) > 1 and np.allclose(pts[0], pts[-1], rtol=0, atol=1e-6):
+            pts = pts[:-1]
+        if len(pts) != 4:
+            return None
+
+        center = pts.mean(axis=0)
+        angles = np.arctan2(pts[:, 1] - center[1], pts[:, 0] - center[0])
+        return pts[np.argsort(angles)]
+
+    def _is_ordered_rectangle(self, pts: np.ndarray) -> bool:
+        """Check whether centroid-ordered points form a rectangle.
+
+        Parameters
+        ----------
+        pts : numpy.ndarray
+            Four vertices ordered around the centroid.
+
+        Returns
+        -------
+        bool
+            True if adjacent edges are non-zero and nearly perpendicular.
+
+        Examples
+        --------
+        >>> gtiff._is_ordered_rectangle(np.array([[0, 0], [1, 0], [1, 1], [0, 1]]))
+        True
+        """
+        edges = np.roll(pts, -1, axis=0) - pts
+        lengths = np.linalg.norm(edges, axis=1)
+        if np.any(lengths < 1e-10):
+            return False
+
+        for i in range(4):
+            v1 = edges[i] / lengths[i]
+            v2 = edges[(i + 1) % 4] / lengths[(i + 1) % 4]
+            dot = np.clip(np.dot(v1, v2), -1, 1)
+            angle_deg = np.degrees(np.arccos(np.abs(dot)))
+            if not np.isclose(angle_deg, 90.0, atol=2.0):
+                return False
+
+        return True
+
     def _prepare_affine_storage(
         self,
         imarray: np.ndarray,
         profile: dict,
-        polygon_geo: np.ndarray,
-        angle: float,
-        bounds: tuple,
+        rect_info: dict,
     ) -> tuple[np.ndarray, dict]:
         """Prepare image and profile for affine rotation storage.
 
@@ -1087,12 +1244,8 @@ class GeoTiff(object):
             Original image array (height, width, bands).
         profile : dict
             Rasterio profile to modify.
-        polygon_geo : np.ndarray
-            (n, 2) rectangle polygon in geo coordinates.
-        angle : float
-            Rotation angle in degrees.
-        bounds : tuple
-            (origin_x, origin_y, width, height) from _is_valid_rectangle.
+        rect_info : dict
+            Rectangle geometry from _get_rectangle_affine_info().
 
         Returns
         -------
@@ -1104,7 +1257,11 @@ class GeoTiff(object):
         from rasterio.transform import Affine
         from scipy.ndimage import map_coordinates
 
-        origin_x, origin_y, rect_width, rect_height = bounds
+        origin = rect_info["origin"]
+        col_vec = rect_info["col_vec"]
+        row_vec = rect_info["row_vec"]
+        rect_width = rect_info["width"]
+        rect_height = rect_info["height"]
 
         # Get current transform
         old_transform = profile["transform"]
@@ -1125,26 +1282,20 @@ class GeoTiff(object):
         out_width = int(np.ceil(pixel_width))
         out_height = int(np.ceil(pixel_height))
 
-        # Build rotation matrix for sampling
-        # Angle is the rotation from horizontal to the first edge
-        rad = np.radians(angle)
-        cos_a, sin_a = np.cos(rad), np.sin(rad)
-
         # Create output coordinate grids
         # For each output pixel (row, col), find corresponding geo coordinate
         out_rows, out_cols = np.mgrid[0:out_height, 0:out_width]
 
-        # Transform output pixels to geo coordinates
-        # Note: In GeoTiff, rows increase downward but geo Y increases upward
-        # So we need to go along the rectangle edges:
-        # - Column direction: along first edge (angle direction)
-        # - Row direction: perpendicular to first edge (angle + 90 degrees)
-        # For row, we subtract because row 0 is at origin (top of rectangle in geo)
+        # Transform output pixels to geo coordinates using explicit edge vectors.
         geo_x = (
-            origin_x + out_cols * pixel_size_x * cos_a + out_rows * pixel_size_y * sin_a
+            origin[0]
+            + out_cols * pixel_size_x * col_vec[0]
+            + out_rows * pixel_size_y * row_vec[0]
         )
         geo_y = (
-            origin_y + out_cols * pixel_size_x * sin_a - out_rows * pixel_size_y * cos_a
+            origin[1]
+            + out_cols * pixel_size_x * col_vec[1]
+            + out_rows * pixel_size_y * row_vec[1]
         )
 
         # Transform geo coordinates to input pixel coordinates
@@ -1172,12 +1323,14 @@ class GeoTiff(object):
                     cval=0,
                 ).astype(imarray.dtype)
 
-        # Build new affine transform with rotation
-        # Affine.translation * Affine.rotation * Affine.scale
-        new_transform = (
-            Affine.translation(origin_x, origin_y)
-            * Affine.rotation(angle)
-            * Affine.scale(pixel_size_x, -pixel_size_y)
+        # Build new affine transform from the same vectors used for sampling.
+        new_transform = Affine(
+            pixel_size_x * col_vec[0],
+            pixel_size_y * row_vec[0],
+            origin[0],
+            pixel_size_x * col_vec[1],
+            pixel_size_y * row_vec[1],
+            origin[1],
         )
 
         # Update profile

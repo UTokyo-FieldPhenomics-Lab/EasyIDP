@@ -1,236 +1,882 @@
-# Data/Dataset v2.1 Refactor Implementation Plan
+# Data/Dataset v2.1 Simplified Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将 EasyIDP 的 data/dataset 层重构为无导入网络副作用、显式下载、可配置数据目录、可测试且未来 MCP/skills 友好的 v2.1 架构。
+**Goal:** Replace the old download-heavy `easyidp.data` module with a small official demo-data shortcut layer backed by JSON dataset manifests.
 
-**Architecture:** 保留用户侧短入口 `idp.data.Lotus()`、`idp.data.ForestBirds()`、`idp.data.TestData()`，但构造只做本地轻量状态检查，不下载、不解压、不交互。新增 `idp.config` 作为 JSON 持久化配置入口，`data` 层通过 `DatasetSpec`、`DatasetRegistry`、`Dataset`、`DatasetDownloader` 和安全解压明确组织职责；MCP/skills 直接调用 Python API，不依赖命令行包装。
+**Architecture:** `easyidp.data` is not a general dataset framework. It only exposes official demo datasets through short path attributes such as `idp.data.Lotus().ms.project` so docs and examples do not need long file strings. Dataset metadata and file mappings live in `src/easyidp/data/datasets/*.json`; `dataset.py` parses those manifests and builds path namespaces dynamically.
 
-**Tech Stack:** Python 3.10+, dataclasses, pathlib, json, pytest, gdown, oss2, tqdm, uv
+**Tech Stack:** Python 3.10+, `json`, `dataclasses`, `pathlib`, `zipfile`, `pytest`, optional `gdown`, optional `openxlab`, `uv`.
 
 ---
 
-## Confirmed Design Decisions
+## Starting Point
 
-- Public dataset names remain short: `Lotus`, `ForestBirds`, `TestData`; do not require users to type `LotusDataset`.
-- Constructor behavior is medium breaking: `idp.data.Lotus()` no longer downloads, but if existing local cache is complete, old downstream code can use the returned paths directly.
-- Missing local data should trigger a concise `logger.warning()` with dry-run summary and `.download()` guidance when `notify_missing=True`.
-- Dataset downloads, temporary archives, temporary extraction directories, manifests, and final extracted datasets live under the configured EasyIDP data directory.
-- Persistent configuration uses JSON through `idp.config`; environment variables are not the primary configuration API.
-- Initial config fields are `data_dir`, `log_level`, and `show_banner`.
-- Aliyun mirror usage must be explicit and non-interactive: `download(mirror="aliyun", confirm=True)`.
-- `DatasetRegistry` is an internal/advanced foundation; ordinary docs should lead with `idp.data.Lotus()` and helper functions such as `idp.data.list_datasets()`.
-- No CLI is implemented in this phase; test setup, CI, MCP, and skills should use the Python API directly.
+- Base commit: `bac752b2ac337b2948fc56a37d2a94743fab9bbf`.
+- Work branch: create from the base commit, for example `data-json-plan`.
+- Current baseline note: `uv run pytest tests/test_config.py -q` may fail at collection with `ModuleNotFoundError: No module named 'easyidp'` in this old worktree. Resolve packaging/test collection before relying on full-suite results.
+
+## Design Decisions
+
+- Keep only short class entry points: `idp.data.Lotus()`, `idp.data.ForestBirds()`, and `idp.data.TestData()`.
+- Remove `ALIASES`, `DatasetRegistry`, `registry`, `_builtin.py`, `paths.py`, `errors.py`, `testing.py`, `get_spec()`, `get_dataset()`, `download_all()`, `show_data_dir()`, `url_checker()`, and `user_data_dir()`.
+- Do not download, extract, prompt, import `oss2`/`openxlab`, or perform network checks during import or dataset construction.
+- Replace Aliyun OSS downloads with OpenXLab dataset downloads. Users provide their own OpenXLab Access Key and Secret Key through `idp.config`, so EasyIDP no longer ships or fetches maintainer-owned OSS credentials.
+- OpenXLab dataset page: `https://openxlab.org.cn/datasets/HowcanoeWang/easyidp-demo-dataset/tree/main`; use dataset repo id `HowcanoeWang/easyidp-demo-dataset` in manifests and downloader tests.
+- Keep `gdown` and `openxlab` out of core dependencies. Provide them as optional extras and import them lazily only when `.download(mirror="gdrive")` or `.download(mirror="openxlab")` is called. If the optional package is missing, raise a clear install hint instead of installing packages implicitly at runtime.
+- Read the default data root and OpenXLab credentials only from `idp.config.get()`. `EasyIDPConfig` is a pure Python dataclass/json config object, not Pydantic.
+- Use built-in exceptions where possible: `ValueError` for bad manifests or mirror names, `RuntimeError` for failed downloads or missing OpenXLab credentials, and `zipfile.BadZipFile` for invalid archives.
+- Do not keep compatibility with the current temporary v2.1 `DatasetSpec`/registry API because it has not shipped.
+- Documentation must describe `data` as optional demo data convenience, not as a required data ingestion path. Core EasyIDP APIs continue accepting normal file paths directly.
 
 ## Target File Structure
 
-- Create: `src/easyidp/config.py`
-  - Owns `EasyIDPConfig`, JSON load/save/reset, default data directory, and package settings.
-- Replace file with package: `src/easyidp/data.py` -> `src/easyidp/data/`
-  - `src/easyidp/data/__init__.py`: public data exports only.
-  - `src/easyidp/data/spec.py`: `DatasetSpec`, `DownloadPlan`, `DownloadResult`, `DatasetValidationResult`.
-  - `src/easyidp/data/registry.py`: alias resolution and built-in spec/factory registry.
-  - `src/easyidp/data/dataset.py`: base `Dataset`, short user-facing dataset classes, path helpers.
-  - `src/easyidp/data/_builtin.py`: built-in dataset specs and logical file maps.
-  - `src/easyidp/data/paths.py`: data root, archive path, temporary path helpers.
-  - `src/easyidp/data/extract.py`: safe zip extraction.
-  - `src/easyidp/data/downloader.py`: mirror selection, download, checksum, atomic extraction.
-  - `src/easyidp/data/testing.py`: `TestData` path bundle classes.
-  - `src/easyidp/data/errors.py`: structured data exceptions.
-- Modify: `src/easyidp/__init__.py`
-  - Export `config`; remove import-time network checks, `GOOGLE_AVAILABLE`, `aliyun_down`, runtime `oss2` installation, and data-specific `user_data_dir`.
-- Modify: `src/easyidp/logger.py`
-  - Read log level from `idp.config` after config exists, while avoiding circular import.
-- Modify: `tests/test_data.py`, `tests/__init__.py`, data-consuming tests.
-  - Replace module-level data downloads with fixtures and explicit skip/error behavior.
-- Create: `tests/test_config.py`, `tests/test_data_registry.py`, `tests/test_data_dataset.py`, `tests/test_data_downloader.py`.
-- Modify docs: `docs/python_api/data.rst`, `docs/contribute.rst`, relevant autodoc pages.
+```text
+src/easyidp/
+  config.py                         # Existing JSON-backed package config.
+  __init__.py                        # Remove user_data_dir; keep config export.
+  data/
+    __init__.py                      # Public exports only.
+    dataset.py                       # Dataset, internal _PathNamespace, Lotus, ForestBirds, TestData.
+    downloader.py                    # Explicit archive download and safe extraction.
+    datasets/
+      lotus.json                     # Lotus manifest.
+      forestbirds.json               # ForestBirds manifest.
+      testdata.json                  # TestData manifest.
+      download_smoke.json            # Tiny manual-only mirror smoke-test manifest.
+```
+
+## Manifest Shape
+
+Each JSON manifest must use this shape:
+
+```json
+{
+  "spec": {
+    "name": "lotus",
+    "title": "Tanashi Lotus 2017",
+    "archive": "2017_tanashi_lotus.zip",
+    "folder": "2017_tanashi_lotus",
+    "size_bytes": 3300000000,
+    "mirrors": {
+      "gdrive": {
+        "file_id": "1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j"
+      },
+      "openxlab": {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/2017_tanashi_lotus.zip"
+      }
+    },
+    "description": "Official EasyIDP demo dataset."
+  },
+  "required": ["shp", "ms.project", "p4d.dom"],
+  "files": {
+    "photo": "20170531/photos",
+    "shp": "plots.shp",
+    "ms.project": "170531.Lotus.psx",
+    "ms.param": "170531.Lotus.files",
+    "ms.dom": "170531.Lotus.outputs/170531.Lotus_dom.tif",
+    "ms.dsm": "170531.Lotus.outputs/170531.Lotus_dsm.tif",
+    "ms.pcd": "170531.Lotus.outputs/170531.Lotus.laz",
+    "p4d.project": "20170531",
+    "p4d.param": "20170531/params"
+  }
+}
+```
 
 ---
 
-### Task 1: Add JSON-backed `idp.config`
+### Task 1: Replace Data Tests With Simplified API Tests
 
 **Files:**
 
-- Create: `src/easyidp/config.py`
-- Modify: `src/easyidp/__init__.py`
-- Test: `tests/test_config.py`
+- Modify: `tests/test_data.py`
+- Test: `tests/test_data.py`
 
-- [ ] **Step 1: Write failing config tests**
+- [ ] **Step 1: Replace old network-heavy tests**
 
-Add `tests/test_config.py`:
+Replace `tests/test_data.py` with tests for JSON manifests, short paths, no import-time download, and explicit config-driven roots:
 
 ```python
 from pathlib import Path
 
 import easyidp as idp
-from easyidp.config import EasyIDPConfig
 
 
-def test_default_config_uses_default_data_dir(tmp_path):
-    config = EasyIDPConfig(config_path=tmp_path / "config.json")
+def test_lotus_paths_are_short_namespaces(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
 
-    assert config.data_dir.name == "easyidp.data"
-    assert config.log_level == "INFO"
-    assert config.show_banner is True
+    assert lotus.name == "lotus"
+    assert lotus.title == "Tanashi Lotus 2017"
+    assert lotus.root == tmp_path / "2017_tanashi_lotus"
+    assert lotus.archive == tmp_path / ".downloads" / "2017_tanashi_lotus.zip"
+    assert lotus.shp == lotus.root / "plots.shp"
+    assert lotus.photo == lotus.root / "20170531" / "photos"
+    assert lotus.ms.project == lotus.root / "170531.Lotus.psx"
+    assert lotus.ms.dom == lotus.root / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
+    assert lotus.p4d.project == lotus.root / "20170531"
+    assert lotus.p4d.param == lotus.root / "20170531" / "params"
 
 
-def test_update_changes_session_without_saving(tmp_path):
+def test_forestbirds_paths_are_short_namespaces(tmp_path):
+    birds = idp.data.ForestBirds(cache_root=tmp_path, notify_missing=False)
+
+    assert birds.name == "forestbirds"
+    assert birds.root == tmp_path / "2022_florida_forestbirds"
+    assert birds.shp == birds.root / "Hidden_Little_grid.shp"
+    assert birds.ms.project == birds.root / "Hidden_Little_03_24_2022.psx"
+    assert not hasattr(birds, "p4d")
+
+
+def test_path_namespace_supports_nested_paths(tmp_path):
+    from easyidp.data.dataset import _PathNamespace
+
+    namespace = _PathNamespace(
+        tmp_path,
+        {"ms": {"outputs": {"dom": "dom.tif"}}},
+    )
+
+    assert namespace.ms.outputs.dom == tmp_path / "dom.tif"
+
+
+def test_testdata_uses_same_manifest_paths_as_runtime(tmp_path):
+    data = idp.data.TestData(cache_root=tmp_path, test_out=tmp_path / "out", notify_missing=False)
+
+    assert data.name == "testdata"
+    assert data.root == tmp_path / "data_for_tests"
+    assert data.ms.lotus_psx == data.root / "metashape" / "Lotus.psx"
+    assert data.p4d.lotus_folder == data.root / "pix4d" / "lotus_tanashi_full"
+    assert data.shp.lotus_shp == data.root / "shp_test" / "lotus_plots.shp"
+    assert data.tiff.soyweed_part == data.root / "tiff_test" / "2_12.tif"
+    assert data.test_out == tmp_path / "out"
+    assert data.shp.out == tmp_path / "out" / "shp_test"
+
+
+def test_constructor_does_not_create_cache_dirs(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+
+    assert not lotus.root.exists()
+    assert not lotus.archive.parent.exists()
+
+
+def test_is_ready_uses_required_keys_only(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    for key in lotus.required:
+        path = lotus.path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+
+    assert lotus.is_ready()
+
+
+def test_dry_run_is_json_friendly(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    plan = lotus.dry_run()
+
+    assert plan["name"] == "lotus"
+    assert plan["ready"] is False
+    assert plan["needs_download"] is True
+    assert isinstance(plan["root"], str)
+    assert isinstance(plan["archive"], str)
+    assert "plots.shp" in plan["missing"]
+
+
+def test_data_root_comes_from_config(tmp_path):
+    old_dir = idp.config.get().data_dir
+    try:
+        idp.config.update(data_dir=tmp_path / "configured")
+        lotus = idp.data.Lotus(notify_missing=False)
+        assert lotus.root == tmp_path / "configured" / "2017_tanashi_lotus"
+    finally:
+        idp.config.update(data_dir=old_dir)
+
+
+def test_public_api_is_small():
+    assert hasattr(idp.data, "Lotus")
+    assert hasattr(idp.data, "ForestBirds")
+    assert hasattr(idp.data, "TestData")
+    assert hasattr(idp.data, "list_datasets")
+    assert not hasattr(idp.data, "DatasetRegistry")
+    assert not hasattr(idp.data, "registry")
+    assert not hasattr(idp.data, "user_data_dir")
+    assert not hasattr(idp.data, "PathNamespace")
+```
+
+- [ ] **Step 2: Run tests and confirm failure**
+
+Run: `uv run pytest tests/test_data.py -q`
+
+Expected: fail because the old `easyidp.data` is still a single module with network-heavy classes and no JSON-backed namespaces.
+
+---
+
+### Task 2: Add JSON Manifests
+
+**Files:**
+
+- Create: `src/easyidp/data/datasets/lotus.json`
+- Create: `src/easyidp/data/datasets/forestbirds.json`
+- Create: `src/easyidp/data/datasets/testdata.json`
+- Create: `src/easyidp/data/datasets/download_smoke.json`
+- Test: `tests/test_data.py`
+
+- [ ] **Step 1: Create `lotus.json`**
+
+```json
+{
+  "spec": {
+    "name": "lotus",
+    "title": "Tanashi Lotus 2017",
+    "folder": "2017_tanashi_lotus",
+    "archive": "2017_tanashi_lotus.zip",
+    "size_bytes": 3300000000,
+    "mirrors": {
+      "gdrive": {
+        "file_id": "1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j"
+      },
+      "openxlab": {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/2017_tanashi_lotus.zip"
+      }
+    },
+    "description": "Official EasyIDP lotus demo dataset from Tanashi, Tokyo."
+  },
+  "required": ["shp", "ms.project", "p4d.dom", "p4d.dsm"],
+  "files": {
+    "photo": "20170531/photos",
+    "shp": "plots.shp",
+    "ms.project": "170531.Lotus.psx",
+    "ms.param": "170531.Lotus.files",
+    "ms.dom": "170531.Lotus.outputs/170531.Lotus_dom.tif",
+    "ms.dsm": "170531.Lotus.outputs/170531.Lotus_dsm.tif",
+    "ms.pcd": "170531.Lotus.outputs/170531.Lotus.laz",
+    "p4d.project": "20170531",
+    "p4d.param": "20170531/params",
+    "p4d.dom": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif",
+    "p4d.dsm": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif",
+    "p4d.pcd": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply"
+  }
+}
+```
+
+- [ ] **Step 2: Create `forestbirds.json`**
+
+```json
+{
+  "spec": {
+    "name": "forestbirds",
+    "title": "Florida Forest Birds 2022",
+    "folder": "2022_florida_forestbirds",
+    "archive": "2022_florida_forestbirds.zip",
+    "size_bytes": 1970000000,
+    "mirrors": {
+      "gdrive": {
+        "file_id": "1mXkzaoSSCAA87cxcMHKL6_VNlykRYxJr"
+      },
+      "openxlab": {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/2022_florida_forestbirds.zip"
+      }
+    },
+    "description": "Official EasyIDP forest birds demo dataset from Florida."
+  },
+  "required": ["shp", "ms.project", "ms.dom", "ms.dsm"],
+  "files": {
+    "photo": "Hidden_Little_03_24_2022",
+    "shp": "Hidden_Little_grid.shp",
+    "ms.project": "Hidden_Little_03_24_2022.psx",
+    "ms.param": "Hidden_Little_03_24_2022.files",
+    "ms.dom": "Hidden_Little_03_24_2022.tiff",
+    "ms.dsm": "Hidden_Little_03_24_2022_DEM.tif"
+  }
+}
+```
+
+- [ ] **Step 3: Create `testdata.json`**
+
+Use the paths from old `TestData` and keep one manifest as the single source of truth:
+
+```json
+{
+  "spec": {
+    "name": "testdata",
+    "title": "EasyIDP Test Data",
+    "folder": "data_for_tests",
+    "archive": "data_for_tests.zip",
+    "size_bytes": 344000000,
+    "mirrors": {
+      "gdrive": {
+        "file_id": "17b_17CofqIuCVOWMnD67_wOnWMtwF8bw"
+      },
+      "openxlab": {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/data_for_tests.zip"
+      }
+    },
+    "description": "Official EasyIDP developer test data."
+  },
+  "required": ["shp.lotus_shp", "p4d.lotus_folder", "ms.lotus_psx"],
+  "files": {
+    "json.for_read_json": "json_test/for_read_json.json",
+    "json.labelme_demo": "json_test/labelme_demo_img.json",
+    "json.labelme_warn": "json_test/labelme_warn_img.json",
+    "json.labelme_err": "json_test/for_read_json.json",
+    "json.geojson_soy": "json_test/2023_soybean_field.geojson",
+    "ms.goya_psx": "metashape/goya_test.psx",
+    "ms.goya_param": "metashape/goya_test.files",
+    "ms.lotus_psx": "metashape/Lotus.psx",
+    "ms.lotus_param": "metashape/Lotus.files",
+    "ms.lotus_dsm": "metashape/Lotus.files/170531.Lotus_dsm.tif",
+    "ms.wheat_psx": "metashape/wheat_tanashi.psx",
+    "ms.wheat_param": "metashape/wheat_tanashi.files",
+    "ms.multichunk_psx": "metashape/multichunk.psx",
+    "ms.multichunk_param": "metashape/multichunk.files",
+    "ms.multifolder_psx": "metashape/multifolder.psx",
+    "ms.multifolder_param": "metashape/multifolder.files",
+    "ms.nestedfolder_psx": "metashape/nestedfolders.psx",
+    "ms.nestedfolder_param": "metashape/nestedfolders.files",
+    "ms.camera_disorder_psx": "metashape/camera_disorder.psx",
+    "ms.camera_disorder_param": "metashape/camera_disorder.files",
+    "ms.two_calib_psx": "metashape/two_calib.psx",
+    "ms.two_calib_param": "metashape/two_calib.files",
+    "ms.multi_spectral_psx": "metashape/multi_spectral.psx",
+    "ms.multi_spectral_param": "metashape/multi_spectral.files",
+    "p4d.lotus_folder": "pix4d/lotus_tanashi_full",
+    "p4d.lotus_param": "pix4d/lotus_tanashi_full/params",
+    "p4d.lotus_photos": "pix4d/lotus_tanashi_full/photos",
+    "p4d.lotus_dom": "pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif",
+    "p4d.lotus_dsm": "pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif",
+    "p4d.lotus_pcd": "pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_group1_densified_point_cloud.ply",
+    "p4d.lotus_dom_part": "pix4d/lotus_tanashi_full/plot_dom.tif",
+    "p4d.lotus_dsm_part": "pix4d/lotus_tanashi_full/plot_dsm.tif",
+    "p4d.lotus_pcd_part": "pix4d/lotus_tanashi_full/plot_pcd.ply",
+    "p4d.maize_folder": "pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d",
+    "p4d.maize_dom": "pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/3_dsm_ortho/2_mosaic/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_transparent_mosaic_group1.tif",
+    "p4d.maize_dsm": "pix4d/maize_tanashi/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d/3_dsm_ortho/1_dsm/maize_tanashi_3NA_20190729_Ins1Rgb_30m_pix4d_dsm.tif",
+    "p4d.maize_noparam": "pix4d/maize_tanashi/maize_tanashi_no_param",
+    "p4d.maize_empty": "pix4d/maize_tanashi/maize_tanashi_raname_empty_test",
+    "p4d.maize_noout": "pix4d/maize_tanashi/maize_tanashi_raname_no_outputs",
+    "shp.lotus_shp": "shp_test/lotus_plots.shp",
+    "shp.lotus_prj": "shp_test/lotus_plots.prj",
+    "shp.complex_shp": "shp_test/complex_shp_review.shp",
+    "shp.complex_prj": "shp_test/complex_shp_review.prj",
+    "shp.lonlat_shp": "shp_test/lon_lat.shp",
+    "shp.utm53n_shp": "shp_test/lon_lat_utm53n.shp",
+    "shp.utm53n_prj": "shp_test/lon_lat_utm53n.prj",
+    "shp.rice_shp": "shp_test/rice_ind_duplicate.shp",
+    "shp.rice_prj": "shp_test/rice_ind_duplicate.prj",
+    "shp.roi_shp": "shp_test/roi.shp",
+    "shp.roi_prj": "shp_test/roi.prj",
+    "shp.testutm_shp": "shp_test/test_utm.shp",
+    "shp.testutm_prj": "shp_test/test_utm.prj",
+    "shp.jp_crs_shp": "shp_test/jp_crs.shp",
+    "shp.jp_crs_prj": "shp_test/jp_crs.prj",
+    "shp.mlayer_shp": "shp_test/mlayer_roi.shp",
+    "shp.mask_rice_roi": "shp_test/mask_rice_grid_32.shp",
+    "shp.mask_rice_prj": "shp_test/mask_rice_grid_32.prj",
+    "shp.mask_rice_gt_shp": "shp_test/mask_rice_train_true_value.shp",
+    "shp.mask_rice_gt_prj": "shp_test/mask_rice_train_true_value.prj",
+    "pcd.lotus_las": "pcd_test/hasu_tanashi.las",
+    "pcd.lotus_laz": "pcd_test/hasu_tanashi.laz",
+    "pcd.lotus_pcd": "pcd_test/hasu_tanashi.pcd",
+    "pcd.lotus_las13": "pcd_test/hasu_tanashi_1.3.las",
+    "pcd.lotus_laz13": "pcd_test/hasu_tanashi_1.3.laz",
+    "pcd.lotus_ply_asc": "pcd_test/hasu_tanashi_ascii.ply",
+    "pcd.lotus_ply_bin": "pcd_test/hasu_tanashi_binary.ply",
+    "pcd.maize_las": "pcd_test/maize3na_20210614_15m_utm.las",
+    "pcd.maize_laz": "pcd_test/maize3na_20210614_15m_utm.laz",
+    "pcd.maize_ply": "pcd_test/maize3na_20210614_15m_utm.ply",
+    "roi.dxf": "roi_test/hasu_tanashi_ccroi.dxf",
+    "roi.lxyz_txt": "roi_test/hasu_tanashi_lxyz.txt",
+    "roi.xyz_txt": "roi_test/hasu_tanashi_xyz.txt",
+    "tiff.soyweed_part": "tiff_test/2_12.tif",
+    "tiff.mlayer_ndvi": "tiff_test/mlayer_yamato_ndvi.tif",
+    "tiff.mlayer_multi": "tiff_test/mlayer_yamato_multi.tif",
+    "tiff.mask_rice_geotiff_empty_polygon": "tiff_test/mask_rice_grid_48.tif",
+    "tiff.mask_rice_geotiff_with_polygon": "tiff_test/mask_rice_grid_77.tif"
+  }
+}
+```
+
+- [ ] **Step 4: Create `download_smoke.json`**
+
+This manifest is only for explicit manual mirror checks. Do not expose it in `list_datasets()` or user-facing docs.
+
+```json
+{
+  "spec": {
+    "name": "download_smoke",
+    "title": "EasyIDP Download Smoke Test",
+    "folder": "download_smoke",
+    "archive": "gdown_test.zip",
+    "size_bytes": 2048,
+    "mirrors": {
+      "gdrive": {
+        "file_id": "1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ"
+      },
+      "openxlab": {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/gdown_test.zip"
+      }
+    },
+    "description": "Tiny archive for manual gdown and OpenXLab download smoke tests."
+  },
+  "required": ["file1.txt"],
+  "files": {
+    "file1": "file1.txt",
+    "folder1": "folder1"
+  }
+}
+```
+
+- [ ] **Step 5: Run tests and confirm they still fail on missing implementation**
+
+Run: `uv run pytest tests/test_data.py -q`
+
+Expected: fail because `dataset.py` and the package layout are not implemented yet.
+
+---
+
+### Task 3: Replace `data.py` With a Small Data Package
+
+**Files:**
+
+- Delete: `src/easyidp/data.py`
+- Create: `src/easyidp/data/__init__.py`
+- Create: `src/easyidp/data/dataset.py`
+- Test: `tests/test_data.py`
+
+- [ ] **Step 1: Create `src/easyidp/data/dataset.py`**
+
+```python
+"""Official EasyIDP demo dataset shortcuts."""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Mapping
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any
+
+from easyidp import config
+from easyidp.logger import logger
+
+
+_MANIFEST_DIR = Path(__file__).parent / "datasets"
+
+
+class _PathNamespace:
+    """Recursive internal namespace for dataset paths.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        Dataset root directory.
+    tree : Mapping[str, str or Mapping]
+        Nested relative path mapping for this namespace.
+
+    Returns
+    -------
+    _PathNamespace
+        Object whose attributes are absolute paths or nested namespaces.
+
+    Examples
+    --------
+    >>> ns = _PathNamespace(Path('/data'), {'ms': {'project': 'demo.psx'}})
+    >>> ns.ms.project
+    PosixPath('/data/demo.psx')
+
+    Notes
+    -----
+    This class is the object side of dotted manifest keys. For example,
+    ``ms.outputs.dom`` becomes ``dataset.ms.outputs.dom``. It is not
+    exported from ``easyidp.data`` and is not part of the basic public API.
+    """
+
+    def __init__(self, root: Path, tree: Mapping[str, Any]) -> None:
+        self._root = root
+        for key, value in tree.items():
+            if isinstance(value, Mapping):
+                setattr(self, key, _PathNamespace(root, value))
+                continue
+            setattr(self, key, root / value)
+
+    def __truediv__(self, other: str) -> Path:
+        """Join a relative path below this namespace root."""
+        return self._root / other
+
+
+class Dataset:
+    """Official demo dataset path bundle.
+
+    Parameters
+    ----------
+    manifest_name : str
+        Manifest file stem under ``data/datasets``.
+    cache_root : pathlib.Path or str or None, optional
+        Override for ``idp.config.get().data_dir``.
+    notify_missing : bool, optional
+        Log a warning when required files are missing.
+
+    Returns
+    -------
+    Dataset
+        Dataset path bundle with short attributes.
+
+    Examples
+    --------
+    >>> lotus = Dataset('lotus', notify_missing=False)
+    >>> lotus.name
+    'lotus'
+    """
+
+    def __init__(
+        self,
+        manifest_name: str,
+        cache_root: Path | str | None = None,
+        notify_missing: bool = True,
+    ) -> None:
+        manifest = _load_manifest(manifest_name)
+        spec = manifest["spec"]
+        self.name = spec["name"]
+        self.title = spec["title"]
+        self.description = spec.get("description", "")
+        self.size_bytes = spec.get("size_bytes")
+        self.mirrors = MappingProxyType(dict(spec.get("mirrors", {})))
+        self.required = tuple(manifest.get("required", ()))
+        self.files = MappingProxyType(dict(manifest["files"]))
+
+        root = Path(cache_root).expanduser() if cache_root else config.get().data_dir
+        self.cache_root = root
+        self.root = root / spec["folder"]
+        self.archive = root / ".downloads" / spec["archive"]
+        self._build_path_attributes()
+
+        if notify_missing and not self.is_ready():
+            logger.warning(
+                "Dataset '{}' is not ready. Call .download() to fetch it.",
+                self.name,
+            )
+
+    @property
+    def data_dir(self) -> Path:
+        """Legacy alias for the dataset root."""
+        return self.root
+
+    @property
+    def zip_file(self) -> Path:
+        """Legacy alias for the downloaded archive path."""
+        return self.archive
+
+    def path(self, key: str) -> Path:
+        """Return the absolute path for a manifest file key."""
+        return self.root / self.files[key]
+
+    def is_ready(self) -> bool:
+        """Return whether required local files already exist."""
+        keys = self.required or tuple(self.files.keys())
+        return all(self.path(key).exists() for key in keys)
+
+    def dry_run(self) -> dict[str, Any]:
+        """Return a JSON-friendly local readiness summary."""
+        keys = self.required or tuple(self.files.keys())
+        missing = [self.files[key] for key in keys if not self.path(key).exists()]
+        return {
+            "name": self.name,
+            "root": str(self.root),
+            "archive": str(self.archive),
+            "ready": not missing,
+            "needs_download": bool(missing),
+            "size_bytes": self.size_bytes,
+            "mirrors": dict(self.mirrors),
+            "missing": missing,
+        }
+
+    def download(
+        self,
+        mirror: str = "auto",
+        force: bool = False,
+        progress: bool = True,
+    ) -> dict[str, Any]:
+        """Download and extract this dataset explicitly."""
+        from .downloader import download_dataset
+
+        return download_dataset(self, mirror, force, progress)
+
+    def _build_path_attributes(self) -> None:
+        tree: dict[str, Any] = {}
+        for key, rel_path in self.files.items():
+            _insert_path(tree, key.split("."), rel_path)
+        for key, value in tree.items():
+            if isinstance(value, Mapping):
+                setattr(self, key, _PathNamespace(self.root, value))
+                continue
+            setattr(self, key, self.root / value)
+
+
+class Lotus(Dataset):
+    """Tanashi lotus official demo dataset."""
+
+    def __init__(
+        self,
+        cache_root: Path | str | None = None,
+        notify_missing: bool = True,
+    ) -> None:
+        super().__init__("lotus", cache_root, notify_missing)
+
+
+class ForestBirds(Dataset):
+    """Florida forest birds official demo dataset."""
+
+    def __init__(
+        self,
+        cache_root: Path | str | None = None,
+        notify_missing: bool = True,
+    ) -> None:
+        super().__init__("forestbirds", cache_root, notify_missing)
+
+
+class TestData(Dataset):
+    """Developer test-data path bundle."""
+
+    __test__ = False
+
+    def __init__(
+        self,
+        test_out: str | Path = "./tests/out",
+        cache_root: Path | str | None = None,
+        notify_missing: bool = True,
+    ) -> None:
+        super().__init__("testdata", cache_root, notify_missing)
+        self.test_out = Path(test_out)
+        self._attach_test_out()
+
+    def _attach_test_out(self) -> None:
+        """Attach runtime-only test output directories.
+
+        JSON manifests only describe files shipped inside the downloaded
+        dataset. Test output paths such as ``test_data.shp.out`` depend on
+        the runtime ``test_out`` argument, so they are constructed here
+        instead of encoded in ``testdata.json``.
+        """
+        groups = ("json", "shp", "pcd", "tiff", "cv", "vis", "b2r")
+        names = {
+            "json": "json_test",
+            "shp": "shp_test",
+            "pcd": "pcd_test",
+            "tiff": "tiff_test",
+            "cv": "cv_test",
+            "vis": "visual_test",
+            "b2r": "back2raw_test",
+        }
+        for group in groups:
+            current = getattr(self, group, _PathNamespace(self.root, {}))
+            setattr(current, "out", self.test_out / names[group])
+            setattr(self, group, current)
+
+
+def list_datasets() -> list[str]:
+    """Return official demo dataset names."""
+    return ["lotus", "forestbirds", "testdata"]
+
+
+def _load_manifest(name: str) -> dict[str, Any]:
+    path = _MANIFEST_DIR / f"{name}.json"
+    if not path.exists():
+        raise ValueError(f"Unknown EasyIDP demo dataset: {name}")
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    _validate_manifest(path, manifest)
+    return manifest
+
+
+def _insert_path(tree: dict[str, Any], parts: list[str], rel_path: str) -> None:
+    """Insert one dotted manifest key into the namespace tree.
+
+    Parameters
+    ----------
+    tree : dict[str, Any]
+        Mutable nested namespace tree.
+    parts : list[str]
+        Dotted manifest key split into Python attribute names.
+    rel_path : str
+        Dataset-relative file path from the manifest.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Raises ``ValueError`` if a key would be both a path and namespace,
+    for example ``ms`` and ``ms.project`` in the same manifest.
+    """
+    current = tree
+    for part in parts[:-1]:
+        _validate_attr_name(part)
+        child = current.setdefault(part, {})
+        if not isinstance(child, dict):
+            raise ValueError(f"Dataset path key conflict at: {'.'.join(parts)}")
+        current = child
+
+    leaf = parts[-1]
+    _validate_attr_name(leaf)
+    if leaf in current:
+        raise ValueError(f"Duplicate or conflicting dataset path key: {'.'.join(parts)}")
+    current[leaf] = rel_path
+
+
+def _validate_attr_name(name: str) -> None:
+    """Validate one manifest key part as a public Python attribute.
+
+    Parameters
+    ----------
+    name : str
+        Attribute name from a dotted manifest key.
+
+    Returns
+    -------
+    None
+    """
+    if not name.isidentifier() or name.startswith("_"):
+        raise ValueError(f"Invalid dataset path attribute name: {name}")
+
+
+def _validate_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
+    for key in ("spec", "files"):
+        if key not in manifest:
+            raise ValueError(f"Dataset manifest {path} missing '{key}'")
+    spec = manifest["spec"]
+    for key in ("name", "title", "folder", "archive"):
+        if key not in spec:
+            raise ValueError(f"Dataset manifest {path} missing spec.{key}")
+```
+
+- [ ] **Step 2: Create `src/easyidp/data/__init__.py`**
+
+```python
+"""Official EasyIDP demo dataset shortcuts."""
+
+from .dataset import Dataset, ForestBirds, Lotus, TestData, list_datasets
+
+__all__ = [
+    "Dataset",
+    "ForestBirds",
+    "Lotus",
+    "TestData",
+    "list_datasets",
+]
+```
+
+- [ ] **Step 3: Delete `src/easyidp/data.py`**
+
+Run: `rm src/easyidp/data.py`
+
+Expected: the package directory `src/easyidp/data/` replaces the old module.
+
+- [ ] **Step 4: Run data tests**
+
+Run: `uv run pytest tests/test_data.py -q`
+
+Expected: pass all tests in `tests/test_data.py`.
+
+---
+
+### Task 4: Add Explicit Downloader With OpenXLab Mirror
+
+**Files:**
+
+- Modify: `pyproject.toml`
+- Modify: `src/easyidp/config.py`
+- Create: `src/easyidp/data/downloader.py`
+- Modify: `tests/test_config.py`
+- Modify: `tests/test_data.py`
+- Create: `tests/manual/test_data_download_smoke.py`
+- Test: `tests/test_config.py tests/test_data.py`
+
+- [ ] **Step 1: Add download backends as optional dependencies**
+
+Keep demo-data download backends out of `[project].dependencies`. If `gdown` is currently listed there, move it to optional extras. Add this block to `pyproject.toml`:
+
+```toml
+[project.optional-dependencies]
+gdrive = [
+    "gdown>=5.2.0",
+]
+openxlab = [
+    "openxlab>=0.1.2",
+]
+data = [
+    "gdown>=5.2.0",
+    "openxlab>=0.1.2",
+]
+```
+
+Users who need Google Drive downloads can install `easyidp[gdrive]`; users in mainland China who need OpenXLab can install `easyidp[openxlab]`. Normal EasyIDP users who never call `idp.data.*.download()` should not install either backend.
+
+- [ ] **Step 2: Add OpenXLab credential tests**
+
+Append these tests to `tests/test_config.py`:
+
+```python
+def test_config_stores_openxlab_credentials(tmp_path):
     config_path = tmp_path / "config.json"
     config = EasyIDPConfig(config_path=config_path)
-
-    config.update(data_dir=tmp_path / "data", log_level="DEBUG", show_banner=False)
-
-    assert config.data_dir == tmp_path / "data"
-    assert config.log_level == "DEBUG"
-    assert config.show_banner is False
-    assert not config_path.exists()
-
-
-def test_save_and_reload_json_config(tmp_path):
-    config_path = tmp_path / "config.json"
-    config = EasyIDPConfig(config_path=config_path)
-    config.update(data_dir=tmp_path / "data", log_level="WARNING", show_banner=False)
+    config.update(openxlab_access_key="test-ak", openxlab_secret_key="test-sk")
     config.save()
 
     loaded = EasyIDPConfig(config_path=config_path)
 
-    assert loaded.data_dir == tmp_path / "data"
-    assert loaded.log_level == "WARNING"
-    assert loaded.show_banner is False
+    assert loaded.openxlab_access_key == "test-ak"
+    assert loaded.openxlab_secret_key == "test-sk"
 
 
-def test_package_exports_config_entrypoint():
-    assert hasattr(idp, "config")
-    assert hasattr(idp.config, "get")
-    assert hasattr(idp.config, "update")
-    assert hasattr(idp.config, "save")
-    assert hasattr(idp.config, "reset")
+def test_reset_clears_openxlab_credentials(tmp_path):
+    config = EasyIDPConfig(config_path=tmp_path / "config.json")
+    config.update(openxlab_access_key="test-ak", openxlab_secret_key="test-sk")
+
+    config.reset()
+
+    assert config.openxlab_access_key == ""
+    assert config.openxlab_secret_key == ""
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [ ] **Step 3: Extend `EasyIDPConfig`**
 
-Run: `uv run pytest tests/test_config.py -q`
-
-Expected: fail because `easyidp.config` does not exist or lacks the tested API.
-
-- [ ] **Step 3: Implement `EasyIDPConfig`**
-
-Create `src/easyidp/config.py` with this public shape:
+Modify `src/easyidp/config.py` so `EasyIDPConfig` stores user-owned OpenXLab credentials:
 
 ```python
-import json
-import sys
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
-
-
-def default_config_path() -> Path:
-    """Return the default EasyIDP JSON config path.
-
-    Returns
-    -------
-    pathlib.Path
-        Platform-specific config file path.
-
-    Examples
-    --------
-    >>> default_config_path().name
-    'config.json'
-
-    Notes
-    -----
-    This function only computes a path and does not create files.
-    """
-    if sys.platform.startswith("win"):
-        root = Path.home() / "AppData" / "Roaming"
-    elif sys.platform.startswith("darwin"):
-        root = Path.home() / "Library" / "Application Support"
-    else:
-        root = Path.home() / ".config"
-    return root / "easyidp" / "config.json"
-
-
-def default_data_dir() -> Path:
-    """Return the default EasyIDP dataset directory.
-
-    Returns
-    -------
-    pathlib.Path
-        Platform-specific data root path.
-
-    Examples
-    --------
-    >>> default_data_dir().name
-    'easyidp.data'
-    """
-    if sys.platform.startswith("win"):
-        root = Path.home() / "AppData" / "Local"
-    elif sys.platform.startswith("darwin"):
-        root = Path.home() / "Library" / "Application Support"
-    else:
-        root = Path.home() / ".local" / "share"
-    return root / "easyidp.data"
-
-
 @dataclass
 class EasyIDPConfig:
-    """JSON-backed package configuration.
-
-    Parameters
-    ----------
-    config_path : pathlib.Path, optional
-        JSON config file path. Defaults to the platform user config path.
-
-    Returns
-    -------
-    EasyIDPConfig
-        Mutable session configuration object.
-
-    Examples
-    --------
-    >>> cfg = EasyIDPConfig()
-    >>> cfg.update(log_level="DEBUG")
-    >>> cfg.log_level
-    'DEBUG'
-
-    Notes
-    -----
-    Loading may happen at import time, but saving requires an explicit call.
-    """
-    config_path: Path | None = None
+    config_path: Path = field(default_factory=default_config_path)
     data_dir: Path = field(default_factory=default_data_dir)
     log_level: str = "INFO"
     show_banner: bool = True
-
-    def __post_init__(self) -> None:
-        self.config_path = Path(self.config_path or default_config_path()).expanduser()
-        self._load_if_exists()
-
-    def get(self) -> "EasyIDPConfig":
-        return self
+    openxlab_access_key: str = ""
+    openxlab_secret_key: str = ""
 
     def update(self, **kwargs: Any) -> "EasyIDPConfig":
         for key, value in kwargs.items():
             if key == "data_dir":
                 self.data_dir = Path(value).expanduser()
                 continue
-            if key in {"log_level", "show_banner"}:
+            if key in {
+                "log_level",
+                "show_banner",
+                "openxlab_access_key",
+                "openxlab_secret_key",
+            }:
                 setattr(self, key, value)
                 continue
             raise KeyError(f"Unknown EasyIDP config key: {key}")
         return self
 
-    def save(self) -> Path:
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.config_path.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
-        return self.config_path
-
     def reset(self, save: bool = False) -> "EasyIDPConfig":
         self.data_dir = default_data_dir()
         self.log_level = "INFO"
         self.show_banner = True
+        self.openxlab_access_key = ""
+        self.openxlab_secret_key = ""
         if save:
             self.save()
         return self
@@ -240,1491 +886,604 @@ class EasyIDPConfig:
             "data_dir": str(self.data_dir),
             "log_level": self.log_level,
             "show_banner": self.show_banner,
+            "openxlab_access_key": self.openxlab_access_key,
+            "openxlab_secret_key": self.openxlab_secret_key,
         }
-
-    def _load_if_exists(self) -> None:
-        if not self.config_path.exists():
-            return
-        data = json.loads(self.config_path.read_text(encoding="utf-8"))
-        self.update(**data)
-
-
-config = EasyIDPConfig()
-get = config.get
-update = config.update
-save = config.save
-reset = config.reset
 ```
 
-- [ ] **Step 4: Export config in package init without data side effects**
+- [ ] **Step 4: Add downloader unit tests**
 
-In `src/easyidp/__init__.py`, add near logger imports:
+Append these tests to `tests/test_data.py`:
 
 ```python
-from . import config
-```
+import sys
+import zipfile
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
-Do not add network checks or file writes.
-
-- [ ] **Step 5: Run tests**
-
-Run: `uv run pytest tests/test_config.py -q`
-
-Expected: all `tests/test_config.py` tests pass.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add src/easyidp/config.py src/easyidp/__init__.py tests/test_config.py
-git commit -m "feat(config): add json-backed package configuration"
-```
-
----
-
-### Task 2: Remove import-time dataset network side effects
-
-**Files:**
-
-- Modify: `src/easyidp/__init__.py`
-- Test: `tests/test_init_class_func.py` or create `tests/test_import_side_effects.py`
-
-- [ ] **Step 1: Write failing import-side-effect test**
-
-Create `tests/test_import_side_effects.py`:
-
-```python
-import importlib
-import subprocess
-
-import requests
-
-
-def test_import_easyidp_does_not_check_network_or_install(monkeypatch):
-    def fail_get(*args, **kwargs):
-        raise AssertionError("import easyidp must not call requests.get")
-
-    def fail_run(*args, **kwargs):
-        raise AssertionError("import easyidp must not run subprocess")
-
-    monkeypatch.setattr(requests, "get", fail_get)
-    monkeypatch.setattr(subprocess, "run", fail_run)
-
-    import easyidp
-
-    importlib.reload(easyidp)
-```
-
-- [ ] **Step 2: Run failing test**
-
-Run: `uv run pytest tests/test_import_side_effects.py -q`
-
-Expected: fail under old implementation because `__init__.py` calls `data._can_access_google_cloud()`.
-
-- [ ] **Step 3: Delete network and install logic from package init**
-
-Remove from `src/easyidp/__init__.py`:
-
-```python
-aliyun_down = None
-GOOGLE_AVAILABLE = True
-```
-
-Also delete the entire `if not data._can_access_google_cloud():` block, from the Google availability check through the final `ImportError` branch that tries to install or import `oss2`.
-
-Also remove `subprocess` import if it becomes unused. Keep public imports stable:
-
-```python
-from . import data
-```
-
-- [ ] **Step 4: Run test**
-
-Run: `uv run pytest tests/test_import_side_effects.py -q`
-
-Expected: pass.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/easyidp/__init__.py tests/test_import_side_effects.py
-git commit -m "refactor(package): remove data network checks from import"
-```
-
----
-
-### Task 3: Convert `easyidp.data` into a focused package
-
-**Files:**
-
-- Delete after migration: `src/easyidp/data.py`
-- Create: `src/easyidp/data/__init__.py`
-- Create: `src/easyidp/data/spec.py`
-- Create: `src/easyidp/data/errors.py`
-- Test: `tests/test_data_registry.py`
-
-- [ ] **Step 1: Write failing import/API shape tests**
-
-Create `tests/test_data_registry.py`:
-
-```python
-import easyidp as idp
-
-
-def test_data_public_api_exports_short_dataset_names():
-    assert hasattr(idp.data, "Lotus")
-    assert hasattr(idp.data, "ForestBirds")
-    assert hasattr(idp.data, "TestData")
-
-
-def test_data_public_api_exports_models_and_helpers():
-    assert hasattr(idp.data, "DatasetSpec")
-    assert hasattr(idp.data, "DownloadPlan")
-    assert hasattr(idp.data, "DownloadResult")
-    assert hasattr(idp.data, "list_datasets")
-    assert hasattr(idp.data, "get_dataset")
-    assert hasattr(idp.data, "get_spec")
-```
-
-- [ ] **Step 2: Run tests and record current behavior**
-
-Run: `uv run pytest tests/test_data_registry.py -q`
-
-Expected: fail until new package exports are implemented.
-
-- [ ] **Step 3: Create data model and error modules**
-
-Create `src/easyidp/data/errors.py`:
-
-```python
-class DatasetError(Exception):
-    """Base exception for EasyIDP dataset operations."""
-
-
-class DatasetNotFoundError(DatasetError):
-    """Raised when a dataset alias or name is not registered."""
-
-
-class DatasetDownloadError(DatasetError):
-    """Raised when a dataset cannot be downloaded."""
-
-
-class DatasetExtractError(DatasetError):
-    """Raised when archive extraction fails or is unsafe."""
-
-
-class DatasetChecksumError(DatasetError):
-    """Raised when checksum validation fails."""
-
-
-class DatasetMirrorConfirmationError(DatasetError):
-    """Raised when a cost-sensitive mirror needs explicit confirmation."""
-```
-
-Create `src/easyidp/data/spec.py`:
-
-```python
-from dataclasses import dataclass
-from pathlib import Path
-from types import MappingProxyType
-from typing import Mapping
-
-
-@dataclass(frozen=True)
-class DatasetSpec:
-    """Static dataset metadata.
-
-    Parameters
-    ----------
-    name : str
-        Stable dataset name used for directories and manifests.
-    title : str
-        Human-readable dataset title.
-    version : str
-        Dataset manifest version.
-    size_bytes : int or None
-        Approximate archive size in bytes.
-    urls : tuple[str, ...]
-        Download URLs or mirror descriptors in priority order.
-    files : Mapping[str, str]
-        Logical file keys mapped to dataset-relative paths.
-    checksum : str, optional
-        SHA256 checksum for the archive when available.
-    description : str
-        Short dataset description.
-
-    Returns
-    -------
-    DatasetSpec
-        Immutable dataset specification.
-
-    Examples
-    --------
-    >>> spec = DatasetSpec("demo", "Demo", "1", None, (), {"shp": "plots.shp"})
-    >>> spec.path_for(Path("/tmp/demo"), "shp")
-    PosixPath('/tmp/demo/plots.shp')
-    """
-    name: str
-    title: str
-    version: str
-    size_bytes: int | None
-    urls: tuple[str, ...]
-    files: Mapping[str, str]
-    checksum: str | None = None
-    description: str = ""
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "files", MappingProxyType(dict(self.files)))
-
-    def path_for(self, root: Path, key: str) -> Path:
-        return root / self.files[key]
-
-
-@dataclass(frozen=True)
-class DownloadPlan:
-    """JSON-friendly dataset download plan."""
-    dataset: str
-    root: str
-    archive: str
-    ready: bool
-    needs_download: bool
-    size_bytes: int | None
-    urls: tuple[str, ...]
-    missing_files: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class DownloadResult:
-    """JSON-friendly dataset download result."""
-    dataset: str
-    root: str
-    archive: str
-    downloaded: bool
-    extracted: bool
-    ready: bool
-    warnings: tuple[str, ...] = ()
-```
-
-- [ ] **Step 4: Add temporary public exports**
-
-Create `src/easyidp/data/__init__.py`:
-
-```python
-from .errors import (
-    DatasetChecksumError,
-    DatasetDownloadError,
-    DatasetError,
-    DatasetExtractError,
-    DatasetMirrorConfirmationError,
-    DatasetNotFoundError,
-)
-from .spec import DatasetSpec, DownloadPlan, DownloadResult
-
-
-def list_datasets():
-    return []
-
-
-def get_dataset(name):
-    raise DatasetNotFoundError(f"Dataset is not registered: {name}")
-
-
-def get_spec(name):
-    raise DatasetNotFoundError(f"Dataset is not registered: {name}")
-```
-
-Move `src/easyidp/data.py` out of import resolution by deleting it after all old behavior needed by this task has a package replacement. If deletion is too broad for this task, rename content into a temporary branch-only backup outside `src/` before committing.
-
-- [ ] **Step 5: Run tests**
-
-Run: `uv run pytest tests/test_data_registry.py -q`
-
-Expected: helper export test passes; short dataset names still fail until Task 5.
-
-- [ ] **Step 6: Commit package conversion foundation**
-
-```bash
-git add src/easyidp/data tests/test_data_registry.py
-git rm src/easyidp/data.py
-git commit -m "refactor(data): split data module into package foundation"
-```
-
----
-
-### Task 4: Add built-in specs and registry
-
-**Files:**
-
-- Create: `src/easyidp/data/_builtin.py`
-- Create: `src/easyidp/data/registry.py`
-- Modify: `src/easyidp/data/__init__.py`
-- Test: `tests/test_data_registry.py`
-
-- [ ] **Step 1: Extend registry tests**
-
-Append to `tests/test_data_registry.py`:
-
-```python
-def test_list_datasets_includes_builtin_aliases():
-    names = idp.data.list_datasets()
-
-    assert "lotus" in names
-    assert "forestbirds" in names
-    assert "test" in names
-
-
-def test_get_spec_accepts_alias_and_real_name():
-    by_alias = idp.data.get_spec("lotus")
-    by_name = idp.data.get_spec("2017_tanashi_lotus")
-
-    assert by_alias.name == "2017_tanashi_lotus"
-    assert by_name.name == "2017_tanashi_lotus"
-    assert by_alias.files["shp"] == "plots.shp"
-
-
-def test_unknown_dataset_raises_clear_error():
-    with pytest.raises(idp.data.DatasetNotFoundError, match="unknown"):
-        idp.data.get_spec("unknown")
-```
-
-Ensure the file imports `pytest`:
-
-```python
 import pytest
-```
-
-- [ ] **Step 2: Run failing tests**
-
-Run: `uv run pytest tests/test_data_registry.py -q`
-
-Expected: fail because registry has no built-in specs.
-
-- [ ] **Step 3: Define built-in specs**
-
-Create `src/easyidp/data/_builtin.py` with the logical keys from current `data.py`:
-
-```python
-from .spec import DatasetSpec
-
-LOTUS_SPEC = DatasetSpec(
-    name="2017_tanashi_lotus",
-    title="Tanashi Lotus",
-    version="2.1",
-    size_bytes=3_300_000_000,
-    urls=(
-        "gdrive://1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j",
-        "aliyun://easyidp-data/2017_tanashi_lotus.zip",
-    ),
-    files={
-        "photo": "20170531/photos",
-        "shp": "plots.shp",
-        "pix4d.project": "20170531",
-        "pix4d.param": "20170531/params",
-        "pix4d.dom": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif",
-        "pix4d.dsm": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif",
-        "pix4d.pcd": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply",
-        "metashape.project": "170531.Lotus.psx",
-        "metashape.param": "170531.Lotus.files",
-        "metashape.dom": "170531.Lotus.outputs/170531.Lotus_dom.tif",
-        "metashape.dsm": "170531.Lotus.outputs/170531.Lotus_dsm.tif",
-        "metashape.pcd": "170531.Lotus.outputs/170531.Lotus.laz",
-    },
-    description="Lotus plot UAV reconstruction dataset from Tanashi, Tokyo.",
-)
-
-FORESTBIRDS_SPEC = DatasetSpec(
-    name="2022_florida_forestbirds",
-    title="Florida Forest Birds",
-    version="2.1",
-    size_bytes=1_970_000_000,
-    urls=(
-        "gdrive://1mXkzaoSSCAA87cxcMHKL6_VNlykRYxJr",
-        "aliyun://easyidp-data/2022_florida_forestbirds.zip",
-    ),
-    files={
-        "photo": "Hidden_Little_03_24_2022",
-        "shp": "Hidden_Little_grid.shp",
-        "metashape.project": "Hidden_Little_03_24_2022.psx",
-        "metashape.param": "Hidden_Little_03_24_2022.files",
-        "metashape.dom": "Hidden_Little_03_24_2022.tiff",
-        "metashape.dsm": "Hidden_Little_03_24_2022_DEM.tif",
-    },
-    description="Forest ecology survey dataset provided by the University of Florida.",
-)
-
-TEST_DATA_SPEC = DatasetSpec(
-    name="data_for_tests",
-    title="EasyIDP Test Data",
-    version="2.1",
-    size_bytes=344_000_000,
-    urls=(
-        "gdrive://17b_17CofqIuCVOWMnD67_wOnWMtwF8bw",
-        "aliyun://easyidp-data/data_for_tests.zip",
-    ),
-    files={
-        "shp.lotus_shp": "shp_test/lotus_plots.shp",
-        "shp.lotus_prj": "shp_test/lotus_plots.prj",
-        "pix4d.lotus_folder": "pix4d/lotus_tanashi_full",
-        "pix4d.lotus_param": "pix4d/lotus_tanashi_full/params",
-        "pix4d.lotus_photos": "pix4d/lotus_tanashi_full/photos",
-        "pix4d.lotus_dom": "pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif",
-        "pix4d.lotus_dsm": "pix4d/lotus_tanashi_full/hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif",
-        "metashape.lotus_psx": "metashape/Lotus.psx",
-        "metashape.lotus_param": "metashape/Lotus.files",
-        "metashape.lotus_dsm": "metashape/Lotus.files/170531.Lotus_dsm.tif",
-    },
-    description="Developer and package test data.",
-)
-
-BUILTIN_SPECS = {
-    LOTUS_SPEC.name: LOTUS_SPEC,
-    FORESTBIRDS_SPEC.name: FORESTBIRDS_SPEC,
-    TEST_DATA_SPEC.name: TEST_DATA_SPEC,
-}
-
-ALIASES = {
-    "lotus": LOTUS_SPEC.name,
-    "forestbirds": FORESTBIRDS_SPEC.name,
-    "forest_birds": FORESTBIRDS_SPEC.name,
-    "test": TEST_DATA_SPEC.name,
-    "testdata": TEST_DATA_SPEC.name,
-}
-```
-
-- [ ] **Step 4: Implement registry**
-
-Create `src/easyidp/data/registry.py`:
-
-```python
-from ._builtin import ALIASES, BUILTIN_SPECS
-from .errors import DatasetNotFoundError
-from .spec import DatasetSpec
 
 
-class DatasetRegistry:
-    """Registry for dataset specs and factories.
-
-    Parameters
-    ----------
-    specs : dict[str, DatasetSpec], optional
-        Initial spec mapping.
-    aliases : dict[str, str], optional
-        Alias to canonical name mapping.
-
-    Returns
-    -------
-    DatasetRegistry
-        Dataset metadata registry.
-
-    Examples
-    --------
-    >>> registry = DatasetRegistry()
-    >>> registry.get_spec("lotus").name
-    '2017_tanashi_lotus'
-    """
-
-    def __init__(self, specs=None, aliases=None):
-        self._specs = dict(specs or BUILTIN_SPECS)
-        self._aliases = dict(aliases or ALIASES)
-
-    def list(self) -> list[str]:
-        return sorted(set(self._aliases) | set(self._specs))
-
-    def resolve(self, name: str) -> str:
-        key = name.lower()
-        if key in self._aliases:
-            return self._aliases[key]
-        if name in self._specs:
-            return name
-        raise DatasetNotFoundError(f"Dataset is not registered: {name}")
-
-    def get_spec(self, name: str) -> DatasetSpec:
-        return self._specs[self.resolve(name)]
-
-
-registry = DatasetRegistry()
-```
-
-- [ ] **Step 5: Wire public helpers**
-
-Update `src/easyidp/data/__init__.py`:
-
-```python
-from .registry import DatasetRegistry, registry
-
-
-def list_datasets():
-    return registry.list()
-
-
-def get_spec(name):
-    return registry.get_spec(name)
-```
-
-- [ ] **Step 6: Run tests**
-
-Run: `uv run pytest tests/test_data_registry.py -q`
-
-Expected: registry tests pass except `get_dataset` and short dataset class exports if not implemented yet.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add src/easyidp/data tests/test_data_registry.py
-git commit -m "feat(data): add dataset specs and registry"
-```
-
----
-
-### Task 5: Implement lightweight dataset objects and path bundles
-
-**Files:**
-
-- Create: `src/easyidp/data/dataset.py`
-- Create: `src/easyidp/data/testing.py`
-- Create: `src/easyidp/data/paths.py`
-- Modify: `src/easyidp/data/__init__.py`
-- Test: `tests/test_data_dataset.py`
-
-- [ ] **Step 1: Write failing lightweight constructor tests**
-
-Create `tests/test_data_dataset.py`:
-
-```python
-from pathlib import Path
-
-import easyidp as idp
-
-
-def test_lotus_constructor_does_not_download_or_create_root(tmp_path):
+def test_download_skips_ready_dataset(tmp_path):
     lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-
-    assert lotus.name == "2017_tanashi_lotus"
-    assert lotus.root == tmp_path / "2017_tanashi_lotus"
-    assert lotus.shp == lotus.root / "plots.shp"
-    assert lotus.pix4d.dom.name.endswith("mosaic_group1.tif")
-    assert not lotus.root.exists()
-    assert lotus.is_ready() is False
-
-
-def test_lotus_is_ready_when_required_files_exist(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    for path in [lotus.shp, lotus.pix4d.dom, lotus.pix4d.dsm, lotus.metashape.project]:
+    for key in lotus.required:
+        path = lotus.path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("demo", encoding="utf-8")
+        path.touch()
 
-    assert lotus.is_ready() is True
+    result = lotus.download(progress=False)
+
+    assert result["ready"] is True
+    assert result["downloaded"] is False
+    assert result["extracted"] is False
 
 
-def test_missing_dataset_dry_run_reports_missing_files(tmp_path):
+def test_openxlab_download_requires_credentials(tmp_path):
+    old_ak = idp.config.get().openxlab_access_key
+    old_sk = idp.config.get().openxlab_secret_key
+    try:
+        idp.config.update(openxlab_access_key="", openxlab_secret_key="")
+        lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+
+        with pytest.raises(RuntimeError, match="OpenXLab credentials"):
+            lotus.download(mirror="openxlab", progress=False)
+    finally:
+        idp.config.update(openxlab_access_key=old_ak, openxlab_secret_key=old_sk)
+
+
+def test_safe_extract_rejects_zip_slip(tmp_path):
+    from easyidp.data.downloader import safe_extract_zip
+
+    archive = tmp_path / "bad.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("../escape.txt", "bad")
+
+    with pytest.raises(RuntimeError, match="Unsafe archive member"):
+        safe_extract_zip(archive, tmp_path / "out")
+
+
+def test_download_extracts_mocked_gdrive_archive(tmp_path):
     lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    plan = lotus.dry_run()
+    archive = tmp_path / "source.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("plots.shp", "shape")
+        zf.writestr("170531.Lotus.psx", "project")
+        zf.writestr(
+            "20170531/hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif",
+            "dom",
+        )
+        zf.writestr(
+            "20170531/hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif",
+            "dsm",
+        )
 
-    assert plan.dataset == "2017_tanashi_lotus"
-    assert plan.needs_download is True
-    assert "plots.shp" in plan.missing_files
+    def fake_download(file_id, dest, progress):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(archive.read_bytes())
+
+    with patch("easyidp.data.downloader._download_gdrive", side_effect=fake_download):
+        result = lotus.download(force=True, progress=False)
+
+    assert result["downloaded"] is True
+    assert result["extracted"] is True
+    assert result["ready"] is True
 
 
-def test_testdata_constructor_builds_nested_path_bundles(tmp_path):
-    data = idp.data.TestData(cache_root=tmp_path, test_out=tmp_path / "out", notify_missing=False)
+def test_openxlab_downloader_logs_in_and_downloads(tmp_path, monkeypatch):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    fake_openxlab = SimpleNamespace(login=Mock())
+    fake_dataset = SimpleNamespace(download=Mock())
+    monkeypatch.setitem(sys.modules, "openxlab", fake_openxlab)
+    monkeypatch.setitem(sys.modules, "openxlab.dataset", fake_dataset)
 
-    assert data.shp.lotus_shp == data.root / "shp_test" / "lotus_plots.shp"
-    assert data.pix4d.lotus_folder == data.root / "pix4d" / "lotus_tanashi_full"
-    assert data.metashape.lotus_psx == data.root / "metashape" / "Lotus.psx"
+    def fake_download(dataset_repo, source_path, target_path):
+        target = Path(target_path) / Path(source_path).name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("zip", encoding="utf-8")
+
+    fake_dataset.download.side_effect = fake_download
+
+    old_ak = idp.config.get().openxlab_access_key
+    old_sk = idp.config.get().openxlab_secret_key
+    try:
+        idp.config.update(openxlab_access_key="ak", openxlab_secret_key="sk")
+        from easyidp.data.downloader import _download_openxlab
+
+        mirror = lotus.mirrors["openxlab"]
+        _download_openxlab(mirror, lotus.archive, progress=False)
+    finally:
+        idp.config.update(openxlab_access_key=old_ak, openxlab_secret_key=old_sk)
+
+    fake_openxlab.login.assert_called_once_with(ak="ak", sk="sk")
+    fake_dataset.download.assert_called_once_with(
+        dataset_repo="HowcanoeWang/easyidp-demo-dataset",
+        source_path="/2017_tanashi_lotus.zip",
+        target_path=str(lotus.archive.parent),
+    )
 ```
 
-- [ ] **Step 2: Run failing tests**
-
-Run: `uv run pytest tests/test_data_dataset.py -q`
-
-Expected: fail because dataset classes are not implemented.
-
-- [ ] **Step 3: Implement data path helpers**
-
-Create `src/easyidp/data/paths.py`:
+- [ ] **Step 5: Create `src/easyidp/data/downloader.py`**
 
 ```python
+"""Explicit downloader for official EasyIDP demo datasets."""
+
+from __future__ import annotations
+
+import os
+import zipfile
 from pathlib import Path
 
 from easyidp import config
 
 
-def user_data_dir(file_name: str | Path = "") -> Path:
-    """Return the configured EasyIDP data path.
+def download_dataset(dataset, mirror, force, progress):
+    """Download and extract a dataset archive."""
+    if not force and dataset.is_ready():
+        return _result(dataset, False, False, True)
 
-    Parameters
-    ----------
-    file_name : str or pathlib.Path, optional
-        Optional child path inside the configured data directory.
+    mirror_name, mirror_config = _select_mirror(dataset.mirrors, mirror)
+    if mirror_name == "gdrive":
+        _download_gdrive(mirror_config["file_id"], dataset.archive, progress)
+    elif mirror_name == "openxlab":
+        _download_openxlab(mirror_config, dataset.archive, progress)
+    else:
+        raise ValueError(f"Unknown dataset mirror: {mirror_name}")
 
-    Returns
-    -------
-    pathlib.Path
-        Configured data directory or child path.
-
-    Examples
-    --------
-    >>> user_data_dir().name
-    'easyidp.data'
-
-    Notes
-    -----
-    This helper creates the root directory for compatibility with the old API.
-    """
-    root = Path(config.get().data_dir).expanduser()
-    root.mkdir(parents=True, exist_ok=True)
-    return root / file_name
+    safe_extract_zip(dataset.archive, dataset.root)
+    return _result(dataset, True, True, dataset.is_ready())
 
 
-def resolve_cache_root(cache_root: str | Path | None) -> Path:
-    if cache_root is not None:
-        return Path(cache_root).expanduser()
-    return user_data_dir()
+def safe_extract_zip(archive: Path, dest: Path) -> None:
+    """Extract a zip archive while rejecting path traversal."""
+    dest = dest.resolve()
+    dest.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive, "r") as zf:
+        for member in zf.namelist():
+            target = (dest / member).resolve()
+            if os.path.commonpath([str(dest), str(target)]) != str(dest):
+                raise RuntimeError(f"Unsafe archive member: {member}")
+        zf.extractall(dest)
+
+
+def _select_mirror(mirrors: dict, mirror: str) -> tuple[str, dict]:
+    if not mirrors:
+        raise RuntimeError("Dataset has no download mirrors")
+    if mirror == "auto":
+        name = next(iter(mirrors))
+        return name, mirrors[name]
+    if mirror in mirrors:
+        return mirror, mirrors[mirror]
+    raise ValueError(f"Unknown or unavailable mirror: {mirror}")
+
+
+def _download_gdrive(file_id: str, archive: Path, progress: bool) -> None:
+    try:
+        import gdown
+    except ImportError as exc:
+        raise RuntimeError(
+            "Google Drive downloads require the optional dependency. "
+            "Install with `pip install 'easyidp[gdrive]'` or use mirror='openxlab'."
+        ) from exc
+
+    part = Path(str(archive) + ".part")
+    part.parent.mkdir(parents=True, exist_ok=True)
+    gdown.download(id=file_id, output=str(part), quiet=not progress)
+    if not part.exists() or part.stat().st_size == 0:
+        raise RuntimeError(f"Download failed: {file_id}")
+    os.replace(part, archive)
+
+
+def _download_openxlab(mirror_config: dict, archive: Path, progress: bool) -> None:
+    cfg = config.get()
+    if not cfg.openxlab_access_key or not cfg.openxlab_secret_key:
+        raise RuntimeError(
+            "OpenXLab credentials are required. Configure them with "
+            "idp.config.update(openxlab_access_key='...', openxlab_secret_key='...').save()."
+        )
+
+    try:
+        import openxlab
+        from openxlab.dataset import download
+    except ImportError as exc:
+        raise RuntimeError(
+            "OpenXLab downloads require the optional dependency. "
+            "Install with `pip install 'easyidp[openxlab]'` or use mirror='gdrive'."
+        ) from exc
+
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    openxlab.login(ak=cfg.openxlab_access_key, sk=cfg.openxlab_secret_key)
+    source_path = mirror_config["source_path"]
+    download(
+        dataset_repo=mirror_config["dataset_repo"],
+        source_path=source_path,
+        target_path=str(archive.parent),
+    )
+    downloaded = archive.parent / Path(source_path).name
+    if downloaded != archive and downloaded.exists():
+        os.replace(downloaded, archive)
+    if not archive.exists() or archive.stat().st_size == 0:
+        raise RuntimeError(f"OpenXLab download failed: {source_path}")
+
+
+def _result(dataset, downloaded: bool, extracted: bool, ready: bool) -> dict:
+    return {
+        "name": dataset.name,
+        "root": str(dataset.root),
+        "archive": str(dataset.archive),
+        "downloaded": downloaded,
+        "extracted": extracted,
+        "ready": ready,
+    }
 ```
 
-- [ ] **Step 4: Implement lightweight dataset base and short classes**
+- [ ] **Step 6: Add manual network smoke tests**
 
-Create `src/easyidp/data/dataset.py`:
+Create `tests/manual/test_data_download_smoke.py`. These tests are skipped unless the developer explicitly opts in and provides their own OpenXLab credentials through environment variables:
 
 ```python
-from dataclasses import dataclass
-from pathlib import Path
-
-from easyidp.logger import logger
-
-from .paths import resolve_cache_root
-from .registry import registry
-from .spec import DatasetSpec, DownloadPlan
-
-
-@dataclass(frozen=True)
-class ReconstructionPaths:
-    project: Path | None = None
-    param: Path | None = None
-    dom: Path | None = None
-    dsm: Path | None = None
-    pcd: Path | None = None
-
-
-class Dataset:
-    """Lightweight dataset object with explicit download actions.
-
-    Parameters
-    ----------
-    name : str
-        Dataset alias or canonical name.
-    cache_root : str or pathlib.Path, optional
-        Per-object data root override.
-    notify_missing : bool, default True
-        Warn when required files are missing.
-
-    Returns
-    -------
-    Dataset
-        Dataset path and state wrapper.
-
-    Examples
-    --------
-    >>> lotus = Lotus(notify_missing=False)
-    >>> lotus.name
-    '2017_tanashi_lotus'
-    """
-
-    required_keys: tuple[str, ...] = ()
-
-    def __init__(self, name: str, cache_root=None, notify_missing: bool = True):
-        self.spec = registry.get_spec(name)
-        self.name = self.spec.name
-        self.cache_root = resolve_cache_root(cache_root)
-        self.root = self.cache_root / self.name
-        self.archive = self.cache_root / ".downloads" / f"{self.name}.zip"
-        if notify_missing and not self.is_ready():
-            self._warn_missing()
-
-    def path(self, key: str) -> Path:
-        return self.spec.path_for(self.root, key)
-
-    def is_ready(self) -> bool:
-        return not self._missing_files()
-
-    def dry_run(self, mirror: str = "auto") -> DownloadPlan:
-        missing = self._missing_files()
-        return DownloadPlan(
-            dataset=self.name,
-            root=str(self.root),
-            archive=str(self.archive),
-            ready=not missing,
-            needs_download=bool(missing),
-            size_bytes=self.spec.size_bytes,
-            urls=self.spec.urls,
-            missing_files=tuple(missing),
-        )
-
-    def validate(self) -> bool:
-        return self.is_ready()
-
-    def download(self, mirror="auto", *, confirm=False, force=False, progress=True):
-        from .downloader import DatasetDownloader
-
-        downloader = DatasetDownloader(self, mirror=mirror, confirm=confirm, progress=progress)
-        return downloader.download(force=force)
-
-    def _missing_files(self) -> list[str]:
-        keys = self.required_keys or tuple(self.spec.files)
-        return [self.spec.files[key] for key in keys if not self.path(key).exists()]
-
-    def _warn_missing(self) -> None:
-        plan = self.dry_run()
-        logger.warning(
-            "Dataset '%s' is not downloaded. Root: %s. Missing files: %s. "
-            "Call `.download()` to download it or `.dry_run()` for details.",
-            plan.dataset,
-            plan.root,
-            ", ".join(plan.missing_files[:5]),
-        )
-
-
-class Lotus(Dataset):
-    required_keys = ("shp", "pix4d.dom", "pix4d.dsm", "metashape.project")
-
-    def __init__(self, cache_root=None, notify_missing: bool = True):
-        super().__init__("lotus", cache_root=cache_root, notify_missing=notify_missing)
-        self.photo = self.path("photo")
-        self.shp = self.path("shp")
-        self.pix4d = ReconstructionPaths(
-            project=self.path("pix4d.project"),
-            param=self.path("pix4d.param"),
-            dom=self.path("pix4d.dom"),
-            dsm=self.path("pix4d.dsm"),
-            pcd=self.path("pix4d.pcd"),
-        )
-        self.metashape = ReconstructionPaths(
-            project=self.path("metashape.project"),
-            param=self.path("metashape.param"),
-            dom=self.path("metashape.dom"),
-            dsm=self.path("metashape.dsm"),
-            pcd=self.path("metashape.pcd"),
-        )
-
-
-class ForestBirds(Dataset):
-    required_keys = ("shp", "metashape.project", "metashape.dom", "metashape.dsm")
-
-    def __init__(self, cache_root=None, notify_missing: bool = True):
-        super().__init__("forestbirds", cache_root=cache_root, notify_missing=notify_missing)
-        self.photo = self.path("photo")
-        self.shp = self.path("shp")
-        self.metashape = ReconstructionPaths(
-            project=self.path("metashape.project"),
-            param=self.path("metashape.param"),
-            dom=self.path("metashape.dom"),
-            dsm=self.path("metashape.dsm"),
-        )
-```
-
-- [ ] **Step 5: Implement `TestData` path bundles**
-
-Create `src/easyidp/data/testing.py` with the current nested classes from `data.py`, converted into focused path classes. Include at least the paths already asserted in tests first:
-
-```python
-from pathlib import Path
-
-from .dataset import Dataset
-
-
-class ShapefilePaths:
-    def __init__(self, root: Path, test_out: Path):
-        self.data_dir = root
-        self.lotus_shp = root / "shp_test" / "lotus_plots.shp"
-        self.lotus_prj = root / "shp_test" / "lotus_plots.prj"
-        self.out = test_out / "shp_test"
-
-    def __truediv__(self, other):
-        return self.data_dir / "shp_test" / other
-
-
-class Pix4DPaths:
-    def __init__(self, root: Path):
-        self.lotus_folder = root / "pix4d" / "lotus_tanashi_full"
-        self.lotus_param = self.lotus_folder / "params"
-        self.lotus_photos = self.lotus_folder / "photos"
-        self.lotus_dom = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_transparent_mosaic_group1.tif"
-        self.lotus_dsm = self.lotus_folder / "hasu_tanashi_20170525_Ins1RGB_30m_dsm.tif"
-
-
-class MetashapePaths:
-    def __init__(self, root: Path, test_out: Path):
-        self.lotus_psx = root / "metashape" / "Lotus.psx"
-        self.lotus_param = root / "metashape" / "Lotus.files"
-        self.lotus_dsm = root / "metashape" / "Lotus.files" / "170531.Lotus_dsm.tif"
-
-
-class TestData(Dataset):
-    required_keys = ("shp.lotus_shp", "pix4d.lotus_folder", "metashape.lotus_psx")
-
-    def __init__(self, test_out="./tests/out", cache_root=None, notify_missing: bool = True):
-        super().__init__("test", cache_root=cache_root, notify_missing=notify_missing)
-        out = Path(test_out)
-        self.shp = ShapefilePaths(self.root, out)
-        self.pix4d = Pix4DPaths(self.root)
-        self.metashape = MetashapePaths(self.root, out)
-```
-
-During implementation, copy the full path list from old `TestData` into this module before deleting old `data.py` behavior. Keep each path bundle under 50 executable lines by splitting `JsonPaths`, `PointCloudPaths`, `RoiPaths`, `TiffPaths`, `CvPaths`, `VisualPaths`, and `Back2RawPaths`.
-
-- [ ] **Step 6: Wire exports and factories**
-
-Update `src/easyidp/data/__init__.py`:
-
-```python
-from .dataset import Dataset, ForestBirds, Lotus, ReconstructionPaths
-from .paths import user_data_dir
-from .testing import TestData
-
-
-def get_dataset(name, cache_root=None, notify_missing=True):
-    resolved = registry.resolve(name)
-    if resolved == "2017_tanashi_lotus":
-        return Lotus(cache_root=cache_root, notify_missing=notify_missing)
-    if resolved == "2022_florida_forestbirds":
-        return ForestBirds(cache_root=cache_root, notify_missing=notify_missing)
-    if resolved == "data_for_tests":
-        return TestData(cache_root=cache_root, notify_missing=notify_missing)
-    raise DatasetNotFoundError(f"Dataset is not registered: {name}")
-```
-
-- [ ] **Step 7: Run tests**
-
-Run: `uv run pytest tests/test_data_registry.py tests/test_data_dataset.py -q`
-
-Expected: pass.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add src/easyidp/data tests/test_data_registry.py tests/test_data_dataset.py
-git commit -m "feat(data): add lightweight dataset path objects"
-```
-
----
-
-### Task 6: Implement safe extraction
-
-**Files:**
-
-- Create: `src/easyidp/data/extract.py`
-- Test: `tests/test_data_downloader.py`
-
-- [ ] **Step 1: Write safe extraction tests**
-
-Create `tests/test_data_downloader.py`:
-
-```python
-import zipfile
+import os
 
 import pytest
 
-from easyidp.data.errors import DatasetExtractError
-from easyidp.data.extract import safe_extract_zip
+import easyidp as idp
 
 
-def test_safe_extract_zip_extracts_normal_members(tmp_path):
-    archive = tmp_path / "demo.zip"
-    dest = tmp_path / "dest"
-    with zipfile.ZipFile(archive, "w") as zf:
-        zf.writestr("folder/file.txt", "content")
-
-    safe_extract_zip(archive, dest)
-
-    assert (dest / "folder" / "file.txt").read_text(encoding="utf-8") == "content"
+pytestmark = pytest.mark.skipif(
+    os.environ.get("EASYIDP_RUN_DOWNLOAD_SMOKE") != "1",
+    reason="Manual network smoke test. Set EASYIDP_RUN_DOWNLOAD_SMOKE=1 to run.",
+)
 
 
-def test_safe_extract_zip_rejects_zip_slip(tmp_path):
-    archive = tmp_path / "bad.zip"
-    dest = tmp_path / "dest"
-    with zipfile.ZipFile(archive, "w") as zf:
-        zf.writestr("../escape.txt", "bad")
+def test_gdrive_tiny_download_smoke(tmp_path):
+    data = idp.data.Dataset("download_smoke", cache_root=tmp_path, notify_missing=False)
 
-    with pytest.raises(DatasetExtractError, match="Unsafe archive member"):
-        safe_extract_zip(archive, dest)
+    result = data.download(mirror="gdrive", force=True, progress=False)
 
-    assert not (tmp_path / "escape.txt").exists()
+    assert result["ready"] is True
+    assert (data.root / "file1.txt").exists()
+
+
+def test_openxlab_tiny_download_smoke(tmp_path):
+    ak = os.environ.get("EASYIDP_OPENXLAB_AK", "")
+    sk = os.environ.get("EASYIDP_OPENXLAB_SK", "")
+    if not ak or not sk:
+        pytest.skip("Set EASYIDP_OPENXLAB_AK and EASYIDP_OPENXLAB_SK to run this smoke test.")
+
+    old_ak = idp.config.get().openxlab_access_key
+    old_sk = idp.config.get().openxlab_secret_key
+    try:
+        idp.config.update(openxlab_access_key=ak, openxlab_secret_key=sk)
+        data = idp.data.Dataset("download_smoke", cache_root=tmp_path, notify_missing=False)
+
+        result = data.download(mirror="openxlab", force=True, progress=False)
+    finally:
+        idp.config.update(openxlab_access_key=old_ak, openxlab_secret_key=old_sk)
+
+    assert result["ready"] is True
+    assert (data.root / "file1.txt").exists()
 ```
 
-- [ ] **Step 2: Run failing tests**
-
-Run: `uv run pytest tests/test_data_downloader.py -q`
-
-Expected: fail because `safe_extract_zip` does not exist.
-
-- [ ] **Step 3: Implement safe extraction**
-
-Create `src/easyidp/data/extract.py`:
-
-```python
-import zipfile
-from pathlib import Path
-
-from .errors import DatasetExtractError
-
-
-def safe_extract_zip(archive: str | Path, dest: str | Path) -> None:
-    """Extract a zip archive while rejecting path traversal.
-
-    Parameters
-    ----------
-    archive : str or pathlib.Path
-        Zip archive path.
-    dest : str or pathlib.Path
-        Destination directory.
-
-    Returns
-    -------
-    None
-        Files are written under `dest`.
-
-    Examples
-    --------
-    >>> safe_extract_zip("dataset.zip", "dataset")
-
-    Notes
-    -----
-    Every member destination is resolved before extraction to prevent zip slip.
-    """
-    archive = Path(archive)
-    dest = Path(dest)
-    dest_root = dest.resolve()
-    with zipfile.ZipFile(archive, "r") as zip_file:
-        for member in zip_file.infolist():
-            target = (dest / member.filename).resolve()
-            if target != dest_root and dest_root not in target.parents:
-                raise DatasetExtractError(f"Unsafe archive member: {member.filename}")
-        zip_file.extractall(dest)
-```
-
-- [ ] **Step 4: Run extraction tests**
-
-Run: `uv run pytest tests/test_data_downloader.py -q`
-
-Expected: extraction tests pass.
-
-- [ ] **Step 5: Commit**
+Run manually with:
 
 ```bash
-git add src/easyidp/data/extract.py tests/test_data_downloader.py
-git commit -m "fix(data): add safe dataset archive extraction"
+EASYIDP_RUN_DOWNLOAD_SMOKE=1 \
+EASYIDP_OPENXLAB_AK=<Access Key> \
+EASYIDP_OPENXLAB_SK=<Secret Key> \
+uv run pytest tests/manual/test_data_download_smoke.py -q
 ```
+
+- [ ] **Step 7: Run normal tests**
+
+Run: `uv run pytest tests/test_config.py tests/test_data.py -q`
+
+Expected: all normal tests pass without network access.
 
 ---
 
-### Task 7: Implement explicit downloader and mirror confirmation
+### Task 5: Remove Root `user_data_dir` and Old Data Side Effects
 
 **Files:**
 
-- Create: `src/easyidp/data/downloader.py`
-- Modify: `src/easyidp/data/dataset.py`
-- Test: `tests/test_data_downloader.py`
+- Modify: `src/easyidp/__init__.py`
+- Modify: `tests/test_config.py`
+- Test: `tests/test_config.py tests/test_data.py`
 
-- [ ] **Step 1: Add downloader behavior tests**
+- [ ] **Step 1: Add config ownership assertions**
 
-Append to `tests/test_data_downloader.py`:
-
-```python
-import shutil
-
-import easyidp as idp
-
-from easyidp.data.errors import DatasetMirrorConfirmationError
-
-
-def test_download_skips_when_dataset_is_ready(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    for path in [lotus.shp, lotus.pix4d.dom, lotus.pix4d.dsm, lotus.metashape.project]:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("demo", encoding="utf-8")
-
-    result = lotus.download(progress=False)
-
-    assert result.downloaded is False
-    assert result.extracted is False
-    assert result.ready is True
-
-
-def test_aliyun_download_requires_confirm(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-
-    with pytest.raises(DatasetMirrorConfirmationError, match="Aliyun mirror"):
-        lotus.download(mirror="aliyun", progress=False)
-
-
-def test_force_download_uses_downloader_backend(monkeypatch, tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    source = tmp_path / "source.zip"
-    with zipfile.ZipFile(source, "w") as zf:
-        zf.writestr("plots.shp", "demo")
-        zf.writestr("20170531/hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif", "demo")
-        zf.writestr("20170531/hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif", "demo")
-        zf.writestr("170531.Lotus.psx", "demo")
-
-    def fake_download(self, url, archive):
-        archive.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, archive)
-
-    monkeypatch.setattr("easyidp.data.downloader.DatasetDownloader._download_url", fake_download)
-
-    result = lotus.download(force=True, progress=False)
-
-    assert result.downloaded is True
-    assert result.extracted is True
-    assert lotus.is_ready() is True
-```
-
-- [ ] **Step 2: Run failing tests**
-
-Run: `uv run pytest tests/test_data_downloader.py -q`
-
-Expected: fail because downloader behavior is not implemented.
-
-- [ ] **Step 3: Implement downloader skeleton with explicit confirmation**
-
-Create `src/easyidp/data/downloader.py`:
+Append this test to `tests/test_config.py`:
 
 ```python
-import hashlib
-import shutil
-from pathlib import Path
-
-from .errors import DatasetDownloadError, DatasetMirrorConfirmationError
-from .extract import safe_extract_zip
-from .spec import DownloadResult
-
-
-class DatasetDownloader:
-    """Download and extract a dataset through explicit calls.
-
-    Parameters
-    ----------
-    dataset : easyidp.data.dataset.Dataset
-        Dataset object to download.
-    mirror : str, default "auto"
-        Mirror selector: "auto", "gdrive", or "aliyun".
-    confirm : bool, default False
-        Required for cost-sensitive mirrors such as Aliyun.
-    progress : bool, default True
-        Whether backend downloaders may display progress.
-
-    Returns
-    -------
-    DatasetDownloader
-        Downloader bound to one dataset.
-    """
-
-    def __init__(self, dataset, mirror="auto", confirm=False, progress=True):
-        self.dataset = dataset
-        self.mirror = mirror
-        self.confirm = confirm
-        self.progress = progress
-
-    def download(self, force=False) -> DownloadResult:
-        if self.dataset.is_ready() and not force:
-            return DownloadResult(
-                dataset=self.dataset.name,
-                root=str(self.dataset.root),
-                archive=str(self.dataset.archive),
-                downloaded=False,
-                extracted=False,
-                ready=True,
-            )
-
-        url = self._select_url()
-        self._ensure_mirror_allowed(url)
-        archive = self.dataset.archive
-        part = archive.with_suffix(archive.suffix + ".part")
-        extract_tmp = self.dataset.cache_root / ".extracting" / self.dataset.name
-        archive.parent.mkdir(parents=True, exist_ok=True)
-        extract_tmp.parent.mkdir(parents=True, exist_ok=True)
-
-        self._download_url(url, part)
-        part.replace(archive)
-        self._validate_checksum(archive)
-        if extract_tmp.exists():
-            shutil.rmtree(extract_tmp)
-        safe_extract_zip(archive, extract_tmp)
-        if self.dataset.root.exists():
-            shutil.rmtree(self.dataset.root)
-        extract_tmp.replace(self.dataset.root)
-
-        return DownloadResult(
-            dataset=self.dataset.name,
-            root=str(self.dataset.root),
-            archive=str(archive),
-            downloaded=True,
-            extracted=True,
-            ready=self.dataset.is_ready(),
-        )
-
-    def _select_url(self) -> str:
-        urls = self.dataset.spec.urls
-        if self.mirror == "auto":
-            return urls[0]
-        for url in urls:
-            if url.startswith(f"{self.mirror}://"):
-                return url
-        raise DatasetDownloadError(f"Mirror '{self.mirror}' is not available for {self.dataset.name}")
-
-    def _ensure_mirror_allowed(self, url: str) -> None:
-        if url.startswith("aliyun://") and not self.confirm:
-            raise DatasetMirrorConfirmationError(
-                "Aliyun mirror may incur maintainer bandwidth cost. "
-                "Call download(mirror='aliyun', confirm=True) to continue."
-            )
-
-    def _download_url(self, url: str, archive: Path) -> None:
-        if url.startswith("gdrive://"):
-            self._download_gdrive(url, archive)
-            return
-        if url.startswith("aliyun://"):
-            self._download_aliyun(url, archive)
-            return
-        raise DatasetDownloadError(f"Unsupported dataset URL: {url}")
-
-    def _download_gdrive(self, url: str, archive: Path) -> None:
-        import gdown
-
-        file_id = url.removeprefix("gdrive://")
-        gdown.download(id=file_id, output=str(archive), quiet=not self.progress)
-
-    def _download_aliyun(self, url: str, archive: Path) -> None:
-        raise DatasetDownloadError("Aliyun backend is not implemented in this task")
-
-    def _validate_checksum(self, archive: Path) -> None:
-        if not self.dataset.spec.checksum:
-            return
-        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-        if digest != self.dataset.spec.checksum:
-            raise DatasetDownloadError(f"Checksum mismatch for {archive}")
+def test_user_data_dir_removed_from_package_root():
+    assert not hasattr(idp, "user_data_dir")
+    assert hasattr(idp, "config")
+    assert idp.config.get().data_dir.name == "easyidp.data"
 ```
 
-- [ ] **Step 4: Run downloader tests**
+- [ ] **Step 2: Remove `user_data_dir` from `src/easyidp/__init__.py`**
 
-Run: `uv run pytest tests/test_data_downloader.py -q`
+Delete the function spanning the old `def user_data_dir(file_name=""):` block. Keep `get_full_path()` and `parse_relative_path()` unchanged.
 
-Expected: pass for skip-ready, confirmation, and fake backend forced download tests.
+- [ ] **Step 3: Remove unused root imports if possible**
 
-- [ ] **Step 5: Commit**
+If `os` is only used by `parse_relative_path()`, keep it. If `Path` is still used by `get_full_path()`, keep it.
 
-```bash
-git add src/easyidp/data/downloader.py src/easyidp/data/dataset.py tests/test_data_downloader.py
-git commit -m "feat(data): add explicit dataset downloader"
-```
+- [ ] **Step 4: Run focused tests**
+
+Run: `uv run pytest tests/test_config.py tests/test_data.py -q`
+
+Expected: config and data tests pass.
 
 ---
 
-### Task 8: Migrate tests away from module-level downloads
+### Task 6: Update Test Fixtures That Consume TestData
 
 **Files:**
 
 - Modify: `tests/__init__.py`
-- Modify: `tests/test_data.py`
-- Modify: tests that contain module-level `idp.data.TestData()`
-- Create or modify: `pytest.ini` or `pyproject.toml` pytest markers if needed
+- Modify: `tests/conftest.py`
+- Search/modify: tests that reference `.metashape` or `.pix4d` on `TestData`
+- Test: `tests/test_data.py` plus one data-consuming test module if local test data exists
 
-- [ ] **Step 1: Find module-level `TestData()` usage**
+- [ ] **Step 1: Replace old group names in test fixtures**
 
-Run: `rg "test_data = idp\.data\.TestData\(" tests`
-
-Expected: list files such as `tests/test_cvtools.py`, `tests/test_pix4d.py`, `tests/test_shp.py`, `tests/test_metashape.py`, `tests/test_pointcloud.py`, `tests/test_back2raw_performance.py`, and `tests/test_jsonfile.py`.
-
-- [ ] **Step 2: Add fixture-based explicit data readiness**
-
-Modify `tests/__init__.py`:
+Update test fixtures to use the new short group names:
 
 ```python
-@pytest.fixture(scope="session")
-def test_data():
-    data = idp.data.TestData(notify_missing=False)
-    if not data.is_ready():
-        pytest.skip("EasyIDP test data is not downloaded. Run `idp.data.TestData().download()` before data-dependent tests.")
-    return data
+data = idp.data.TestData(notify_missing=False)
+
+# Old
+# data.pix4d.lotus_folder
+# data.metashape.lotus_psx
+
+# New
+data.p4d.lotus_folder
+data.ms.lotus_psx
 ```
 
-Change `shared_data()` to receive the fixture:
+- [ ] **Step 2: Keep missing test data as skip behavior**
+
+Use this fixture shape in `tests/conftest.py`:
 
 ```python
 @pytest.fixture(scope="module")
-def shared_data(test_data):
-    roi_all = idp.ROI(test_data.shp.lotus_shp, name_field=0)
-    roi_select = idp.ROI()
-    for key in ["N1W1", "N1W2", "N2E2", "S1W1"]:
-        roi_select[key] = roi_all[key]
-        roi_select.crs = roi_all.crs
-        roi_select.source = roi_all.source
-    return {"test_data": test_data, "roi_all": roi_all, "roi_select": roi_select}
+def test_data():
+    data = idp.data.TestData(notify_missing=False)
+    if not data.is_ready():
+        pytest.skip(
+            "EasyIDP test data is not downloaded. "
+            "Run `idp.data.TestData().download()` before data-dependent tests."
+        )
+    return data
 ```
 
-- [ ] **Step 3: Replace module-level test data variables**
+- [ ] **Step 3: Update manual test-data downloader script**
 
-For each test module with `test_data = idp.data.TestData()`, remove the module-level line and pass `test_data` fixture to tests that need it.
-
-Example replacement in `tests/test_shp.py`:
+In `tests/__init__.py`, use the explicit download flow:
 
 ```python
-def test_read_shp(test_data):
-    shp_path = test_data.shp.lotus_shp
-    assert shp_path.name == "lotus_plots.shp"
-    assert shp_path.parent.name == "shp_test"
+if __name__ == "__main__":
+    import easyidp as idp
+
+    print("Downloading test data...")
+    data = idp.data.TestData(notify_missing=False)
+    if not data.is_ready():
+        data.download()
+    print(f"Test data root: {data.root}")
 ```
 
-Preserve test behavior; only move data acquisition into fixtures.
+- [ ] **Step 4: Run focused tests**
 
-- [ ] **Step 4: Update `tests/test_data.py` to new behavior**
-
-Replace tests that expect automatic download with tests that assert no automatic download and explicit dry-run/download behavior.
-
-Example:
-
-```python
-def test_lotus_constructor_is_lightweight(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-
-    assert lotus.name == "2017_tanashi_lotus"
-    assert not lotus.root.exists()
-    assert lotus.dry_run().needs_download is True
-```
-
-- [ ] **Step 5: Run data unit tests without downloading**
-
-Run: `uv run pytest tests/test_config.py tests/test_import_side_effects.py tests/test_data_registry.py tests/test_data_dataset.py tests/test_data_downloader.py tests/test_data.py -q`
-
-Expected: pass without network access.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add tests src/easyidp/data
-git commit -m "test(data): make dataset fixtures explicit and non-networked"
-```
-
----
-
-### Task 9: Wire logger/banner behavior to `idp.config`
-
-**Files:**
-
-- Modify: `src/easyidp/logger.py`
-- Modify: `src/easyidp/__init__.py`
-- Test: `tests/test_config.py` or logger tests
-
-- [ ] **Step 1: Add tests for config-controlled logger defaults**
-
-Append to `tests/test_config.py`:
-
-```python
-def test_config_can_store_log_level_and_banner(tmp_path):
-    config = EasyIDPConfig(config_path=tmp_path / "config.json")
-    config.update(log_level="ERROR", show_banner=False)
-    config.save()
-
-    loaded = EasyIDPConfig(config_path=tmp_path / "config.json")
-
-    assert loaded.log_level == "ERROR"
-    assert loaded.show_banner is False
-```
-
-- [ ] **Step 2: Keep logger import safe**
-
-Ensure `logger.py` does not import `easyidp` package root. If it needs config values, import `easyidp.config` directly inside functions to avoid circular import:
-
-```python
-def _configured_log_level(default="INFO"):
-    try:
-        from . import config
-    except ImportError:
-        return default
-    return config.get().log_level
-```
-
-- [ ] **Step 3: Gate banner output on config**
-
-Where startup diagnostics/banner are emitted, add:
-
-```python
-if not config.get().show_banner:
-    return
-```
-
-Keep import-time behavior local and fast. Do not add network checks.
-
-- [ ] **Step 4: Run config and logger tests**
-
-Run: `uv run pytest tests/test_config.py tests/test_init_class_func.py -q`
+Run: `uv run pytest tests/test_data.py -q`
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+If local official test data exists, run one data-consuming module, for example: `uv run pytest tests/test_shp.py -q`.
 
-```bash
-git add src/easyidp/logger.py src/easyidp/__init__.py tests/test_config.py
-git commit -m "refactor(config): connect logger defaults to package config"
-```
+Expected: pass or skip because data is not downloaded.
 
 ---
 
-### Task 10: Update docs and migration guide
+### Task 7: Update Existing Documentation
 
 **Files:**
 
 - Modify: `docs/python_api/data.rst`
-- Modify: `docs/contribute.rst`
-- Add or modify autodoc pages under `docs/python_api/autodoc/`
-- Optional: Add `.agents/references/v2.1refactor/data_dataset_architecture.md` details if implementation diverges from current notes.
+- Modify: `docs/python_api/index.rst`
+- Create: `docs/python_api/advanced.rst`
+- Delete or stop referencing: `docs/python_api/autodoc/easyidp.data.download_all.rst`
+- Delete or stop referencing: `docs/python_api/autodoc/easyidp.data.user_data_dir.rst`
+- Delete or stop referencing: `docs/python_api/autodoc/easyidp.data.show_data_dir.rst`
+- Delete or stop referencing: `docs/python_api/autodoc/easyidp.data.url_checker.rst`
+- Delete or stop referencing: `docs/python_api/autodoc/easyidp.data.EasyidpDataSet.rst`
+- Test: docs build if available
 
-- [ ] **Step 1: Update data API docs to explicit download style**
+- [ ] **Step 1: Replace `docs/python_api/data.rst`**
 
-Replace old constructor-download example in `docs/python_api/data.rst` with:
+Use this content:
 
 ```rst
-Use example:
+====
+Data
+====
+
+.. currentmodule:: easyidp.data
+
+Purpose
+=======
+
+The data module is an optional shortcut for official EasyIDP demo datasets. It is not required for normal EasyIDP workflows. Most EasyIDP APIs accept ordinary file paths directly, so users can pass their own ``.shp``, ``.tif``, Pix4D, Metashape, or point-cloud paths without constructing an ``idp.data`` object.
+
+The main purpose of this module is to keep examples readable:
 
 .. code-block:: python
 
-    >>> import easyidp as idp
-    >>> lotus = idp.data.Lotus()
-    >>> lotus.is_ready()
-    False
-    >>> lotus.dry_run()
-    DownloadPlan(dataset='2017_tanashi_lotus', root='/home/user/.local/share/easyidp.data/2017_tanashi_lotus', archive='/home/user/.local/share/easyidp.data/.downloads/2017_tanashi_lotus.zip', ready=False, needs_download=True, size_bytes=3300000000, urls=('gdrive://1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j', 'aliyun://easyidp-data/2017_tanashi_lotus.zip'), missing_files=('plots.shp',))
-    >>> lotus.download()
-    DownloadResult(dataset='2017_tanashi_lotus', root='/home/user/.local/share/easyidp.data/2017_tanashi_lotus', archive='/home/user/.local/share/easyidp.data/.downloads/2017_tanashi_lotus.zip', downloaded=True, extracted=True, ready=True, warnings=())
-    >>> lotus.shp
-    PosixPath('/home/user/.local/share/easyidp.data/2017_tanashi_lotus/plots.shp')
-```
+    import easyidp as idp
 
-Add a note:
+    lotus = idp.data.Lotus()
+    roi = idp.ROI(lotus.shp)
+    ms = idp.Metashape(lotus.ms.project)
 
-```rst
-Dataset constructors do not download data in EasyIDP v2.1. They only create
-lightweight path objects and check local readiness. Use ``.download()`` for
-explicit downloads.
-```
-
-- [ ] **Step 2: Document config data directory**
-
-Add:
-
-```rst
-Changing the data directory:
+Construction is lightweight. It does not download or extract data. Call ``download()`` explicitly when needed:
 
 .. code-block:: python
 
-    >>> import easyidp as idp
-    >>> idp.config.update(data_dir="D:/EasyIDPData")
-    >>> idp.config.save()
+    lotus = idp.data.Lotus()
+    if not lotus.is_ready():
+        lotus.download()
+
+Configuration
+=============
+
+The default data directory comes from ``idp.config``:
+
+.. code-block:: python
+
+    import easyidp as idp
+
+    idp.config.update(data_dir="/path/to/easyidp.data")
+    lotus = idp.data.Lotus()
+
+OpenXLab downloads use the user's own OpenXLab account. Register an account, create an Access Key and Secret Key, then save them in EasyIDP config:
+
+Install the optional backend before calling this mirror:
+
+.. code-block:: bash
+
+    pip install "easyidp[openxlab]"
+
+.. code-block:: python
+
+    import easyidp as idp
+
+    idp.config.update(
+        openxlab_access_key="your-access-key",
+        openxlab_secret_key="your-secret-key",
+    ).save()
+
+    lotus = idp.data.Lotus()
+    lotus.download(mirror="openxlab")
+
+For Google Drive downloads, install the smaller optional backend instead:
+
+.. code-block:: bash
+
+    pip install "easyidp[gdrive]"
+
+Datasets
+========
+
+.. autosummary::
+    :toctree: autodoc
+
+    Lotus
+    ForestBirds
+    TestData
+
+Functions
+=========
+
+.. autosummary::
+    :toctree: autodoc
+
+    list_datasets
 ```
 
-- [ ] **Step 3: Update contribution data setup**
+- [ ] **Step 2: Update API summary wording**
 
-In `docs/contribute.rst`, replace typo and old hidden download flow:
+In `docs/python_api/index.rst`, change the data module summary to:
 
 ```rst
-Then download the test dataset explicitly:
-
-.. code-block:: bash
-
-    uv run python -c "import easyidp as idp; idp.data.TestData().download()"
-
-Run tests:
-
-.. code-block:: bash
-
-    uv run pytest
+- :doc:`Data Module <./data>` : Optional official demo-data path shortcuts for examples and tutorials.
+- :doc:`Advanced Notes <./advanced>` : Internal implementation notes for advanced users and contributors.
 ```
 
-- [ ] **Step 4: Run doc-related smoke checks**
+- [ ] **Step 3: Add advanced note for internal path namespaces**
 
-Run: `uv run python -m compileall src/easyidp`
+Create `docs/python_api/advanced.rst` with this content. Keep `_PathNamespace` out of `docs/python_api/data.rst` and out of the common class autosummary:
 
-Expected: compileall exits with code 0.
+```rst
+========
+Advanced
+========
 
-Run if docs dependencies are installed: `uv run sphinx-build -b html docs docs/_build/html`
+Data Internals
+==============
 
-Expected: Sphinx build exits with code 0.
+``easyidp.data`` builds short demo-data attributes from JSON manifest keys. Dotted keys such as ``ms.project`` and ``ms.outputs.dom`` are expanded into runtime namespaces so users can write ``lotus.ms.project`` or ``lotus.ms.outputs.dom``.
 
-- [ ] **Step 5: Commit**
-
-```bash
-git add docs src/easyidp
-git commit -m "docs(data): document explicit dataset downloads and config"
+The recursive namespace object is implemented as ``easyidp.data.dataset._PathNamespace``. It is an internal helper for advanced users and contributors who need to understand manifest parsing. It is intentionally not exported from ``easyidp.data`` and should not be treated as a stable public API.
 ```
+
+- [ ] **Step 4: Remove obsolete autodoc references**
+
+Remove references to old functions/classes from data docs:
+
+```text
+easyidp.data.download_all
+easyidp.data.user_data_dir
+easyidp.data.show_data_dir
+easyidp.data.url_checker
+easyidp.data.EasyidpDataSet
+```
+
+- [ ] **Step 5: Add or regenerate new autodoc stubs**
+
+Ensure these autodoc pages exist or are generated by the docs command:
+
+```text
+docs/python_api/autodoc/easyidp.data.Lotus.rst
+docs/python_api/autodoc/easyidp.data.ForestBirds.rst
+docs/python_api/autodoc/easyidp.data.TestData.rst
+docs/python_api/autodoc/easyidp.data.list_datasets.rst
+```
+
+Do not add autodoc stubs for `PathNamespace` or `_PathNamespace`.
+
+- [ ] **Step 6: Build docs**
+
+Run: `uv run sphinx-build -b html docs docs/_build/html`
+
+Expected: build completes without unresolved references to removed data APIs.
 
 ---
 
-### Task 11: Full verification and cleanup
+### Task 8: Run Verification and Prepare Merge Back
 
 **Files:**
 
-- Review all files touched in previous tasks.
-- Update tests or docs only if verification exposes concrete failures.
+- No new files unless test failures require focused fixes.
+- Test: config, data, docs, lint if available.
 
-- [ ] **Step 1: Run targeted data/config tests**
+- [ ] **Step 1: Run focused tests**
 
-Run: `uv run pytest tests/test_config.py tests/test_import_side_effects.py tests/test_data_registry.py tests/test_data_dataset.py tests/test_data_downloader.py tests/test_data.py -q`
+Run: `uv run pytest tests/test_config.py tests/test_data.py -q`
 
-Expected: all selected tests pass, except tests marked to skip because large data is not downloaded.
+Expected: all selected tests pass.
 
-- [ ] **Step 2: Run full unit suite**
+- [ ] **Step 2: Run broader tests**
 
 Run: `uv run pytest -q`
 
-Expected: pass, with data-dependent tests skipped only when `TestData` is not downloaded.
+Expected: pass, or data-dependent tests skip when official data is not downloaded.
 
-- [ ] **Step 3: Run static checks required by project rules**
+- [ ] **Step 3: Run docs build**
 
-Run: `uv run ruff check src tests`
+Run: `uv run sphinx-build -b html docs docs/_build/html`
 
-Expected: no lint errors.
+Expected: pass without references to removed `data` APIs.
 
-Run: `uv run mypy src/easyidp`
+- [ ] **Step 4: Inspect git diff**
 
-Expected: no type errors, or record existing unrelated type debt explicitly before fixing in a separate task.
+Run: `git diff -- src/easyidp tests docs .agents/plans/20260619_data_dataset_v21_refactor.md`
 
-- [ ] **Step 4: Inspect import behavior manually**
+Expected: diff only includes the simplified data implementation, related tests, and docs.
 
-Run: `uv run python -c "import easyidp as idp; print(idp.config.get().to_dict()); print(idp.data.list_datasets())"`
+- [ ] **Step 5: Merge strategy**
 
-Expected: prints config dictionary and dataset names without network access, prompts, or package installation.
+After verification, merge branch `data-json-plan` back to `dev` with a normal non-force merge. Do not reset `dev` unless explicitly approved.
 
-- [ ] **Step 5: Inspect git diff**
+## Self-Review
 
-Run: `git status --short`
-
-Run: `git diff --stat`
-
-Run: `git diff -- src/easyidp tests docs pyproject.toml`
-
-Expected: only intended files changed.
-
-- [ ] **Step 6: Final commit**
-
-```bash
-git add src/easyidp tests docs pyproject.toml
-git commit -m "refactor(data): complete explicit dataset workflow"
-```
-
----
-
-## Execution Notes
-
-- Do not restore automatic download-on-construction. That is the main breaking change.
-- Do not add environment-variable data path overrides in v2.1; use JSON config through `idp.config`.
-- Do not add a CLI in this phase; use Python API calls for CI, MCP, skills, and documentation examples.
-- Keep user-facing logs, warnings, and errors in English.
-- Keep functions focused and under 50 executable lines where practical; split path bundles if they grow large.
-- Preserve existing local caches by keeping default data directory and dataset root names unchanged.
-- If `TestData` path coverage is incomplete during migration, copy the missing logical path from old `src/easyidp/data.py` into `src/easyidp/data/testing.py` in the same task that exposes the failing test.
-
-## Self-Review Checklist
-
-- Spec coverage: configuration, explicit dataset constructors, missing-cache warnings, registry, downloader, Aliyun confirmation, safe extraction, tests, CI, MCP/skills API, and docs are each covered by tasks.
-- Placeholder scan: no task contains open-ended placeholder instructions.
-- Type consistency: public names are `EasyIDPConfig`, `DatasetSpec`, `DownloadPlan`, `DownloadResult`, `Dataset`, `Lotus`, `ForestBirds`, `TestData`, `DatasetRegistry`, and `DatasetDownloader` throughout.
-- Migration consistency: default root remains `easyidp.data`; old short dataset class names remain public; automatic download is removed.
+- Spec coverage: the plan removes TestData duplication, removes aliases/registry/builtin Python specs, uses JSON manifests, removes `user_data_dir`, keeps config as pure dataclass/json, replaces Aliyun OSS with user-authenticated OpenXLab downloads, adds manual gdown/OpenXLab smoke tests, and includes existing docs updates.
+- Placeholder scan: no placeholder markers or unspecified implementation steps remain.
+- Type consistency: public names are `Lotus`, `ForestBirds`, `TestData`, `Dataset`, and `list_datasets`; internal `_PathNamespace` is not exported from `easyidp.data`, is only documented in advanced notes, and can represent deeper dotted keys.

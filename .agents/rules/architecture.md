@@ -17,6 +17,7 @@ Use this file as the concise architecture rule for v2.1 refactoring. Detailed mo
 - Point cloud data: lightweight point cloud IO, CRS, spatial index, crop, save/export.
 - Reconstruction projects: parser adapters for photogrammetry software, projection engine, result filtering, visualization, raw ROI export.
 - Data and tooling: demo dataset download, validation, docs, tests, future MCP and skills interfaces.
+- Configuration: JSON-backed user settings for data directory, logging level, startup banner, and future package-wide preferences.
 - Legacy collection utilities: avoid carrying `Container` into v2.1 unless a short compatibility shim is required.
 
 ## Module Boundaries
@@ -25,7 +26,8 @@ Use this file as the concise architecture rule for v2.1 refactoring. Detailed mo
 - `raster` layer owns raster profiles, windows, masks, affine transforms, and GeoTIFF writing.
 - `pointcloud` layer owns point cloud data, IO backends, spatial indexes, and croppers.
 - `reconstruction` layer owns project parsers, adapters, camera models, coordinate transforms, and projection.
-- `data` layer owns dataset manifests and downloaders. It must not run downloads at import time.
+- `config` layer owns package-wide settings and persistence. It must use a JSON config file, avoid network access, and only write when explicitly requested.
+- `data` layer owns dataset manifests and downloaders. It must not run downloads at import time, and should read the default dataset root from `idp.config` rather than storing its own long-lived configuration.
 - `visualization` layer owns plotting. Core processing modules should not depend on pyplot global state.
 - `structures` should not define broad public containers unless they have a clear, typed role after ROI and reconstruction are refactored.
 
@@ -43,6 +45,17 @@ Use this file as the concise architecture rule for v2.1 refactoring. Detailed mo
 - Prefer pure operations returning new objects unless an in-place method is clearly named with `_inplace`.
 - Use stable JSON-serializable result objects for future MCP/tools.
 - Avoid returning large arrays from future tool-facing APIs; return paths, metadata, summaries, and warnings.
+- Public configuration should flow through `idp.config`; prefer explicit `update(...)`/`save()` calls over hidden environment-variable behavior or import-time mutation.
+
+## Configuration Policy
+
+- Add `idp.config` as the single public configuration entry point for package-wide preferences.
+- Store persistent user configuration as JSON, not TOML/INI/env vars, to avoid new dependencies and keep machine-readable settings simple.
+- Configuration reads may happen at import time, but must be local, fast, and side-effect-light; configuration writes require explicit user calls such as `idp.config.save()`.
+- The initial configuration scope includes `data_dir`, `log_level`, and `show_banner`; future settings should be added here rather than as scattered module globals.
+- `data_dir` controls the default root for dataset archives, temporary extraction directories, manifests, and final extracted datasets.
+- Dataset constructors may accept an explicit `cache_root` to override `idp.config.data_dir` for that object only.
+- Do not use environment variables as the primary configuration API for data paths in v2.1.
 
 ## Recommended v2.1 Package Shape
 
@@ -72,6 +85,11 @@ easyidp.reconstruction
   adapters
   ProjectionEngine
   filters
+
+easyidp.config
+  EasyIDPConfig
+  get/update/save/reset
+  JSON persistence
 
 easyidp.data
   DatasetSpec

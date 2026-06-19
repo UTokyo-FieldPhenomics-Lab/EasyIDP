@@ -337,8 +337,31 @@ def setup_logger(
     return _base_logger
 
 
+def _get_config():
+    """Lazily import and return easyidp config singleton.
+
+    Returns
+    -------
+    EasyIDPConfig or None
+        Config singleton if importable, else ``None``.
+
+    Notes
+    -----
+    Uses a deferred import to avoid introducing a package-level circular
+    dependency from ``logger.py`` to ``easyidp.__init__``.
+    """
+    try:
+        from easyidp.config import config
+    except ImportError:
+        return None
+    return config
+
+
 def init_easyidp_logger(version: str) -> None:
     """Initialize easyidp logger and emit startup diagnostics.
+
+    Reads ``log_level`` and ``show_banner`` from ``idp.config`` when the
+    config is available; falls back to ``"INFO"`` / ``True`` otherwise.
 
     Parameters
     ----------
@@ -354,7 +377,14 @@ def init_easyidp_logger(version: str) -> None:
     --------
     >>> init_easyidp_logger("2.0.2")
     """
+    cfg = _get_config()
+    log_level = cfg.log_level if cfg is not None else "INFO"
+    show_banner = cfg.show_banner if cfg is not None else True
+
     enable_file = os.environ.get("IS_TESTING") != "True"
-    setup_logger(enable_file=enable_file)
-    logger.info(f"Welcome to use\n{BANNER}\nVersion: {version}")
+    setup_logger(level=log_level, enable_file=enable_file)
+
+    if show_banner:
+        logger.info(f"Welcome to use\n{BANNER}\nVersion: {version}")
+
     logger.debug(f"ENV: IS_TESTING = {os.environ.get('IS_TESTING')}")

@@ -1,10 +1,10 @@
+import logging
 import re
 import sys
+
 import pytest
 import numpy as np
 import easyidp as idp
-
-from . import report_logging_to_caplog
 
 def test_class_container():
     # for i in c, 
@@ -136,3 +136,45 @@ def test_def_parse_photo_relative_path_warn(report_logging_to_caplog):
     # Check that warning was logged via logging
     assert "Seems it is an absolute path" in report_logging_to_caplog.text
     assert get_path == rel_path
+
+
+class TestInitLoggerWithConfig:
+    def test_logger_respects_config_error_level_no_banner(self):
+        idp.config.update(log_level="ERROR", show_banner=False)
+        try:
+            idp.setup_logger(level="INFO", enable_file=False, reset=True)
+            assert idp.logger.logger.level == logging.INFO
+            idp.init_easyidp_logger("x")
+            assert idp.logger.logger.level == logging.ERROR
+            assert idp.config.get().log_level == "ERROR"
+            assert idp.config.get().show_banner is False
+        finally:
+            idp.config.reset()
+            idp.setup_logger(level="DEBUG", enable_file=False, reset=True)
+
+    def test_logger_respects_config_info_level_show_banner(self):
+        idp.config.update(log_level="INFO", show_banner=True)
+        try:
+            idp.setup_logger(level="ERROR", enable_file=False, reset=True)
+            assert idp.logger.logger.level == logging.ERROR
+            idp.init_easyidp_logger("x")
+            assert idp.logger.logger.level == logging.INFO
+            assert idp.config.get().log_level == "INFO"
+            assert idp.config.get().show_banner is True
+        finally:
+            idp.config.reset()
+            idp.setup_logger(level="DEBUG", enable_file=False, reset=True)
+
+    def test_init_easyidp_logger_no_config_falls_back_to_info(self):
+        logger_mod = sys.modules["easyidp.logger"]
+
+        original = logger_mod._get_config
+        logger_mod._get_config = lambda: None
+        try:
+            logger_mod.setup_logger(level="INFO", enable_file=False, reset=True)
+            logger_mod.init_easyidp_logger("x")
+            assert logger_mod._base_logger.level == logging.INFO
+        finally:
+            logger_mod._get_config = original
+            idp.config.reset()
+            idp.setup_logger(level="DEBUG", enable_file=False, reset=True)

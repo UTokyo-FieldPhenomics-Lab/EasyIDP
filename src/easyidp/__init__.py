@@ -1,13 +1,9 @@
 __version__ = "2.0.3"
 
 import os
-import sys
-import subprocess
-import warnings
 from pathlib import Path
-from copy import deepcopy
 
-import numpy as np
+from . import config as config
 from .logger import init_easyidp_logger, logger, setup_logger
 
 ##############
@@ -86,27 +82,9 @@ def user_data_dir(file_name=""):
     .. [2] SwagLyrics-For-Spotify/swaglyrics/__init__.py https://github.com/SwagLyrics/SwagLyrics-For-Spotify/blob/master/swaglyrics/__init__.py#L8-L32
 
     """
-    # get os specific path
-    if sys.platform.startswith("win"):
-        os_path = os.getenv("LOCALAPPDATA", "~/.local/share")
-    elif sys.platform.startswith("darwin"):
-        os_path = "~/Library/Application Support"
-    else:
-        # linux
-        os_path = os.getenv("XDG_DATA_HOME", "~/.local/share")
-
-    if os_path is None:
-        os_path = "~/.local/share"
-
-    # join with easyidp.data dir
-    path = Path(os_path) / "easyidp.data"
-
-    add_usr = path.expanduser()
-
-    if not os.path.exists(str(add_usr)):
-        os.makedirs(str(add_usr))
-
-    return add_usr / file_name
+    root = config.get().data_dir.expanduser()
+    root.mkdir(parents=True, exist_ok=True)
+    return root / file_name
 
 
 ################
@@ -161,44 +139,3 @@ from .metashape import Metashape
 from .reconstruct import ProjectPool
 from .roi import ROI
 
-
-########################
-# Dataset region check #
-########################
-
-aliyun_down = None
-GOOGLE_AVAILABLE = True
-
-if not data._can_access_google_cloud():
-    GOOGLE_AVAILABLE = False
-
-    try:
-        import oss2
-    except ImportError:
-        logger.info("oss2 is not installed. Installing now...")
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "oss2",
-                "-i",
-                "https://pypi.tuna.tsinghua.edu.cn/simple",
-            ],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Failed to install oss2. pip exited with status {result.returncode}"
-            )
-        logger.info("oss2 has been installed.")
-
-        try:
-            import oss2
-        except ImportError:
-            raise ImportError(
-                "Failed to import oss2 after installation, please manually install `oss2` package by:\n"
-                "pip install oss2 -i https://pypi.tuna.tsinghua.edu.cn/simple"
-            )

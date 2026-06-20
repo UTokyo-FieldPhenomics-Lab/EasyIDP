@@ -17,7 +17,9 @@
 - Modify `src/easyidp/data/downloader.py`: stop depending on removed public dataset properties such as `mirrors` and `archive`.
 - Modify JSON manifests in `src/easyidp/data/datasets/*.json`: remove `spec.title` and rename top-level `required` to `ready_check`.
 - Modify `src/easyidp/logger.py`: read config through the new `get(key)` API.
-- Modify tests in `tests/test_config.py`, `tests/test_data.py`, and `tests/test_metashape.py`: update expected config behavior, dataset repr, and removed aliases.
+- Move config tests into `tests/test_config/` split by behavior: `test_api.py` and `test_persistence.py`.
+- Move data tests into `tests/test_data/` split by behavior: `test_paths.py`, `test_manifest.py`, `test_repr.py`, and `test_downloader.py`.
+- Modify `tests/test_metashape.py`: update removed dataset aliases.
 - Modify docs in `docs/python_api/data.rst` and generated autodoc stubs under `docs/python_api/autodoc/`: document only the reduced public API.
 
 ## Public API Decisions
@@ -39,12 +41,16 @@
 **Files:**
 - Modify: `src/easyidp/config.py`
 - Modify: `src/easyidp/logger.py`
-- Test: `tests/test_config.py`
+- Create: `tests/test_config/test_api.py`
+- Create: `tests/test_config/test_persistence.py`
+- Delete: `tests/test_config.py`
 - Test: `tests/test_init_class_func.py`
 
 - [ ] **Step 1: Replace config tests with get/set/reset semantics**
 
-Update `tests/test_config.py` to assert immediate persistence and JSON reload behavior:
+Move `tests/test_config.py` into smaller module tests. Put API and validation tests in `tests/test_config/test_api.py`; put persistence and manual JSON reload tests in `tests/test_config/test_persistence.py`.
+
+The combined test content should preserve these assertions:
 
 ```python
 import json
@@ -141,7 +147,7 @@ def test_reset_writes_defaults_immediately(tmp_path):
 Run:
 
 ```bash
-uv run pytest tests/test_config.py -v
+uv run pytest tests/test_config -v
 ```
 
 Expected before implementation: failures for missing `set`, old `get()` return type, and old `save` export.
@@ -289,7 +295,7 @@ Replace any reset helper calls with `idp.config.reset()`.
 Run:
 
 ```bash
-uv run pytest tests/test_config.py tests/test_init_class_func.py -v
+uv run pytest tests/test_config tests/test_init_class_func.py -v
 ```
 
 Expected: all selected tests pass.
@@ -304,12 +310,18 @@ Expected: all selected tests pass.
 - Modify: `src/easyidp/data/datasets/forestbirds.json`
 - Modify: `src/easyidp/data/datasets/lotus.json`
 - Modify: `src/easyidp/data/datasets/testdata.json`
-- Test: `tests/test_data.py`
+- Create: `tests/test_data/test_paths.py`
+- Create: `tests/test_data/test_manifest.py`
+- Create: `tests/test_data/test_repr.py`
+- Create: `tests/test_data/test_downloader.py`
+- Delete: `tests/test_data.py`
 - Test: `tests/test_metashape.py`
 
 - [ ] **Step 1: Update dataset tests for the reduced API and repr output**
 
-In `tests/test_data.py`, remove assertions for `title`, `archive`, and `required` as public attributes. Add tests for repr output:
+Move `tests/test_data.py` into smaller module tests. Put path namespace tests in `tests/test_data/test_paths.py`, manifest/config-root tests in `tests/test_data/test_manifest.py`, repr tests in `tests/test_data/test_repr.py`, and downloader tests in `tests/test_data/test_downloader.py`.
+
+Remove assertions for `title`, `archive`, and `required` as public attributes. Add tests for repr output:
 
 ```python
 def test_dataset_repr_shows_missing_status(tmp_path):
@@ -361,7 +373,7 @@ assert lotus._archive_path() == tmp_path / ".downloads" / "2017_tanashi_lotus.zi
 Run:
 
 ```bash
-uv run pytest tests/test_data.py -v
+uv run pytest tests/test_data -v
 ```
 
 Expected before implementation: failures for old JSON field names, missing repr output, and old public attributes.
@@ -593,7 +605,7 @@ In `tests/test_metashape.py`, replace `test_data.data_dir` with `test_data.root`
 Run:
 
 ```bash
-uv run pytest tests/test_data.py tests/test_metashape.py -v
+uv run pytest tests/test_data tests/test_metashape.py -v
 ```
 
 Expected: selected tests pass or data-dependent tests skip if local test data is absent.
@@ -674,7 +686,7 @@ Update remaining examples to `idp.config.set(...)` or `idp.config.reset()`.
 Run:
 
 ```bash
-uv run pytest tests/test_config.py tests/test_data.py -v
+uv run pytest tests/test_config tests/test_data -v
 uv run pytest tests/test_metashape.py -v
 ```
 

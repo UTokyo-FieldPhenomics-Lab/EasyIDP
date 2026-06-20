@@ -291,7 +291,7 @@ def test_metashape_show_photo_folder(capfd):
 
     out, err = capfd.readouterr()
 
-    assert out == f"\'{str(test_data.data_dir / 'metashape' / '20170531' / 'photos')}\': [DJI_0422.JPG, DJI_0423.JPG, ..., DJI_0571.JPG, DJI_0572.JPG] (151 photos)\n\n"
+    assert out == f"\'{str(test_data.root / 'metashape' / '20170531' / 'photos')}\': [DJI_0422.JPG, DJI_0423.JPG, ..., DJI_0571.JPG, DJI_0572.JPG] (151 photos)\n\n"
 
 def test_metashape_change_raw_img_folder():
     # test with string input
@@ -307,11 +307,11 @@ def test_metashape_change_raw_img_folder():
         ms = idp.Metashape(
             test_data.metashape.lotus_psx, 
             chunk_id=0, 
-            raw_img_folder=test_data.data_dir / "pix4d" / "lotus_tanashi_full" / "photos",
+            raw_img_folder=test_data.root / "pix4d" / "lotus_tanashi_full" / "photos",
             check_img_existance=True
         )
 
-    changed_folder = test_data.data_dir / "pix4d" / "lotus_tanashi_full" / "photos"
+    changed_folder = test_data.root / "pix4d" / "lotus_tanashi_full" / "photos"
 
     ms = idp.Metashape(
         test_data.metashape.lotus_psx, 

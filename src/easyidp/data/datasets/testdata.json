@@ -1,7 +1,6 @@
 {
   "spec": {
     "name": "testdata",
-    "title": "EasyIDP Test Data",
     "folder": "data_for_tests",
     "archive": "data_for_tests.zip",
     "size_bytes": 554900000,
@@ -16,7 +15,7 @@
     },
     "description": "Official EasyIDP developer test data."
   },
-  "required": ["shp.lotus_shp", "pix4d.lotus_folder", "metashape.lotus_psx"],
+  "ready_check": ["shp.lotus_shp", "pix4d.lotus_folder", "metashape.lotus_psx"],
   "files": {
     "json.for_read_json": "json_test/for_read_json.json",
     "json.labelme_demo": "json_test/labelme_demo_img.json",

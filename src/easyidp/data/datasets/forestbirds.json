@@ -1,7 +1,6 @@
 {
   "spec": {
     "name": "forestbirds",
-    "title": "Florida Forest Birds 2022",
     "folder": "2022_florida_forestbirds",
     "archive": "2022_florida_forestbirds.zip",
     "size_bytes": 1970000000,
@@ -16,7 +15,7 @@
     },
     "description": "Official EasyIDP forest birds demo dataset from Florida."
   },
-  "required": ["shp", "metashape.project", "metashape.dom", "metashape.dsm"],
+  "ready_check": ["shp", "metashape.project", "metashape.dom", "metashape.dsm"],
   "files": {
     "photo": "Hidden_Little_03_24_2022",
     "shp": "Hidden_Little_grid.shp",

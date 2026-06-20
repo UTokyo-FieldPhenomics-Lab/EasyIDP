@@ -37,18 +37,19 @@ def download_dataset(dataset, mirror="auto", force=False, progress=True):
     if ready and not force:
         return _result(dataset, downloaded=False, extracted=False, ready=True)
 
-    mirror_key = _select_mirror(dataset.mirrors, mirror)
-    mirror_config = dataset.mirrors[mirror_key]
+    mirror_key = _select_mirror(dataset._mirrors, mirror)
+    mirror_config = dataset._mirrors[mirror_key]
+    archive = dataset._archive_path()
 
     if mirror_key == "gdrive":
-        _download_gdrive(mirror_config["file_id"], dataset.archive, progress)
+        _download_gdrive(mirror_config["file_id"], archive, progress)
     elif mirror_key == "openxlab":
-        _download_openxlab(mirror_config, dataset.archive, progress)
+        _download_openxlab(mirror_config, archive, progress)
     else:
         raise ValueError(f"Unknown mirror type: {mirror_key!r}")
 
-    safe_extract_zip(dataset.archive, dataset.root)
-    dataset.archive.unlink(missing_ok=True)
+    safe_extract_zip(archive, dataset.root)
+    archive.unlink(missing_ok=True)
     return _result(dataset, downloaded=True, extracted=True, ready=dataset.is_ready())
 
 
@@ -344,7 +345,7 @@ def _result(dataset, *, downloaded, extracted, ready):
     return {
         "name": dataset.name,
         "root": str(dataset.root),
-        "archive": str(dataset.archive),
+        "archive": str(dataset._archive_path()),
         "downloaded": downloaded,
         "extracted": extracted,
         "ready": ready,

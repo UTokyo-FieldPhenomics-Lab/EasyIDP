@@ -1,7 +1,6 @@
 {
   "spec": {
     "name": "lotus",
-    "title": "Tanashi Lotus 2017",
     "folder": "2017_tanashi_lotus",
     "archive": "2017_tanashi_lotus.zip",
     "size_bytes": 3300000000,
@@ -16,7 +15,7 @@
     },
     "description": "Official EasyIDP lotus demo dataset from Tanashi, Tokyo."
   },
-  "required": ["shp", "metashape.project", "pix4d.dom", "pix4d.dsm"],
+  "ready_check": ["shp", "metashape.project", "pix4d.dom", "pix4d.dsm"],
   "files": {
     "photo": "20170531/photos",
     "shp": "plots.shp",

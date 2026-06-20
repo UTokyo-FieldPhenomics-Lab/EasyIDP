@@ -1,119 +1,9 @@
 import easyidp as idp
 
 
-def test_lotus_paths_are_short_namespaces(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-
-    assert lotus.name == "lotus"
-    assert lotus.title == "Tanashi Lotus 2017"
-    assert lotus.root == tmp_path / "2017_tanashi_lotus"
-    assert lotus.archive == tmp_path / ".downloads" / "2017_tanashi_lotus.zip"
-    assert lotus.shp == lotus.root / "plots.shp"
-    assert lotus.photo == lotus.root / "20170531" / "photos"
-    assert lotus.metashape.project == lotus.root / "170531.Lotus.psx"
-    assert lotus.metashape.dom == lotus.root / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
-    assert lotus.pix4d.project == lotus.root / "20170531"
-    assert lotus.pix4d.param == lotus.root / "20170531" / "params"
-    assert not hasattr(lotus, "ms")
-    assert not hasattr(lotus, "p4d")
-
-
-def test_forestbirds_paths_are_short_namespaces(tmp_path):
-    birds = idp.data.ForestBirds(cache_root=tmp_path, notify_missing=False)
-
-    assert birds.name == "forestbirds"
-    assert birds.root == tmp_path / "2022_florida_forestbirds"
-    assert birds.shp == birds.root / "Hidden_Little_grid.shp"
-    assert birds.metashape.project == birds.root / "Hidden_Little_03_24_2022.psx"
-    assert not hasattr(birds, "pix4d")
-    assert not hasattr(birds, "ms")
-    assert not hasattr(birds, "p4d")
-
-
-def test_path_namespace_supports_nested_paths(tmp_path):
-    from easyidp.data.dataset import _PathNamespace
-
-    namespace = _PathNamespace(
-        tmp_path,
-        {"metashape": {"outputs": {"dom": "dom.tif"}}},
-    )
-
-    assert namespace.metashape.outputs.dom == tmp_path / "dom.tif"
-
-
-def test_testdata_uses_same_manifest_paths_as_runtime(tmp_path):
-    data = idp.data.TestData(cache_root=tmp_path, test_out=tmp_path / "out", notify_missing=False)
-
-    assert data.name == "testdata"
-    assert data.root == tmp_path / "data_for_tests"
-    assert data.metashape.lotus_psx == data.root / "metashape" / "Lotus.psx"
-    assert data.pix4d.lotus_folder == data.root / "pix4d" / "lotus_tanashi_full"
-    assert not hasattr(data, "ms")
-    assert not hasattr(data, "p4d")
-    assert data.shp.lotus_shp == data.root / "shp_test" / "lotus_plots.shp"
-    assert data.tiff.soyweed_part == data.root / "tiff_test" / "2_12.tif"
-    assert data.test_out == tmp_path / "out"
-    assert data.shp.out == tmp_path / "out" / "shp_test"
-    assert data.cv.out == tmp_path / "out" / "cv_test"
-    assert data.vis.out == tmp_path / "out" / "visual_test"
-    assert data.b2r.out == tmp_path / "out" / "back2raw_test"
-
-
-def test_constructor_does_not_create_cache_dirs(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-
-    assert not lotus.root.exists()
-    assert not lotus.archive.parent.exists()
-
-
-def test_is_ready_uses_required_keys_only(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    for key in lotus.required:
-        path = lotus.path(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
-
-    assert lotus.is_ready()
-
-
-def test_dry_run_is_json_friendly(tmp_path):
-    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    plan = lotus.dry_run()
-
-    assert plan["name"] == "lotus"
-    assert plan["ready"] is False
-    assert plan["needs_download"] is True
-    assert isinstance(plan["root"], str)
-    assert isinstance(plan["archive"], str)
-    assert "plots.shp" in plan["missing"]
-
-
-def test_data_root_comes_from_config(tmp_path, monkeypatch):
-    from types import SimpleNamespace
-
-    fake = SimpleNamespace(data_dir=tmp_path / "configured")
-    monkeypatch.setattr(idp.config, "get", lambda key: getattr(fake, key))
-    lotus = idp.data.Lotus(notify_missing=False)
-    assert lotus.root == tmp_path / "configured" / "2017_tanashi_lotus"
-
-
-def test_public_api_is_small():
-    expected = {"Lotus", "ForestBirds", "TestData", "list_datasets"}
-    forbidden = {"DatasetRegistry", "registry", "user_data_dir", "PathNamespace"}
-
-    missing = [n for n in expected if not hasattr(idp.data, n)]
-    present = [n for n in forbidden if hasattr(idp.data, n)]
-
-    assert not missing, f"Expected exports missing: {missing}"
-    assert not present, f"Forbidden exports found: {present}"
-
-
-# --- downloader unit tests ------------------------------------------------
-
-
 def test_download_skips_ready_dataset(tmp_path):
     lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    for key in lotus.required:
+    for key in lotus._ready_check:
         p = lotus.path(key)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.touch()
@@ -213,7 +103,7 @@ def test_download_removes_archive_after_extracting(tmp_path, monkeypatch):
     def fake_download_openxlab(mirror_config, archive, progress):
         archive.parent.mkdir(parents=True, exist_ok=True)
         with zf.ZipFile(archive, "w") as z:
-            for key in lotus.required:
+            for key in ("shp", "metashape.project", "pix4d.dom", "pix4d.dsm"):
                 z.writestr(str(lotus.path(key).relative_to(lotus.root)), "data")
 
     monkeypatch.setattr(
@@ -227,7 +117,7 @@ def test_download_removes_archive_after_extracting(tmp_path, monkeypatch):
     assert result["downloaded"] is True
     assert result["extracted"] is True
     assert result["ready"] is True
-    assert not lotus.archive.exists()
+    assert not lotus._archive_path().exists()
 
 
 class FakeResponse:

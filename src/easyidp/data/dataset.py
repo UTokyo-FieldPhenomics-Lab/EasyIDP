@@ -5,14 +5,11 @@ import types
 from pathlib import Path
 
 import easyidp.config as _cfg
-from easyidp.logger import logger
 
 _MANIFEST_DIR = Path(__file__).parent / "datasets"
 
 _RESERVED_ATTRS = frozenset({
-    "name", "title", "description", "size_bytes", "mirrors", "required",
-    "files", "cache_root", "root", "archive", "data_dir", "zip_file",
-    "path", "is_ready", "dry_run", "download", "test_out",
+    "name", "root", "path", "is_ready", "dry_run", "download", "test_out",
 })
 
 
@@ -133,7 +130,7 @@ def _validate_manifest(data):
     if not isinstance(spec, dict):
         raise ValueError("manifest missing 'spec' section")
 
-    for field in ("name", "title", "folder", "size_bytes"):
+    for field in ("name", "folder", "size_bytes"):
         if field not in spec:
             raise ValueError(f"manifest spec missing required field: {field!r}")
 
@@ -147,12 +144,12 @@ def _validate_manifest(data):
     for key in files:
         _validate_attr_name(key)
 
-    required = data.get("required", [])
-    if not isinstance(required, list):
-        raise ValueError("manifest 'required' must be a list")
-    for key in required:
+    ready_check = data.get("ready_check", [])
+    if not isinstance(ready_check, list):
+        raise ValueError("manifest 'ready_check' must be a list")
+    for key in ready_check:
         if key not in files:
-            raise ValueError(f"required key {key!r} not found in files")
+            raise ValueError(f"ready_check key {key!r} not found in files")
 
 
 def _insert_path(obj, files, root):
@@ -218,14 +215,13 @@ class Dataset:
         Root directory for cached datasets.  Defaults to the value
         returned by :func:`easyidp.config.get("data_dir")`.
     notify_missing : bool, optional
-        Whether to log a warning when required files are missing.
+        Retained for backward compatibility only; no longer logs warnings.
     """
 
     def __init__(self, manifest_name, cache_root=None, notify_missing=True):
         if cache_root is None:
             cache_root = _cfg.get("data_dir")
         self._cache_root = Path(cache_root).expanduser()
-        self._notify_missing = notify_missing
 
         manifest_path = _MANIFEST_DIR / f"{manifest_name}.json"
         data = _load_manifest(manifest_path)
@@ -234,23 +230,17 @@ class Dataset:
         spec = data["spec"]
         self._manifest = types.MappingProxyType(data)
         self._name = spec["name"]
-        self._title = spec["title"]
         self._description = spec.get("description", "")
         self._size_bytes = spec["size_bytes"]
         self._mirrors = types.MappingProxyType(spec.get("mirrors", {}))
         self._folder = spec["folder"]
         self._archive_name = spec.get("archive", f"{self._folder}.zip")
 
-        self._required = tuple(data.get("required", ()))
+        self._ready_check = tuple(data.get("ready_check", ()))
         self._files = types.MappingProxyType(data.get("files", {}))
 
         self._ns_root = self._cache_root / self._folder
         _insert_path(self, self._files, self._ns_root)
-        if self._notify_missing and not self.is_ready():
-            logger.warning(
-                "Dataset '{}' is not ready. Call .download() to fetch it.",
-                self._name,
-            )
 
     # -- read-only properties ------------------------------------------------
 
@@ -260,59 +250,56 @@ class Dataset:
         return self._name
 
     @property
-    def title(self):
-        """Human-readable dataset title."""
-        return self._title
-
-    @property
-    def description(self):
-        """Short dataset description from the manifest."""
-        return self._description
-
-    @property
-    def size_bytes(self):
-        """Compressed archive size in bytes."""
-        return self._size_bytes
-
-    @property
-    def mirrors(self):
-        """Read-only mapping of configured download mirrors."""
-        return self._mirrors
-
-    @property
-    def required(self):
-        """File keys used to decide whether the dataset is ready."""
-        return self._required
-
-    @property
-    def files(self):
-        """Read-only mapping from dotted file keys to relative paths."""
-        return self._files
-
-    @property
-    def cache_root(self):
-        """Root directory that stores EasyIDP dataset caches."""
-        return self._cache_root
-
-    @property
     def root(self):
         """Extracted dataset directory."""
         return self._ns_root
 
-    @property
-    def data_dir(self):
-        """Alias of :attr:`root` kept for dataset path workflows."""
-        return self._ns_root
+    # -- private helpers -----------------------------------------------------
 
-    @property
-    def archive(self):
-        """Temporary archive path removed after successful extraction."""
+    def _archive_path(self):
+        """Temporary archive path removed after successful extraction.
+
+        Returns
+        -------
+        Path
+            Archive file path under ``.downloads/``.
+        """
         return self._cache_root / ".downloads" / self._archive_name
 
-    @property
-    def zip_file(self):
-        """Alias of :attr:`archive` for zip-based dataset downloads."""
-        return self.archive
+    @staticmethod
+    def _format_size(size_bytes):
+        """Format a byte count with decimal (1000‑based) units.
+
+        Parameters
+        ----------
+        size_bytes : int
+            Size in bytes.
+
+        Returns
+        -------
+        str
+            Human-readable size string, e.g. ``"1.97 GB"``.
+        """
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if size_bytes < 1000:
+                return f"{size_bytes} {unit}" if unit == "B" else f"{size_bytes:.2f} {unit}"
+            size_bytes /= 1000
+        return f"{size_bytes:.2f} PB"
+
+    def __repr__(self):
+        lines = [object.__repr__(self)]
+        if self._description:
+            lines.append(self._description)
+        lines.append(f"Size: {self._format_size(self._size_bytes)}")
+        if self.is_ready():
+            lines.append("Status: available at")
+            lines.append(f"    {self._ns_root}")
+        else:
+            lines.append("Status: not downloaded. call .download() to save at")
+            lines.append(f"    {self._ns_root}")
+            lines.append("You can change the download location with:")
+            lines.append('     idp.config.set(data_dir="/path/to/easyidp.data")')
+        return "\n".join(lines)
 
     # -- public methods ------------------------------------------------------
 
@@ -332,11 +319,11 @@ class Dataset:
         return self._ns_root / self._files[key]
 
     def is_ready(self):
-        """Return ``True`` when every required file exists on disk.
+        """Return ``True`` when every ready_check file exists on disk.
 
-        If no ``required`` list is present, all files are checked.
+        If no ``ready_check`` list is present, all files are checked.
         """
-        check_keys = self._required if self._required else self._files
+        check_keys = self._ready_check if self._ready_check else self._files
         return all(self.path(k).exists() for k in check_keys)
 
     def dry_run(self):
@@ -345,23 +332,22 @@ class Dataset:
         Returns
         -------
         dict
-            Summary with keys ``name``, ``root``, ``archive``, ``ready``,
-            ``needs_download``, ``size_bytes``, ``mirrors``, ``missing``.
+            Summary with keys ``name``, ``description``, ``root``, ``ready``,
+            ``needs_download``, ``size_bytes``, ``missing``.
             All path values are plain strings.
         """
         ready = self.is_ready()
-        check_keys = self._required if self._required else list(self._files)
+        check_keys = self._ready_check if self._ready_check else list(self._files)
         missing = [
             self._files[k] for k in check_keys if not self.path(k).exists()
         ]
         return {
             "name": self._name,
+            "description": self._description,
             "root": str(self._ns_root),
-            "archive": str(self.archive),
             "ready": ready,
             "needs_download": not ready,
             "size_bytes": self._size_bytes,
-            "mirrors": dict(self._mirrors),
             "missing": missing,
         }
 
@@ -427,7 +413,7 @@ class Lotus(Dataset):
             Root directory for cached datasets. Defaults to
             ``idp.config.get("data_dir")``.
         notify_missing : bool, optional
-            Whether to log a warning when required files are missing.
+            Retained for backward compatibility only; no longer logs warnings.
 
         Examples
         --------
@@ -478,7 +464,7 @@ class ForestBirds(Dataset):
             Root directory for cached datasets. Defaults to
             ``idp.config.get("data_dir")``.
         notify_missing : bool, optional
-            Whether to log a warning when required files are missing.
+            Retained for backward compatibility only; no longer logs warnings.
 
         Examples
         --------
@@ -632,7 +618,7 @@ class TestData(Dataset):
         test_out : Path or str, optional
             Folder for temporary test outputs, by default ``"./tests/out"``.
         notify_missing : bool, optional
-            Whether to log a warning when required files are missing.
+            Retained for backward compatibility only; no longer logs warnings.
         """
         super().__init__(
             "testdata", cache_root=cache_root, notify_missing=notify_missing

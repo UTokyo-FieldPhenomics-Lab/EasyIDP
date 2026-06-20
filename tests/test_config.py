@@ -98,3 +98,9 @@ def test_save_returns_config_path(tmp_path):
     returned = config.save()
 
     assert returned == config_path.resolve()
+
+
+def test_user_data_dir_removed_from_package_root():
+    assert not hasattr(idp, "user_data_dir")
+    assert hasattr(idp, "config")
+    assert idp.config.get().data_dir.name == "easyidp.data"

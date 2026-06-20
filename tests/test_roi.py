@@ -6,7 +6,7 @@ from pathlib import Path
 
 import easyidp as idp
 
-from . import shared_data, report_logging_to_caplog
+from . import shared_data
 
 
 def test_read_cc_txt(shared_data):

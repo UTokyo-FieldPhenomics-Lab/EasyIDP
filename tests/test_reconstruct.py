@@ -114,7 +114,7 @@ def test_class_sensor_in_img_boundary():
 
 
 def test_class_calibration_calibrate_error():
-    # ============ pix4d =============
+    # ============ p4d =============
     c1 = idp.reconstruct.Calibration()
     c1.software = "pix4d_e"
     c1.type = "frame"

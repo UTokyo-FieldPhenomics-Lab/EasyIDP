@@ -1,209 +1,330 @@
-import re
-import os
-import oss2
-import shutil
-import pytest
-import random
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
 import easyidp as idp
 
-def test_get_download_url_without_download():
 
-    assert idp.data.Lotus.name == '2017_tanashi_lotus'
-    assert idp.data.TestData.name == 'data_for_tests'
+def test_lotus_paths_are_short_namespaces(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
 
-    url = idp.data.Lotus.gdrive_url
-    assert isinstance(url, str)
+    assert lotus.name == "lotus"
+    assert lotus.title == "Tanashi Lotus 2017"
+    assert lotus.root == tmp_path / "2017_tanashi_lotus"
+    assert lotus.archive == tmp_path / ".downloads" / "2017_tanashi_lotus.zip"
+    assert lotus.shp == lotus.root / "plots.shp"
+    assert lotus.photo == lotus.root / "20170531" / "photos"
+    assert lotus.metashape.project == lotus.root / "170531.Lotus.psx"
+    assert lotus.metashape.dom == lotus.root / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
+    assert lotus.pix4d.project == lotus.root / "20170531"
+    assert lotus.pix4d.param == lotus.root / "20170531" / "params"
+    assert not hasattr(lotus, "ms")
+    assert not hasattr(lotus, "p4d")
 
-def test_usr_data_dir():
-    root_dir = idp.data.user_data_dir("")
-    assert "easyidp.data" in str(root_dir)
 
-def test_gdown():
-    gd_dir = idp.data.user_data_dir("gdown_test")
-    
-    if gd_dir.exists():
-        shutil.rmtree(gd_dir)
-    
-    gd = idp.data.GDownTest()
+def test_forestbirds_paths_are_short_namespaces(tmp_path):
+    birds = idp.data.ForestBirds(cache_root=tmp_path, notify_missing=False)
 
-    assert gd.data_dir.exists()
-    assert (gd.data_dir / "file1.txt").exists()
+    assert birds.name == "forestbirds"
+    assert birds.root == tmp_path / "2022_florida_forestbirds"
+    assert birds.shp == birds.root / "Hidden_Little_grid.shp"
+    assert birds.metashape.project == birds.root / "Hidden_Little_03_24_2022.psx"
+    assert not hasattr(birds, "pix4d")
+    assert not hasattr(birds, "ms")
+    assert not hasattr(birds, "p4d")
 
-    assert Path(gd.pix4d.proj).resolve() == (gd.data_dir / "file1.txt").resolve()
-    assert Path(gd.metashape.param).resolve() == (gd.data_dir / "folder1").resolve()
 
-    # test remove and reload
-    gd.remove_data()
-    assert not gd.data_dir.exists()
+def test_path_namespace_supports_nested_paths(tmp_path):
+    from easyidp.data.dataset import _PathNamespace
 
-    gd.reload_data()
-    assert gd.data_dir.exists()
+    namespace = _PathNamespace(
+        tmp_path,
+        {"metashape": {"outputs": {"dom": "dom.tif"}}},
+    )
 
-#====================
-# AliYun Downloading 
-#====================
+    assert namespace.metashape.outputs.dom == tmp_path / "dom.tif"
 
-ali_down = idp.data.AliYunDownloader()
 
-def test_class_aliyun_downloader_init():
+def test_testdata_uses_same_manifest_paths_as_runtime(tmp_path):
+    data = idp.data.TestData(cache_root=tmp_path, test_out=tmp_path / "out", notify_missing=False)
 
-    assert ali_down.bucket_name == "easyidp-data"
-    assert isinstance(ali_down.bucket, oss2.api.Bucket)
+    assert data.name == "testdata"
+    assert data.root == tmp_path / "data_for_tests"
+    assert data.metashape.lotus_psx == data.root / "metashape" / "Lotus.psx"
+    assert data.pix4d.lotus_folder == data.root / "pix4d" / "lotus_tanashi_full"
+    assert not hasattr(data, "ms")
+    assert not hasattr(data, "p4d")
+    assert data.shp.lotus_shp == data.root / "shp_test" / "lotus_plots.shp"
+    assert data.tiff.soyweed_part == data.root / "tiff_test" / "2_12.tif"
+    assert data.test_out == tmp_path / "out"
+    assert data.shp.out == tmp_path / "out" / "shp_test"
+    assert data.cv.out == tmp_path / "out" / "cv_test"
+    assert data.vis.out == tmp_path / "out" / "visual_test"
+    assert data.b2r.out == tmp_path / "out" / "back2raw_test"
 
-def test_class_aliyun_downloader_cost():
-    # test cost calculate
-    cost = ali_down.calculate_download_cost("aaa", "5.6GB")
-    assert cost >= (0.12 + 0.5) * 5.6
-    assert cost <= (0.12 + 0.5 + 0.1) * 5.6
 
-    # test different size
-    cost = ali_down.calculate_download_cost("bbb", "5.6MB")
-    cost = ali_down.calculate_download_cost("ccc", "5.6KB")
+def test_constructor_does_not_create_cache_dirs(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
 
-    # test incorrect string
-    with pytest.raises(ValueError, match=re.escape("Invalid dataset size format of ddd.size = 5.6.7MB")):
-        cost = ali_down.calculate_download_cost("ddd", "5.6.7MB")
+    assert not lotus.root.exists()
+    assert not lotus.archive.parent.exists()
 
-    # test unsupported file size
-    with pytest.raises(ValueError, match=re.escape("Invalid dataset size format of eee.size = 5.6TB")):
-        cost = ali_down.calculate_download_cost("eee", "5.6TB")
 
-#-----------------
-# download_auth()
-#-----------------
-def test_class_aliyun_downloader_auth_success():
-    random.seed(10)
-    dataset_name = "aaa"
-    dataset_size = "0.5GB"
+def test_is_ready_uses_required_keys_only(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    for key in lotus.required:
+        path = lotus.path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
 
-    money_cost = ali_down.calculate_download_cost(dataset_name, dataset_size)
-    confirm_str = f"我已知悉此次下载会消耗{money_cost}元的下行流量费用"
+    assert lotus.is_ready()
 
-    with patch('builtins.input', side_effect=[confirm_str]):
-        random.seed(10)
-        assert ali_down.download_auth(dataset_name, dataset_size) == True
 
-def test_class_aliyun_downloader_auth_wrong():
-    random.seed(10)
-    dataset_name = "bbb"
-    dataset_size = "0.5GB"
+def test_dry_run_is_json_friendly(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    plan = lotus.dry_run()
 
-    wrong_inputs = ["wrong input"] * 5
+    assert plan["name"] == "lotus"
+    assert plan["ready"] is False
+    assert plan["needs_download"] is True
+    assert isinstance(plan["root"], str)
+    assert isinstance(plan["archive"], str)
+    assert "plots.shp" in plan["missing"]
 
-    with patch('builtins.input', side_effect=wrong_inputs):
-        with pytest.raises(PermissionError):
-            ali_down.download_auth(dataset_name, dataset_size)
 
-def test_download_auth_retry_then_success():
-    random.seed(10)
-    dataset_name = "ccc"
-    dataset_size = "0.5GB"
+def test_data_root_comes_from_config(tmp_path, monkeypatch):
+    from types import SimpleNamespace
 
-    # 模拟前几次失败，然后成功的用户输入
-    money_cost = ali_down.calculate_download_cost(dataset_name, dataset_size)
-    confirm_str = f"我已知悉此次下载会消耗{money_cost}元的下行流量费用"
-    inputs = ["wrong input", "wrong input", confirm_str]
+    fake = SimpleNamespace(data_dir=tmp_path / "configured")
+    monkeypatch.setattr(idp.config, "get", lambda: fake)
+    lotus = idp.data.Lotus(notify_missing=False)
+    assert lotus.root == tmp_path / "configured" / "2017_tanashi_lotus"
 
-    with patch('builtins.input', side_effect=inputs):
-        random.seed(10)
-        assert ali_down.download_auth(dataset_name, dataset_size) == True
 
-#------------
-# download()
-#------------
-"""
-在这个测试文件中，我们定义了以下内容：
+def test_public_api_is_small():
+    expected = {"Lotus", "ForestBirds", "TestData", "list_datasets"}
+    forbidden = {"DatasetRegistry", "registry", "user_data_dir", "PathNamespace"}
 
-+ mock_requests_get：一个 pytest fixture，用于模拟 requests.get 请求。
-- mock_oss2：一个 pytest fixture，用于模拟 oss2.Bucket 和 oss2.resumable_download。
-+ test_download_success：测试 download 方法在成功下载时的行为。
-+ test_download_auth_failure：测试在获取认证失败时的行为。
+    missing = [n for n in expected if not hasattr(idp.data, n)]
+    present = [n for n in forbidden if hasattr(idp.data, n)]
 
-运行这些测试时，patch 会替换 requests.get 和 oss2 模块中的相关函数，使其返回预定义的值，从而避免实际的网络请求和下载操作。
-"""
-@pytest.fixture
-def mock_requests_get():
-    with patch('requests.get') as mock_get:
-        yield mock_get
+    assert not missing, f"Expected exports missing: {missing}"
+    assert not present, f"Forbidden exports found: {present}"
 
-def test_download_success():
-    dataset_name = "gdown_test"
-    output = "./tests/out/data_test/gdown_download_test.zip"
 
-    if os.path.exists(output):
-        os.remove(output)
+# --- downloader unit tests ------------------------------------------------
 
-    ali_down.download(dataset_name, output)
 
-    assert os.path.exists(output)
+def test_download_skips_ready_dataset(tmp_path):
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    for key in lotus.required:
+        p = lotus.path(key)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.touch()
 
-def test_download_auth_failure(mock_requests_get):
-    mock_response = MagicMock()
-    mock_response.status_code = 403
-    mock_requests_get.return_value = mock_response
+    result = lotus.download()
 
-    with pytest.raises(ConnectionRefusedError):
-        idp.data.AliYunDownloader()
+    assert result["name"] == "lotus"
+    assert result["downloaded"] is False
+    assert result["extracted"] is False
+    assert result["ready"] is True
 
-#--------------------
-# GDownDataset class
-#--------------------
 
-@pytest.mark.skipif(
-    os.environ.get("PYTEST_XDIST_WORKER") is not None,
-    reason="Skipped during parallel execution, run separately with: pytest tests/test_data.py::test_gdown_ali_oss"
+def test_safe_extract_rejects_zip_slip(tmp_path):
+    import zipfile as zf
+
+    from easyidp.data.downloader import safe_extract_zip
+
+    bad_zip = tmp_path / "bad.zip"
+    with zf.ZipFile(bad_zip, "w") as z:
+        z.writestr(zf.ZipInfo("../escape.txt"), "malicious")
+
+    dest = tmp_path / "dest"
+    dest.mkdir()
+
+    try:
+        safe_extract_zip(bad_zip, dest)
+    except RuntimeError as exc:
+        assert "escape.txt" in str(exc)
+    else:
+        assert False, "expected RuntimeError for zip slip"
+
+
+def test_download_extracts_mocked_gdrive_archive(tmp_path):
+    import sys
+    import zipfile as zf
+    from unittest import mock
+
+    from easyidp.data.downloader import _download_gdrive
+
+    archive = tmp_path / ".downloads" / "test.zip"
+    dest = tmp_path / "extracted"
+    dest.mkdir()
+
+    test_zip = tmp_path / "real.zip"
+    with zf.ZipFile(test_zip, "w") as z:
+        z.writestr("file1.txt", "hello")
+
+    def _fake_download(*, id, output, quiet):
+        import shutil
+        shutil.copy(test_zip, output)
+
+    mock_gdown = mock.MagicMock()
+    mock_gdown.download = _fake_download
+    sys.modules["gdown"] = mock_gdown
+
+    try:
+        _download_gdrive("fake-id", archive, progress=False)
+    finally:
+        sys.modules.pop("gdown", None)
+
+    assert archive.exists()
+    assert archive.stat().st_size > 0
+
+
+class FakeResponse:
+    def __init__(self, content=b"fake-zip-data", *, json_data=None,
+                 status_code=200, headers=None):
+        self._content = content
+        self._json_data = json_data
+        self.status_code = status_code
+        self.headers = headers or {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._json_data
+
+    def iter_content(self, chunk_size=None):
+        yield self._content
+
+
+_OPENXLAB_CDN_URL = (
+    "https://cdn-xlab-data.openxlab.org.cn/objects/"
+    "b353aee3743d29d968b09222c5a3b208268cce09100ab73b4048cb7cf42a844c"
 )
-def test_gdown_ali_oss():
-    # the default EasyIDPDataset using system cache folder
-    # it conflits when pytest parallel 
-    #  -> previous `gdown_test` function may delete the same folder
-    # thus made an unique test, which can specify unzip folder 
-    from easyidp.data import EasyidpDataSet, GDOWN_TEST_URL
-    class ADownTest(EasyidpDataSet):
-        def __init__(self, dataset_folder:Path):
+_EXPECTED_SHA256 = "b353aee3743d29d968b09222c5a3b208268cce09100ab73b4048cb7cf42a844c"
+_OPENXLAB_API_JSON = {
+    "code": 0,
+    "data": {
+        "url": _OPENXLAB_CDN_URL,
+        "meta": {"size": 280},
+    },
+}
 
-            super().__init__("gdown_test", GDOWN_TEST_URL, "0.2KB")
-            self.data_dir = dataset_folder / self.name
-            self.zip_file = dataset_folder / (self.name + ".zip")
 
-            super().load_data()
+def test_openxlab_anonymous_downloader_uses_cdn_url(tmp_path):
+    from unittest.mock import patch
 
-            self.pix4d.proj = self.data_dir / "file1.txt"
-            self.metashape.param = self.data_dir / "folder1"
-    # end of unique testing class
+    from easyidp.data.downloader import _download_openxlab
 
-    dataset_folder = Path('./tests/out/data_test/')
-    data_dir = dataset_folder / "gdown_test"
-    
-    # clear already existed folder for `gdown_test`
-    if data_dir.exists():
-        shutil.rmtree(data_dir)
-    
-    # ask if China mainland, answer: no
-    #   google drive not available, and not in china mainland
-    #   => not provide aliyun oss service for overseas, 
-    #      => notice google drive download link broken, report to github
-    inputs = ["n"]
-    with patch('builtins.input', side_effect=inputs):
-        with pytest.raises(
-            ConnectionError, 
-            match=re.escape(
-                "Could not find proper downloadable link for dataset gdown_test."
-            )
-            ):
-            # force to use AliYUN OSS
-            idp.GOOGLE_AVAILABLE = False
-            gd = ADownTest(dataset_folder=dataset_folder)
+    mirror_config = {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/gdown_test.zip",
+    }
+    archive = tmp_path / ".downloads" / "gdown_test.zip"
+    archive.parent.mkdir(parents=True, exist_ok=True)
 
-    # ask if China mainland, answer: yes
-    inputs = ["y", "我已知悉此次下载会消耗0.0元的下行流量费用"]
-    with patch('builtins.input', side_effect=inputs):
-        # force to use AliYUN OSS
-        idp.GOOGLE_AVAILABLE = False
-        gd = ADownTest(dataset_folder=dataset_folder)
+    post_mock = FakeResponse(b"", json_data=_OPENXLAB_API_JSON)
+    get_mock = FakeResponse(b"fake-zip-content" * 18)
 
-    assert gd.data_dir.exists()
-    assert (gd.data_dir / "file1.txt").exists()
+    post_called = []
+    get_called = []
+
+    def fake_post(url, **kwargs):
+        post_called.append((url, kwargs))
+        return post_mock
+
+    def fake_get(url, **kwargs):
+        get_called.append((url, kwargs))
+        return get_mock
+
+    with patch("requests.post", side_effect=fake_post), \
+            patch("requests.get", side_effect=fake_get):
+        try:
+            _download_openxlab(mirror_config, archive, progress=False)
+        except RuntimeError:
+            pass
+
+    assert len(post_called) == 1
+    url, kwargs = post_called[0]
+    assert "openxlab.org.cn/datasets/api/v3/datasets/" in url
+    assert "HowcanoeWang,easyidp-demo-dataset/r/main" in url
+    assert kwargs["json"] == {"path": "gdown_test.zip", "preview": False}
+    assert kwargs["timeout"] == 60
+
+    assert len(get_called) == 1
+    url, kwargs = get_called[0]
+    assert url == _OPENXLAB_CDN_URL
+    assert kwargs["stream"] is True
+    assert kwargs["timeout"] == 180
+
+
+def test_openxlab_downloader_rejects_sha256_mismatch(tmp_path):
+    from unittest.mock import patch
+
+    from easyidp.data.downloader import _download_openxlab
+
+    mirror_config = {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/gdown_test.zip",
+    }
+    archive = tmp_path / ".downloads" / "gdown_test.zip"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+
+    post_mock = FakeResponse(b"", json_data=_OPENXLAB_API_JSON)
+    wrong_content = b"x" * 280
+    get_mock = FakeResponse(wrong_content)
+
+    with patch("requests.post", return_value=post_mock), \
+            patch("requests.get", return_value=get_mock):
+        try:
+            _download_openxlab(mirror_config, archive, progress=False)
+        except RuntimeError as exc:
+            assert "SHA256 mismatch" in str(exc)
+        else:
+            assert False, "expected RuntimeError for SHA256 mismatch"
+
+
+def test_openxlab_downloader_uses_tqdm_when_progress_enabled(tmp_path):
+    import hashlib
+
+    from unittest.mock import patch
+
+    from easyidp.data.downloader import _download_openxlab
+
+    content = b"x" * 280
+    valid_sha = hashlib.sha256(content).hexdigest()
+    cdn_url = _OPENXLAB_CDN_URL.replace(_EXPECTED_SHA256, valid_sha)
+    api_json = {
+        "code": 0,
+        "data": {
+            "url": cdn_url,
+            "meta": {"size": 280},
+        },
+    }
+
+    mirror_config = {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/gdown_test.zip",
+    }
+    archive = tmp_path / ".downloads" / "gdown_test.zip"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+
+    post_mock = FakeResponse(b"", json_data=api_json)
+    get_mock = FakeResponse(content)
+
+    with patch("requests.post", return_value=post_mock), \
+            patch("requests.get", return_value=get_mock), \
+            patch("easyidp.data.downloader.tqdm") as mock_tqdm:
+        mock_tqdm.return_value.__enter__ = lambda s: s
+        mock_tqdm.return_value.__exit__ = lambda *a: None
+        mock_tqdm.return_value.update = lambda n: None
+
+        _download_openxlab(mirror_config, archive, progress=True)
+
+        assert mock_tqdm.called, "tqdm should be used when progress=True"

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import easyidp as idp
 
-from . import shared_data, report_logging_to_caplog, out_dir
+from . import shared_data, out_dir
 
 
 def _affine_pixel_corners(gtiff):

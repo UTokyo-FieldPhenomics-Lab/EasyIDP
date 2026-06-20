@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 import easyidp as idp
 
-from . import shared_data, report_logging_to_caplog
+from . import shared_data
 
 ##############################
 # Test back2raw_single based #

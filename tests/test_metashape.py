@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data, report_logging_to_caplog
+from . import shared_data
 
 #########################
 # test math calculation #
@@ -484,9 +484,9 @@ def test_debug_discussion_12():
 
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
-      File "D:\OneDrive\Program\GitHub\EasyIDP\easyidp\metashape.py", line 99, in _world2crs
+      File "D:\OneDrive\Program\GitHub\EasyIDP\easyidp\ms.py", line 99, in _world2crs
         return convert_proj3d(points_np, self.world_crs, self.crs)
-      File "D:\OneDrive\Program\GitHub\EasyIDP\easyidp\metashape.py", line 1047, in convert_proj3d
+      File "D:\OneDrive\Program\GitHub\EasyIDP\easyidp\ms.py", line 1047, in convert_proj3d
         return out[0, :]
     raise UnboundLocalError: local variable 'out' referenced before assignment
 

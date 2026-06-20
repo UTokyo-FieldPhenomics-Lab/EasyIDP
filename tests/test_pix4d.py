@@ -6,7 +6,7 @@ from pathlib import Path
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data, report_logging_to_caplog
+from . import shared_data
 
 def test_hidden_match_suffix():
     test_folder = test_data.pix4d.maize_empty / "2_densification" / "point_cloud"

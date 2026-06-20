@@ -7,7 +7,7 @@ import pyproj
 import easyidp as idp
 
 test_data = idp.data.TestData()
-from . import shared_data, report_logging_to_caplog
+from . import shared_data
 
 ##########################
 # test read point clouds #

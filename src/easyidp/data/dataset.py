@@ -216,7 +216,7 @@ class Dataset:
         Name of the JSON manifest without extension (e.g. ``"lotus"``).
     cache_root : Path or str, optional
         Root directory for cached datasets.  Defaults to the value
-        returned by :func:`easyidp.config.get().data_dir`.
+        returned by :func:`easyidp.config.get("data_dir")`.
     notify_missing : bool, optional
         Whether to log a warning when required files are missing.
     """
@@ -425,7 +425,7 @@ class Lotus(Dataset):
         ----------
         cache_root : Path or str, optional
             Root directory for cached datasets. Defaults to
-            ``idp.config.get().data_dir``.
+            ``idp.config.get("data_dir")``.
         notify_missing : bool, optional
             Whether to log a warning when required files are missing.
 
@@ -476,7 +476,7 @@ class ForestBirds(Dataset):
         ----------
         cache_root : Path or str, optional
             Root directory for cached datasets. Defaults to
-            ``idp.config.get().data_dir``.
+            ``idp.config.get("data_dir")``.
         notify_missing : bool, optional
             Whether to log a warning when required files are missing.
 
@@ -628,7 +628,7 @@ class TestData(Dataset):
         ----------
         cache_root : Path or str, optional
             Root directory for cached datasets. Defaults to
-            ``idp.config.get().data_dir``.
+            ``idp.config.get("data_dir")``.
         test_out : Path or str, optional
             Folder for temporary test outputs, by default ``"./tests/out"``.
         notify_missing : bool, optional

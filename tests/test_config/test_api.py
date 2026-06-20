@@ -20,6 +20,12 @@ def test_package_exports_small_config_entrypoint():
     assert not hasattr(idp.config, "update")
 
 
+def test_get_unknown_key_raises_keyerror(tmp_path):
+    config = EasyIDPConfig(config_path=tmp_path / "config.json")
+    with pytest.raises(KeyError, match="Unknown EasyIDP config key: bad_key"):
+        config.get("bad_key")
+
+
 def test_set_unknown_key_raises_keyerror(tmp_path):
     config = EasyIDPConfig(config_path=tmp_path / "config.json")
     with pytest.raises(KeyError, match="Unknown EasyIDP config key: bad_key"):

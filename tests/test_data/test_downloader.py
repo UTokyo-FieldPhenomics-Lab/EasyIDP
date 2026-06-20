@@ -127,6 +127,7 @@ class FakeResponse:
         self._json_data = json_data
         self.status_code = status_code
         self.headers = headers or {}
+        self.chunk_sizes = []
 
     def __enter__(self):
         return self
@@ -142,6 +143,7 @@ class FakeResponse:
         return self._json_data
 
     def iter_content(self, chunk_size=None):
+        self.chunk_sizes.append(chunk_size)
         yield self._content
 
 
@@ -270,3 +272,98 @@ def test_openxlab_downloader_uses_tqdm_when_progress_enabled(tmp_path):
         _download_openxlab(mirror_config, archive, progress=True)
 
         assert mock_tqdm.called, "tqdm should be used when progress=True"
+
+
+def test_openxlab_downloader_prints_source_and_target(tmp_path, capsys):
+    import hashlib
+
+    from unittest.mock import patch
+
+    from easyidp.data.downloader import _download_openxlab
+
+    content = b"x" * 280
+    valid_sha = hashlib.sha256(content).hexdigest()
+    cdn_url = _OPENXLAB_CDN_URL.replace(_EXPECTED_SHA256, valid_sha)
+    api_json = {
+        "code": 0,
+        "data": {
+            "url": cdn_url,
+            "meta": {"size": 280},
+        },
+    }
+    mirror_config = {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/gdown_test.zip",
+    }
+    archive = tmp_path / ".downloads" / "gdown_test.zip"
+
+    with patch("requests.post", return_value=FakeResponse(b"", json_data=api_json)), \
+            patch("requests.get", return_value=FakeResponse(content)), \
+            patch("easyidp.data.downloader.tqdm") as mock_tqdm:
+        mock_tqdm.return_value.__enter__ = lambda s: s
+        mock_tqdm.return_value.__exit__ = lambda *a: None
+        mock_tqdm.return_value.update = lambda n: None
+
+        _download_openxlab(mirror_config, archive, progress=True)
+
+    output = capsys.readouterr().out
+    assert "Downloading...\n" in output
+    assert (
+        "From (original): https://openxlab.org.cn/datasets/"
+        "HowcanoeWang/easyidp-demo-dataset/gdown_test.zip\n"
+    ) in output
+    assert f"From (resolved): {cdn_url}\n" in output
+    assert f"To:  {archive.with_suffix(archive.suffix + '.part')}\n" in output
+
+
+def test_openxlab_downloader_stays_quiet_without_progress(tmp_path, capsys):
+    import hashlib
+
+    from unittest.mock import patch
+
+    from easyidp.data.downloader import _download_openxlab
+
+    content = b"x" * 280
+    valid_sha = hashlib.sha256(content).hexdigest()
+    cdn_url = _OPENXLAB_CDN_URL.replace(_EXPECTED_SHA256, valid_sha)
+    api_json = {
+        "code": 0,
+        "data": {
+            "url": cdn_url,
+            "meta": {"size": 280},
+        },
+    }
+    mirror_config = {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/gdown_test.zip",
+    }
+    archive = tmp_path / ".downloads" / "gdown_test.zip"
+
+    with patch("requests.post", return_value=FakeResponse(b"", json_data=api_json)), \
+            patch("requests.get", return_value=FakeResponse(content)):
+        _download_openxlab(mirror_config, archive, progress=False)
+
+    assert capsys.readouterr().out == ""
+
+
+def test_stream_download_uses_small_chunks_for_smooth_progress(tmp_path):
+    import hashlib
+
+    from unittest.mock import patch
+
+    from easyidp.data.downloader import _stream_download
+
+    content = b"x" * 1024
+    response = FakeResponse(content)
+    expected_sha = hashlib.sha256(content).hexdigest()
+
+    with patch("requests.get", return_value=response):
+        _stream_download(
+            "https://example.com/archive.zip",
+            tmp_path / "archive.zip",
+            expected_size=len(content),
+            expected_sha256=expected_sha,
+            progress=False,
+        )
+
+    assert response.chunk_sizes == [512 * 1024]

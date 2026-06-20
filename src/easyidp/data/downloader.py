@@ -4,12 +4,12 @@ import hashlib
 import os
 import re
 import zipfile
-from pathlib import Path
-from typing import Any
 from urllib.parse import urlparse
 
 import requests  # type: ignore[import-untyped]
 from tqdm import tqdm  # type: ignore[import-untyped]
+
+_DOWNLOAD_CHUNK_SIZE = 512 * 1024
 
 
 def download_dataset(dataset, mirror="auto", force=False, progress=True):
@@ -175,6 +175,17 @@ def _download_openxlab(mirror_config, archive, progress):
     archive.parent.mkdir(parents=True, exist_ok=True)
     part = archive.with_suffix(archive.suffix + ".part")
 
+    if progress:
+        source_path = mirror_config["source_path"].lstrip("/")
+        original_url = (
+            f"https://openxlab.org.cn/datasets/"
+            f"{mirror_config['dataset_repo']}/{source_path}"
+        )
+        print("Downloading...")
+        print(f"From (original): {original_url}")
+        print(f"From (resolved): {info['url']}")
+        print(f"To:  {part}")
+
     _stream_download(
         url=info["url"],
         output=part,
@@ -300,7 +311,7 @@ def _stream_download(url, output, expected_size, expected_sha256, progress):
             ) as pbar,
             output.open("wb") as fh,
         ):
-            for chunk in resp.iter_content(chunk_size=4 * 1024 * 1024):
+            for chunk in resp.iter_content(chunk_size=_DOWNLOAD_CHUNK_SIZE):
                 if not chunk:
                     continue
                 fh.write(chunk)

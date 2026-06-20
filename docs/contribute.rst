@@ -54,7 +54,13 @@ Using the following command to setup the virtual environment for code developmen
 
     > cd "C:/path/to/source/code/EasyIDP"
     ...EasyIDP > uv venv   # create virtual env
-    ...EasyIDP > uv sync --all-groups  # install all dependencies
+    ...EasyIDP > uv sync --all-groups --all-extras  # install all dependencies
+
+.. note::
+
+    Use ``uv sync --all-groups --all-extras`` for EasyIDP development.
+    Running ``uv sync --extra data`` only selects the package extra and may
+    remove dependencies from development groups such as ``docs`` and ``test``.
 
 Then activate the virtual environment through the command line:
 
@@ -83,7 +89,8 @@ install to default dependencies.
 install to group dependencies (we have ``docs``, ``test`` two groups):
 
 .. code-block:: bash
-        ...EasyIDP > uv add --group docs some-packages
+
+    ...EasyIDP > uv add --group docs some-packages
 
 Code Testing
 -------------
@@ -126,11 +133,14 @@ Documentation has been built on Windows 11 (developing) and Linux (ReadTheDocs p
 Prerequisites
 -------------
 
-You need to install python dependices by the following code (please activate your virtual environment first):
+Create and synchronize the development virtual environment from the project
+root. This installs the package, all dependency groups, and all optional
+extras used by tests, documentation, and dataset downloads:
 
 .. code-block:: bash
 
-    ...EasyIDP > uv sync --group docs
+    ...EasyIDP > uv venv
+    ...EasyIDP > uv sync --all-groups --all-extras
 
 In order to deal with jupyter notebook extensions, you will also need to install `pandoc <https://pandoc.org/installing.html>`_ into your computer.
 
@@ -145,31 +155,26 @@ Check by below to ensure successfully installed:
     Scripting engine: Lua 5.4
     ...
 
-Then please download all datasets, this may take a long time.
+If you need to rebuild example outputs that depend on demo datasets, download
+them explicitly. This may take a long time.
 
 .. code-block:: python
 
     >>> import easyidp as idp
-    >>> idp.data.dowload_all()
+    >>> idp.data.Lotus().download()
+    >>> idp.data.ForestBirds().download()
 
 Build
 -----
 
-After cloning the EasyIDP repository, activate the virtual environment, first enter the ``docs`` folder:
-
-
-.. code-block:: bash
-
-    (venv) EasyIDP> cd docs
-    (venv) EasyIDP/docs> 
-
-Then you can build the documentation by:
+Build the documentation from the project root through the uv-managed virtual
+environment:
 
 .. code-block:: bash
 
-    (venv) EasyIDP/docs> make html  # or .\make html
+    ...EasyIDP > uv run sphinx-build -b html docs docs/_build/html
 
-You can open the ``_build\html\index.html`` to see the generated documentations
+You can open ``docs/_build/html/index.html`` to see the generated documentation.
 
 
 Translation

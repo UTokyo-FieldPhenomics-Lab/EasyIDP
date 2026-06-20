@@ -256,50 +256,62 @@ class Dataset:
 
     @property
     def name(self):
+        """Dataset manifest name."""
         return self._name
 
     @property
     def title(self):
+        """Human-readable dataset title."""
         return self._title
 
     @property
     def description(self):
+        """Short dataset description from the manifest."""
         return self._description
 
     @property
     def size_bytes(self):
+        """Compressed archive size in bytes."""
         return self._size_bytes
 
     @property
     def mirrors(self):
+        """Read-only mapping of configured download mirrors."""
         return self._mirrors
 
     @property
     def required(self):
+        """File keys used to decide whether the dataset is ready."""
         return self._required
 
     @property
     def files(self):
+        """Read-only mapping from dotted file keys to relative paths."""
         return self._files
 
     @property
     def cache_root(self):
+        """Root directory that stores EasyIDP dataset caches."""
         return self._cache_root
 
     @property
     def root(self):
+        """Extracted dataset directory."""
         return self._ns_root
 
     @property
     def data_dir(self):
+        """Alias of :attr:`root` kept for dataset path workflows."""
         return self._ns_root
 
     @property
     def archive(self):
+        """Temporary archive path removed after successful extraction."""
         return self._cache_root / ".downloads" / self._archive_name
 
     @property
     def zip_file(self):
+        """Alias of :attr:`archive` for zip-based dataset downloads."""
         return self.archive
 
     # -- public methods ------------------------------------------------------
@@ -371,23 +383,120 @@ class Dataset:
 
 
 class Lotus(Dataset):
-    """Dataset for the Tanashi lotus plot."""
+    """Dataset for the lotus plot in Tanashi, Tokyo.
+
+    .. image:: ../../_static/images/data/2017_tanashi_lotus.png
+        :width: 600
+        :alt: 2017_tanashi_lotus.png
+
+    - **Crop** : lotus
+    - **Location** : Tanashi, Nishi-Tokyo, Japan
+    - **Flight date** : May 31, 2017
+    - **UAV model** : DJI Inspire 1
+    - **Flight height** : 30 m
+    - **Image number** : 142
+    - **Image size** : 4608 x 3456
+    - **Software** : Pix4D, Metashape
+    - **Outputs** : DOM, DSM, PCD
+    """
 
     def __init__(self, *, cache_root=None, notify_missing=True):
+        """Create a lightweight handle to the lotus demo dataset.
+
+        The constructor only exposes paths. It does not download files; call
+        :meth:`download` explicitly when :meth:`is_ready` returns ``False``.
+
+        Accessible path attributes include:
+
+        - ``.photo`` : raw image folder
+        - ``.shp`` : plot ROI shapefile
+        - ``.pix4d.project`` : Pix4D project folder
+        - ``.pix4d.param`` : Pix4D parameter folder
+        - ``.pix4d.dom`` : Pix4D orthomosaic GeoTIFF
+        - ``.pix4d.dsm`` : Pix4D digital surface model GeoTIFF
+        - ``.pix4d.pcd`` : Pix4D point cloud file
+        - ``.metashape.project`` : Metashape project file
+        - ``.metashape.param`` : Metashape project folder
+        - ``.metashape.dom`` : Metashape orthomosaic GeoTIFF
+        - ``.metashape.dsm`` : Metashape digital surface model GeoTIFF
+        - ``.metashape.pcd`` : Metashape point cloud file
+
+        Parameters
+        ----------
+        cache_root : Path or str, optional
+            Root directory for cached datasets. Defaults to
+            ``idp.config.get().data_dir``.
+        notify_missing : bool, optional
+            Whether to log a warning when required files are missing.
+
+        Examples
+        --------
+        >>> lotus = idp.data.Lotus()
+        >>> lotus.shp
+        PosixPath('.../2017_tanashi_lotus/plots.shp')
+        >>> lotus.pix4d.dom.name
+        'hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif'
+        """
         super().__init__("lotus", cache_root=cache_root, notify_missing=notify_missing)
 
 
 class ForestBirds(Dataset):
-    """Dataset for the Florida forest birds survey."""
+    """Dataset for the forest ecology survey in Florida.
+
+    .. image:: ../../_static/images/data/2022_florida_forestbirds.png
+        :width: 600
+        :alt: 2022_florida_forestbirds.png
+
+    - **Author** : Prof. Ben Weinstein, The University of Florida
+    - **Location** : Florida, US
+    - **Flight date** : March 24, 2022
+    - **UAV model** : DJI FC6540
+    - **Image number** : 93
+    - **Image size** : 6016 x 4008
+    - **Software** : Metashape
+    - **Outputs** : DOM, DSM
+    """
 
     def __init__(self, *, cache_root=None, notify_missing=True):
+        """Create a lightweight handle to the forest birds demo dataset.
+
+        The constructor only exposes paths. It does not download files; call
+        :meth:`download` explicitly when :meth:`is_ready` returns ``False``.
+
+        Accessible path attributes include:
+
+        - ``.photo`` : raw image folder
+        - ``.shp`` : plot ROI shapefile
+        - ``.metashape.project`` : Metashape project file
+        - ``.metashape.param`` : Metashape project folder
+        - ``.metashape.dom`` : Metashape orthomosaic GeoTIFF
+        - ``.metashape.dsm`` : Metashape digital surface model GeoTIFF
+
+        Parameters
+        ----------
+        cache_root : Path or str, optional
+            Root directory for cached datasets. Defaults to
+            ``idp.config.get().data_dir``.
+        notify_missing : bool, optional
+            Whether to log a warning when required files are missing.
+
+        Examples
+        --------
+        >>> fb = idp.data.ForestBirds()
+        >>> fb.photo
+        PosixPath('.../2022_florida_forestbirds/Hidden_Little_03_24_2022')
+        """
         super().__init__(
             "forestbirds", cache_root=cache_root, notify_missing=notify_missing
         )
 
 
 class TestData(Dataset):
-    """Developer and package test dataset."""
+    """Developer and package test dataset.
+
+    This dataset is mainly used by EasyIDP tests and examples. Normal users
+    usually want :class:`Lotus` or :class:`ForestBirds` instead.
+    """
 
     __test__ = False
 
@@ -402,6 +511,129 @@ class TestData(Dataset):
     }
 
     def __init__(self, *, cache_root=None, test_out="./tests/out", notify_missing=True):
+        """Create a lightweight handle to the developer test dataset.
+
+        Accessible path groups include:
+
+        **json test module**
+
+        - ``.json.for_read_json``
+        - ``.json.labelme_demo``
+        - ``.json.labelme_warn``
+        - ``.json.labelme_err``
+        - ``.json.geojson_soy``
+
+        **shp test module**
+
+        - ``.shp.lotus_shp``
+        - ``.shp.lotus_prj``
+        - ``.shp.complex_shp``
+        - ``.shp.complex_prj``
+        - ``.shp.lonlat_shp``
+        - ``.shp.utm53n_shp``
+        - ``.shp.utm53n_prj``
+        - ``.shp.rice_shp``
+        - ``.shp.rice_prj``
+        - ``.shp.roi_shp``
+        - ``.shp.roi_prj``
+        - ``.shp.testutm_shp``
+        - ``.shp.testutm_prj``
+        - ``.shp.jp_crs_shp``
+        - ``.shp.jp_crs_prj``
+        - ``.shp.mlayer_shp``
+        - ``.shp.mask_rice_roi``
+        - ``.shp.mask_rice_prj``
+        - ``.shp.mask_rice_gt_shp``
+        - ``.shp.mask_rice_gt_prj``
+
+        **pcd test module**
+
+        - ``.pcd.lotus_las``
+        - ``.pcd.lotus_laz``
+        - ``.pcd.lotus_pcd``
+        - ``.pcd.lotus_las13``
+        - ``.pcd.lotus_laz13``
+        - ``.pcd.lotus_ply_asc``
+        - ``.pcd.lotus_ply_bin``
+        - ``.pcd.maize_las``
+        - ``.pcd.maize_laz``
+        - ``.pcd.maize_ply``
+
+        **roi test module**
+
+        - ``.roi.dxf``
+        - ``.roi.lxyz_txt``
+        - ``.roi.xyz_txt``
+
+        **geotiff test module**
+
+        - ``.tiff.soyweed_part``
+        - ``.tiff.mlayer_ndvi``
+        - ``.tiff.mlayer_multi``
+        - ``.tiff.mask_rice_geotiff_empty_polygon``
+        - ``.tiff.mask_rice_geotiff_with_polygon``
+        - ``.tiff.out``
+
+        **metashape test module**
+
+        - ``.metashape.goya_psx``
+        - ``.metashape.goya_param``
+        - ``.metashape.lotus_psx``
+        - ``.metashape.lotus_param``
+        - ``.metashape.lotus_dsm``
+        - ``.metashape.wheat_psx``
+        - ``.metashape.wheat_param``
+        - ``.metashape.multichunk_psx``
+        - ``.metashape.multichunk_param``
+        - ``.metashape.multifolder_psx``
+        - ``.metashape.multifolder_param``
+        - ``.metashape.nestedfolder_psx``
+        - ``.metashape.nestedfolder_param``
+        - ``.metashape.camera_disorder_psx``
+        - ``.metashape.camera_disorder_param``
+        - ``.metashape.two_calib_psx``
+        - ``.metashape.two_calib_param``
+        - ``.metashape.multi_spectral_psx``
+        - ``.metashape.multi_spectral_param``
+
+        **pix4d test module**
+
+        - ``.pix4d.lotus_folder``
+        - ``.pix4d.lotus_param``
+        - ``.pix4d.lotus_photos``
+        - ``.pix4d.lotus_dom``
+        - ``.pix4d.lotus_dsm``
+        - ``.pix4d.lotus_pcd``
+        - ``.pix4d.lotus_dom_part``
+        - ``.pix4d.lotus_dsm_part``
+        - ``.pix4d.lotus_pcd_part``
+        - ``.pix4d.maize_folder``
+        - ``.pix4d.maize_dom``
+        - ``.pix4d.maize_dsm``
+        - ``.pix4d.maize_noparam``
+        - ``.pix4d.maize_empty``
+        - ``.pix4d.maize_noout``
+
+        **output folders**
+
+        - ``.json.out``
+        - ``.shp.out``
+        - ``.pcd.out``
+        - ``.tiff.out``
+        - ``.cv.out``
+        - ``.vis.out``
+        - ``.b2r.out``
+
+        Parameters
+        ----------
+        cache_root : Path or str, optional
+            Root directory for cached datasets. Defaults to
+            ``idp.config.get().data_dir``.
+        test_out : Path or str, optional
+            Folder for temporary test outputs, by default ``"./tests/out"``.
+        notify_missing : bool, optional
+            Whether to log a warning when required files are missing.
+        """
         super().__init__(
             "testdata", cache_root=cache_root, notify_missing=notify_missing
         )

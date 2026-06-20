@@ -48,6 +48,7 @@ def download_dataset(dataset, mirror="auto", force=False, progress=True):
         raise ValueError(f"Unknown mirror type: {mirror_key!r}")
 
     safe_extract_zip(dataset.archive, dataset.root)
+    dataset.archive.unlink(missing_ok=True)
     return _result(dataset, downloaded=True, extracted=True, ready=dataset.is_ready())
 
 
@@ -129,11 +130,15 @@ def _download_gdrive(file_id, archive, progress):
         If gdown is not installed (with install hint).
     """
     try:
-        import gdown  # type: ignore[import-not-found]
+        import gdown  # type: ignore[import-not-found, import-untyped]
     except ImportError:
         raise RuntimeError(
             "gdown is required for Google Drive downloads. "
-            "Install it with: pip install 'easyidp[gdrive]'"
+            "Install it with: pip install 'easyidp[data]'. "
+            "or with : uv sync --extras data"
+            "For EasyIDP development case, run: "
+            "uv sync --all-groups --all-extras"
+            "To keep groups of docs and tests dependencies."
         )
 
     archive.parent.mkdir(parents=True, exist_ok=True)

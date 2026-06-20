@@ -178,6 +178,58 @@ def test_download_extracts_mocked_gdrive_archive(tmp_path):
     assert archive.stat().st_size > 0
 
 
+def test_gdrive_missing_dependency_mentions_data_extra(tmp_path, monkeypatch):
+    import builtins
+
+    from easyidp.data.downloader import _download_gdrive
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "gdown":
+            raise ImportError("missing gdown")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    try:
+        _download_gdrive("fake-id", tmp_path / "test.zip", progress=False)
+    except RuntimeError as exc:
+        message = str(exc)
+    else:
+        assert False, "expected RuntimeError for missing gdown"
+
+    assert "pip install 'easyidp[data]'" in message
+    assert "uv sync --all-groups --all-extras" in message
+    assert "uv add" not in message
+    assert "easyidp[gdrive]" not in message
+
+
+def test_download_removes_archive_after_extracting(tmp_path, monkeypatch):
+    import zipfile as zf
+
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+
+    def fake_download_openxlab(mirror_config, archive, progress):
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        with zf.ZipFile(archive, "w") as z:
+            for key in lotus.required:
+                z.writestr(str(lotus.path(key).relative_to(lotus.root)), "data")
+
+    monkeypatch.setattr(
+        idp.data.downloader,
+        "_download_openxlab",
+        fake_download_openxlab,
+    )
+
+    result = lotus.download(mirror="openxlab", progress=False)
+
+    assert result["downloaded"] is True
+    assert result["extracted"] is True
+    assert result["ready"] is True
+    assert not lotus.archive.exists()
+
+
 class FakeResponse:
     def __init__(self, content=b"fake-zip-data", *, json_data=None,
                  status_code=200, headers=None):

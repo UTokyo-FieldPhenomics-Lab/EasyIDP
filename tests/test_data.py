@@ -92,7 +92,7 @@ def test_data_root_comes_from_config(tmp_path, monkeypatch):
     from types import SimpleNamespace
 
     fake = SimpleNamespace(data_dir=tmp_path / "configured")
-    monkeypatch.setattr(idp.config, "get", lambda: fake)
+    monkeypatch.setattr(idp.config, "get", lambda key: getattr(fake, key))
     lotus = idp.data.Lotus(notify_missing=False)
     assert lotus.root == tmp_path / "configured" / "2017_tanashi_lotus"
 

@@ -378,8 +378,8 @@ def init_easyidp_logger(version: str) -> None:
     >>> init_easyidp_logger("2.0.2")
     """
     cfg = _get_config()
-    log_level = cfg.log_level if cfg is not None else "INFO"
-    show_banner = cfg.show_banner if cfg is not None else True
+    log_level = cfg.get("log_level") if cfg is not None else "INFO"
+    show_banner = cfg.get("show_banner") if cfg is not None else True
 
     enable_file = os.environ.get("IS_TESTING") != "True"
     setup_logger(level=log_level, enable_file=enable_file)

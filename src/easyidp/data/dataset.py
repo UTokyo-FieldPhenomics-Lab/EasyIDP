@@ -223,7 +223,7 @@ class Dataset:
 
     def __init__(self, manifest_name, cache_root=None, notify_missing=True):
         if cache_root is None:
-            cache_root = _cfg.get().data_dir
+            cache_root = _cfg.get("data_dir")
         self._cache_root = Path(cache_root).expanduser()
         self._notify_missing = notify_missing
 

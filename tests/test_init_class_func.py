@@ -140,27 +140,27 @@ def test_def_parse_photo_relative_path_warn(report_logging_to_caplog):
 
 class TestInitLoggerWithConfig:
     def test_logger_respects_config_error_level_no_banner(self):
-        idp.config.update(log_level="ERROR", show_banner=False)
+        idp.config.set(log_level="ERROR", show_banner=False)
         try:
             idp.setup_logger(level="INFO", enable_file=False, reset=True)
             assert idp.logger.logger.level == logging.INFO
             idp.init_easyidp_logger("x")
             assert idp.logger.logger.level == logging.ERROR
-            assert idp.config.get().log_level == "ERROR"
-            assert idp.config.get().show_banner is False
+            assert idp.config.get("log_level") == "ERROR"
+            assert idp.config.get("show_banner") is False
         finally:
             idp.config.reset()
             idp.setup_logger(level="DEBUG", enable_file=False, reset=True)
 
     def test_logger_respects_config_info_level_show_banner(self):
-        idp.config.update(log_level="INFO", show_banner=True)
+        idp.config.set(log_level="INFO", show_banner=True)
         try:
             idp.setup_logger(level="ERROR", enable_file=False, reset=True)
             assert idp.logger.logger.level == logging.ERROR
             idp.init_easyidp_logger("x")
             assert idp.logger.logger.level == logging.INFO
-            assert idp.config.get().log_level == "INFO"
-            assert idp.config.get().show_banner is True
+            assert idp.config.get("log_level") == "INFO"
+            assert idp.config.get("show_banner") is True
         finally:
             idp.config.reset()
             idp.setup_logger(level="DEBUG", enable_file=False, reset=True)

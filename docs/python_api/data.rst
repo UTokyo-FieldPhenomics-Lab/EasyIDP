@@ -59,8 +59,42 @@ But users can change the default data directory by updating the ``data_dir`` key
 
     import easyidp as idp
 
-    idp.config.update(data_dir="/path/to/easyidp.data")
+    idp.config.set(data_dir="/path/to/easyidp.data")
     lotus = idp.data.Lotus()
+
+REPL Representation
+===================
+
+Dataset construction is still lightweight but now prints status information
+when the object is displayed in a REPL.  The ``repr`` output includes the
+dataset title, size, download status, and the cache directory path:
+
+.. code-block:: python
+
+    >>> import easyidp as idp
+    >>> fb = idp.data.ForestBirds()
+    >>> fb
+    <easyidp.data.dataset.ForestBirds object at 0x...>
+    Official EasyIDP forest birds demo dataset from Florida.
+    Size: 1.97 GB
+    Status: not downloaded. call .download() to save at
+        /home/user/.local/share/easyidp.data/2022_florida_forestbirds
+    You can change the download location with:
+    idp.config.set(data_dir="/path/to/easyidp.data")
+
+When the dataset is fully available on disk, the ``Status`` line changes to:
+
+.. code-block:: text
+
+    Status: available at
+        /home/user/.local/share/easyidp.data/2022_florida_forestbirds
+
+.. note::
+
+    Changing ``data_dir`` through ``idp.config.set(data_dir=...)`` does
+    **not** migrate or move already-cached datasets to the new location.
+    New ``Dataset`` objects constructed after the change will use the new
+    path, but existing objects retain the root they were created with.
 
 Mirrors
 =======

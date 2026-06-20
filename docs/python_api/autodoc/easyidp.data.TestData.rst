@@ -27,17 +27,7 @@
 
    .. autosummary::
    
-      ~TestData.archive
-      ~TestData.cache_root
-      ~TestData.data_dir
-      ~TestData.description
-      ~TestData.files
-      ~TestData.mirrors
       ~TestData.name
-      ~TestData.required
       ~TestData.root
-      ~TestData.size_bytes
-      ~TestData.title
-      ~TestData.zip_file
    
    

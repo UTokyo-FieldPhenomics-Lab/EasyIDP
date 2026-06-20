@@ -27,17 +27,7 @@
 
    .. autosummary::
    
-      ~ForestBirds.archive
-      ~ForestBirds.cache_root
-      ~ForestBirds.data_dir
-      ~ForestBirds.description
-      ~ForestBirds.files
-      ~ForestBirds.mirrors
       ~ForestBirds.name
-      ~ForestBirds.required
       ~ForestBirds.root
-      ~ForestBirds.size_bytes
-      ~ForestBirds.title
-      ~ForestBirds.zip_file
    
    

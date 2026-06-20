@@ -2,7 +2,7 @@
 
 <p>
    <!-- <a align="left" href="https://ultralytics.com/yolov5" target="_blank"> -->
-   <img width="850" src="https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/raw/v2.0/docs/_static/images/header_v2.0.png"></a>
+   <img width="850" src="https://github.com/UTokyo-FieldPhenomics-Lab/EasyIDP/raw/main/docs/_static/images/header_v2.0.png"></a>
 </p>
 
 <p align="center">

@@ -4,7 +4,8 @@ API Summary
 
 The EasyIDP package have the following modules:
 
-- :doc:`Data Module <./data>` : Download and provide path to example files.
+- :doc:`Data Module <./data>` : Optional official demo-data path shortcuts for examples and tutorials.
+- :doc:`Advanced Notes <./advanced>` : Internal implementation notes for advanced users and contributors.
 - :doc:`Point cloud Module <./pointcloud>` : read, write, check and crop operation.
 - :doc:`GeoTiff Module <./geotiff>` : read, write, crop, and statistics operation.
   

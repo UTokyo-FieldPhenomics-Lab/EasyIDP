@@ -89,6 +89,7 @@ Examples
 
    python_api/index
    python_api/data
+   python_api/advanced
    python_api/pointcloud
    python_api/geotiff
    python_api/cvtools
@@ -231,9 +232,9 @@ You can add the reconstructed plot individually or by batch adding
     .. code-block:: python
 
         p4d = idp.Pix4D(project_path="xxxx.p4d", 
-                        raw_img_folder="path/to/folders/with/raw/photos/",
-                        # optional, in case you changed the pix4d project folder
-                        param_folder="path/to/pix4d/parameter/folders")
+                          raw_img_folder="path/to/folders/with/raw/photos/",
+                          # optional, in case you changed the pix4d project folder
+                          param_folder="path/to/pix4d/parameter/folders")
 
     .. caution::
 

@@ -14,9 +14,10 @@
    .. autosummary::
    
       ~ForestBirds.__init__
-      ~ForestBirds.load_data
-      ~ForestBirds.reload_data
-      ~ForestBirds.remove_data
+      ~ForestBirds.download
+      ~ForestBirds.dry_run
+      ~ForestBirds.is_ready
+      ~ForestBirds.path
    
    
 
@@ -26,8 +27,17 @@
 
    .. autosummary::
    
-      ~ForestBirds.gdrive_url
+      ~ForestBirds.archive
+      ~ForestBirds.cache_root
+      ~ForestBirds.data_dir
+      ~ForestBirds.description
+      ~ForestBirds.files
+      ~ForestBirds.mirrors
       ~ForestBirds.name
-      ~ForestBirds.size
+      ~ForestBirds.required
+      ~ForestBirds.root
+      ~ForestBirds.size_bytes
+      ~ForestBirds.title
+      ~ForestBirds.zip_file
    
    

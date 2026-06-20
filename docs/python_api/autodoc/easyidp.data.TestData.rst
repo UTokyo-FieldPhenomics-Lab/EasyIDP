@@ -14,9 +14,10 @@
    .. autosummary::
    
       ~TestData.__init__
-      ~TestData.load_data
-      ~TestData.reload_data
-      ~TestData.remove_data
+      ~TestData.download
+      ~TestData.dry_run
+      ~TestData.is_ready
+      ~TestData.path
    
    
 
@@ -26,8 +27,17 @@
 
    .. autosummary::
    
-      ~TestData.gdrive_url
+      ~TestData.archive
+      ~TestData.cache_root
+      ~TestData.data_dir
+      ~TestData.description
+      ~TestData.files
+      ~TestData.mirrors
       ~TestData.name
-      ~TestData.size
+      ~TestData.required
+      ~TestData.root
+      ~TestData.size_bytes
+      ~TestData.title
+      ~TestData.zip_file
    
    

@@ -4,9 +4,9 @@
 
 **Goal:** Replace the old download-heavy `easyidp.data` module with a small official demo-data shortcut layer backed by JSON dataset manifests.
 
-**Architecture:** `easyidp.data` is not a general dataset framework. It only exposes official demo datasets through short path attributes such as `idp.data.Lotus().ms.project` so docs and examples do not need long file strings. Dataset metadata and file mappings live in `src/easyidp/data/datasets/*.json`; `dataset.py` parses those manifests and builds path namespaces dynamically.
+**Architecture:** `easyidp.data` is not a general dataset framework. It only exposes official demo datasets through short path attributes such as `idp.data.Lotus().metashape.project` so docs and examples do not need long file strings. Dataset metadata and file mappings live in `src/easyidp/data/datasets/*.json`; `dataset.py` parses those manifests and builds path namespaces dynamically.
 
-**Tech Stack:** Python 3.10+, `json`, `dataclasses`, `pathlib`, `zipfile`, `pytest`, optional `gdown`, optional `openxlab`, `uv`.
+**Tech Stack:** Python 3.10+, `json`, `dataclasses`, `pathlib`, `zipfile`, `requests`, `tqdm`, `pytest`, optional `gdown`, `uv`.
 
 ---
 
@@ -21,11 +21,12 @@
 - Keep only short class entry points: `idp.data.Lotus()`, `idp.data.ForestBirds()`, and `idp.data.TestData()`.
 - Remove `ALIASES`, `DatasetRegistry`, `registry`, `_builtin.py`, `paths.py`, `errors.py`, `testing.py`, `get_spec()`, `get_dataset()`, `download_all()`, `show_data_dir()`, `url_checker()`, and `user_data_dir()`.
 - Do not download, extract, prompt, import `oss2`/`openxlab`, or perform network checks during import or dataset construction.
-- Replace Aliyun OSS downloads with OpenXLab dataset downloads. Users provide their own OpenXLab Access Key and Secret Key through `idp.config`, so EasyIDP no longer ships or fetches maintainer-owned OSS credentials.
+- Replace Aliyun OSS downloads with anonymous OpenXLab public dataset CDN downloads. EasyIDP no longer ships or fetches maintainer-owned OSS credentials, and normal public dataset downloads must not require OpenXLab Access Key or Secret Key.
 - OpenXLab dataset page: `https://openxlab.org.cn/datasets/HowcanoeWang/easyidp-demo-dataset/tree/main`; use dataset repo id `HowcanoeWang/easyidp-demo-dataset` in manifests and downloader tests.
-- Keep `gdown` and `openxlab` out of core dependencies. Provide them as optional extras and import them lazily only when `.download(mirror="gdrive")` or `.download(mirror="openxlab")` is called. If the optional package is missing, raise a clear install hint instead of installing packages implicitly at runtime.
-- Read the default data root and OpenXLab credentials only from `idp.config.get()`. `EasyIDPConfig` is a pure Python dataclass/json config object, not Pydantic.
-- Use built-in exceptions where possible: `ValueError` for bad manifests or mirror names, `RuntimeError` for failed downloads or missing OpenXLab credentials, and `zipfile.BadZipFile` for invalid archives.
+- Keep `gdown` out of core dependencies as an optional extra. Implement OpenXLab downloads directly with `requests` and show a `tqdm` progress bar when `progress=True`; do not depend on the OpenXLab SDK for normal downloads.
+- Read the default data root only from `idp.config.get()`. `EasyIDPConfig` is a pure Python dataclass/json config object, not Pydantic.
+- Use built-in exceptions where possible: `ValueError` for bad manifests or mirror names, `RuntimeError` for failed downloads, OpenXLab metadata/resolve errors, size/SHA256 mismatches, and `zipfile.BadZipFile` for invalid archives.
+- Anonymous OpenXLab behavior is based on `.agents/references/20260620_openxlab_anonymous_cdn_download.md` plus the public frontend API: `POST https://openxlab.org.cn/datasets/api/v3/datasets/{owner,repo}/r/main` with `{"path": "archive.zip", "preview": false}` returns a temporary CDN URL and file size without login. Stream from that URL with `tqdm`, verify byte size and the SHA256 encoded in the CDN `/objects/{sha256}` path, then unzip.
 - Do not keep compatibility with the current temporary v2.1 `DatasetSpec`/registry API because it has not shipped.
 - Documentation must describe `data` as optional demo data convenience, not as a required data ingestion path. Core EasyIDP APIs continue accepting normal file paths directly.
 
@@ -112,10 +113,10 @@ def test_lotus_paths_are_short_namespaces(tmp_path):
     assert lotus.archive == tmp_path / ".downloads" / "2017_tanashi_lotus.zip"
     assert lotus.shp == lotus.root / "plots.shp"
     assert lotus.photo == lotus.root / "20170531" / "photos"
-    assert lotus.ms.project == lotus.root / "170531.Lotus.psx"
-    assert lotus.ms.dom == lotus.root / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
-    assert lotus.p4d.project == lotus.root / "20170531"
-    assert lotus.p4d.param == lotus.root / "20170531" / "params"
+    assert lotus.metashape.project == lotus.root / "170531.Lotus.psx"
+    assert lotus.metashape.dom == lotus.root / "170531.Lotus.outputs" / "170531.Lotus_dom.tif"
+    assert lotus.pix4d.project == lotus.root / "20170531"
+    assert lotus.pix4d.param == lotus.root / "20170531" / "params"
 
 
 def test_forestbirds_paths_are_short_namespaces(tmp_path):
@@ -124,8 +125,8 @@ def test_forestbirds_paths_are_short_namespaces(tmp_path):
     assert birds.name == "forestbirds"
     assert birds.root == tmp_path / "2022_florida_forestbirds"
     assert birds.shp == birds.root / "Hidden_Little_grid.shp"
-    assert birds.ms.project == birds.root / "Hidden_Little_03_24_2022.psx"
-    assert not hasattr(birds, "p4d")
+    assert birds.metashape.project == birds.root / "Hidden_Little_03_24_2022.psx"
+    assert not hasattr(birds, "pix4d")
 
 
 def test_path_namespace_supports_nested_paths(tmp_path):
@@ -133,10 +134,10 @@ def test_path_namespace_supports_nested_paths(tmp_path):
 
     namespace = _PathNamespace(
         tmp_path,
-        {"ms": {"outputs": {"dom": "dom.tif"}}},
+        {"metashape": {"outputs": {"dom": "dom.tif"}}},
     )
 
-    assert namespace.ms.outputs.dom == tmp_path / "dom.tif"
+    assert namespace.metashape.outputs.dom == tmp_path / "dom.tif"
 
 
 def test_testdata_uses_same_manifest_paths_as_runtime(tmp_path):
@@ -144,8 +145,8 @@ def test_testdata_uses_same_manifest_paths_as_runtime(tmp_path):
 
     assert data.name == "testdata"
     assert data.root == tmp_path / "data_for_tests"
-    assert data.ms.lotus_psx == data.root / "metashape" / "Lotus.psx"
-    assert data.p4d.lotus_folder == data.root / "pix4d" / "lotus_tanashi_full"
+    assert data.metashape.lotus_psx == data.root / "metashape" / "Lotus.psx"
+    assert data.pix4d.lotus_folder == data.root / "pix4d" / "lotus_tanashi_full"
     assert data.shp.lotus_shp == data.root / "shp_test" / "lotus_plots.shp"
     assert data.tiff.soyweed_part == data.root / "tiff_test" / "2_12.tif"
     assert data.test_out == tmp_path / "out"
@@ -421,7 +422,7 @@ This manifest is only for explicit manual mirror checks. Do not expose it in `li
     },
     "description": "Tiny archive for manual gdown and OpenXLab download smoke tests."
   },
-  "required": ["file1.txt"],
+  "required": ["file1"],
   "files": {
     "file1": "file1.txt",
     "folder1": "folder1"
@@ -483,14 +484,14 @@ class _PathNamespace:
 
     Examples
     --------
-    >>> ns = _PathNamespace(Path('/data'), {'ms': {'project': 'demo.psx'}})
-    >>> ns.ms.project
+    >>> ns = _PathNamespace(Path('/data'), {'metashape': {'project': 'demo.psx'}})
+    >>> ns.metashape.project
     PosixPath('/data/demo.psx')
 
     Notes
     -----
     This class is the object side of dotted manifest keys. For example,
-    ``ms.outputs.dom`` becomes ``dataset.ms.outputs.dom``. It is not
+    ``ms.outputs.dom`` becomes ``dataset.metashape.outputs.dom``. It is not
     exported from ``easyidp.data`` and is not part of the basic public API.
     """
 
@@ -709,7 +710,7 @@ def _insert_path(tree: dict[str, Any], parts: list[str], rel_path: str) -> None:
     Notes
     -----
     Raises ``ValueError`` if a key would be both a path and namespace,
-    for example ``ms`` and ``ms.project`` in the same manifest.
+    for example ``metashape`` and ``ms.project`` in the same manifest.
     """
     current = tree
     for part in parts[:-1]:
@@ -782,123 +783,41 @@ Expected: pass all tests in `tests/test_data.py`.
 
 ---
 
-### Task 4: Add Explicit Downloader With OpenXLab Mirror
+### Task 4: Add Explicit Downloader With Anonymous OpenXLab Mirror
 
 **Files:**
 
 - Modify: `pyproject.toml`
-- Modify: `src/easyidp/config.py`
 - Create: `src/easyidp/data/downloader.py`
-- Modify: `tests/test_config.py`
 - Modify: `tests/test_data.py`
 - Create: `tests/manual/test_data_download_smoke.py`
-- Test: `tests/test_config.py tests/test_data.py`
+- Test: `tests/test_data.py`
 
-- [ ] **Step 1: Add download backends as optional dependencies**
+- [ ] **Step 1: Move Google Drive backend to optional dependencies**
 
-Keep demo-data download backends out of `[project].dependencies`. If `gdown` is currently listed there, move it to optional extras. Add this block to `pyproject.toml`:
+Keep Google Drive download support out of `[project].dependencies`. If `gdown` is currently listed there, move it to optional extras. Do not add `openxlab` as a dependency. Anonymous OpenXLab downloads use core dependencies `requests` and `tqdm`.
+
+Add this block to `pyproject.toml`:
 
 ```toml
 [project.optional-dependencies]
 gdrive = [
     "gdown>=5.2.0",
 ]
-openxlab = [
-    "openxlab>=0.1.2",
-]
 data = [
     "gdown>=5.2.0",
-    "openxlab>=0.1.2",
 ]
 ```
 
-Users who need Google Drive downloads can install `easyidp[gdrive]`; users in mainland China who need OpenXLab can install `easyidp[openxlab]`. Normal EasyIDP users who never call `idp.data.*.download()` should not install either backend.
+Users who need Google Drive downloads can install `easyidp[gdrive]`. Users in mainland China can use the default anonymous OpenXLab mirror without installing the OpenXLab SDK or configuring credentials.
 
-- [ ] **Step 2: Add OpenXLab credential tests**
-
-Append these tests to `tests/test_config.py`:
-
-```python
-def test_config_stores_openxlab_credentials(tmp_path):
-    config_path = tmp_path / "config.json"
-    config = EasyIDPConfig(config_path=config_path)
-    config.update(openxlab_access_key="test-ak", openxlab_secret_key="test-sk")
-    config.save()
-
-    loaded = EasyIDPConfig(config_path=config_path)
-
-    assert loaded.openxlab_access_key == "test-ak"
-    assert loaded.openxlab_secret_key == "test-sk"
-
-
-def test_reset_clears_openxlab_credentials(tmp_path):
-    config = EasyIDPConfig(config_path=tmp_path / "config.json")
-    config.update(openxlab_access_key="test-ak", openxlab_secret_key="test-sk")
-
-    config.reset()
-
-    assert config.openxlab_access_key == ""
-    assert config.openxlab_secret_key == ""
-```
-
-- [ ] **Step 3: Extend `EasyIDPConfig`**
-
-Modify `src/easyidp/config.py` so `EasyIDPConfig` stores user-owned OpenXLab credentials:
-
-```python
-@dataclass
-class EasyIDPConfig:
-    config_path: Path = field(default_factory=default_config_path)
-    data_dir: Path = field(default_factory=default_data_dir)
-    log_level: str = "INFO"
-    show_banner: bool = True
-    openxlab_access_key: str = ""
-    openxlab_secret_key: str = ""
-
-    def update(self, **kwargs: Any) -> "EasyIDPConfig":
-        for key, value in kwargs.items():
-            if key == "data_dir":
-                self.data_dir = Path(value).expanduser()
-                continue
-            if key in {
-                "log_level",
-                "show_banner",
-                "openxlab_access_key",
-                "openxlab_secret_key",
-            }:
-                setattr(self, key, value)
-                continue
-            raise KeyError(f"Unknown EasyIDP config key: {key}")
-        return self
-
-    def reset(self, save: bool = False) -> "EasyIDPConfig":
-        self.data_dir = default_data_dir()
-        self.log_level = "INFO"
-        self.show_banner = True
-        self.openxlab_access_key = ""
-        self.openxlab_secret_key = ""
-        if save:
-            self.save()
-        return self
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "data_dir": str(self.data_dir),
-            "log_level": self.log_level,
-            "show_banner": self.show_banner,
-            "openxlab_access_key": self.openxlab_access_key,
-            "openxlab_secret_key": self.openxlab_secret_key,
-        }
-```
-
-- [ ] **Step 4: Add downloader unit tests**
+- [ ] **Step 2: Add downloader unit tests**
 
 Append these tests to `tests/test_data.py`:
 
 ```python
-import sys
+import hashlib
 import zipfile
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -916,19 +835,6 @@ def test_download_skips_ready_dataset(tmp_path):
     assert result["ready"] is True
     assert result["downloaded"] is False
     assert result["extracted"] is False
-
-
-def test_openxlab_download_requires_credentials(tmp_path):
-    old_ak = idp.config.get().openxlab_access_key
-    old_sk = idp.config.get().openxlab_secret_key
-    try:
-        idp.config.update(openxlab_access_key="", openxlab_secret_key="")
-        lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-
-        with pytest.raises(RuntimeError, match="OpenXLab credentials"):
-            lotus.download(mirror="openxlab", progress=False)
-    finally:
-        idp.config.update(openxlab_access_key=old_ak, openxlab_secret_key=old_sk)
 
 
 def test_safe_extract_rejects_zip_slip(tmp_path):
@@ -969,51 +875,127 @@ def test_download_extracts_mocked_gdrive_archive(tmp_path):
     assert result["ready"] is True
 
 
-def test_openxlab_downloader_logs_in_and_downloads(tmp_path, monkeypatch):
+class FakeResponse:
+    def __init__(self, json_data=None, content=b"", status_code=200, headers=None):
+        self._json_data = json_data
+        self._content = content
+        self.status_code = status_code
+        self.headers = headers or {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._json_data
+
+    def iter_content(self, chunk_size):
+        yield self._content
+
+
+def test_openxlab_anonymous_downloader_uses_cdn_url(tmp_path):
+    from easyidp.data.downloader import _download_openxlab
+
     lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
-    fake_openxlab = SimpleNamespace(login=Mock())
-    fake_dataset = SimpleNamespace(download=Mock())
-    monkeypatch.setitem(sys.modules, "openxlab", fake_openxlab)
-    monkeypatch.setitem(sys.modules, "openxlab.dataset", fake_dataset)
+    content = b"zip-content"
+    sha256 = hashlib.sha256(content).hexdigest()
+    cdn_url = f"https://cdn-xlab-data.openxlab.org.cn/objects/{sha256}?sig=1"
+    post = Mock(return_value=FakeResponse({
+        "code": 0,
+        "data": {"url": cdn_url, "meta": {"size": len(content)}},
+    }))
+    get = Mock(return_value=FakeResponse(
+        content=content,
+        headers={"content-length": str(len(content))},
+    ))
 
-    def fake_download(dataset_repo, source_path, target_path):
-        target = Path(target_path) / Path(source_path).name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("zip", encoding="utf-8")
-
-    fake_dataset.download.side_effect = fake_download
-
-    old_ak = idp.config.get().openxlab_access_key
-    old_sk = idp.config.get().openxlab_secret_key
-    try:
-        idp.config.update(openxlab_access_key="ak", openxlab_secret_key="sk")
-        from easyidp.data.downloader import _download_openxlab
-
+    with patch("easyidp.data.downloader.requests.post", post), patch(
+        "easyidp.data.downloader.requests.get", get
+    ):
         mirror = lotus.mirrors["openxlab"]
         _download_openxlab(mirror, lotus.archive, progress=False)
-    finally:
-        idp.config.update(openxlab_access_key=old_ak, openxlab_secret_key=old_sk)
 
-    fake_openxlab.login.assert_called_once_with(ak="ak", sk="sk")
-    fake_dataset.download.assert_called_once_with(
-        dataset_repo="HowcanoeWang/easyidp-demo-dataset",
-        source_path="/2017_tanashi_lotus.zip",
-        target_path=str(lotus.archive.parent),
+    assert lotus.archive.read_bytes() == content
+    post.assert_called_once_with(
+        "https://openxlab.org.cn/datasets/api/v3/datasets/HowcanoeWang,easyidp-demo-dataset/r/main",
+        json={"path": "2017_tanashi_lotus.zip", "preview": False},
+        timeout=60,
     )
+    get.assert_called_once_with(cdn_url, stream=True, timeout=180)
+
+
+def test_openxlab_downloader_rejects_sha256_mismatch(tmp_path):
+    from easyidp.data.downloader import _download_openxlab
+
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    wrong_sha = "0" * 64
+    post = Mock(return_value=FakeResponse({
+        "code": 0,
+        "data": {
+            "url": f"https://cdn-xlab-data.openxlab.org.cn/objects/{wrong_sha}",
+            "meta": {"size": 3},
+        },
+    }))
+    get = Mock(return_value=FakeResponse(content=b"zip"))
+
+    with patch("easyidp.data.downloader.requests.post", post), patch(
+        "easyidp.data.downloader.requests.get", get
+    ), pytest.raises(RuntimeError, match="SHA256"):
+        _download_openxlab(lotus.mirrors["openxlab"], lotus.archive, progress=False)
+
+
+def test_openxlab_downloader_uses_tqdm_when_progress_enabled(tmp_path):
+    from easyidp.data.downloader import _download_openxlab
+
+    lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
+    content = b"zip"
+    sha256 = hashlib.sha256(content).hexdigest()
+    post = Mock(return_value=FakeResponse({
+        "code": 0,
+        "data": {
+            "url": f"https://cdn-xlab-data.openxlab.org.cn/objects/{sha256}",
+            "meta": {"size": len(content)},
+        },
+    }))
+    get = Mock(return_value=FakeResponse(content=content))
+    progress_bar = Mock()
+    progress_bar.__enter__ = Mock(return_value=progress_bar)
+    progress_bar.__exit__ = Mock(return_value=False)
+
+    with patch("easyidp.data.downloader.requests.post", post), patch(
+        "easyidp.data.downloader.requests.get", get
+    ), patch("easyidp.data.downloader.tqdm", return_value=progress_bar):
+        _download_openxlab(lotus.mirrors["openxlab"], lotus.archive, progress=True)
+
+    progress_bar.update.assert_called_once_with(len(content))
 ```
 
-- [ ] **Step 5: Create `src/easyidp/data/downloader.py`**
+- [ ] **Step 3: Create `src/easyidp/data/downloader.py`**
 
 ```python
 """Explicit downloader for official EasyIDP demo datasets."""
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 
-from easyidp import config
+import requests
+from tqdm.auto import tqdm
+
+
+_OPENXLAB_DATASET_API = "https://openxlab.org.cn/datasets/api/v3/datasets"
+_OPENXLAB_OBJECT_RE = re.compile(r"/objects/([0-9a-fA-F]{64})(?:[/?#]|$)")
 
 
 def download_dataset(dataset, mirror, force, progress):
@@ -1074,35 +1056,68 @@ def _download_gdrive(file_id: str, archive: Path, progress: bool) -> None:
 
 
 def _download_openxlab(mirror_config: dict, archive: Path, progress: bool) -> None:
-    cfg = config.get()
-    if not cfg.openxlab_access_key or not cfg.openxlab_secret_key:
-        raise RuntimeError(
-            "OpenXLab credentials are required. Configure them with "
-            "idp.config.update(openxlab_access_key='...', openxlab_secret_key='...').save()."
-        )
+    info = _fetch_openxlab_file_info(mirror_config)
+    part = Path(str(archive) + ".part")
+    _stream_download(info["url"], part, info["size"], info["sha256"], progress)
+    os.replace(part, archive)
 
-    try:
-        import openxlab
-        from openxlab.dataset import download
-    except ImportError as exc:
-        raise RuntimeError(
-            "OpenXLab downloads require the optional dependency. "
-            "Install with `pip install 'easyidp[openxlab]'` or use mirror='gdrive'."
-        ) from exc
 
-    archive.parent.mkdir(parents=True, exist_ok=True)
-    openxlab.login(ak=cfg.openxlab_access_key, sk=cfg.openxlab_secret_key)
-    source_path = mirror_config["source_path"]
-    download(
-        dataset_repo=mirror_config["dataset_repo"],
-        source_path=source_path,
-        target_path=str(archive.parent),
+def _fetch_openxlab_file_info(mirror_config: dict) -> dict:
+    dataset = mirror_config["dataset_repo"].replace("/", ",")
+    source_path = mirror_config["source_path"].lstrip("/")
+    url = f"{_OPENXLAB_DATASET_API}/{dataset}/r/main"
+    response = requests.post(
+        url,
+        json={"path": source_path, "preview": False},
+        timeout=60,
     )
-    downloaded = archive.parent / Path(source_path).name
-    if downloaded != archive and downloaded.exists():
-        os.replace(downloaded, archive)
-    if not archive.exists() or archive.stat().st_size == 0:
-        raise RuntimeError(f"OpenXLab download failed: {source_path}")
+    response.raise_for_status()
+    payload = response.json()
+    if payload.get("code") != 0:
+        raise RuntimeError(f"OpenXLab metadata request failed: {payload}")
+
+    data = payload.get("data") or {}
+    download_url = data.get("url")
+    size = (data.get("meta") or {}).get("size")
+    sha256 = _sha256_from_openxlab_url(download_url)
+    if not download_url or not size or not sha256:
+        raise RuntimeError(f"OpenXLab metadata is incomplete: {payload}")
+    return {"url": download_url, "size": int(size), "sha256": sha256}
+
+
+def _sha256_from_openxlab_url(download_url: str | None) -> str:
+    if not download_url:
+        return ""
+    match = _OPENXLAB_OBJECT_RE.search(urlparse(download_url).path)
+    return match.group(1).lower() if match else ""
+
+
+def _stream_download(
+    url: str,
+    output: Path,
+    expected_size: int,
+    expected_sha256: str,
+    progress: bool,
+) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256()
+    size = 0
+    bar = tqdm(total=expected_size, unit="B", unit_scale=True, disable=not progress)
+    with requests.get(url, stream=True, timeout=180) as stream, bar:
+        stream.raise_for_status()
+        with output.open("wb") as file:
+            for chunk in stream.iter_content(4 * 1024 * 1024):
+                if not chunk:
+                    continue
+                file.write(chunk)
+                digest.update(chunk)
+                size += len(chunk)
+                bar.update(len(chunk))
+
+    if size != expected_size:
+        raise RuntimeError(f"Downloaded size mismatch: {size} != {expected_size}")
+    if digest.hexdigest() != expected_sha256:
+        raise RuntimeError("Downloaded file SHA256 does not match OpenXLab metadata")
 
 
 def _result(dataset, downloaded: bool, extracted: bool, ready: bool) -> dict:
@@ -1116,9 +1131,9 @@ def _result(dataset, downloaded: bool, extracted: bool, ready: bool) -> dict:
     }
 ```
 
-- [ ] **Step 6: Add manual network smoke tests**
+- [ ] **Step 4: Add manual network smoke tests**
 
-Create `tests/manual/test_data_download_smoke.py`. These tests are skipped unless the developer explicitly opts in and provides their own OpenXLab credentials through environment variables:
+Create `tests/manual/test_data_download_smoke.py`. These tests are skipped unless the developer explicitly opts in. No OpenXLab credentials are required for public datasets:
 
 ```python
 import os
@@ -1144,20 +1159,9 @@ def test_gdrive_tiny_download_smoke(tmp_path):
 
 
 def test_openxlab_tiny_download_smoke(tmp_path):
-    ak = os.environ.get("EASYIDP_OPENXLAB_AK", "")
-    sk = os.environ.get("EASYIDP_OPENXLAB_SK", "")
-    if not ak or not sk:
-        pytest.skip("Set EASYIDP_OPENXLAB_AK and EASYIDP_OPENXLAB_SK to run this smoke test.")
+    data = idp.data.Dataset("download_smoke", cache_root=tmp_path, notify_missing=False)
 
-    old_ak = idp.config.get().openxlab_access_key
-    old_sk = idp.config.get().openxlab_secret_key
-    try:
-        idp.config.update(openxlab_access_key=ak, openxlab_secret_key=sk)
-        data = idp.data.Dataset("download_smoke", cache_root=tmp_path, notify_missing=False)
-
-        result = data.download(mirror="openxlab", force=True, progress=False)
-    finally:
-        idp.config.update(openxlab_access_key=old_ak, openxlab_secret_key=old_sk)
+    result = data.download(mirror="openxlab", force=True, progress=True)
 
     assert result["ready"] is True
     assert (data.root / "file1.txt").exists()
@@ -1167,14 +1171,12 @@ Run manually with:
 
 ```bash
 EASYIDP_RUN_DOWNLOAD_SMOKE=1 \
-EASYIDP_OPENXLAB_AK=<Access Key> \
-EASYIDP_OPENXLAB_SK=<Secret Key> \
 uv run pytest tests/manual/test_data_download_smoke.py -q
 ```
 
-- [ ] **Step 7: Run normal tests**
+- [ ] **Step 5: Run normal tests**
 
-Run: `uv run pytest tests/test_config.py tests/test_data.py -q`
+Run: `uv run pytest tests/test_data.py -q`
 
 Expected: all normal tests pass without network access.
 
@@ -1236,8 +1238,8 @@ data = idp.data.TestData(notify_missing=False)
 # data.metashape.lotus_psx
 
 # New
-data.p4d.lotus_folder
-data.ms.lotus_psx
+data.pix4d.lotus_folder
+data.metashape.lotus_psx
 ```
 
 - [ ] **Step 2: Keep missing test data as skip behavior**
@@ -1321,7 +1323,7 @@ The main purpose of this module is to keep examples readable:
 
     lotus = idp.data.Lotus()
     roi = idp.ROI(lotus.shp)
-    ms = idp.Metashape(lotus.ms.project)
+    ms = idp.Metashape(lotus.metashape.project)
 
 Construction is lightweight. It does not download or extract data. Call ``download()`` explicitly when needed:
 
@@ -1343,22 +1345,11 @@ The default data directory comes from ``idp.config``:
     idp.config.update(data_dir="/path/to/easyidp.data")
     lotus = idp.data.Lotus()
 
-OpenXLab downloads use the user's own OpenXLab account. Register an account, create an Access Key and Secret Key, then save them in EasyIDP config:
-
-Install the optional backend before calling this mirror:
-
-.. code-block:: bash
-
-    pip install "easyidp[openxlab]"
+OpenXLab downloads use anonymous public dataset CDN URLs. They do not require the OpenXLab SDK, login, Access Key, or Secret Key:
 
 .. code-block:: python
 
     import easyidp as idp
-
-    idp.config.update(
-        openxlab_access_key="your-access-key",
-        openxlab_secret_key="your-secret-key",
-    ).save()
 
     lotus = idp.data.Lotus()
     lotus.download(mirror="openxlab")
@@ -1409,7 +1400,7 @@ Advanced
 Data Internals
 ==============
 
-``easyidp.data`` builds short demo-data attributes from JSON manifest keys. Dotted keys such as ``ms.project`` and ``ms.outputs.dom`` are expanded into runtime namespaces so users can write ``lotus.ms.project`` or ``lotus.ms.outputs.dom``.
+``easyidp.data`` builds short demo-data attributes from JSON manifest keys. Dotted keys such as ``ms.project`` and ``ms.outputs.dom`` are expanded into runtime namespaces so users can write ``lotus.metashape.project`` or ``lotus.metashape.outputs.dom``.
 
 The recursive namespace object is implemented as ``easyidp.data.dataset._PathNamespace``. It is an internal helper for advanced users and contributors who need to understand manifest parsing. It is intentionally not exported from ``easyidp.data`` and should not be treated as a stable public API.
 ```
@@ -1484,6 +1475,6 @@ After verification, merge branch `data-json-plan` back to `dev` with a normal no
 
 ## Self-Review
 
-- Spec coverage: the plan removes TestData duplication, removes aliases/registry/builtin Python specs, uses JSON manifests, removes `user_data_dir`, keeps config as pure dataclass/json, replaces Aliyun OSS with user-authenticated OpenXLab downloads, adds manual gdown/OpenXLab smoke tests, and includes existing docs updates.
+- Spec coverage: the plan removes TestData duplication, removes aliases/registry/builtin Python specs, uses JSON manifests, removes `user_data_dir`, keeps config as pure dataclass/json, replaces Aliyun OSS with anonymous OpenXLab CDN downloads, adds manual gdown/OpenXLab smoke tests, and includes existing docs updates.
 - Placeholder scan: no placeholder markers or unspecified implementation steps remain.
 - Type consistency: public names are `Lotus`, `ForestBirds`, `TestData`, `Dataset`, and `list_datasets`; internal `_PathNamespace` is not exported from `easyidp.data`, is only documented in advanced notes, and can represent deeper dotted keys.

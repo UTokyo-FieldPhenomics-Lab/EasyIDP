@@ -109,8 +109,8 @@ By default, easyidp try to download dataset from Shared Google Drive by `gdown` 
     lotus.download(mirror="openxlab")
 
 
-Datasets
-========
+Classes
+=======
 
 .. autosummary::
     :toctree: autodoc
@@ -126,3 +126,47 @@ Functions
     :toctree: autodoc
 
     list_datasets
+
+Advanced API
+============
+
+``easyidp.data`` builds short demo-data attributes from JSON manifest keys.
+Dotted keys such as ``metashape.project`` and ``metashape.outputs.dom`` are
+expanded into runtime namespaces so users can write ``lotus.metashape.project``
+or ``lotus.metashape.outputs.dom``.
+
+The same module also contains explicit downloader helpers for Google Drive,
+anonymous OpenXLab mirrors, verified streaming downloads, and zip extraction.
+
+The recursive namespace object is implemented as
+``easyidp.data.dataset._PathNamespace``. The objects below are intended for
+advanced users and contributors who need to understand manifest parsing,
+runtime path expansion, dataset validation, and downloader internals. They are
+not exported from ``easyidp.data`` unless shown in the public sections above.
+
+Classes
+-------
+
+.. autosummary::
+
+    dataset.Dataset
+    dataset._PathNamespace
+
+Functions
+---------
+
+.. autosummary::
+
+    dataset._load_manifest
+    dataset._validate_attr_name
+    dataset._validate_manifest
+    dataset._insert_path
+    downloader.download_dataset
+    downloader.safe_extract_zip
+    downloader._select_mirror
+    downloader._download_gdrive
+    downloader._download_openxlab
+    downloader._fetch_openxlab_file_info
+    downloader._extract_sha256_from_cdn_url
+    downloader._stream_download
+    downloader._result

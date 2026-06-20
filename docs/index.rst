@@ -88,8 +88,8 @@ Examples
    :caption: Python API
 
    python_api/index
+   python_api/config
    python_api/data
-   python_api/advanced
    python_api/pointcloud
    python_api/geotiff
    python_api/cvtools

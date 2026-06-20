@@ -74,10 +74,15 @@ class EasyIDPConfig:
 
     Examples
     --------
-    >>> cfg = EasyIDPConfig()
-    >>> cfg.set(log_level="DEBUG")
-    >>> cfg.log_level
+    >>> from pathlib import Path
+    >>> import tempfile
+    >>> tmp = tempfile.TemporaryDirectory()
+    >>> cfg = EasyIDPConfig(config_path=Path(tmp.name) / "config.json")
+    >>> isinstance(cfg.set(log_level="DEBUG"), EasyIDPConfig)
+    True
+    >>> cfg.get("log_level")
     'DEBUG'
+    >>> tmp.cleanup()
 
     Notes
     -----
@@ -110,6 +115,18 @@ class EasyIDPConfig:
         ------
         KeyError
             If *key* is not a recognised config key.
+
+        Examples
+        --------
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> tmp = tempfile.TemporaryDirectory()
+        >>> cfg = EasyIDPConfig(config_path=Path(tmp.name) / "config.json")
+        >>> cfg.get("log_level")
+        'INFO'
+        >>> sorted(cfg.get())
+        ['data_dir', 'log_level', 'show_banner']
+        >>> tmp.cleanup()
         """
         self._load_if_exists()
         if key is None:
@@ -137,6 +154,18 @@ class EasyIDPConfig:
         ------
         KeyError
             If any key in *kwargs* is not recognised.
+
+        Examples
+        --------
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> tmp = tempfile.TemporaryDirectory()
+        >>> cfg = EasyIDPConfig(config_path=Path(tmp.name) / "config.json")
+        >>> isinstance(cfg.set(log_level="DEBUG", show_banner=False), EasyIDPConfig)
+        True
+        >>> cfg.get("show_banner")
+        False
+        >>> tmp.cleanup()
         """
         self._apply(kwargs)
         self._save()
@@ -149,6 +178,18 @@ class EasyIDPConfig:
         -------
         EasyIDPConfig
             Self (fluent API).
+
+        Examples
+        --------
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> tmp = tempfile.TemporaryDirectory()
+        >>> cfg = EasyIDPConfig(config_path=Path(tmp.name) / "config.json")
+        >>> isinstance(cfg.set(log_level="DEBUG"), EasyIDPConfig)
+        True
+        >>> cfg.reset().get("log_level")
+        'INFO'
+        >>> tmp.cleanup()
         """
         self.data_dir = default_data_dir()
         self.log_level = "INFO"

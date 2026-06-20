@@ -84,6 +84,12 @@ def _load_manifest(path):
         If the manifest file does not exist.
     ValueError
         If the JSON is malformed.
+
+    Examples
+    --------
+    >>> manifest = _load_manifest(_MANIFEST_DIR / "lotus.json")
+    >>> manifest["spec"]["name"]
+    'lotus'
     """
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
@@ -102,6 +108,14 @@ def _validate_attr_name(name):
     ------
     ValueError
         If any segment of *name* is a reserved attribute.
+
+    Examples
+    --------
+    >>> _validate_attr_name("metashape.project")
+    >>> _validate_attr_name("root")
+    Traceback (most recent call last):
+    ...
+    ValueError: file key 'root' contains reserved attribute 'root'
     """
     for part in name.split("."):
         if part in _RESERVED_ATTRS:
@@ -122,6 +136,11 @@ def _validate_manifest(data):
     ------
     ValueError
         If required fields are missing or have wrong types.
+
+    Examples
+    --------
+    >>> manifest = _load_manifest(_MANIFEST_DIR / "lotus.json")
+    >>> _validate_manifest(manifest)
     """
     if not isinstance(data, dict):
         raise ValueError(f"manifest must be a dict, got {type(data).__name__}")
@@ -163,6 +182,16 @@ def _insert_path(obj, files, root):
         Flat dotted-key → relative-path mapping.
     root : Path
         Absolute base directory.
+
+    Examples
+    --------
+    >>> class Paths:
+    ...     pass
+    >>> from pathlib import Path
+    >>> obj = Paths()
+    >>> _insert_path(obj, {"pix4d.dom": "outputs/dom.tif"}, Path("/data"))
+    >>> obj.pix4d.dom
+    PosixPath('/data/outputs/dom.tif')
     """
     tree = {}
     for key, value in files.items():
@@ -216,6 +245,14 @@ class Dataset:
         returned by :func:`easyidp.config.get("data_dir")`.
     notify_missing : bool, optional
         Retained for backward compatibility only; no longer logs warnings.
+
+    Examples
+    --------
+    >>> dataset = Dataset("lotus")
+    >>> dataset.name
+    'lotus'
+    >>> dataset.path("shp").name
+    'plots.shp'
     """
 
     def __init__(self, manifest_name, cache_root=None, notify_missing=True):

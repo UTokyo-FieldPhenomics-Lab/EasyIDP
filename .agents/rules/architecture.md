@@ -54,6 +54,18 @@ Use this file as the concise architecture rule for v2.1 refactoring. Detailed mo
 - Keep `tests/conftest.py` for shared fixtures only. Avoid module-level heavy fixture construction when a local fixture can keep tests isolated.
 - When refactoring an existing large module test file, migrate the touched module first and avoid unrelated churn in other test modules.
 
+## Documentation API Layout Policy
+
+- Each module page should keep ordinary public `Classes` and `Functions` autosummary sections for user-facing APIs.
+- Public `Classes` and `Functions` sections may use `autosummary :toctree: autodoc` so user-facing API pages appear in the module's left sidebar.
+- Module pages may add a bottom `Advanced API` section for hidden, implicit, private, or contributor-facing classes/functions.
+- `Advanced API` should be split into `Classes` and `Functions` autosummary tables when both kinds exist.
+- In `Advanced API`, list explicit classes/functions before implicit/private helpers so readers see stable extension points first.
+- `Advanced API` autosummary tables must not use `:toctree:`; otherwise Furo will show hidden/private pages in the left sidebar.
+- Create explicit autodoc stub pages for `Advanced API` entries and mark those pages with `:orphan:` so they are linkable but not shown in the sidebar toctree.
+- Advanced API entries should generate clickable autodoc pages with the same docstring quality expectations as main APIs: clear purpose, parameters, returns, notes when useful, and examples when the object is user- or contributor-facing.
+- Do not add advanced autodoc pages to the root `docs/index.rst` toctree; they should be reachable from the module page but not shown in the left sidebar.
+
 ## Configuration Policy
 
 - Add `idp.config` as the single public configuration entry point for package-wide preferences.

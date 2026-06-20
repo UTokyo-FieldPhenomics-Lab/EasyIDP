@@ -32,14 +32,6 @@ Settings
 ``show_banner``
     Whether EasyIDP shows the startup banner during import.
 
-Classes
-=======
-
-.. autosummary::
-    :toctree: autodoc
-
-    EasyIDPConfig
-
 Functions
 =========
 
@@ -53,8 +45,31 @@ Functions
 Advanced API
 ============
 
-These helpers are mainly useful for contributors and advanced users who need
-to inspect EasyIDP's platform-specific default locations.
+Most users should only call the module-level ``get()``, ``set()``, and
+``reset()`` functions above. Internally, ``easyidp.config`` creates one
+module-level configuration object and exposes bound methods from it:
+
+.. code-block:: python
+
+    config = EasyIDPConfig()
+    get = config.get
+    set = config.set
+    reset = config.reset
+
+This means ``idp.config.set(...)`` is the public shortcut for the singleton
+configuration object's ``set(...)`` method, not a request for users to
+instantiate ``EasyIDPConfig`` themselves.
+
+The objects below are mainly useful for contributors and advanced users who
+need to inspect EasyIDP's platform-specific default locations or test custom
+configuration paths.
+
+Classes
+-------
+
+.. autosummary::
+
+    EasyIDPConfig
 
 Functions
 ---------

@@ -1,4 +1,6 @@
-﻿easyidp.config.EasyIDPConfig
+﻿:orphan:
+
+easyidp.config.EasyIDPConfig
 ============================
 
 .. currentmodule:: easyidp.config

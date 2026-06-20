@@ -1,0 +1,28 @@
+{
+  "spec": {
+    "name": "forestbirds",
+    "title": "Florida Forest Birds 2022",
+    "folder": "2022_florida_forestbirds",
+    "archive": "2022_florida_forestbirds.zip",
+    "size_bytes": 1970000000,
+    "mirrors": {
+      "gdrive": {
+        "file_id": "1mXkzaoSSCAA87cxcMHKL6_VNlykRYxJr"
+      },
+      "openxlab": {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/2022_florida_forestbirds.zip"
+      }
+    },
+    "description": "Official EasyIDP forest birds demo dataset from Florida."
+  },
+  "required": ["shp", "metashape.project", "metashape.dom", "metashape.dsm"],
+  "files": {
+    "photo": "Hidden_Little_03_24_2022",
+    "shp": "Hidden_Little_grid.shp",
+    "metashape.project": "Hidden_Little_03_24_2022.psx",
+    "metashape.param": "Hidden_Little_03_24_2022.files",
+    "metashape.dom": "Hidden_Little_03_24_2022.tiff",
+    "metashape.dsm": "Hidden_Little_03_24_2022_DEM.tif"
+  }
+}

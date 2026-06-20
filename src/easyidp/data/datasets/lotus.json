@@ -1,0 +1,34 @@
+{
+  "spec": {
+    "name": "lotus",
+    "title": "Tanashi Lotus 2017",
+    "folder": "2017_tanashi_lotus",
+    "archive": "2017_tanashi_lotus.zip",
+    "size_bytes": 3300000000,
+    "mirrors": {
+      "gdrive": {
+        "file_id": "1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j"
+      },
+      "openxlab": {
+        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
+        "source_path": "/2017_tanashi_lotus.zip"
+      }
+    },
+    "description": "Official EasyIDP lotus demo dataset from Tanashi, Tokyo."
+  },
+  "required": ["shp", "metashape.project", "pix4d.dom", "pix4d.dsm"],
+  "files": {
+    "photo": "20170531/photos",
+    "shp": "plots.shp",
+    "metashape.project": "170531.Lotus.psx",
+    "metashape.param": "170531.Lotus.files",
+    "metashape.dom": "170531.Lotus.outputs/170531.Lotus_dom.tif",
+    "metashape.dsm": "170531.Lotus.outputs/170531.Lotus_dsm.tif",
+    "metashape.pcd": "170531.Lotus.outputs/170531.Lotus.laz",
+    "pix4d.project": "20170531",
+    "pix4d.param": "20170531/params",
+    "pix4d.dom": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_transparent_mosaic_group1.tif",
+    "pix4d.dsm": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_dsm.tif",
+    "pix4d.pcd": "20170531/hasu_tanashi_20170531_Ins1RGB_30m_group1_densified_point_cloud.ply"
+  }
+}

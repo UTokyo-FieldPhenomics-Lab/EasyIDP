@@ -487,7 +487,6 @@ name = "easyidp"
 source = { editable = "." }
 dependencies = [
     { name = "chardet" },
-    { name = "gdown" },
     { name = "geojson" },
     { name = "imagecodecs" },
     { name = "laspy" },
@@ -499,12 +498,21 @@ dependencies = [
     { name = "pyproj" },
     { name = "pyshp" },
     { name = "rasterio" },
+    { name = "requests" },
     { name = "scikit-image" },
     { name = "scipy" },
     { name = "shapely" },
     { name = "tabulate" },
     { name = "tqdm" },
     { name = "trimesh" },
+]
+
+[package.optional-dependencies]
+data = [
+    { name = "gdown" },
+]
+gdrive = [
+    { name = "gdown" },
 ]
 
 [package.dev-dependencies]
@@ -528,7 +536,8 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "chardet", specifier = ">=5.2.0" },
-    { name = "gdown", specifier = ">=5.2.0" },
+    { name = "gdown", marker = "extra == 'data'", specifier = ">=5.2.0" },
+    { name = "gdown", marker = "extra == 'gdrive'", specifier = ">=5.2.0" },
     { name = "geojson", specifier = ">=3.2.0" },
     { name = "imagecodecs", specifier = ">=2025.3.30" },
     { name = "laspy", specifier = ">=2.5.4" },
@@ -540,6 +549,7 @@ requires-dist = [
     { name = "pyproj", specifier = ">=3.7.1" },
     { name = "pyshp", specifier = ">=3.0.3" },
     { name = "rasterio", specifier = ">=1.4.3" },
+    { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-image", specifier = ">=0.25.2" },
     { name = "scipy", specifier = ">=1.15.3" },
     { name = "shapely", specifier = ">=2.1.0" },
@@ -547,6 +557,7 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "trimesh", specifier = ">=4.11.1" },
 ]
+provides-extras = ["data", "gdrive"]
 
 [package.metadata.requires-dev]
 docs = [

@@ -3,17 +3,17 @@
     "name": "download_smoke",
     "folder": "download_smoke",
     "archive": "gdown_test.zip",
-    "size_bytes": 2048,
+    "size_bytes": 280,
     "mirrors": {
       "gdrive": {
         "file_id": "1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/gdown_test.zip"
+      "modelscope": {
+        "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "gdown_test.zip"
       }
     },
-    "description": "Tiny archive for manual gdown and OpenXLab download smoke tests."
+    "description": "Tiny archive for manual gdown and ModelScope download smoke tests."
   },
   "ready_check": ["file1"],
   "files": {

@@ -39,3 +39,22 @@ def test_data_root_comes_from_config(tmp_path, monkeypatch):
     monkeypatch.setattr(idp.config, "get", lambda key: getattr(fake, key))
     lotus = idp.data.Lotus(notify_missing=False)
     assert lotus.root == tmp_path / "configured" / "2017_tanashi_lotus"
+
+
+def test_manifests_use_minimal_modelscope_mirror_metadata(tmp_path):
+    expected = {
+        "lotus": "2017_tanashi_lotus.zip",
+        "forestbirds": "2022_florida_forestbirds.zip",
+        "testdata": "data_for_tests.zip",
+        "download_smoke": "gdown_test.zip",
+    }
+
+    for name, file_path in expected.items():
+        dataset = idp.data.Dataset(name, cache_root=tmp_path, notify_missing=False)
+        mirror = dataset._mirrors["modelscope"]
+
+        assert "openxlab" not in dataset._mirrors
+        assert mirror == {
+            "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+            "file_path": file_path,
+        }

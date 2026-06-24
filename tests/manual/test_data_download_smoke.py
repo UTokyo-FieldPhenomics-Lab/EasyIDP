@@ -24,10 +24,10 @@ def test_gdrive_tiny_download_smoke(tmp_path):
     assert ds.is_ready()
 
 
-def test_openxlab_tiny_download_smoke(tmp_path):
+def test_modelscope_tiny_download_smoke(tmp_path):
     ds = idp.data.Dataset("download_smoke", cache_root=tmp_path, notify_missing=False)
 
-    result = ds.download(mirror="openxlab", force=True, progress=True)
+    result = ds.download(mirror="modelscope", force=True, progress=True)
 
     assert result["name"] == "download_smoke"
     assert result["downloaded"] is True

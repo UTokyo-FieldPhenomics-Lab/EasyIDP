@@ -3,14 +3,14 @@
     "name": "testdata",
     "folder": "data_for_tests",
     "archive": "data_for_tests.zip",
-    "size_bytes": 554900000,
+    "size_bytes": 581849811,
     "mirrors": {
       "gdrive": {
         "file_id": "17b_17CofqIuCVOWMnD67_wOnWMtwF8bw"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/data_for_tests.zip"
+      "modelscope": {
+        "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "data_for_tests.zip"
       }
     },
     "description": "Official EasyIDP developer test data."

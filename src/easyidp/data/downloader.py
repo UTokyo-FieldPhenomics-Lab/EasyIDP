@@ -1,15 +1,8 @@
-"""Explicit dataset downloaders with gdrive and anonymous OpenXLab mirrors."""
+"""Explicit dataset downloaders with gdrive and ModelScope mirrors."""
 
 import hashlib
 import os
-import re
 import zipfile
-from urllib.parse import urlparse
-
-import requests  # type: ignore[import-untyped]
-from tqdm import tqdm  # type: ignore[import-untyped]
-
-_DOWNLOAD_CHUNK_SIZE = 512 * 1024
 
 
 def download_dataset(dataset, mirror="auto", force=False, progress=True):
@@ -43,8 +36,8 @@ def download_dataset(dataset, mirror="auto", force=False, progress=True):
 
     if mirror_key == "gdrive":
         _download_gdrive(mirror_config["file_id"], archive, progress)
-    elif mirror_key == "openxlab":
-        _download_openxlab(mirror_config, archive, progress)
+    elif mirror_key == "modelscope":
+        _download_modelscope(mirror_config, archive, progress)
     else:
         raise ValueError(f"Unknown mirror type: {mirror_key!r}")
 
@@ -153,184 +146,167 @@ def _download_gdrive(file_id, archive, progress):
     os.replace(part, archive)
 
 
-def _download_openxlab(mirror_config, archive, progress):
-    """Download a file from OpenXLab anonymously via the v3 API.
+def _download_modelscope(mirror_config, archive, progress):
+    """Download a dataset archive from ModelScope.
 
     Parameters
     ----------
     mirror_config : Mapping
-        Mirror config with ``dataset_repo`` and ``source_path`` keys.
+        Mirror config with ``dataset_repo`` and ``file_path`` keys.
     archive : Path
         Target file path for the downloaded archive.
     progress : bool
-        Show a progress bar.
+        Print EasyIDP-level source and target paths. ModelScope controls its
+        own progress output internally.
+
+    Examples
+    --------
+    >>> cfg = {"dataset_repo": "owner/repo", "file_path": "archive.zip"}
+    >>> _download_modelscope(cfg, Path("archive.zip"), progress=False)  # doctest: +SKIP
 
     Raises
     ------
     RuntimeError
-        On API error, missing metadata, or download verification failure.
+        If ModelScope is missing or the downloaded file fails verification.
     """
-    info = _fetch_openxlab_file_info(mirror_config)
+    try:
+        from modelscope.hub.file_download import dataset_file_download  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise RuntimeError(
+            "modelscope is required for ModelScope dataset downloads. "
+            "Install it with: pip install 'easyidp[data]'. "
+            "For EasyIDP development, run: uv sync --all-groups --all-extras"
+        ) from exc
 
     archive.parent.mkdir(parents=True, exist_ok=True)
     part = archive.with_suffix(archive.suffix + ".part")
+    local_dir = archive.parent / ".modelscope_download"
+    cache_dir = archive.parent / ".modelscope_cache"
+    file_path = mirror_config["file_path"].lstrip("/")
 
     if progress:
-        source_path = mirror_config["source_path"].lstrip("/")
-        original_url = (
-            f"https://openxlab.org.cn/datasets/"
-            f"{mirror_config['dataset_repo']}/{source_path}"
-        )
+        original_url = f"https://modelscope.cn/datasets/{mirror_config['dataset_repo']}/files"
         print("Downloading...")
-        print(f"From (original): {original_url}")
-        print(f"From (resolved): {info['url']}")
+        print(f"From (dataset): {original_url}")
+        print(f"From (file): {file_path}")
         print(f"To:  {part}")
 
-    _stream_download(
-        url=info["url"],
-        output=part,
-        expected_size=info["size"],
-        expected_sha256=info["sha256"],
-        progress=progress,
+    downloaded = dataset_file_download(
+        dataset_id=mirror_config["dataset_repo"],
+        file_path=file_path,
+        local_dir=str(local_dir),
+        cache_dir=str(cache_dir),
     )
 
+    os.replace(downloaded, part)
+    info = _fetch_modelscope_file_info(mirror_config)
+    _verify_downloaded_file(part, info)
     os.replace(part, archive)
 
 
-def _fetch_openxlab_file_info(mirror_config):
-    """Resolve CDN download URL and metadata for an OpenXLab file.
+def _fetch_modelscope_file_info(mirror_config):
+    """Fetch ModelScope file size and SHA256 metadata.
 
     Parameters
     ----------
     mirror_config : Mapping
-        Mirror config with ``dataset_repo`` and ``source_path`` keys.
+        Mirror config with ``dataset_repo`` and ``file_path`` keys.
 
     Returns
     -------
     dict
-        Keys ``url``, ``size``, ``sha256``.
+        Download verification metadata with ``size_bytes`` and ``sha256``.
 
     Raises
     ------
     RuntimeError
-        If the API response is missing required fields or has a non-zero
-        code.
+        If the target file is absent from ModelScope metadata.
+
+    Examples
+    --------
+    >>> cfg = {"dataset_repo": "owner/repo", "file_path": "archive.zip"}
+    >>> _fetch_modelscope_file_info(cfg)  # doctest: +SKIP
+    {'size_bytes': 1024, 'sha256': '...'}
     """
-    dataset = mirror_config["dataset_repo"].replace("/", ",")
-    source_path = mirror_config["source_path"].lstrip("/")
+    from modelscope.hub.api import HubApi  # type: ignore[import-untyped]
 
-    api_url = (
-        f"https://openxlab.org.cn/datasets/api/v3/datasets/{dataset}/r/main"
+    file_path = mirror_config["file_path"].lstrip("/")
+    api = HubApi()
+    files = api.get_dataset_files(
+        repo_id=mirror_config["dataset_repo"],
+        recursive=True,
+        page_size=100,
     )
 
-    resp = requests.post(
-        api_url,
-        json={"path": source_path, "preview": False},
-        timeout=60,
-    )
-    resp.raise_for_status()
-    body = resp.json()
+    for item in files:
+        if item.get("Path") != file_path:
+            continue
+        return {"size_bytes": item.get("Size"), "sha256": item.get("Sha256")}
 
-    if body.get("code") != 0:
-        raise RuntimeError(
-            f"OpenXLab API error: code={body.get('code')} "
-            f"msg={body.get('msg', '')}"
-        )
-
-    data = body.get("data", {})
-    url = data.get("url")
-    meta = data.get("meta", {})
-    size = meta.get("size")
-
-    if not url or size is None:
-        raise RuntimeError(
-            "Incomplete OpenXLab file metadata: missing URL or size"
-        )
-
-    sha256_hex = _extract_sha256_from_cdn_url(url)
-    if not sha256_hex:
-        raise RuntimeError(
-            f"Could not extract SHA256 from CDN URL: {url}"
-        )
-
-    return {"url": url, "size": size, "sha256": sha256_hex}
+    raise RuntimeError(f"ModelScope file metadata not found: {file_path}")
 
 
-def _extract_sha256_from_cdn_url(url):
-    """Extract a 64-hex SHA256 from an OpenXLab CDN objects URL path.
+def _verify_downloaded_file(path, mirror_config):
+    """Verify downloaded archive size and SHA256 metadata.
 
     Parameters
     ----------
-    url : str
-        Full CDN URL.
-
-    Returns
-    -------
-    str or None
-        Lowercase hex digest if found, else ``None``.
-    """
-    parsed = urlparse(url)
-    match = re.search(r"/objects/([a-f0-9]{64})", parsed.path)
-    return match.group(1) if match else None
-
-
-def _stream_download(url, output, expected_size, expected_sha256, progress):
-    """Stream a file from *url* to *output* with verification.
-
-    Parameters
-    ----------
-    url : str
-        Download URL.
-    output : Path
-        Output file path.
-    expected_size : int
-        Expected file size in bytes.
-    expected_sha256 : str
-        Expected SHA256 hex digest.
-    progress : bool
-        Show a tqdm progress bar.
+    path : Path
+        Downloaded file path.
+    mirror_config : Mapping
+        Mirror config with optional ``size_bytes`` and ``sha256`` values.
 
     Raises
     ------
     RuntimeError
-        If the downloaded size or SHA256 does not match.
+        If the downloaded file size or SHA256 does not match the manifest.
+
+    Examples
+    --------
+    >>> _verify_downloaded_file(Path("archive.zip"), {})  # doctest: +SKIP
     """
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    sha256 = hashlib.sha256()
-    total = 0
-
-    with requests.get(url, stream=True, timeout=180) as resp:
-        resp.raise_for_status()
-        with (
-            tqdm(
-                total=expected_size,
-                unit="B",
-                unit_scale=True,
-                disable=not progress,
-            ) as pbar,
-            output.open("wb") as fh,
-        ):
-            for chunk in resp.iter_content(chunk_size=_DOWNLOAD_CHUNK_SIZE):
-                if not chunk:
-                    continue
-                fh.write(chunk)
-                sha256.update(chunk)
-                total += len(chunk)
-                pbar.update(len(chunk))
-
-    if total != expected_size:
+    expected_size = mirror_config.get("size_bytes")
+    if expected_size is not None and path.stat().st_size != expected_size:
         raise RuntimeError(
-            f"Download size mismatch: got {total} bytes, "
+            f"Download size mismatch: got {path.stat().st_size} bytes, "
             f"expected {expected_size}"
         )
 
-    actual_hex = sha256.hexdigest()
-    if actual_hex != expected_sha256:
+    expected_sha256 = mirror_config.get("sha256")
+    if expected_sha256 is None:
+        return
+
+    actual_hex = _file_sha256(path)
+    if actual_hex != expected_sha256.lower():
         raise RuntimeError(
             f"SHA256 mismatch: got {actual_hex}, "
-            f"expected {expected_sha256}"
+            f"expected {expected_sha256.lower()}"
         )
+
+
+def _file_sha256(path):
+    """Return the SHA256 hex digest for a file.
+
+    Parameters
+    ----------
+    path : Path
+        File to hash.
+
+    Returns
+    -------
+    str
+        Lowercase SHA256 hex digest.
+
+    Examples
+    --------
+    >>> _file_sha256(Path("archive.zip"))  # doctest: +SKIP
+    '...'
+    """
+    sha256 = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            sha256.update(chunk)
+    return sha256.hexdigest()
 
 
 def _result(dataset, *, downloaded, extracted, ready):

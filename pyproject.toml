@@ -46,7 +46,7 @@ dependencies = [
 [project.optional-dependencies]
 data = [
     "gdown>=5.2.0",
-    "requests>=2.32.3",
+    "modelscope>=1.37.1",
 ]
 
 [build-system]

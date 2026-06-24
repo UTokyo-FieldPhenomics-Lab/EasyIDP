@@ -98,21 +98,23 @@ def test_gdrive_missing_dependency_mentions_data_extra(tmp_path, monkeypatch):
 def test_download_removes_archive_after_extracting(tmp_path, monkeypatch):
     import zipfile as zf
 
+    import easyidp.data.downloader as downloader
+
     lotus = idp.data.Lotus(cache_root=tmp_path, notify_missing=False)
 
-    def fake_download_openxlab(mirror_config, archive, progress):
+    def fake_download_modelscope(mirror_config, archive, progress):
         archive.parent.mkdir(parents=True, exist_ok=True)
         with zf.ZipFile(archive, "w") as z:
             for key in ("shp", "metashape.project", "pix4d.dom", "pix4d.dsm"):
                 z.writestr(str(lotus.path(key).relative_to(lotus.root)), "data")
 
     monkeypatch.setattr(
-        idp.data.downloader,
-        "_download_openxlab",
-        fake_download_openxlab,
+        downloader,
+        "_download_modelscope",
+        fake_download_modelscope,
     )
 
-    result = lotus.download(mirror="openxlab", progress=False)
+    result = lotus.download(mirror="modelscope", progress=False)
 
     assert result["downloaded"] is True
     assert result["extracted"] is True
@@ -120,250 +122,129 @@ def test_download_removes_archive_after_extracting(tmp_path, monkeypatch):
     assert not lotus._archive_path().exists()
 
 
-class FakeResponse:
-    def __init__(self, content=b"fake-zip-data", *, json_data=None,
-                 status_code=200, headers=None):
-        self._content = content
-        self._json_data = json_data
-        self.status_code = status_code
-        self.headers = headers or {}
-        self.chunk_sizes = []
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-    def raise_for_status(self):
-        if self.status_code >= 400:
-            raise RuntimeError(f"HTTP {self.status_code}")
-
-    def json(self):
-        return self._json_data
-
-    def iter_content(self, chunk_size=None):
-        self.chunk_sizes.append(chunk_size)
-        yield self._content
-
-
-_OPENXLAB_CDN_URL = (
-    "https://cdn-xlab-data.openxlab.org.cn/objects/"
-    "b353aee3743d29d968b09222c5a3b208268cce09100ab73b4048cb7cf42a844c"
-)
-_EXPECTED_SHA256 = "b353aee3743d29d968b09222c5a3b208268cce09100ab73b4048cb7cf42a844c"
-_OPENXLAB_API_JSON = {
-    "code": 0,
-    "data": {
-        "url": _OPENXLAB_CDN_URL,
-        "meta": {"size": 280},
-    },
-}
-
-
-def test_openxlab_anonymous_downloader_uses_cdn_url(tmp_path):
-    from unittest.mock import patch
-
-    from easyidp.data.downloader import _download_openxlab
-
-    mirror_config = {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/gdown_test.zip",
-    }
-    archive = tmp_path / ".downloads" / "gdown_test.zip"
-    archive.parent.mkdir(parents=True, exist_ok=True)
-
-    post_mock = FakeResponse(b"", json_data=_OPENXLAB_API_JSON)
-    get_mock = FakeResponse(b"fake-zip-content" * 18)
-
-    post_called = []
-    get_called = []
-
-    def fake_post(url, **kwargs):
-        post_called.append((url, kwargs))
-        return post_mock
-
-    def fake_get(url, **kwargs):
-        get_called.append((url, kwargs))
-        return get_mock
-
-    with patch("requests.post", side_effect=fake_post), \
-            patch("requests.get", side_effect=fake_get):
-        try:
-            _download_openxlab(mirror_config, archive, progress=False)
-        except RuntimeError:
-            pass
-
-    assert len(post_called) == 1
-    url, kwargs = post_called[0]
-    assert "openxlab.org.cn/datasets/api/v3/datasets/" in url
-    assert "HowcanoeWang,easyidp-demo-dataset/r/main" in url
-    assert kwargs["json"] == {"path": "gdown_test.zip", "preview": False}
-    assert kwargs["timeout"] == 60
-
-    assert len(get_called) == 1
-    url, kwargs = get_called[0]
-    assert url == _OPENXLAB_CDN_URL
-    assert kwargs["stream"] is True
-    assert kwargs["timeout"] == 180
-
-
-def test_openxlab_downloader_rejects_sha256_mismatch(tmp_path):
-    from unittest.mock import patch
-
-    from easyidp.data.downloader import _download_openxlab
-
-    mirror_config = {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/gdown_test.zip",
-    }
-    archive = tmp_path / ".downloads" / "gdown_test.zip"
-    archive.parent.mkdir(parents=True, exist_ok=True)
-
-    post_mock = FakeResponse(b"", json_data=_OPENXLAB_API_JSON)
-    wrong_content = b"x" * 280
-    get_mock = FakeResponse(wrong_content)
-
-    with patch("requests.post", return_value=post_mock), \
-            patch("requests.get", return_value=get_mock):
-        try:
-            _download_openxlab(mirror_config, archive, progress=False)
-        except RuntimeError as exc:
-            assert "SHA256 mismatch" in str(exc)
-        else:
-            assert False, "expected RuntimeError for SHA256 mismatch"
-
-
-def test_openxlab_downloader_uses_tqdm_when_progress_enabled(tmp_path):
+def test_modelscope_downloader_uses_sdk_and_verifies_archive(tmp_path, monkeypatch):
     import hashlib
+    import sys
+    import types
 
-    from unittest.mock import patch
-
-    from easyidp.data.downloader import _download_openxlab
+    from easyidp.data.downloader import _download_modelscope
 
     content = b"x" * 280
-    valid_sha = hashlib.sha256(content).hexdigest()
-    cdn_url = _OPENXLAB_CDN_URL.replace(_EXPECTED_SHA256, valid_sha)
-    api_json = {
-        "code": 0,
-        "data": {
-            "url": cdn_url,
-            "meta": {"size": 280},
-        },
-    }
-
-    mirror_config = {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/gdown_test.zip",
-    }
     archive = tmp_path / ".downloads" / "gdown_test.zip"
-    archive.parent.mkdir(parents=True, exist_ok=True)
+    calls = []
 
-    post_mock = FakeResponse(b"", json_data=api_json)
-    get_mock = FakeResponse(content)
+    def fake_dataset_file_download(**kwargs):
+        calls.append(kwargs)
+        output = tmp_path / "sdk" / kwargs["file_path"]
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+        return str(output)
 
-    with patch("requests.post", return_value=post_mock), \
-            patch("requests.get", return_value=get_mock), \
-            patch("easyidp.data.downloader.tqdm") as mock_tqdm:
-        mock_tqdm.return_value.__enter__ = lambda s: s
-        mock_tqdm.return_value.__exit__ = lambda *a: None
-        mock_tqdm.return_value.update = lambda n: None
+    class FakeHubApi:
+        def get_dataset_files(self, **kwargs):
+            calls.append(kwargs)
+            return [{
+                "Path": "gdown_test.zip",
+                "Size": len(content),
+                "Sha256": hashlib.sha256(content).hexdigest(),
+            }]
 
-        _download_openxlab(mirror_config, archive, progress=True)
+    download_module = types.SimpleNamespace(dataset_file_download=fake_dataset_file_download)
+    api_module = types.SimpleNamespace(HubApi=FakeHubApi)
+    monkeypatch.setitem(sys.modules, "modelscope", types.SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "modelscope.hub", types.SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "modelscope.hub.file_download", download_module)
+    monkeypatch.setitem(sys.modules, "modelscope.hub.api", api_module)
 
-        assert mock_tqdm.called, "tqdm should be used when progress=True"
-
-
-def test_openxlab_downloader_prints_source_and_target(tmp_path, capsys):
-    import hashlib
-
-    from unittest.mock import patch
-
-    from easyidp.data.downloader import _download_openxlab
-
-    content = b"x" * 280
-    valid_sha = hashlib.sha256(content).hexdigest()
-    cdn_url = _OPENXLAB_CDN_URL.replace(_EXPECTED_SHA256, valid_sha)
-    api_json = {
-        "code": 0,
-        "data": {
-            "url": cdn_url,
-            "meta": {"size": 280},
+    _download_modelscope(
+        {
+            "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+            "file_path": "gdown_test.zip",
         },
-    }
-    mirror_config = {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/gdown_test.zip",
-    }
-    archive = tmp_path / ".downloads" / "gdown_test.zip"
+        archive,
+        progress=False,
+    )
 
-    with patch("requests.post", return_value=FakeResponse(b"", json_data=api_json)), \
-            patch("requests.get", return_value=FakeResponse(content)), \
-            patch("easyidp.data.downloader.tqdm") as mock_tqdm:
-        mock_tqdm.return_value.__enter__ = lambda s: s
-        mock_tqdm.return_value.__exit__ = lambda *a: None
-        mock_tqdm.return_value.update = lambda n: None
-
-        _download_openxlab(mirror_config, archive, progress=True)
-
-    output = capsys.readouterr().out
-    assert "Downloading...\n" in output
-    assert (
-        "From (original): https://openxlab.org.cn/datasets/"
-        "HowcanoeWang/easyidp-demo-dataset/gdown_test.zip\n"
-    ) in output
-    assert f"From (resolved): {cdn_url}\n" in output
-    assert f"To:  {archive.with_suffix(archive.suffix + '.part')}\n" in output
+    assert archive.read_bytes() == content
+    assert calls == [{
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "gdown_test.zip",
+        "local_dir": str(archive.parent / ".modelscope_download"),
+        "cache_dir": str(archive.parent / ".modelscope_cache"),
+    }, {
+        "repo_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "recursive": True,
+        "page_size": 100,
+    }]
 
 
-def test_openxlab_downloader_stays_quiet_without_progress(tmp_path, capsys):
-    import hashlib
+def test_modelscope_missing_dependency_mentions_data_extra(tmp_path, monkeypatch):
+    import builtins
 
-    from unittest.mock import patch
+    from easyidp.data.downloader import _download_modelscope
 
-    from easyidp.data.downloader import _download_openxlab
+    real_import = builtins.__import__
 
-    content = b"x" * 280
-    valid_sha = hashlib.sha256(content).hexdigest()
-    cdn_url = _OPENXLAB_CDN_URL.replace(_EXPECTED_SHA256, valid_sha)
-    api_json = {
-        "code": 0,
-        "data": {
-            "url": cdn_url,
-            "meta": {"size": 280},
-        },
-    }
-    mirror_config = {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/gdown_test.zip",
-    }
-    archive = tmp_path / ".downloads" / "gdown_test.zip"
+    def fake_import(name, *args, **kwargs):
+        if name == "modelscope":
+            raise ImportError("missing modelscope")
+        return real_import(name, *args, **kwargs)
 
-    with patch("requests.post", return_value=FakeResponse(b"", json_data=api_json)), \
-            patch("requests.get", return_value=FakeResponse(content)):
-        _download_openxlab(mirror_config, archive, progress=False)
+    monkeypatch.setattr(builtins, "__import__", fake_import)
 
-    assert capsys.readouterr().out == ""
-
-
-def test_stream_download_uses_small_chunks_for_smooth_progress(tmp_path):
-    import hashlib
-
-    from unittest.mock import patch
-
-    from easyidp.data.downloader import _stream_download
-
-    content = b"x" * 1024
-    response = FakeResponse(content)
-    expected_sha = hashlib.sha256(content).hexdigest()
-
-    with patch("requests.get", return_value=response):
-        _stream_download(
-            "https://example.com/archive.zip",
-            tmp_path / "archive.zip",
-            expected_size=len(content),
-            expected_sha256=expected_sha,
+    try:
+        _download_modelscope(
+            {"dataset_repo": "repo", "file_path": "file.zip"},
+            tmp_path / "file.zip",
             progress=False,
         )
+    except RuntimeError as exc:
+        message = str(exc)
+    else:
+        assert False, "expected RuntimeError for missing modelscope"
 
-    assert response.chunk_sizes == [512 * 1024]
+    assert "modelscope is required" in message
+    assert "pip install 'easyidp[data]'" in message
+
+
+def test_modelscope_downloader_rejects_sha256_mismatch(tmp_path, monkeypatch):
+    import hashlib
+    import sys
+    import types
+
+    from easyidp.data.downloader import _download_modelscope
+
+    def fake_dataset_file_download(**kwargs):
+        output = tmp_path / "sdk" / kwargs["file_path"]
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"wrong")
+        return str(output)
+
+    class FakeHubApi:
+        def get_dataset_files(self, **kwargs):
+            return [{
+                "Path": "gdown_test.zip",
+                "Size": 5,
+                "Sha256": hashlib.sha256(b"right").hexdigest(),
+            }]
+
+    download_module = types.SimpleNamespace(dataset_file_download=fake_dataset_file_download)
+    api_module = types.SimpleNamespace(HubApi=FakeHubApi)
+    monkeypatch.setitem(sys.modules, "modelscope", types.SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "modelscope.hub", types.SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "modelscope.hub.file_download", download_module)
+    monkeypatch.setitem(sys.modules, "modelscope.hub.api", api_module)
+
+    try:
+        _download_modelscope(
+            {
+                "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+                "file_path": "gdown_test.zip",
+            },
+            tmp_path / ".downloads" / "gdown_test.zip",
+            progress=False,
+        )
+    except RuntimeError as exc:
+        assert "SHA256 mismatch" in str(exc)
+    else:
+        assert False, "expected RuntimeError for SHA256 mismatch"

@@ -3,14 +3,14 @@
     "name": "lotus",
     "folder": "2017_tanashi_lotus",
     "archive": "2017_tanashi_lotus.zip",
-    "size_bytes": 3300000000,
+    "size_bytes": 3577087822,
     "mirrors": {
       "gdrive": {
         "file_id": "1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/2017_tanashi_lotus.zip"
+      "modelscope": {
+        "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "2017_tanashi_lotus.zip"
       }
     },
     "description": "Official EasyIDP lotus demo dataset from Tanashi, Tokyo."

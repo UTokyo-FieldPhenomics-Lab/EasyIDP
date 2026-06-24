@@ -6,7 +6,7 @@ def test_dataset_repr_shows_missing_status(tmp_path):
     text = repr(birds)
     assert object.__repr__(birds) in text
     assert "Official EasyIDP forest birds demo dataset from Florida." in text
-    assert "Size: 1.97 GB" in text
+    assert "Size: 2.12 GB" in text
     assert "Status: not downloaded. call .download() to save at" in text
     assert str(tmp_path / "2022_florida_forestbirds") in text
     assert 'idp.config.set(data_dir="/path/to/easyidp.data")' in text
@@ -20,7 +20,7 @@ def test_dataset_repr_shows_available_status(tmp_path):
         path.touch()
     text = repr(birds)
     assert object.__repr__(birds) in text
-    assert "Size: 1.97 GB" in text
+    assert "Size: 2.12 GB" in text
     assert "Status: available at" in text
     assert str(birds.root) in text
     assert "not downloaded" not in text

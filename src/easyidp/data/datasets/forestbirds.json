@@ -3,14 +3,14 @@
     "name": "forestbirds",
     "folder": "2022_florida_forestbirds",
     "archive": "2022_florida_forestbirds.zip",
-    "size_bytes": 1970000000,
+    "size_bytes": 2116376783,
     "mirrors": {
       "gdrive": {
         "file_id": "1mXkzaoSSCAA87cxcMHKL6_VNlykRYxJr"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/2022_florida_forestbirds.zip"
+      "modelscope": {
+        "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "2022_florida_forestbirds.zip"
       }
     },
     "description": "Official EasyIDP forest birds demo dataset from Florida."

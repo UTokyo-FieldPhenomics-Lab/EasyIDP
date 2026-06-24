@@ -6,7 +6,7 @@
 
 **Architecture:** `easyidp.data` is not a general dataset framework. It only exposes official demo datasets through short path attributes such as `idp.data.Lotus().metashape.project` so docs and examples do not need long file strings. Dataset metadata and file mappings live in `src/easyidp/data/datasets/*.json`; `dataset.py` parses those manifests and builds path namespaces dynamically.
 
-**Tech Stack:** Python 3.10+, `json`, `dataclasses`, `pathlib`, `zipfile`, `requests`, `tqdm`, `pytest`, optional `gdown`, `uv`.
+**Tech Stack:** Python 3.10+, `json`, `dataclasses`, `pathlib`, `zipfile`, `pytest`, optional `gdown`, optional `modelscope>=1.37.1`, `uv`.
 
 ---
 
@@ -20,15 +20,83 @@
 
 - Keep only short class entry points: `idp.data.Lotus()`, `idp.data.ForestBirds()`, and `idp.data.TestData()`.
 - Remove `ALIASES`, `DatasetRegistry`, `registry`, `_builtin.py`, `paths.py`, `errors.py`, `testing.py`, `get_spec()`, `get_dataset()`, `download_all()`, `show_data_dir()`, `url_checker()`, and `user_data_dir()`.
-- Do not download, extract, prompt, import `oss2`/`openxlab`, or perform network checks during import or dataset construction.
-- Replace Aliyun OSS downloads with anonymous OpenXLab public dataset CDN downloads. EasyIDP no longer ships or fetches maintainer-owned OSS credentials, and normal public dataset downloads must not require OpenXLab Access Key or Secret Key.
-- OpenXLab dataset page: `https://openxlab.org.cn/datasets/HowcanoeWang/easyidp-demo-dataset/tree/main`; use dataset repo id `HowcanoeWang/easyidp-demo-dataset` in manifests and downloader tests.
-- Keep `gdown` out of core dependencies as an optional extra. Implement OpenXLab downloads directly with `requests` and show a `tqdm` progress bar when `progress=True`; do not depend on the OpenXLab SDK for normal downloads.
+- Do not download, extract, prompt, import `oss2`/`openxlab`/`modelscope`, or perform network checks during import or dataset construction.
+- Replace Aliyun OSS downloads with ModelScope public dataset downloads for mainland China. EasyIDP no longer ships or fetches maintainer-owned OSS credentials, and normal public dataset downloads must not require OpenXLab Access Key, OpenXLab Secret Key, ModelScope token, or interactive login.
+- ModelScope dataset page: `https://modelscope.cn/datasets/HowcanoeWang/EasyIDP-Demo-Dataset/files`; use dataset id `HowcanoeWang/EasyIDP-Demo-Dataset` in manifests and downloader tests.
+- Keep `gdown` and `modelscope` out of core dependencies as optional data extras. Use ModelScope's official SDK single-file API `modelscope.hub.file_download.dataset_file_download()` for China mirror downloads instead of OpenXLab's anonymous CDN workaround.
 - Read the default data root only from `idp.config.get()`. `EasyIDPConfig` is a pure Python dataclass/json config object, not Pydantic.
-- Use built-in exceptions where possible: `ValueError` for bad manifests or mirror names, `RuntimeError` for failed downloads, OpenXLab metadata/resolve errors, size/SHA256 mismatches, and `zipfile.BadZipFile` for invalid archives.
-- Anonymous OpenXLab behavior is based on `.agents/references/20260620_openxlab_anonymous_cdn_download.md` plus the public frontend API: `POST https://openxlab.org.cn/datasets/api/v3/datasets/{owner,repo}/r/main` with `{"path": "archive.zip", "preview": false}` returns a temporary CDN URL and file size without login. Stream from that URL with `tqdm`, verify byte size and the SHA256 encoded in the CDN `/objects/{sha256}` path, then unzip.
+- Use built-in exceptions where possible: `ValueError` for bad manifests or mirror names, `RuntimeError` for failed downloads, ModelScope SDK errors, size/SHA256 mismatches, and `zipfile.BadZipFile` for invalid archives.
+- ModelScope behavior is based on `.agents/references/20260622_modelscope_dataset_mirror.md`. The verified path is `dataset_file_download(dataset_id="HowcanoeWang/EasyIDP-Demo-Dataset", file_path="gdown_test.zip", ...)` with no login or token. Verify downloaded archives with manifest-level `size_bytes` and `sha256` after SDK download.
 - Do not keep compatibility with the current temporary v2.1 `DatasetSpec`/registry API because it has not shipped.
 - Documentation must describe `data` as optional demo data convenience, not as a required data ingestion path. Core EasyIDP APIs continue accepting normal file paths directly.
+
+## 2026-06-22 ModelScope Mirror Reference
+
+This section supersedes the earlier OpenXLab mirror plan. Keep the OpenXLab investigation only as historical context in `.agents/references/20260620_openxlab_anonymous_cdn_download.md`.
+
+The latest ModelScope project metadata was verified with `modelscope==1.37.1` through `HubApi.dataset_info()`, `HubApi.get_dataset_files()`, and `HubApi.get_dataset_file_url()`. The dataset is public and did not require login or a token during testing.
+
+```json
+{
+  "dataset": {
+    "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+    "hub_id": 201707,
+    "name": "EasyIDP-Demo-Dataset",
+    "namespace": "HowcanoeWang",
+    "license": "MIT License",
+    "private": false,
+    "gated": false,
+    "login_required": false,
+    "last_commit": "e87035f1eb7687f69e0596b7b2730a6acceb3a25",
+    "last_modified": "2026-06-22 11:30:18+08:00",
+    "url": "https://modelscope.cn/datasets/HowcanoeWang/EasyIDP-Demo-Dataset/files"
+  },
+  "mirrors": {
+    "lotus": {
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "2017_tanashi_lotus.zip",
+        "revision": "master",
+        "size_bytes": 3577087822,
+        "sha256": "8c4040ebd78494ef10227e65baca146f83cc6d8e7c19b19a190124dc5b474341",
+        "download_url": "https://www.modelscope.cn/api/v1/datasets/HowcanoeWang/EasyIDP-Demo-Dataset/repo?Source=SDK&Revision=master&FilePath=2017_tanashi_lotus.zip&View=False"
+      }
+    },
+    "forestbirds": {
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "2022_florida_forestbirds.zip",
+        "revision": "master",
+        "size_bytes": 2116376783,
+        "sha256": "94d4de709e1f9f9e5e11753a650a9a30c7b03943bdc9c1295817d3ea9a80bc34",
+        "download_url": "https://www.modelscope.cn/api/v1/datasets/HowcanoeWang/EasyIDP-Demo-Dataset/repo?Source=SDK&Revision=master&FilePath=2022_florida_forestbirds.zip&View=False"
+      }
+    },
+    "testdata": {
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "data_for_tests.zip",
+        "revision": "master",
+        "size_bytes": 581849811,
+        "sha256": "e799affffe78b7047339caa75b1103722e8a77df6f12c09a48179148c30a0f19",
+        "download_url": "https://www.modelscope.cn/api/v1/datasets/HowcanoeWang/EasyIDP-Demo-Dataset/repo?Source=SDK&Revision=master&FilePath=data_for_tests.zip&View=False"
+      }
+    },
+    "download_smoke": {
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "gdown_test.zip",
+        "revision": "master",
+        "size_bytes": 280,
+        "sha256": "b353aee3743d29d968b09222c5a3b208268cce09100ab73b4048cb7cf42a844c",
+        "download_url": "https://www.modelscope.cn/api/v1/datasets/HowcanoeWang/EasyIDP-Demo-Dataset/repo?Source=SDK&Revision=master&FilePath=gdown_test.zip&View=False"
+      }
+    }
+  }
+}
+```
+
+Use `dataset_id`, `file_path`, `revision`, `size_bytes`, and `sha256` in EasyIDP manifests. Treat `download_url` as reference/debug output only; production code should let the ModelScope SDK generate the URL to avoid coupling EasyIDP to API query parameters.
 
 ## Target File Structure
 
@@ -58,14 +126,17 @@ Each JSON manifest must use this shape:
     "title": "Tanashi Lotus 2017",
     "archive": "2017_tanashi_lotus.zip",
     "folder": "2017_tanashi_lotus",
-    "size_bytes": 3300000000,
+    "size_bytes": 3577087822,
     "mirrors": {
       "gdrive": {
         "file_id": "1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/2017_tanashi_lotus.zip"
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "2017_tanashi_lotus.zip",
+        "revision": "master",
+        "size_bytes": 3577087822,
+        "sha256": "8c4040ebd78494ef10227e65baca146f83cc6d8e7c19b19a190124dc5b474341"
       }
     },
     "description": "Official EasyIDP demo dataset."
@@ -230,14 +301,17 @@ Expected: fail because the old `easyidp.data` is still a single module with netw
     "title": "Tanashi Lotus 2017",
     "folder": "2017_tanashi_lotus",
     "archive": "2017_tanashi_lotus.zip",
-    "size_bytes": 3300000000,
+    "size_bytes": 3577087822,
     "mirrors": {
       "gdrive": {
         "file_id": "1SJmp-bG5SZrwdeJL-RnnljM2XmMNMF0j"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/2017_tanashi_lotus.zip"
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "2017_tanashi_lotus.zip",
+        "revision": "master",
+        "size_bytes": 3577087822,
+        "sha256": "8c4040ebd78494ef10227e65baca146f83cc6d8e7c19b19a190124dc5b474341"
       }
     },
     "description": "Official EasyIDP lotus demo dataset from Tanashi, Tokyo."
@@ -269,14 +343,17 @@ Expected: fail because the old `easyidp.data` is still a single module with netw
     "title": "Florida Forest Birds 2022",
     "folder": "2022_florida_forestbirds",
     "archive": "2022_florida_forestbirds.zip",
-    "size_bytes": 1970000000,
+    "size_bytes": 2116376783,
     "mirrors": {
       "gdrive": {
         "file_id": "1mXkzaoSSCAA87cxcMHKL6_VNlykRYxJr"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/2022_florida_forestbirds.zip"
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "2022_florida_forestbirds.zip",
+        "revision": "master",
+        "size_bytes": 2116376783,
+        "sha256": "94d4de709e1f9f9e5e11753a650a9a30c7b03943bdc9c1295817d3ea9a80bc34"
       }
     },
     "description": "Official EasyIDP forest birds demo dataset from Florida."
@@ -304,14 +381,17 @@ Use the paths from old `TestData` and keep one manifest as the single source of 
     "title": "EasyIDP Test Data",
     "folder": "data_for_tests",
     "archive": "data_for_tests.zip",
-    "size_bytes": 344000000,
+    "size_bytes": 581849811,
     "mirrors": {
       "gdrive": {
         "file_id": "17b_17CofqIuCVOWMnD67_wOnWMtwF8bw"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/data_for_tests.zip"
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "data_for_tests.zip",
+        "revision": "master",
+        "size_bytes": 581849811,
+        "sha256": "e799affffe78b7047339caa75b1103722e8a77df6f12c09a48179148c30a0f19"
       }
     },
     "description": "Official EasyIDP developer test data."
@@ -410,17 +490,20 @@ This manifest is only for explicit manual mirror checks. Do not expose it in `li
     "title": "EasyIDP Download Smoke Test",
     "folder": "download_smoke",
     "archive": "gdown_test.zip",
-    "size_bytes": 2048,
+    "size_bytes": 280,
     "mirrors": {
       "gdrive": {
         "file_id": "1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ"
       },
-      "openxlab": {
-        "dataset_repo": "HowcanoeWang/easyidp-demo-dataset",
-        "source_path": "/gdown_test.zip"
+      "modelscope": {
+        "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
+        "file_path": "gdown_test.zip",
+        "revision": "master",
+        "size_bytes": 280,
+        "sha256": "b353aee3743d29d968b09222c5a3b208268cce09100ab73b4048cb7cf42a844c"
       }
     },
-    "description": "Tiny archive for manual gdown and OpenXLab download smoke tests."
+    "description": "Tiny archive for manual gdown and ModelScope download smoke tests."
   },
   "required": ["file1"],
   "files": {
@@ -783,7 +866,9 @@ Expected: pass all tests in `tests/test_data.py`.
 
 ---
 
-### Task 4: Add Explicit Downloader With Anonymous OpenXLab Mirror
+### Task 4: Add Explicit Downloader With ModelScope Mirror
+
+**2026-06-22 update:** The original OpenXLab snippets in this task are superseded by the ModelScope mirror decision and the metadata in `2026-06-22 ModelScope Mirror Reference` above. When executing this task, implement `_download_modelscope()` with `modelscope.hub.file_download.dataset_file_download()`, update tests from `openxlab` to `modelscope`, and remove OpenXLab-specific API/URL parsing code instead of copying the older OpenXLab examples below.
 
 **Files:**
 
@@ -795,7 +880,7 @@ Expected: pass all tests in `tests/test_data.py`.
 
 - [ ] **Step 1: Move Google Drive backend to optional dependencies**
 
-Keep Google Drive download support out of `[project].dependencies`. If `gdown` is currently listed there, move it to optional extras. Do not add `openxlab` as a dependency. Anonymous OpenXLab downloads use core dependencies `requests` and `tqdm`.
+Keep Google Drive and ModelScope download support out of `[project].dependencies`. If `gdown` is currently listed there, move it to optional extras. Do not add `openxlab` as a dependency. Add `modelscope>=1.37.1` to the optional `data` extra.
 
 Add this block to `pyproject.toml`:
 
@@ -806,10 +891,11 @@ gdrive = [
 ]
 data = [
     "gdown>=5.2.0",
+    "modelscope>=1.37.1",
 ]
 ```
 
-Users who need Google Drive downloads can install `easyidp[gdrive]`. Users in mainland China can use the default anonymous OpenXLab mirror without installing the OpenXLab SDK or configuring credentials.
+Users who need Google Drive downloads can install `easyidp[gdrive]`. Users in mainland China can install `easyidp[data]` and use the ModelScope mirror without configuring credentials.
 
 - [ ] **Step 2: Add downloader unit tests**
 

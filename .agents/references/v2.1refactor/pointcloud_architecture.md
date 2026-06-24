@@ -70,3 +70,7 @@ class PointCloudData:
 - v2.1 may rename confusing methods like `crop_polygon()` and `crop_point_cloud()` if it makes the API clearer.
 - Keep easy loading and saving workflows: `PointCloud(path)`, `save(path)`, `crop_rois(roi)` where practical.
 - Internal reconstruction and ROI modules should depend on a small point cloud protocol instead of the old monolithic class.
+
+## References:
+
+Detailed subagent investigation can refer to: `.agents/references/v2.1refactor/subagents/investigate_point_cloud_architecture.md`

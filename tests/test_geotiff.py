@@ -39,6 +39,35 @@ def _affine_pixel_corners(gtiff):
     return np.array([transform * tuple(corner) for corner in pixel_corners])
 
 
+def _edge_median_gsd(roi_geo, roi_raw_px):
+    """Return median projected GSD from matching geo/raw edges.
+
+    Parameters
+    ----------
+    roi_geo : numpy.ndarray
+        Geo polygon coordinates with shape (N, 2) or (N, 3).
+    roi_raw_px : numpy.ndarray
+        Raw pixel coordinates with shape (N, 2).
+
+    Returns
+    -------
+    float
+        Median edge-length ratio (geo / raw), approximating GSD.
+    """
+    roi_geo = np.asarray(roi_geo[:, :2], dtype=float)
+    roi_raw_px = np.asarray(roi_raw_px, dtype=float)
+    if np.allclose(roi_geo[0], roi_geo[-1], atol=1e-6):
+        roi_geo = roi_geo[:-1]
+        roi_raw_px = roi_raw_px[:-1]
+
+    geo_edges = np.roll(roi_geo, -1, axis=0) - roi_geo
+    raw_edges = np.roll(roi_raw_px, -1, axis=0) - roi_raw_px
+    raw_lengths = np.linalg.norm(raw_edges, axis=1)
+    if np.any(raw_lengths < 1e-9):
+        raise ZeroDivisionError("Zero-length raw edge detected; cannot compute GSD")
+    return float(np.median(np.linalg.norm(geo_edges, axis=1) / raw_lengths))
+
+
 def _assert_same_corner_set(actual, expected, atol=0.02):
     """Assert two rectangle corner sets match regardless of order.
 
@@ -1639,6 +1668,149 @@ class TestUseAffineParamOptimization:
             np.isclose(t_loaded.b, 0) and np.isclose(t_loaded.d, 0)
         )
         assert has_rotation_loaded
+
+    def test_one_raw_roi2affine_geotiff_preserves_rotated_rectangle_gsd(self):
+        """Direct raw-to-affine conversion preserves source edge GSD."""
+        gsd = 0.004
+        geo_width, geo_height = 0.9, 0.6
+        raw_width, raw_height = geo_width / gsd, geo_height / gsd
+        geo_angle = math.radians(30.0)
+        raw_angle = math.radians(88.0)
+        geo_rot = np.array([
+            [math.cos(geo_angle), -math.sin(geo_angle)],
+            [math.sin(geo_angle), math.cos(geo_angle)],
+        ])
+        raw_rot = np.array([
+            [math.cos(raw_angle), -math.sin(raw_angle)],
+            [math.sin(raw_angle), math.cos(raw_angle)],
+        ])
+
+        geo_local = np.array([
+            [-geo_width / 2, geo_height / 2],
+            [geo_width / 2, geo_height / 2],
+            [geo_width / 2, -geo_height / 2],
+            [-geo_width / 2, -geo_height / 2],
+        ])
+        raw_local = np.array([
+            [-raw_width / 2, raw_height / 2],
+            [raw_width / 2, raw_height / 2],
+            [raw_width / 2, -raw_height / 2],
+            [-raw_width / 2, -raw_height / 2],
+        ])
+
+        roi_geo = geo_local @ geo_rot.T + np.array([1000.0, 2000.0])
+        roi_raw = raw_local @ raw_rot.T + np.array([180.0, 180.0])
+        roi_geo = np.vstack([roi_geo, roi_geo[0]])
+        roi_raw = np.vstack([roi_raw, roi_raw[0]])
+
+        rows, cols = np.mgrid[0:360, 0:360]
+        raw_img = np.dstack([
+            cols.astype(np.uint8),
+            rows.astype(np.uint8),
+            ((rows + cols) % 256).astype(np.uint8),
+        ])
+
+        affine_gtiff = idp.geotiff._one_raw_roi2affine_geotiff(
+            roi_crs=pyproj.CRS.from_epsg(32654),
+            roi_geo_coords=roi_geo,
+            raw_img=raw_img,
+            roi_raw_px_coords=roi_raw,
+            nodata=0,
+            has_alpha=False,
+        )
+
+        transform = affine_gtiff.header["profile"]["transform"]
+        col_gsd = float(np.hypot(transform.a, transform.d))
+        row_gsd = float(np.hypot(transform.b, transform.e))
+
+        assert affine_gtiff.use_affine is True
+        assert col_gsd == pytest.approx(gsd, rel=0.05)
+        assert row_gsd == pytest.approx(gsd, rel=0.05)
+        assert affine_gtiff.width == pytest.approx(raw_width, abs=2)
+        assert affine_gtiff.height == pytest.approx(raw_height, abs=2)
+        assert affine_gtiff.imarray.sum() > 0
+
+    def test_back2raw2geotiff_lotus_affine_preserves_raw_edge_gsd(
+        self, shared_data, tmp_path
+    ):
+        """Lotus back2raw affine output keeps raw edge-derived GSD."""
+        p4d = shared_data["p4d"]
+        roi = shared_data["roi"]
+        out_all = shared_data["out_all"]
+        out_folder = tmp_path / "lotus_affine_gsd"
+
+        # Fixture provides exactly one ROI with one image
+        assert len(out_all) == 1, "shared_data fixture should have one ROI"
+        roi_id = next(iter(out_all))
+
+        results = idp.geotiff.back2raw2geotiff(
+            recons=p4d,
+            back2raw_result=out_all,
+            roi=roi,
+            output_folder=out_folder,
+            use_affine=True,
+            num_workers=1,
+        )
+
+        assert len(results) == 1
+        assert roi_id in results
+        img_ids = sorted(results[roi_id])
+        assert img_ids, "results should contain at least one image"
+        img_id = img_ids[0]
+        gtiff = results[roi_id][img_id]
+        expected_gsd = _edge_median_gsd(roi[roi_id], out_all[roi_id][img_id])
+        transform = gtiff.header["profile"]["transform"]
+
+        assert gtiff.use_affine is True
+        assert float(np.hypot(transform.a, transform.d)) == pytest.approx(
+            expected_gsd, rel=0.05
+        )
+        assert float(np.hypot(transform.b, transform.e)) == pytest.approx(
+            expected_gsd, rel=0.05
+        )
+        assert gtiff.imarray.sum() > 0
+
+        saved_file = out_folder / str(roi_id) / f"{img_id}.tif"
+        reloaded = idp.GeoTiff(saved_file)
+        assert reloaded.use_affine is True
+
+    def test_process_single_image_task_use_affine_does_not_call_convert_to_affine(
+        self, shared_data, monkeypatch
+    ):
+        """The back2raw affine worker uses direct one-pass raw conversion."""
+        p4d = shared_data["p4d"]
+        roi = shared_data["roi"]
+        out_all = shared_data["out_all"]
+
+        assert len(out_all) == 1, "shared_data fixture should have one ROI"
+        roi_id = next(iter(out_all))
+
+        img_ids = sorted(out_all[roi_id])
+        assert img_ids, "out_all should contain at least one image"
+        img_id = img_ids[0]
+        img_path = p4d.photos[img_id].path
+
+        def fail_convert_to_affine(self_):
+            raise AssertionError("convert_to_affine should not be called")
+
+        monkeypatch.setattr(idp.GeoTiff, "convert_to_affine", fail_convert_to_affine)
+
+        task = {
+            "img_id": img_id,
+            "img_path": img_path,
+            "rois": {roi_id: out_all[roi_id][img_id]},
+        }
+        common_args = {
+            "roi_static_data": {roi_id: roi[roi_id][:, :2]},
+            "roi_crs": roi.crs,
+            "nodata": 0,
+            "has_alpha": True,
+            "output_folder": None,
+            "use_affine": True,
+        }
+
+        results = idp.geotiff._process_single_image_task(task, common_args)
+        assert results[roi_id].use_affine is True
 
 
 class TestAffineCrop:

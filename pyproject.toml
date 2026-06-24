@@ -54,6 +54,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "ruff>=0.15.19",
+]
 docs = [
     "furo>=2025.12.19",
     "ipython>=8.39.0",

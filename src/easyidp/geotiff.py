@@ -2602,6 +2602,344 @@ def pixel2geo(points_hv, header):
     return gis_geo
 
 
+def _prepare_raw_roi_inputs(
+    raw_img: str | Path | np.ndarray,
+    roi_geo_coords: np.ndarray,
+    roi_raw_px_coords: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Load raw image and remove duplicated ROI closure points.
+
+    Parameters
+    ----------
+    raw_img : str, pathlib.Path, or numpy.ndarray
+        Raw image path or pre-loaded raw image array.
+    roi_geo_coords : numpy.ndarray
+        ROI coordinates in projected CRS, shape (n, 2) or (n, 3).
+    roi_raw_px_coords : numpy.ndarray
+        Matching ROI coordinates in raw image pixels, shape (n, 2).
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        Raw image array, 2D geo coordinates, and raw pixel coordinates.
+
+    Examples
+    --------
+    >>> raw_img, roi_geo, roi_px = _prepare_raw_roi_inputs(path, geo, px)
+    """
+    if isinstance(raw_img, (str, Path)):
+        raw_img_path = Path(raw_img)
+        if not raw_img_path.exists():
+            raise FileNotFoundError(f"Raw image not found: {raw_img_path}")
+        raw_img = np.asarray(imread(raw_img_path))
+
+    roi_geo_2d = np.asarray(roi_geo_coords[:, :2], dtype=float).copy()
+    roi_raw_px = np.asarray(roi_raw_px_coords, dtype=float).copy()
+    if np.allclose(roi_geo_2d[0], roi_geo_2d[-1], rtol=0, atol=1e-6):
+        roi_geo_2d = roi_geo_2d[:-1]
+        roi_raw_px = roi_raw_px[:-1]
+
+    return raw_img, roi_geo_2d, roi_raw_px
+
+
+def _estimate_raw_edge_gsd(roi_geo_2d: np.ndarray, roi_raw_px: np.ndarray) -> float:
+    """Estimate projected raw GSD from corresponding polygon edges.
+
+    Parameters
+    ----------
+    roi_geo_2d : numpy.ndarray
+        ROI coordinates in projected CRS, shape (n, 2).
+    roi_raw_px : numpy.ndarray
+        Matching raw image pixel coordinates, shape (n, 2).
+
+    Returns
+    -------
+    float
+        Median projected ground sampling distance in CRS units per pixel.
+
+    Examples
+    --------
+    >>> _estimate_raw_edge_gsd(roi_geo_2d, roi_raw_px)
+    0.004
+    """
+    if len(roi_geo_2d) != len(roi_raw_px) or len(roi_geo_2d) < 3:
+        raise ValueError("Geo and raw ROI coordinates must have matching polygon vertices.")
+
+    geo_edges = np.roll(roi_geo_2d, -1, axis=0) - roi_geo_2d
+    raw_edges = np.roll(roi_raw_px, -1, axis=0) - roi_raw_px
+    geo_lengths = np.linalg.norm(geo_edges, axis=1)
+    raw_lengths = np.linalg.norm(raw_edges, axis=1)
+    valid = raw_lengths > 1e-10
+    if not np.any(valid):
+        raise ValueError("Raw ROI polygon has no non-zero edges.")
+
+    return float(np.median(geo_lengths[valid] / raw_lengths[valid]))
+
+
+def _crop_raw_image_by_roi(
+    raw_img: np.ndarray,
+    roi_raw_px: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Crop raw image around ROI with the existing 10 percent buffer.
+
+    Parameters
+    ----------
+    raw_img : numpy.ndarray
+        Raw image array in HWC or HW layout.
+    roi_raw_px : numpy.ndarray
+        ROI pixel coordinates on the raw image, shape (n, 2).
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        Cropped image and local ROI pixel coordinates.
+
+    Examples
+    --------
+    >>> cropped, local_px = _crop_raw_image_by_roi(raw_img, roi_raw_px)
+    """
+    img_height, img_width = raw_img.shape[:2]
+    roi_min = roi_raw_px.min(axis=0)
+    roi_max = roi_raw_px.max(axis=0)
+    buffer_size = (roi_max - roi_min) * 0.1
+    buffered_min = np.maximum(roi_min - buffer_size, [0, 0]).astype(np.int32)
+    buffered_max = np.minimum(roi_max + buffer_size, [img_width, img_height]).astype(
+        np.int32
+    )
+
+    cropped_img = raw_img[
+        buffered_min[1] : buffered_max[1], buffered_min[0] : buffered_max[0]
+    ]
+    return cropped_img, roi_raw_px - buffered_min
+
+
+def _estimate_projective_transform(src: np.ndarray, dst: np.ndarray) -> ProjectiveTransform:
+    """Estimate a projective transform with skimage version compatibility.
+
+    Parameters
+    ----------
+    src : numpy.ndarray
+        Source points, shape (n, 2).
+    dst : numpy.ndarray
+        Destination points, shape (n, 2).
+
+    Returns
+    -------
+    skimage.transform.ProjectiveTransform
+        Estimated transform from source to destination coordinates.
+
+    Examples
+    --------
+    >>> pt = _estimate_projective_transform(raw_px, dst_px)
+    """
+    estimate_fn = getattr(
+        ProjectiveTransform, "from_estimate", None
+    )
+    if estimate_fn is not None:
+        return estimate_fn(src=src, dst=dst)
+
+    pt = ProjectiveTransform()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        pt.estimate(src=src, dst=dst)
+    return pt
+
+
+def _build_raw_affine_header(
+    roi_crs: pyproj.CRS,
+    imarray: np.ndarray,
+    transform,
+    origin: np.ndarray,
+    target_gsd: float,
+    nodata: float | int,
+    has_alpha: bool,
+) -> dict:
+    """Build GeoTiff header for direct raw-to-affine output.
+
+    Parameters
+    ----------
+    roi_crs : pyproj.CRS
+        Output coordinate reference system.
+    imarray : numpy.ndarray
+        Output image array.
+    transform : affine.Affine
+        Output affine transform.
+    origin : numpy.ndarray
+        Affine top-left origin in geo coordinates.
+    target_gsd : float
+        Output projected ground sampling distance.
+    nodata : float or int
+        Nodata value.
+    has_alpha : bool
+        Whether the output should omit nodata for alpha-capable images.
+
+    Returns
+    -------
+    dict
+        EasyIDP GeoTiff header dictionary.
+
+    Examples
+    --------
+    >>> header = _build_raw_affine_header(crs, img, transform, origin, 0.004, 0, True)
+    """
+    n_bands = imarray.shape[2] if imarray.ndim == 3 else 1
+    return {
+        "height": imarray.shape[0],
+        "width": imarray.shape[1],
+        "dim": n_bands,
+        "dtype": imarray.dtype,
+        "nodata": nodata if not has_alpha else None,
+        "scale": [target_gsd, target_gsd],
+        "tie_point": [origin[0], origin[1]],
+        "crs": roi_crs,
+        "has_alpha": False,
+        "transform": transform,
+        "profile": {
+            "driver": "GTiff",
+            "height": imarray.shape[0],
+            "width": imarray.shape[1],
+            "count": n_bands,
+            "dtype": str(imarray.dtype),
+            "crs": roi_crs,
+            "transform": transform,
+        },
+    }
+
+
+def _prepare_affine_grid(
+    rect_info: dict,
+    roi_geo_2d: np.ndarray,
+    target_gsd: float,
+):
+    """Compute destination pixels and output affine transform for raw-to-affine.
+
+    Parameters
+    ----------
+    rect_info : dict
+        Rectangle info from _get_rectangle_affine_info with keys origin,
+        col_vec, row_vec, width, height.
+    roi_geo_2d : numpy.ndarray
+        ROI geo coordinates, shape (n, 2).
+    target_gsd : float
+        Output projected ground sampling distance.
+
+    Returns
+    -------
+    dst_px : numpy.ndarray
+        Destination pixel coordinates, shape (n, 2).
+    out_height : int
+        Output image height in pixels.
+    out_width : int
+        Output image width in pixels.
+    origin : numpy.ndarray
+        Affine top-left origin in geo coordinates.
+    transform : affine.Affine
+        Output affine transform.
+
+    Examples
+    --------
+    >>> grid = _prepare_affine_grid(rect_info, roi_geo_2d, target_gsd)
+    """
+    from affine import Affine
+
+    origin = rect_info["origin"]
+    col_vec = rect_info["col_vec"]
+    row_vec = rect_info["row_vec"]
+    out_width = int(np.ceil(rect_info["width"] / target_gsd))
+    out_height = int(np.ceil(rect_info["height"] / target_gsd))
+
+    local_geo = roi_geo_2d - origin
+    dst_px = np.column_stack([
+        local_geo @ col_vec / target_gsd,
+        local_geo @ row_vec / target_gsd,
+    ])
+    transform = Affine(
+        target_gsd * col_vec[0],
+        target_gsd * row_vec[0],
+        origin[0],
+        target_gsd * col_vec[1],
+        target_gsd * row_vec[1],
+        origin[1],
+    )
+    return dst_px, out_height, out_width, origin, transform
+
+
+def _one_raw_roi2affine_geotiff(
+    roi_crs: pyproj.CRS,
+    roi_geo_coords: np.ndarray,
+    raw_img: str | Path | np.ndarray,
+    roi_raw_px_coords: np.ndarray,
+    nodata: float | int = 0,
+    has_alpha: bool = True,
+) -> GeoTiff:
+    """Transform a rectangular raw ROI directly into affine GeoTiff storage.
+
+    Parameters
+    ----------
+    roi_crs : pyproj.CRS
+        The coordinate reference system of the ROI.
+    roi_geo_coords : numpy.ndarray
+        GIS coordinates of ROI polygon, shape (n, 2) or (n, 3).
+    raw_img : str, pathlib.Path, or numpy.ndarray
+        Raw image path or pre-loaded raw image array.
+    roi_raw_px_coords : numpy.ndarray
+        ROI pixel coordinates on the raw image, shape (n, 2).
+    nodata : float or int, optional
+        Value for pixels outside the ROI, by default 0.
+    has_alpha : bool, optional
+        If True, keep nodata unset for RGB-like outputs, by default True.
+
+    Returns
+    -------
+    GeoTiff
+        A GeoTiff object already in affine mode.
+
+    Examples
+    --------
+    >>> gtiff = _one_raw_roi2affine_geotiff(crs, roi_geo, raw_img, roi_px)
+    >>> gtiff.use_affine
+    True
+    """
+    raw_img, roi_geo_2d, roi_raw_px = _prepare_raw_roi_inputs(
+        raw_img, roi_geo_coords, roi_raw_px_coords
+    )
+    rect_info = GeoTiff()._get_rectangle_affine_info(roi_geo_2d)
+    if rect_info is None:
+        raise ValueError("Polygon is not a valid rectangle for affine raw conversion.")
+
+    target_gsd = _estimate_raw_edge_gsd(roi_geo_2d, roi_raw_px)
+    if not np.isfinite(target_gsd) or target_gsd <= 0:
+        raise ValueError("Estimated raw edge GSD must be a positive finite value.")
+
+    dst_px, out_height, out_width, origin, transform = _prepare_affine_grid(
+        rect_info, roi_geo_2d, target_gsd
+    )
+    cropped_img, roi_local_px = _crop_raw_image_by_roi(raw_img, roi_raw_px)
+    pt = _estimate_projective_transform(roi_local_px, dst_px)
+
+    output_shape: tuple[int, ...] = (out_height, out_width)
+    if cropped_img.ndim == 3:
+        output_shape = (out_height, out_width, cropped_img.shape[2])
+    warped_img = warp(
+        cropped_img,
+        pt.inverse,
+        output_shape=output_shape,
+        order=1,
+        preserve_range=True,
+        cval=nodata,
+    ).astype(cropped_img.dtype)
+
+    header = _build_raw_affine_header(
+        roi_crs, warped_img, transform, origin, target_gsd, nodata, has_alpha
+    )
+
+    mask = np.ones((out_height, out_width), dtype=bool)
+    gtiff = GeoTiff(imarray=warped_img, header=header, mask=mask)
+    gtiff.set_mask_polygon(np.vstack([roi_geo_2d, roi_geo_2d[0]]), is_geo=True)
+    gtiff._use_affine = True
+    return gtiff
+
+
 def one_raw_roi2geotiff(
     roi_crs: pyproj.CRS,
     roi_geo_coords: np.ndarray,
@@ -3044,25 +3382,38 @@ def _process_single_image_task(task, common_args):
             roi_geo_coords = roi_static_data[roi_id]
 
             # Process in memory
-            gtiff = one_raw_roi2geotiff(
-                roi_crs=roi_crs,
-                roi_geo_coords=roi_geo_coords,
-                raw_img=full_image,  # Pass array directly!
-                roi_raw_px_coords=px_coords,
-                nodata=nodata,
-                has_alpha=has_alpha,
-            )
-
-            # Optimization B: Consistent storage and return object
-            # If use_affine is requested, convert the object IN MEMORY first.
             if use_affine:
                 try:
-                    gtiff = gtiff.convert_to_affine()
+                    gtiff = _one_raw_roi2affine_geotiff(
+                        roi_crs=roi_crs,
+                        roi_geo_coords=roi_geo_coords,
+                        raw_img=full_image,
+                        roi_raw_px_coords=px_coords,
+                        nodata=nodata,
+                        has_alpha=has_alpha,
+                    )
                 except ValueError as e:
                     logger.warning(
-                        f"Could not convert ROI {roi_id} on image {task['img_id']} to affine mode: {e}. "
-                        f"Falling back to standard storage."
+                        f"Could not convert ROI {roi_id} on image {task['img_id']} "
+                        f"to one-pass affine mode: {str(e).rstrip('.')}. Falling back to standard storage."
                     )
+                    gtiff = one_raw_roi2geotiff(
+                        roi_crs=roi_crs,
+                        roi_geo_coords=roi_geo_coords,
+                        raw_img=full_image,
+                        roi_raw_px_coords=px_coords,
+                        nodata=nodata,
+                        has_alpha=has_alpha,
+                    )
+            else:
+                gtiff = one_raw_roi2geotiff(
+                    roi_crs=roi_crs,
+                    roi_geo_coords=roi_geo_coords,
+                    raw_img=full_image,
+                    roi_raw_px_coords=px_coords,
+                    nodata=nodata,
+                    has_alpha=has_alpha,
+                )
 
             results[roi_id] = gtiff
 
@@ -3076,11 +3427,8 @@ def _process_single_image_task(task, common_args):
 
                 save_path = out_path_base / f"{task['img_id']}.tif"
 
-                # We can just call save() without arguments, because if use_affine=True,
-                # the object is ALREADY converted to affine above.
-                # Optimization A will handle it if we pass use_affine=True,
-                # but to be explicit and clean, we pass use_affine=False (or skip it)
-                # because the conversion is already done.
+                # The branch above has already prepared the desired storage mode.
+                # Save directly to avoid triggering any extra affine conversion.
                 gtiff.save(save_path, overwrite=True)
 
     except Exception as e:

@@ -76,7 +76,7 @@ dataset title, size, download status, and the cache directory path:
     >>> fb
     <easyidp.data.dataset.ForestBirds object at 0x...>
     Official EasyIDP forest birds demo dataset from Florida.
-    Size: 1.97 GB
+    Size: 2.12 GB
     Status: not downloaded. call .download() to save at
         /home/user/.local/share/easyidp.data/2022_florida_forestbirds
     You can change the download location with:
@@ -99,14 +99,18 @@ When the dataset is fully available on disk, the ``Status`` line changes to:
 Mirrors
 =======
 
-By default, easyidp try to download dataset from Shared Google Drive by `gdown` package. For users in China mainland, please use OpenXLab mirror for better downloading experience. At current stage, easyidp uses anonymous public dataset CDN URLs. They do not require the OpenXLab SDK, login, Access Key, or Secret Key:
+By default, EasyIDP tries to download datasets from Shared Google Drive by the
+``gdown`` package. For users in mainland China, use the ModelScope mirror for
+better download reliability. EasyIDP uses the public ModelScope dataset SDK and
+does not require a ModelScope token or interactive login for the official public
+demo datasets:
 
 .. code-block:: python
 
     import easyidp as idp
 
     lotus = idp.data.Lotus()
-    lotus.download(mirror="openxlab")
+    lotus.download(mirror="modelscope")
 
 
 Classes
@@ -136,7 +140,7 @@ expanded into runtime namespaces so users can write ``lotus.metashape.project``
 or ``lotus.metashape.outputs.dom``.
 
 The same module also contains explicit downloader helpers for Google Drive,
-anonymous OpenXLab mirrors, verified streaming downloads, and zip extraction.
+ModelScope mirrors, downloaded-file verification, and zip extraction.
 
 The recursive namespace object is implemented as
 ``easyidp.data.dataset._PathNamespace``. The objects below are intended for
@@ -165,8 +169,8 @@ Functions
     downloader.safe_extract_zip
     downloader._select_mirror
     downloader._download_gdrive
-    downloader._download_openxlab
-    downloader._fetch_openxlab_file_info
-    downloader._extract_sha256_from_cdn_url
-    downloader._stream_download
+    downloader._download_modelscope
+    downloader._fetch_modelscope_file_info
+    downloader._verify_downloaded_file
+    downloader._file_sha256
     downloader._result

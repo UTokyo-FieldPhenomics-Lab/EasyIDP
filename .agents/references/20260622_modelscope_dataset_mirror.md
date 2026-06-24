@@ -129,9 +129,8 @@ Recommended replacement for `download_smoke.json`:
     "file_id": "1yWvIOYJ1ML-UGleh3gT5b7dxXzBuSPgQ"
   },
   "modelscope": {
-    "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
-    "file_path": "gdown_test.zip",
-    "sha256": "b353aee3743d29d968b09222c5a3b208268cce09100ab73b4048cb7cf42a844c"
+    "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+    "file_path": "gdown_test.zip"
   }
 }
 ```
@@ -140,17 +139,16 @@ For larger EasyIDP archives, keep the same pattern:
 
 ```json
 "modelscope": {
-  "dataset_id": "HowcanoeWang/EasyIDP-Demo-Dataset",
-  "file_path": "2017_tanashi_lotus.zip",
-  "sha256": "<archive_sha256>"
+  "dataset_repo": "HowcanoeWang/EasyIDP-Demo-Dataset",
+  "file_path": "2017_tanashi_lotus.zip"
 }
 ```
 
 Notes:
 
 - `file_path` should not start with `/`; the ModelScope SDK test used `gdown_test.zip`.
-- Store `sha256` in EasyIDP's manifest because ModelScope's simple SDK call returns a local path, not a validated EasyIDP-owned integrity contract.
-- Keep `spec.size_bytes` as the human-facing dataset size, but use actual archive byte size or SHA256 for download verification when available.
+- Keep ModelScope mirror manifests minimal. Fetch `Size` and `Sha256` with `HubApi.get_dataset_files()` at download time before EasyIDP verifies the archive.
+- Keep `spec.size_bytes` as the human-facing dataset size only; do not duplicate archive verification metadata in the mirror config.
 
 ## Recommended Downloader Implementation
 
@@ -182,7 +180,7 @@ def _download_modelscope(mirror_config, archive, progress):
     part = archive.with_suffix(archive.suffix + ".part")
 
     downloaded = dataset_file_download(
-        dataset_id=mirror_config["dataset_id"],
+        dataset_id=mirror_config["dataset_repo"],
         file_path=mirror_config["file_path"].lstrip("/"),
         local_dir=str(part.parent),
         cache_dir=str(archive.parent / ".modelscope_cache"),

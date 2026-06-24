@@ -164,6 +164,17 @@ them explicitly. This may take a long time.
     >>> idp.data.Lotus().download()
     >>> idp.data.ForestBirds().download()
 
+The real download smoke tests are skipped by default. To manually verify the
+tiny Google Drive and ModelScope download paths, set
+``EASYIDP_RUN_DOWNLOAD_SMOKE=1`` when running the manual smoke test module:
+
+.. code-block:: bash
+
+    ...EasyIDP > EASYIDP_RUN_DOWNLOAD_SMOKE=1 uv run --extra data pytest tests/manual/test_data_download_smoke.py -q
+
+Use this only for explicit network checks. Ordinary test runs should not touch
+the network.
+
 Build
 -----
 

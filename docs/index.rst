@@ -414,6 +414,7 @@ We also thanks the benefits from the following open source projects:
   * tabulate: `https://github.com/astanin/python-tabulate <https://github.com/astanin/python-tabulate>`_ 
   * tqdm: `https://github.com/tqdm/tqdm <https://github.com/tqdm/tqdm>`_ 
   * gdown: `https://github.com/wkentaro/gdown <https://github.com/wkentaro/gdown>`_ 
+  * modelscope: `https://github.com/modelscope/modelscope <https://github.com/modelscope/modelscope>`_
 
 * package documentation (**for developers**)
 

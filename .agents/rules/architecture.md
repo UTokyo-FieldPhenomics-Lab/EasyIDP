@@ -43,9 +43,18 @@ Use this file as the concise architecture rule for v2.1 refactoring. Detailed mo
 
 - Prefer explicit data objects over parallel dict/list state.
 - Prefer pure operations returning new objects unless an in-place method is clearly named with `_inplace`.
+- For CRS conversion APIs, use `to_crs(...)` for return-a-new-object workflows and `change_crs(...)` for in-place mutation on the current object. Keep this distinction consistent across ROI, GeoTiff, PointCloud, and future spatial data classes.
 - Use stable JSON-serializable result objects for future MCP/tools.
 - Avoid returning large arrays from future tool-facing APIs; return paths, metadata, summaries, and warnings.
 - Public configuration should flow through `idp.config`; prefer explicit `get(...)`, `set(...)`, and `reset()` calls over hidden environment-variable behavior or import-time mutation.
+
+## CRS Conversion Policy
+
+- `to_crs(target_crs)` should return a new object of the same public type without modifying the source object.
+- `change_crs(target_crs)` should mutate the object in place and keep its existing public API behavior unless an explicit migration plan says otherwise.
+- CRS transforms must use `pyproj.Transformer.from_crs(..., always_xy=True)` unless a module documents a different axis-order reason.
+- PointCloud CRS conversion must transform absolute coordinates, then recompute offset automatically so internal local coordinates remain numerically stable after projection changes.
+- CRS conversion should preserve non-coordinate attributes such as ROI labels, point colors, normals, masks, and metadata when those values remain semantically valid.
 
 ## Test Layout Policy
 
@@ -95,10 +104,11 @@ easyidp.raster
   RasterWriter
 
 easyidp.pointcloud
-  PointCloudData
-  readers/writers
-  SpatialIndex
-  PointCloudCropper
+  PointCloud as the only public class for v2.1
+  core.py for data, CRS, offset, selection, crop, save
+  geometry.py for KDTree-backed crop index queries
+  compat.py for legacy point-cloud APIs
+  io/las.py and io/ply.py for readers/writers
 
 easyidp.reconstruction
   ReconstructionProject

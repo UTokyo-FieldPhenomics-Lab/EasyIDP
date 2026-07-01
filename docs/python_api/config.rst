@@ -35,12 +35,11 @@ Settings
 Functions
 =========
 
-.. autosummary::
-    :toctree: autodoc
+.. autofunction:: get
 
-    get
-    set
-    reset
+.. autofunction:: set
+
+.. autofunction:: reset
 
 Advanced API
 ============
@@ -60,21 +59,5 @@ This means ``idp.config.set(...)`` is the public shortcut for the singleton
 configuration object's ``set(...)`` method, not a request for users to
 instantiate ``EasyIDPConfig`` themselves.
 
-The objects below are mainly useful for contributors and advanced users who
-need to inspect EasyIDP's platform-specific default locations or test custom
-configuration paths.
-
-Classes
--------
-
-.. autosummary::
-
-    EasyIDPConfig
-
-Functions
----------
-
-.. autosummary::
-
-    default_config_path
-    default_data_dir
+The contributor-facing configuration object and path helpers are documented on
+the hidden :doc:`Config Advanced API <autodoc/easyidp.config.advanced>` page.

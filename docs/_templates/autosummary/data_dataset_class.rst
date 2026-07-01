@@ -1,14 +1,13 @@
-﻿easyidp.data.Lotus
-==================
+{{ fullname | escape | underline }}
 
-.. currentmodule:: easyidp.data
+.. currentmodule:: {{ module }}
 
-.. autoclass:: Lotus
+.. autoclass:: {{ objname }}
    :no-members:
 
    .. automethod:: __init__
 
-``Lotus`` inherits the common dataset API from
+``{{ objname }}`` inherits the common dataset API from
 :class:`easyidp.data.dataset.Dataset`. The inherited attributes and methods are
 documented on the hidden Data Advanced API page.
 

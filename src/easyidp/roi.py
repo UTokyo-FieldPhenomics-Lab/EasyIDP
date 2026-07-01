@@ -3,9 +3,9 @@ import pyproj
 import numpy as np
 from tqdm import tqdm
 from shapely.geometry import Point, Polygon
-from matplotlib.path import Path as mplPath
 from pathlib import Path
 from .logger import logger
+from .pointcloud.geometry import query_indices_by_polygon
 
 import easyidp as idp
 
@@ -429,8 +429,6 @@ class ROI(idp.Container):
         --------
         easyidp.jsonfile.show_geojson_fields
         """
-        pass
-
         geojson_dict, crs_proj = idp.jsonfile.read_geojson(
             geojson_path, name_field, include_title, return_proj=True
         )
@@ -583,6 +581,42 @@ class ROI(idp.Container):
 
         self.id_item = idp.geotools.convert_proj(self.id_item, self.crs, target_crs)
         self.crs = target_crs
+
+    def to_crs(self, target_crs):
+        """Return a new ROI with coordinates converted to *target_crs*.
+
+        Parameters
+        ----------
+        target_crs : pyproj.CRS
+            Target coordinate reference system.
+
+        Returns
+        -------
+        ROI
+            A new ROI with transformed coordinates and updated CRS.
+            The source ROI is not modified.
+
+        Raises
+        ------
+        TypeError
+            If ``self.crs`` is None or *target_crs* is not a ``pyproj.CRS``.
+
+        Examples
+        --------
+        >>> import easyidp as idp
+        >>> roi = idp.ROI("input.shp")
+        >>> roi_wgs84 = roi.to_crs("EPSG:4326")
+        """
+        if self.crs is None:
+            raise TypeError(
+                "Current ROI has no CRS, cannot convert."
+            )
+        if not isinstance(target_crs, pyproj.CRS):
+            target_crs = pyproj.CRS.from_user_input(target_crs)
+
+        result = self.copy()
+        result.change_crs(target_crs)
+        return result
 
     def save(self, target_path, **kwargs):
         """Save ROI to file. Format determined by extension.
@@ -1019,7 +1053,7 @@ class ROI(idp.Container):
                 poly_dict = idp.geotools.convert_proj(self.id_item, self.crs, dsm_crs)
 
         # using the full map to calculate
-        if buffer == -1 or buffer == -1.0:
+        if buffer == -1:
             global_z = dsm.polygon_math(polygon_hv=None, kernel=kernel)
         else:
             global_z = None
@@ -1039,7 +1073,7 @@ class ROI(idp.Container):
             else:
                 if mode == "face":  # using the polygon as uniform z values
                     # need do buffer
-                    if buffer != 0 or buffer != 0.0:
+                    if buffer != 0:
                         p = Polygon(poly)
                         p_buffer = p.buffer(buffer)
                         poly = np.array(p_buffer.exterior.coords)
@@ -1049,7 +1083,7 @@ class ROI(idp.Container):
                     poly3d = _insert_z_value_for_roi(val, poly_z)
 
                 else:  # using each point own z values
-                    if buffer != 0 or buffer != 0.0:
+                    if buffer != 0:
                         z_values = []
                         for po in poly:
                             p = Point(po)
@@ -1172,7 +1206,7 @@ class ROI(idp.Container):
                 poly_dict = idp.geotools.convert_proj(self.id_item, self.crs, pcd.crs)
 
         # Determine global Z if applicable
-        if buffer == -1 or buffer == -1.0:
+        if buffer == -1:
             # use full point cloud z
             all_z = pcd.points[:, 2]
             global_z_val = calculate_kernel_stats(all_z, kernel)
@@ -1197,15 +1231,19 @@ class ROI(idp.Container):
             else:
                 if mode == "face":
                     # buffer handling
-                    if buffer != 0 and buffer != 0.0:
+                    if buffer != 0:
                         poly_cal = Polygon(val).buffer(buffer)
                         poly_cal = np.array(poly_cal.exterior.coords)
                     else:
                         poly_cal = poly_xy
 
-                    # Use pcd.crop_polygon() to get xyz points inside polygon
-                    xyz_vals = pcd.crop_polygon(poly_cal)
-                    z_vals = xyz_vals[:, 2] if len(xyz_vals) > 0 else np.array([])
+                    indices = query_indices_by_polygon(
+                        pcd._points_xy, poly_cal, tree=pcd.tree
+                    )
+                    z_vals = (
+                        pcd.points[indices, 2] if len(indices) > 0
+                        else np.array([])
+                    )
 
                     if len(z_vals) > 0:
                         stat_z = calculate_kernel_stats(z_vals, kernel)
@@ -1215,24 +1253,19 @@ class ROI(idp.Container):
                     poly3d = _insert_z_value_for_roi(val, stat_z)
 
                 else:  # mode == "point"
-                    # For each vertex, apply buffer if needed
-                    # If buffer=0, in DSM mode it just reads pixel value.
-                    # For PCD mode, getting Z from a single point coordinate is
-                    # tricky because exact match is rare.
-                    # Usually "point" mode in PCD implies finding nearest
-                    # neighbor or points within small radius.
-                    # If buffer=0, we can try NN.
-
                     z_result_list = []
                     for pt in val:
                         pt_xy = pt[0:2]
-                        if buffer != 0 and buffer != 0.0:
+                        if buffer != 0:
                             # Buffer point -> Circle (Polygon approximation)
                             poly_cal_geom = Point(pt_xy).buffer(buffer)
                             poly_cal = np.array(poly_cal_geom.exterior.coords)
-                            xyz_vals = pcd.crop_polygon(poly_cal)
+                            indices = query_indices_by_polygon(
+                                pcd._points_xy, poly_cal, tree=pcd.tree
+                            )
                             z_vals = (
-                                xyz_vals[:, 2] if len(xyz_vals) > 0 else np.array([])
+                                pcd.points[indices, 2] if len(indices) > 0
+                                else np.array([])
                             )
                             if len(z_vals) > 0:
                                 z_result_list.append(
@@ -1376,7 +1409,17 @@ class ROI(idp.Container):
         if isinstance(target, idp.GeoTiff):
             out = target.crop_rois(self, is_geo=True, save_folder=save_folder, **kwargs)
         elif isinstance(target, idp.PointCloud):
-            out = target.crop_rois(self, save_folder=save_folder)
+            roi_for_crop = self
+            if target.crs is not None and self.crs is not None \
+                    and not self.crs.equals(target.crs):
+                roi_for_crop = self.copy()
+                roi_for_crop.change_crs(target.crs)
+            out = target.crop(roi_for_crop)
+            if save_folder is not None:
+                os.makedirs(save_folder, exist_ok=True)
+                for k, pcd_sub in out.items():
+                    save_path = Path(save_folder) / (k + pcd_sub.file_ext)
+                    pcd_sub.save(save_path)
 
         return out
 
@@ -1524,16 +1567,6 @@ class ROI(idp.Container):
             raise NotImplementedError(
                 "This Pool batch processing function has not been fully implemented"
             )
-            out_dict = {}
-            for chunk in recons:
-                if isinstance(save_folder, str) and os.path.isdir(save_folder):
-                    save_path = os.path.join(save_folder, chunk.label)
-                else:
-                    save_path = None
-
-                out_dict[chunk.label] = chunk.back2raw(
-                    self, save_folder=save_path, **kwargs
-                )
 
         return out_dict
 
@@ -1589,7 +1622,7 @@ def read_cc_txt(txt_path):
         try:
             # try to analysis 'x,y,z' type
             test_data = np.loadtxt(txt_path, delimiter=",")
-        except ValueError as e:
+        except ValueError:
             # means it is 'label, x, y, z' type
             # line i -> Point #0, x, y, z
             # ValueError: could not convert string to float: 'Point '

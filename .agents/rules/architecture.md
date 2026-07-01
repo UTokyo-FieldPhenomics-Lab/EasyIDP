@@ -65,14 +65,19 @@ Use this file as the concise architecture rule for v2.1 refactoring. Detailed mo
 
 ## Documentation API Layout Policy
 
-- Each module page should keep ordinary public `Classes` and `Functions` autosummary sections for user-facing APIs.
-- Public `Classes` and `Functions` sections may use `autosummary :toctree: autodoc` so user-facing API pages appear in the module's left sidebar.
-- Module pages may add a bottom `Advanced API` section for hidden, implicit, private, or contributor-facing classes/functions.
-- `Advanced API` should be split into `Classes` and `Functions` autosummary tables when both kinds exist.
-- In `Advanced API`, list explicit classes/functions before implicit/private helpers so readers see stable extension points first.
-- `Advanced API` autosummary tables must not use `:toctree:`; otherwise Furo will show hidden/private pages in the left sidebar.
-- Create explicit autodoc stub pages for `Advanced API` entries and mark those pages with `:orphan:` so they are linkable but not shown in the sidebar toctree.
-- Advanced API entries should generate clickable autodoc pages with the same docstring quality expectations as main APIs: clear purpose, parameters, returns, notes when useful, and examples when the object is user- or contributor-facing.
+- Prefer reader-oriented single-page API docs over one-page-per-function fragmentation.
+- Each user-facing module page should keep ordinary public `Classes` and `Functions` sections, but ordinary public functions should usually be summarized and expanded inline on the module page instead of using `autosummary :toctree:`.
+- Core public classes should have one class page where methods and attributes are summarized and expanded inline. The class page should list the class API only; hidden, private, implicit, or contributor-facing APIs are handled from the parent module page instead.
+- Class and submodule pages should list all APIs that belong to that page. When a page has more than about six functions, methods, or attributes, add top-of-page categorized jump tables such as `Attributes`, `Methods`, and, when applicable, compatibility groups. Rows should link to same-page anchors, not isolated `Class.method.html` pages.
+- Keep class-page order predictable: class name, categorized API tables, `__init__`, then functions and attributes in alphabetical order unless a reader-facing reason justifies another order.
+- Use `autosummary :toctree: autodoc` for a class itself when the class deserves its own page, but avoid `:toctree:` for ordinary methods and functions unless a function is large enough to justify a standalone tutorial-like reference page.
+- Use custom `autosummary` templates when they reduce manual maintenance for class or submodule pages, for example to auto-list public methods and attributes from Sphinx template variables. Template content that belongs to a class must be indented inside the `.. autoclass::` directive so generated HTML keeps methods and attributes inside the class block.
+- Module pages may add a bottom `Advanced API` section for hidden, implicit, private, or contributor-facing classes/functions. Maintain Advanced API from the module page only, not from each class or submodule page.
+- `Advanced API` should prefer module-level single pages such as `compat.html`, `geometry.html`, or `io.html`; each page should summarize and expand all related helper functions/classes inline.
+- Advanced API module pages may be marked with `:orphan:` and linked from the parent module page so they are reachable without cluttering the left sidebar.
+- Do not generate one standalone page per advanced helper function or private method. Keep those entries inline inside their advanced module page.
+- In `Advanced API`, list explicit extension points before implicit/private helpers so readers see stable integration points first.
+- Advanced API docstrings still need the same quality as main APIs: clear purpose, parameters, returns, notes when useful, and examples when the object is user- or contributor-facing.
 - Do not add advanced autodoc pages to the root `docs/index.rst` toctree; they should be reachable from the module page but not shown in the left sidebar.
 
 ## Configuration Policy

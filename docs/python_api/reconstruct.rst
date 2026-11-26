@@ -23,7 +23,7 @@ A summary of base class in the module ``easyidp.reconstruct``.
     Calibration
     ChunkTransform
 
-You can definately access these base class directly by: 
+You can definitely access these base class directly by: 
 
 .. code-block:: python
 
